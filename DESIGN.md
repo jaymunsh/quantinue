@@ -32,7 +32,7 @@
 | Table | 13.5px | 400 | 1.55 이상 | 표 |
 | Metadata | 12.5–13px | 500–700 | 1.45 | 배지·메타 |
 
-- 본문: `Pretendard`, `Apple SD Gothic Neo`, `Malgun Gothic`, system-ui, sans-serif.
+- 본문: Apple system font(`-apple-system`, `BlinkMacSystemFont`, `Apple SD Gothic Neo`)를 우선한다. Apple 계열이 없을 때 CDN의 `Noto Sans KR`을 2차 한글 fallback으로 쓰고, 이후 `Malgun Gothic`, system-ui, sans-serif 순으로 둔다.
 - 코드: `Consolas`, `D2Coding`, monospace.
 - 한국어 산문은 `word-break: keep-all`; 코드·URL·식별자는 필요할 때만 줄바꿈한다.
 - 모바일 표와 카드 본문은 14px 미만으로 낮추지 않는다.

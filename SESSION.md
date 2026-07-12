@@ -115,6 +115,12 @@
 7. 🆕 **(07-12) 문서를 수정하면 반드시 `#changelog` 표 맨 위에 한 줄 추가** — 버전 +0.1 · 날짜 · 수정자 · 1~3줄 요약, 히어로 버전 배지도 같이 갱신. 줄이 없으면 그 수정은 없던 일로 간주.
 8. 변경 이력의 버전마다 Git 커밋 1개와 같은 버전 태그를 남긴다. 변경 이력은 사람이 읽는 요약, Git은 실제 diff의 정본이다.
 
+### 07-12 (8) — v3.0 폰트 우선순위 정비
+
+- 본문 기본 글꼴을 Apple system font(`-apple-system`·`BlinkMacSystemFont`·`Apple SD Gothic Neo`)로 변경.
+- Google Fonts CDN에서 `Noto Sans KR` 400·500·600·700을 `display=swap`으로 불러 Apple 계열 부재 시 2차 한글 fallback으로 사용.
+- 릴리스 규칙: 커밋 1개 + 태그 `v3.0`.
+
 ### 07-12 (7) — v2.9 읽기 경험·접근성 개선
 
 - `DESIGN.md` 신설 — 기존 GitHub 계열 시각 언어와 상태·반응형·접근성 계약을 명문화.

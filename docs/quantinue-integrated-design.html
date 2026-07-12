@@ -3,7 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quantinue 통합 설계서 v2.9 — 팀 여름이었다</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<title>Quantinue 통합 설계서 v3.0 — 팀 여름이었다</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
   :root{
@@ -14,7 +17,7 @@
   }
   html{scroll-behavior:auto;scroll-padding-top:60px}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65;font-size:15px}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;line-height:1.65;font-size:15px}
   h1,h2,h3,h4,p,li,td,.note,.warn,.danger,.good,.ai-head b,.ai-who,.ai-v{word-break:keep-all;overflow-wrap:break-word}
   .skip-link{position:fixed;z-index:100;top:8px;left:8px;transform:translateY(-160%);background:var(--ink);color:#fff;border-radius:8px;padding:8px 12px;font-weight:700}
   .skip-link:focus{transform:translateY(0)}
@@ -193,12 +196,12 @@
 
 <!-- ══════════════════════ HERO ══════════════════════ -->
 <header class="hero">
-  <span class="b">⭐ 정본 (2026-07-11 승격)</span> <span class="b">통합본 v2.9 · <a href="#changelog">변경 이력</a></span> <span class="b">팀 여름이었다</span>
+  <span class="b">⭐ 정본 (2026-07-11 승격)</span> <span class="b">통합본 v3.0 · <a href="#changelog">변경 이력</a></span> <span class="b">팀 여름이었다</span>
   <p class="small" style="margin:6px 0 0">본 문서가 Quantinue의 <b>단일 정본</b>이다. docs/ 하위 원본 문서 7종(특히 collector_agent 4종)은 구버전·참고용 — 서술이 어긋나면 <b>항상 이 문서가 이긴다</b>. 착수 후 <b>기계 계약(스키마·ENUM·문턱값·주기)의 정본은 코드 3파일</b>(<a href="#ai">#20</a> 확정) — 본 문서는 “왜 그렇게 됐는지”(결정·근거·이력)의 정본.</p>
   <h1>🌊 Quantinue <span class="nowrap-phrase">통합 설계서</span></h1>
-  <p>공시·뉴스·기술지표·매크로를 읽고 → AI가 매수를 제안하고 → AI가 반박하고 → 코드가 리스크를 계산해 → 가상매매(페이퍼)로 사고 → 5일 뒤 복기하는 <b>하루 한 사이클 자동매매 파이프라인</b>. <span class="nowrap-phrase">이 문서</span> 하나로 01~11 전체 흐름·DB 스키마·에이전트 간 데이터 계약을 파악할 수 있게 팀 문서 7종을 통합·단순화했다.</p>
+  <p>공시·뉴스·기술지표·매크로를 읽고 → AI가 매수를 제안하고 → AI가 반박하고 → 코드가 리스크를 계산해 → 가상매매(페이퍼)로 사고 → 5일 뒤 복기하는 <b>하루 한 사이클 자동매매 <span class="nowrap-phrase">파이프라인</span></b>. <span class="nowrap-phrase">이 문서</span> 하나로 01~11 전체 흐름·DB 스키마·에이전트 간 데이터 계약을 파악할 수 있게 팀 문서 7종을 통합·단순화했다.</p>
   <div class="kv">
-    <div class="cell"><b>1차 MVP</b>공격형 1종 · 단일 파이프라인 · 페이퍼 계좌 1개</div>
+    <div class="cell"><b>1차 MVP</b>공격형 1종 · 단일 <span class="nowrap-phrase">파이프라인</span> · 페이퍼 계좌 1개</div>
     <div class="cell"><b>구성</b>컴포넌트 01→11 · Postgres 1개</div>
     <div class="cell"><b>PM · 인프라</b>김지현 (본 설계 원본 작성)</div>
     <div class="cell"><b>담당</b>수집 정창욱 · 전략 이은미 · 반박 김미연 · 회고 문성혁</div>
@@ -1815,7 +1818,8 @@ flowchart LR
   <div class="danger"><b>✍️ 편집 규칙 (사람이든 AI든 예외 없음)</b> — 이 문서를 수정하면 <b>반드시 아래 표 맨 위에 한 줄 추가</b>한다: 버전 +0.1 · 날짜 · 수정자 · 무엇을 왜 바꿨는지 1~3줄. 히어로의 버전 배지도 같이 올린다. “어떤 게 최신 계약인지”를 이 표가 보증한다 — 줄이 없으면 그 수정은 없던 일로 간주. <span class="small">Git 커밋·태그가 실제 diff와 배포 이력을 보증하고, 이 표는 사람이 읽는 변경 요약을 담당한다.</span></div>
   <div class="twrap"><table><caption class="sr-only">📜 변경 이력 — 이 문서의 형상관리 🆕 07-12 신설</caption>
     <tr><th scope="col" class="c">버전</th><th scope="col">날짜</th><th scope="col">수정자</th><th scope="col">변경 요약</th></tr>
-    <tr class="hl-new"><td class="c"><b>v2.9</b></td><td>2026-07-12</td><td>Codex</td><td><b>읽기 경험·접근성 개선</b> — 현재 상태 요약판 신설 · 완료 AI 카드의 과거 논의 기본 접기 + 상태 필터 · 모바일 고정 버튼을 상단 sticky 목차 바로가기로 변경 · 핵심 표 모바일 카드화 · 표 caption/scope·랜드마크·앵커 포커스·가로 스크롤 안내 보강.</td></tr>
+    <tr class="hl-new"><td class="c"><b>v3.0</b></td><td>2026-07-12</td><td>Codex</td><td><b>폰트 우선순위 정비</b> — Apple system font를 기본으로 사용하고, <code>Noto Sans KR</code>를 CDN의 2차 한글 fallback으로 추가(<code>display=swap</code>).</td></tr>
+    <tr><td class="c"><b>v2.9</b></td><td>2026-07-12</td><td>Codex</td><td><b>읽기 경험·접근성 개선</b> — 현재 상태 요약판 신설 · 완료 AI 카드의 과거 논의 기본 접기 + 상태 필터 · 모바일 고정 버튼을 상단 sticky 목차 바로가기로 변경 · 핵심 표 모바일 카드화 · 표 caption/scope·랜드마크·앵커 포커스·가로 스크롤 안내 보강.</td></tr>
     <tr class="hl-new"><td class="c"><b>v2.8</b></td><td>2026-07-12</td><td>문성혁 + Claude</td><td><b>0번 섹션 “무엇이 달라졌는가” 신설(#diff0)</b> — 원본(Official_Document.html) 대비 달라진 9개 영역을 “원본에서는 → 지금은 → 왜 → 상세 위치” 표로 정리(원본만 아는 팀원의 갭 메우기용) · .gitignore에 수동 백업 사본 제외 패턴 추가</td></tr>
     <tr><td class="c"><b>v2.7</b></td><td>2026-07-12</td><td>문성혁 + Claude</td><td><b>#20 확정 확인</b>(⛔ 착수 시 필수 실행 — 지금 당장 개발은 아님, 개발 시작일에 정본 3파일 PR부터) · 채택 후속 정합 2건: <b>#conv “한 PR” 문구 → #20 방식(정본 3파일 → 담당별 분할 + “전원 교체 전 구 계약 코드 실행 금지”)으로 대체</b> · 히어로 정본 문구에 착수 후 역할 분담 명시(기계 계약=코드 3파일 / 본 문서=결정·이력 정본)</td></tr>
     <tr><td class="c"><b>v2.6</b></td><td>2026-07-12</td><td>Claude (검토: 문성혁)</td><td><b>🔐 보안 로드맵 섹션(#security) 신설</b>(LLM 특화 위협 모델 7종 + 1차/2차/실전 전 단계별 로드맵 — 어필 포인트 “LLM 출력이 검증 없이 돈에 닿는 경로 0개”) · <b>#20 착수 실행 전략 카드 신설</b>(정본의 코드화 3파일 → 리네임 PR 분할 → NVDA 픽스처 E2E 강제 발화) · <b>07 Critic payload 예시 정합 수정</b>(signal_consensus 3→2 — “1차 기술 투표 불가”와의 모순 제거) · 목차에 보안·변경 이력 항목 추가 · 버전 배지 v2.0→v2.6 동기화</td></tr>
