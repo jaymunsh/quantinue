@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Quantinue 통합 설계서 v2.7 — 팀 여름이었다</title>
+<title>Quantinue 통합 설계서 v2.8 — 팀 여름이었다</title>
 <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
 <style>
   :root{
@@ -135,7 +135,7 @@
 
 <!-- ══════════════════════ HERO ══════════════════════ -->
 <div class="hero">
-  <span class="b">⭐ 정본 (2026-07-11 승격)</span> <span class="b">통합본 v2.7 · <a href="#changelog">변경 이력</a></span> <span class="b">팀 여름이었다</span>
+  <span class="b">⭐ 정본 (2026-07-11 승격)</span> <span class="b">통합본 v2.8 · <a href="#changelog">변경 이력</a></span> <span class="b">팀 여름이었다</span>
   <p class="small" style="margin:6px 0 0">본 문서가 Quantinue의 <b>단일 정본</b>이다. docs/ 하위 원본 문서 7종(특히 collector_agent 4종)은 구버전·참고용 — 서술이 어긋나면 <b>항상 이 문서가 이긴다</b>. 착수 후 <b>기계 계약(스키마·ENUM·문턱값·주기)의 정본은 코드 3파일</b>(<a href="#ai">#20</a> 확정) — 본 문서는 “왜 그렇게 됐는지”(결정·근거·이력)의 정본.</p>
   <h1>🌊 Quantinue 통합 설계서</h1>
   <p>공시·뉴스·기술지표·매크로를 읽고 → AI가 매수를 제안하고 → AI가 반박하고 → 코드가 리스크를 계산해 → 가상매매(페이퍼)로 사고 → 5일 뒤 복기하는 <b>하루 한 사이클 자동매매 파이프라인</b>. 이 문서 하나로 01~11 전체 흐름·DB 스키마·에이전트 간 데이터 계약을 파악할 수 있게 팀 문서 7종을 통합·단순화했다.</p>
@@ -151,6 +151,7 @@
 <nav class="toc" id="toc" aria-label="문서 목차" tabindex="-1">
   <b>☰ 목차</b>
   <ol>
+    <li value="0"><a href="#diff0">무엇이 달라졌는가 — 원본(Official_Document) 대비 🆕</a></li>
     <li><a href="#dict">⚡ 용어 30초 사전 🆕</a></li>
     <li><a href="#conv">공통 컨벤션 — 네이밍·타입 규칙 🆕</a></li>
     <li><a href="#big">전체 흐름 한눈에 (01~11)</a></li>
@@ -198,6 +199,26 @@
   ② <b>구현하는 개발자</b>: <a href="#conv">컨벤션 8규칙</a> → <a href="#erd">ERD·테이블 총람</a> → 자기 섹션 → <a href="#relay">릴레이</a><br>
   ③ <b>회의 준비</b>: <a href="#issues">협의 현황판</a> → <a href="#ai">AI 추천 제안</a>의 🔴·🟡 카드만</div>
 </section>
+<!-- ══════════════════════ 0. 원본 대비 달라진 점 ══════════════════════ -->
+<section class="card" id="diff0">
+  <h2>0 · 무엇이 달라졌는가 — 원본(Official_Document.html) 대비 <span class="b b-new">🆕 07-12</span></h2>
+  <p><b>원본(김지현 작성 · 2026-07-10 14:45)이 이 문서의 뼈대이고 지금도 최우선 기준</b>이다 — 01→11 파이프라인 구조·5버킷·리스크 사이징 등 큰 그림은 그대로다. 달라진 것은 그 위에 팀 문서 4종(collector·strategist·critic)의 <b>모순을 해소</b>하고, 07-11~12 이틀간 <b>확정한 결정들을 반영</b>한 부분이다. 원본만 기억하는 팀원은 아래 표만 보면 갭이 메워진다 — 상세는 각 행의 위치 링크로.</p>
+  <div class="twrap"><table>
+    <tr><th>영역</th><th>원본에서는</th><th>지금은 (현행 계약)</th><th>왜 바꿨나</th><th>상세 위치</th></tr>
+    <tr><td><b>뉴스·공시<br>저장 구조</b> ⭐</td><td>집계 결과만 테이블 하나에 저장 — 개별 기사·공시 원문을 나중에 못 찾음</td><td><b>2단 분리</b> — 원본 원장(tb_news·tb_disclosure = 1건 1행) + 집계 스냅샷(tb_news_signal·tb_disclosure_signal = 종목당 사이클 1행, 07·08이 읽음)</td><td>건별 근거 역추적·백테스트가 불가능했음. 특히 Form 4(내부자 매수)는 기사화가 안 돼 뉴스만으론 반쪽 신호</td><td><a href="#s05">05</a>·<a href="#s06">06</a>·AI <a href="#ai">#1</a></td></tr>
+    <tr><td><b>이름·타입<br>규칙</b> ⭐</td><td>INT 0/1 불리언 · 한글 값(“매수”·“추세 리더”) · TIMESTAMP · 점수 눈금 혼재(0~100 · 0~10 · 0~1)</td><td><b>컨벤션 8규칙으로 통일</b> — BOOLEAN + is_/has_ · 영어 소문자 ENUM(buy/hold·trend_leader…) · TIMESTAMPTZ(UTC) · <b>모든 점수 0~1 소수 3자리, 예외 0개</b></td><td>trend “상승” vs “up” 불일치로 매수 조건이 영원히 거짓이 된 사고, conviction 8.0(0~10) vs 0.8(0~1) 게이트 무력화 사고 — 재발 방지</td><td><a href="#conv">컨벤션</a> + 리네임 매핑표</td></tr>
+    <tr><td><b>키(PK)<br>설계</b></td><td>시각을 PK로 사용((ticker, collected_at) 등) · 신호끼리는 cycle_id 정수 번호로 연결</td><td><b>대리키 + 슬롯 시각</b> — PK(tns_id/tds_id) + UNIQUE(ticker, cycle_ts) 멱등 · cycle_id 폐기 → src_*_at(읽은 스냅샷 추적)</td><td>같은 초 재실행 시 PK 충돌·중복 행 · cycle_id는 가리킬 마스터 표가 없는 반쪽 FK였음</td><td><a href="#conv">규칙 8</a>·AI <a href="#ai">#19</a> (정본 가이드)</td></tr>
+    <tr><td><b>시각의<br>의미</b></td><td>“수집 시각(collected_at)·trade_date를 호재 발생 시각으로 본다”(구 컴펌 #2)</td><td><b>발생 시각 = published_at(뉴스)·filed_at(공시) / created_at = DB 기록용일 뿐</b> — 컴펌 #2 공식 폐기 · trade_date는 미 동부(ET) 영업일 기준</td><td>수집 시각은 언제나 “방금”이라 Critic의 신선도·선반영 반박이 통째로 오판함</td><td>AI <a href="#ai">#7</a>·<a href="#conv">규칙 3</a></td></tr>
+    <tr><td><b>메모리<br>(회고 피드백)</b></td><td>tb_memory_entries 별도 테이블에 lesson 복사 저장</td><td><b>tb_review.lesson 단일화</b> — 07이 JOIN으로 직접 읽음, 별도 테이블 폐지</td><td>같은 lesson이 두 곳에 살면 진실원천이 갈라짐</td><td><a href="#s07">07 메모리</a>·AI <a href="#ai">#2</a></td></tr>
+    <tr><td><b>event_type<br>관리</b></td><td>사건 종류 목록이 문서·코드 여기저기에만 존재 (오타 방어 없음)</td><td><b>TEXT (ENUM) + 허용값 12종 표</b>(코드 정본은 ontology.py Literal) — 참조 테이블은 검토 후 폐기</td><td>진실원천을 한 곳으로 · 다른 ENUM들과 같은 정책(예외 0개)</td><td><a href="#s05">05 허용값 표</a>·AI <a href="#ai">#12</a></td></tr>
+    <tr><td><b>뉴스 수집<br>주기</b></td><td>5분마다</td><td><b>30분마다</b> (경험칙: 수집 ≈ 판단 ÷ 2~4 — 07이 2시간이므로)</td><td>판단 1회당 스냅샷 24개 중 23개는 아무도 안 읽음 — LLM 비용·DB만 24배</td><td><a href="#sched">스케줄</a>·AI <a href="#ai">#14</a></td></tr>
+    <tr><td><b>출처 등급<br>정책</b></td><td>소셜·블로그 = GRAY 0.6으로 집계에 포함 (구버전 서술)</td><td><b>소셜·블로그·미등록 = BLOCK 사전 차단</b> (LLM 도달 전 drop · 행은 is_dropped=true로 보존, 구제는 화이트리스트 등록)</td><td>소셜발 신호를 검증할 반박 각도(펌프)가 1차에 없음 — 오염 신호 = 오매수 직결</td><td><a href="#s06">06</a>·AI <a href="#ai">#4</a></td></tr>
+    <tr><td><b>매도<br>(청산)</b></td><td>트레일링 스톱 브래킷</td><td><b>1차 = 고정 손절(−15%) + 익절 브래킷</b> · 트레일링은 2차 전환</td><td>Alpaca가 트레일링 스톱을 브래킷의 손절 다리(leg)로 지원하지 않음 — 원안은 구현 불가</td><td>AI <a href="#ai">#15</a>·<a href="#s09">09</a></td></tr>
+    <tr><td><b>문서<br>그 자체</b></td><td>사람용 설명 문서 하나</td><td>+ <b>용어 사전 · 전 테이블 row 예시(NVDA 시나리오) · 스케줄/비용/보안 로드맵 · 변경 이력(git 태그 연동) · 착수 게이트(#18·#20 — 정본의 코드화 확정)</b></td><td>비개발자 이해 · 형상관리 · “문서→코드” 착수 실행까지 한 문서에서</td><td><a href="#dict">사전</a>·<a href="#sched">⏰</a>·<a href="#llm">💰</a>·<a href="#security">🔐</a>·<a href="#changelog">📜</a></td></tr>
+  </table></div>
+  <p class="small muted">개별 결정의 “왜”가 더 궁금하면: 각 결정은 <a href="#ai">AI 추천 제안</a> 카드(#1~#20)에 제안→근거→결론이 전부 보존돼 있고, 시점별 반영 순서는 <a href="#changelog">변경 이력</a>이 담당한다. 원본 문서 자체는 docs/에 그대로 보존.</p>
+</section>
+
 <!-- ══════════════════════ 용어 사전 ══════════════════════ -->
 <section class="card" id="dict">
   <h2>⚡ 용어 30초 사전 — 개발을 몰라도 이 표만 보면 됩니다 <span class="b b-new">🆕 07-12</span></h2>
@@ -1711,7 +1732,8 @@ flowchart LR
   <div class="danger"><b>✍️ 편집 규칙 (사람이든 AI든 예외 없음)</b> — 이 문서를 수정하면 <b>반드시 아래 표 맨 위에 한 줄 추가</b>한다: 버전 +0.1 · 날짜 · 수정자 · 무엇을 왜 바꿨는지 1~3줄. 히어로의 버전 배지도 같이 올린다. “어떤 게 최신 계약인지”를 이 표가 보증한다 — 줄이 없으면 그 수정은 없던 일로 간주. <span class="small">(HTML 파일 특성상 diff 추적이 안 되므로 이 표가 형상관리를 대신한다 — 근본 해결은 git 저장소 관리, 협의 사항)</span></div>
   <div class="twrap"><table>
     <tr><th class="c">버전</th><th>날짜</th><th>수정자</th><th>변경 요약</th></tr>
-    <tr class="hl-new"><td class="c"><b>v2.7</b></td><td>2026-07-12</td><td>문성혁 + Claude</td><td><b>#20 확정 확인</b>(⛔ 착수 시 필수 실행 — 지금 당장 개발은 아님, 개발 시작일에 정본 3파일 PR부터) · 채택 후속 정합 2건: <b>#conv “한 PR” 문구 → #20 방식(정본 3파일 → 담당별 분할 + “전원 교체 전 구 계약 코드 실행 금지”)으로 대체</b> · 히어로 정본 문구에 착수 후 역할 분담 명시(기계 계약=코드 3파일 / 본 문서=결정·이력 정본)</td></tr>
+    <tr class="hl-new"><td class="c"><b>v2.8</b></td><td>2026-07-12</td><td>문성혁 + Claude</td><td><b>0번 섹션 “무엇이 달라졌는가” 신설(#diff0)</b> — 원본(Official_Document.html) 대비 달라진 9개 영역을 “원본에서는 → 지금은 → 왜 → 상세 위치” 표로 정리(원본만 아는 팀원의 갭 메우기용) · .gitignore에 수동 백업 사본 제외 패턴 추가</td></tr>
+    <tr><td class="c"><b>v2.7</b></td><td>2026-07-12</td><td>문성혁 + Claude</td><td><b>#20 확정 확인</b>(⛔ 착수 시 필수 실행 — 지금 당장 개발은 아님, 개발 시작일에 정본 3파일 PR부터) · 채택 후속 정합 2건: <b>#conv “한 PR” 문구 → #20 방식(정본 3파일 → 담당별 분할 + “전원 교체 전 구 계약 코드 실행 금지”)으로 대체</b> · 히어로 정본 문구에 착수 후 역할 분담 명시(기계 계약=코드 3파일 / 본 문서=결정·이력 정본)</td></tr>
     <tr><td class="c"><b>v2.6</b></td><td>2026-07-12</td><td>Claude (검토: 문성혁)</td><td><b>🔐 보안 로드맵 섹션(#security) 신설</b>(LLM 특화 위협 모델 7종 + 1차/2차/실전 전 단계별 로드맵 — 어필 포인트 “LLM 출력이 검증 없이 돈에 닿는 경로 0개”) · <b>#20 착수 실행 전략 카드 신설</b>(정본의 코드화 3파일 → 리네임 PR 분할 → NVDA 픽스처 E2E 강제 발화) · <b>07 Critic payload 예시 정합 수정</b>(signal_consensus 3→2 — “1차 기술 투표 불가”와의 모순 제거) · 목차에 보안·변경 이력 항목 추가 · 버전 배지 v2.0→v2.6 동기화</td></tr>
     <tr><td class="c"><b>v2.5</b></td><td>2026-07-12</td><td>Claude (검토: 문성혁)</td><td><b>#19 키 체계 정본 가이드</b>(cycle_ts·src_*_at — “왜 id를 안 보나” Q&amp;A + 판단 규칙 4 + 뒤집기 트리거) · <b>🧾 row 예시 11곳 신설</b>(파란 블록, NVDA 단일 시나리오로 전 테이블 연결, 전 컬럼 포함) · <b>변경 이력 섹션 신설</b>(본 표) · row 예시 색·code 단어 잘림 수정, 말줄임 값 7곳 실값화</td></tr>
     <tr><td class="c"><b>v2.4</b></td><td>2026-07-12</td><td>Claude (검토: 문성혁)</td><td><b>비개발자 가독성 5종</b> — ⚡용어 30초 사전(#dict) 신설 · <b>P0(기준가 뜻) → “기준가” 전면 개명</b> · 독자별 읽기 경로 3종 · Mermaid 오프라인 안내 3곳 · <b>#18 착수 레디니스 리뷰 카드</b>(조건부 GO — 블로킹 4건 · 알고 출발 리스크 5건) + 낡은 표기 3곳 정리, tb_macro.as_of 규칙 8 주석</td></tr>
