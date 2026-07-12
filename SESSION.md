@@ -1,6 +1,6 @@
 # SESSION 정리 — Quantinue 통합 설계서 작업 (2026-07-11)
 
-> 다른 PC에서 이어갈 때: **이 파일을 먼저 읽고**, 정본 문서 `docs/quantinu-integrated-design.html`을 브라우저로 열어 대조하면서 진행할 것.
+> 다른 PC에서 이어갈 때: **이 파일을 먼저 읽고**, 정본 문서 `docs/quantinue-integrated-design.html`을 브라우저로 열어 대조하면서 진행할 것.
 > AI에게 시킬 때는 "SESSION.md 읽고 이어서 진행해줘"라고 하면 됨.
 
 ---
@@ -21,7 +21,7 @@
 
 | 파일 | 내용 |
 |---|---|
-| **`docs/quantinu-integrated-design.html`** | ⭐ 정본 통합 설계서. 이것만 보면 프로젝트 전체 파악 가능하도록 작성. Mermaid 3개(전체 흐름·ERD·릴레이) — **CDN 로드라 인터넷 필요** |
+| **`docs/quantinue-integrated-design.html`** | ⭐ 정본 통합 설계서. 이것만 보면 프로젝트 전체 파악 가능하도록 작성. Mermaid 3개(전체 흐름·ERD·릴레이) — **CDN 로드라 인터넷 필요** |
 | `DESIGN.md` | 통합 설계서의 색·타입·레이아웃·컴포넌트·접근성 계약 |
 | `SESSION.md` | 이 파일 |
 
