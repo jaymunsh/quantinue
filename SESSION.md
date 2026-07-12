@@ -141,6 +141,11 @@
 - **🧾 row 예시 블록 11곳** — 주요 테이블 하단에 파란 코드 블록(`.rowex` CSS 신설)으로 실제 row 형태 JSON 예시. 회색 전달 JSON과 시각적 구분. **NVDA 단일 시나리오(2026-07-10)로 전 테이블 연결** — 07 예시의 src_news_at=13:30Z가 뉴스 signal 예시의 cycle_ts와 같은 값 (눈 대조 가능). 대상: universe·daily_pick·technical·macro·disclosure·disclosure_signal·news·news_signal·strategist·verdict·review 2종.
 - strategist created_at 설명 정합 수정 — "최신 판단 선택은 (ticker, cycle_ts DESC)".
 
+### 07-12 (7) — v2.8: 0번 섹션 "무엇이 달라졌는가" (`#diff0` · 태그 v2.8)
+
+- 문서 최상단(용어 사전 앞)에 **원본 Official_Document.html 대비 변경 표** — 9개 영역을 "원본에서는 → 지금은 → 왜 바꿨나 → 상세 위치" 형식으로. 원본만 아는 팀원(특히 김지현)의 갭 메우기용.
+- .gitignore에 수동 백업 사본 패턴(`docs/Quantinue_통합설계서_v2_2*.html` 등) — 파일은 로컬 유지, 커밋만 제외 (사용자 지시).
+
 ### 07-12 (6) — v2.6 외부 편집 반입 (사용자 작업 · Claude 검증 후 커밋 `1b2faa3` · 태그 v2.6)
 
 - **🔐 #security 보안 로드맵 신설** — LLM 특화 위협 7종(프롬프트 인젝션⭐·데이터 오염·출력 이상값·시크릿·DB 접근·오발주 킬스위치·감사 추적) + 1차/2차/실전 전 게이트 로드맵. 어필 문구: "LLM 출력이 검증 없이 돈에 닿는 경로 0개".
