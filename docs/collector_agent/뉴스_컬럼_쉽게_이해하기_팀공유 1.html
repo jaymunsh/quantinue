@@ -1,0 +1,607 @@
+<meta charset="utf-8">
+<title>뉴스 컬럼 완전 가이드 · Quantinue 정보분석</title>
+<style>
+  :root{
+    --bg:#f7f8fb; --card:#ffffff; --ink:#1a2233; --sub:#5b6678; --line:#e3e8f0;
+    --blue:#2563eb; --blueBg:#eef4ff; --teal:#0d9488; --tealBg:#e6f7f4;
+    --amber:#b45309; --amberBg:#fef3e2; --red:#dc2626; --redBg:#fdecec;
+    --green:#15803d; --greenBg:#e9f7ee; --purple:#6d43c9; --purpleBg:#f1ebfb;
+    --mute:#eef1f6; --code:#0f172a;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    line-height:1.78;font-size:15.5px;word-break:keep-all}
+  .wrap{max-width:940px;margin:0 auto;padding:44px 22px 140px}
+  header.hero{margin-bottom:30px}
+  .kicker{color:var(--blue);font-weight:800;font-size:13px;letter-spacing:.05em}
+  h1{font-size:31px;margin:8px 0 12px;letter-spacing:-.01em;line-height:1.3}
+  .lead{color:var(--sub);font-size:16.5px;max-width:760px}
+  .lead b{color:var(--ink)}
+  .meta{margin-top:14px;font-size:13px;color:var(--sub)}
+  .meta span{display:inline-block;background:var(--card);border:1px solid var(--line);
+    border-radius:20px;padding:3px 12px;margin:3px 5px 3px 0}
+  h2{font-size:23px;margin:56px 0 12px;padding-top:14px;border-top:2px solid var(--line);scroll-margin-top:16px}
+  h2 .n{display:inline-block;min-width:1.5em;color:var(--blue)}
+  h3{font-size:17.5px;margin:30px 0 8px}
+  h4{font-size:15.5px;margin:20px 0 6px;color:var(--ink)}
+  p{margin:11px 0}
+  code{background:var(--mute);padding:1.5px 6px;border-radius:5px;font-size:13px;
+    font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:20px 24px;margin:16px 0;box-shadow:0 1px 2px rgba(20,30,60,.04)}
+  .note{border-left:4px solid var(--blue);background:var(--blueBg);border-radius:0 12px 12px 0;padding:14px 18px;margin:16px 0}
+  .note.teal{border-color:var(--teal);background:var(--tealBg)}
+  .note.amber{border-color:var(--amber);background:var(--amberBg)}
+  .note.red{border-color:var(--red);background:var(--redBg)}
+  .note.green{border-color:var(--green);background:var(--greenBg)}
+  .note.purple{border-color:var(--purple);background:var(--purpleBg)}
+  .big{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:18px 0}
+  @media(max-width:720px){.big{grid-template-columns:1fr}}
+  .panel{border-radius:12px;padding:18px 20px}
+  .panel.keep{background:var(--greenBg);border:1px solid #bfe6cd}
+  .panel.audit{background:var(--mute);border:1px solid var(--line)}
+  .panel h4{margin:0 0 8px}
+  .pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:20px;margin:2px 4px 2px 0}
+  .pill.g{background:var(--greenBg);color:var(--green)} .pill.m{background:var(--mute);color:var(--sub)}
+  .pill.b{background:var(--blueBg);color:var(--blue)} .pill.a{background:var(--amberBg);color:var(--amber)}
+  .pill.r{background:var(--redBg);color:var(--red)} .pill.t{background:var(--tealBg);color:var(--teal)}
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13.5px}
+  th,td{border:1px solid var(--line);padding:9px 11px;text-align:left;vertical-align:top}
+  th{background:var(--mute);font-weight:800;font-size:12.5px;color:var(--sub)}
+  td code{font-size:12.5px}
+  .grp-h{display:flex;align-items:center;gap:10px;margin:0 0 6px}
+  .grp-h .idx{background:var(--blue);color:#fff;width:28px;height:28px;border-radius:8px;
+    display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+  .grp-h .cols{color:var(--sub);font-size:12.5px;margin-left:auto}
+  pre.fx,pre.json{background:var(--code);color:#e6edf7;border-radius:10px;padding:16px 18px;margin:12px 0;
+    font-family:"SFMono-Regular",Consolas,monospace;font-size:13px;overflow-x:auto;line-height:1.65;white-space:pre}
+  pre .c{color:#8b98a9} pre .k{color:#7ee787} pre .v{color:#79c0ff} pre .s{color:#ffab70} pre .p{color:#d2a8ff}
+  .ex{background:var(--blueBg);border-radius:8px;padding:2px 8px;font-size:12.5px;color:var(--blue);font-weight:700}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:24px 0}
+  .toc a{color:var(--ink);text-decoration:none;display:block;padding:3px 0;font-size:14px}
+  .toc a:hover{color:var(--blue)}
+  .toc .num{color:var(--blue);font-weight:800;display:inline-block;width:2em}
+  .muted{color:var(--sub);font-size:13px}
+  .arrow{color:var(--blue);font-weight:800}
+  hr.soft{border:none;border-top:1px dashed var(--line);margin:22px 0}
+  .step-calc{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--teal);
+    border-radius:0 10px 10px 0;padding:12px 16px;margin:12px 0;font-size:14px}
+  .step-calc b{color:var(--teal)}
+  ul.clean{list-style:none;padding-left:0} ul.clean li{padding:4px 0 4px 24px;position:relative}
+  ul.clean li::before{content:"▸";position:absolute;left:6px;color:var(--blue);font-weight:800}
+  .tag-type{font-size:11px;font-weight:700;color:var(--purple);background:var(--purpleBg);border-radius:4px;padding:1px 6px}
+</style>
+
+<div class="wrap">
+<div style="max-width:1100px;margin:14px auto;padding:14px 18px;border:2px solid #d5473c;background:#fdeceb;border-radius:12px;color:#8a1c12;font-family:system-ui,sans-serif;line-height:1.6;font-size:14px">⚠️ <b>구버전 · 참고용 문서입니다.</b> 이 문서는 신·구 스키마가 섞여 자기모순이 있을 수 있어 <b>절대적으로 신뢰하지 마세요.</b> Quantinue의 <b>단일 정본</b>은 <code>docs/Quantinue_통합설계서_v2.html</code>이며, 세부(컬럼·전달 JSON·출처등급 등)가 어긋나면 <b>항상 정본이 이깁니다.</b> 여기 내용은 배경 이해용으로만 교차확인하세요. <span style="color:#5b6678">(2026-07-11 부착 · AI 제안 #13)</span></div>
+
+<header class="hero">
+  <div class="kicker">QUANTINUE · 정보분석(뉴스) 파트 · 개발자 가이드</div>
+  <h1>뉴스 컬럼 완전 가이드<br>— 저장 29칸, 전달 15칸, 그리고 그 사이의 모든 것</h1>
+  <p class="lead">이 문서는 <b>정보분석 코드를 처음 보는 주니어 개발자</b>가 읽는다고 가정하고 썼습니다.
+  “컬럼이 왜 이렇게 많지?”, “이 점수는 어떻게 나온 거지?”, “전략가는 대체 뭘 받는 거지?”에 대해
+  <b>스키마 → 실제 전달 JSON 예시 → 공식(한글 풀이) → 워크드 예제</b> 순서로, 하나하나 근거와 함께 설명합니다.</p>
+  <div class="meta">
+    <span>대상: 주니어 개발자</span><span>근거 코드: app/common/analysis_bundle.py · app/storage/db.py</span>
+    <span>저장 tb_news = 29컬럼</span><span>전달 pack_news_signal = 15필드</span>
+  </div>
+</header>
+
+<div class="toc">
+  <a href="#c0"><span class="num">0.</span>이 문서를 읽는 법 & 핵심 3줄 요약</a>
+  <a href="#c1"><span class="num">1.</span>두 개의 층 — 저장(29) vs 전달(15) 아키텍처</a>
+  <a href="#c2"><span class="num">2.</span>전달 계약 상세 — 전략가가 실제 받는 JSON</a>
+  <a href="#c3"><span class="num">3.</span>전달 JSON 실물 예시 3개 (+ 필드별 해설)</a>
+  <a href="#c4"><span class="num">4.</span>저장 29컬럼을 10개 의미 그룹으로</a>
+  <a href="#c5"><span class="num">5.</span>그룹별 컬럼 상세 (정의·산출·왜·예시)</a>
+  <a href="#c6"><span class="num">6.</span>헷갈리기 쉬운 3쌍 정면돌파</a>
+  <a href="#c7"><span class="num">7.</span>공식 상세 — 영어 코드를 한글로 풀고 숫자로 확인</a>
+  <a href="#c8"><span class="num">8.</span>통짜 워크드 예제 — 뉴스 3건이 29컬럼이 되기까지</a>
+  <a href="#c9"><span class="num">9.</span>자주 묻는 질문(FAQ) & 흔한 오해</a>
+  <a href="#c10"><span class="num">10.</span>코드에서 어디를 보면 되나</a>
+</div>
+
+<!-- ═══════════════ 0 ═══════════════ -->
+<h2 id="c0"><span class="n">0.</span>이 문서를 읽는 법 & 핵심 3줄 요약</h2>
+<p>급하면 이 3줄만 기억해도 됩니다.</p>
+<div class="note green">
+  <b>① 컬럼이 29개라 부담?</b> 전략가가 실제 읽는 건 <b>15개</b>뿐입니다. 나머지 14개는 “왜 이 신호가 나왔나”를 되짚는 <b>감사·백테스트용 창고</b>예요.<br>
+  <b>② 점수는 다 0~1.</b> 방향(호재/악재)·강도·위험·신뢰가 전부 같은 자로 재져 있어 비교가 쉽습니다.<br>
+  <b>③ 시끄러운 루머는 자동으로 힘을 잃습니다.</b> 모든 집계가 “믿을수록 크게”라는 신뢰가중이라, 저신뢰 기사는 가중치가 0에 수렴해요.
+</div>
+<p class="muted">읽는 순서 추천: 바쁘면 <b>§1 → §2 → §3</b>(전달 계약과 실물 JSON)만. 점수가 어떻게 나오는지 알고 싶으면 <b>§7 → §8</b>. 특정 컬럼이 궁금하면 <b>§5</b>. 코드를 열 거면 <b>§10</b>.</p>
+
+<!-- ═══════════════ 1 ═══════════════ -->
+<h2 id="c1"><span class="n">1.</span>두 개의 층 — 저장(29) vs 전달(15) 아키텍처</h2>
+<p>“컬럼이 너무 많다”는 인상은 대부분 <b>두 층을 하나로 착각</b>해서 생깁니다. 우리 뉴스 데이터는 목적이 다른 두 개의 층으로 나뉘어 있어요.</p>
+
+<div class="big">
+  <div class="panel keep">
+    <h4>🎯 전달 계약 — <b>15필드</b></h4>
+    <p class="muted"><code>pack_news_signal()</code> → JSON. 전략가(이은미)가 매수 판단에 실제로 읽는 값.</p>
+    <div>
+      <span class="pill g">has_signal</span><span class="pill g">article_count</span>
+      <span class="pill g">event_type</span><span class="pill g">importance_score</span>
+      <span class="pill g">peak_importance_score</span><span class="pill g">sentiment_score</span>
+      <span class="pill g">risk_score</span><span class="pill g">trust_score</span>
+      <span class="pill g">hard_block</span><span class="pill g">summary</span>
+      <span class="pill g">importance_score_reason</span><span class="pill g">peak_importance_score_reason</span>
+      <span class="pill g">sentiment_score_reason</span><span class="pill g">risk_score_reason</span>
+      <span class="pill g">trust_score_reason</span>
+    </div>
+  </div>
+  <div class="panel audit">
+    <h4>🗄️ 저장 스냅샷 — <b>29컬럼</b> <code>tb_news</code></h4>
+    <p class="muted">전달 15개 + “근거·원문·감사” 14개. DB에 시계열로 append(새 기사마다 새 행).</p>
+    <div>
+      <span class="pill m">ticker</span><span class="pill m">collected_at</span><span class="pill m">news_title</span>
+      <span class="pill m">source</span><span class="pill m">top_evidence</span>
+      <span class="pill m">keywords</span><span class="pill m">confidence_score</span><span class="pill m">trust_score</span>
+      <span class="pill m">grade_score</span><span class="pill m">disclosure_ref</span>
+      <span class="pill m">…</span>
+    </div>
+  </div>
+</div>
+
+<h3>왜 굳이 둘로 나눴나?</h3>
+<ul class="clean">
+  <li><b>전략가의 인지 부담을 줄이려고.</b> 판단에 필요한 최소한만 넘기면, LLM이든 사람이든 핵심에 집중합니다. 29개를 다 던지면 노이즈가 됩니다.</li>
+  <li><b>감사·재현·백테스트를 위해.</b> 나중에 “이 신호 왜 이렇게 나왔지?”를 되짚으려면 원문·근거·중간 점수가 남아 있어야 합니다. 그건 전략가가 볼 필요는 없지만 <b>우리에겐 필요</b>해요.</li>
+  <li><b>계약과 구현을 분리하려고.</b> 저장 스키마(내부 구현)는 필요하면 늘리거나 줄일 수 있지만, 전달 계약(외부 인터페이스)은 안정적으로 유지됩니다. 둘을 묶으면 내부를 바꿀 때마다 전략가 코드가 깨져요.</li>
+</ul>
+<div class="note teal">
+  <b>비유.</b> 저장 29컬럼은 <b>재료 창고</b>, 전달 15필드는 <b>손님상에 나가는 완성 요리</b>입니다.
+  창고가 크다고 손님이 재료를 다 보는 게 아니죠. 창고는 “이 요리 왜 이렇게 만들었지?”를 나중에 검증하려고 있는 겁니다.
+</div>
+<p class="muted">파이프라인 위치: <code>수집(RSS) → 사전필터 → LLM 분석 → build_news_bundle(집계) → tb_news 저장(29) → pack_news_signal(전달 15)</code>. 저장과 전달은 이 흐름의 <b>마지막 두 단계</b>입니다.</p>
+
+<h3>컬럼이 되기 전 — 앞단계 파이프라인 (주니어 필독)</h3>
+<p>29컬럼은 <b>갑자기 생기지 않습니다</b>. 원시 기사가 네 단계를 거쳐 “정제된 신호”가 돼요. 각 컬럼이 <b>어느 단계에서 채워지는지</b> 알면 전체가 한눈에 들어옵니다.</p>
+<div class="flow" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:16px 0">
+  <div class="panel audit" style="padding:10px 14px;font-size:13px"><b>1) 수집</b><br><span class="muted">Google News RSS</span></div><span class="arrow">→</span>
+  <div class="panel audit" style="padding:10px 14px;font-size:13px"><b>2) 출처 등급</b><br><span class="muted">ALLOW/GRAY/BLOCK</span></div><span class="arrow">→</span>
+  <div class="panel audit" style="padding:10px 14px;font-size:13px"><b>3) 사전필터</b><br><span class="muted">노이즈·BLOCK 제거</span></div><span class="arrow">→</span>
+  <div class="panel audit" style="padding:10px 14px;font-size:13px"><b>4) LLM 분석</b><br><span class="muted">기사별 구조화 판단</span></div><span class="arrow">→</span>
+  <div class="panel keep" style="padding:10px 14px;font-size:13px"><b>5) 집계·저장</b><br><span class="muted">§7 공식 → 29컬럼</span></div>
+</div>
+
+<h4>1) 수집 — Google News RSS</h4>
+<p>종목명으로 구글 뉴스 RSS를 긁어 최신 기사를 모읍니다. <b>API 키가 필요 없고</b>, 각 기사엔 RSS <code>&lt;source&gt;</code> 태그가 있어 <b>어느 언론사</b>인지 바로 알 수 있어요. 이 단계에서 원문 식별 컬럼(<code>news_title·source·published_at·ref</code>)의 원천이 확보됩니다.</p>
+
+<h4>2) 출처 등급 매기기 — 도메인 기반 3단계</h4>
+<p>기사를 쓴 <b>언론사 도메인</b>을 정책 파일(<code>news_trust_policy.yaml</code>)과 대조해 등급을 매깁니다. 이게 나중에 <code>grade_score</code>가 돼요.</p>
+<table>
+  <tr><th>등급</th><th>뜻</th><th>도메인 예</th><th>grade_score</th></tr>
+  <tr><td><span class="pill g">ALLOW</span></td><td>검증된 주류 언론 — 통과</td><td>reuters.com · bloomberg.com</td><td>1.0</td></tr>
+  <tr><td><span class="pill a">GRAY</span></td><td>애매/미등록/소셜 — 받되 조심</td><td>개인 블로그 · x.com · reddit</td><td>0.6</td></tr>
+  <tr><td><span class="pill r">BLOCK</span></td><td>신뢰 불가 — 차단</td><td>알려진 가짜뉴스 도메인</td><td>0.0</td></tr>
+</table>
+<p class="muted">주의: 이 <code>ALLOW/GRAY/BLOCK</code>은 <b>출처 신뢰 등급</b>일 뿐, 매매 권한의 <code>WATCH_ONLY</code> 같은 것과는 완전히 별개입니다.</p>
+
+<h4>3) 사전필터 — LLM 부르기 전에 쓰레기 치우기</h4>
+<p>LLM 호출은 <b>시간·비용</b>이 듭니다. 그래서 그 전에 ①<b>BLOCK 도메인</b> 기사와 ②<b>명백한 노이즈</b>(광고성 키워드 등)를 미리 버립니다. 키워드 화이트/블랙리스트로 걸러요. — “비싼 AI를 부르기 전에 값싼 규칙으로 먼저 거른다”는 원칙.</p>
+
+<h4>4) LLM 분석 — 기사 한 건을 구조화 판단</h4>
+<p>살아남은 기사를 <b>Pydantic AI</b>로 분석합니다. LLM이 자유 서술이 아니라 <b>정해진 스키마</b>(필드가 고정된 형태)로 답하도록 강제해요. 여기서 기사별로 <code>event_type·sentiment·importance·risk·is_confirmed·source_trust·summary·keywords·reason</code>이 나옵니다.</p>
+<div class="note"><b>핵심 원칙 — 숫자는 코드, 해석은 LLM.</b> LLM에게 “매출이 얼마다” 같은 <b>사실 숫자</b>를 지어내게 두지 않습니다. LLM은 “이게 좋은 소식인가/얼마나 확실한가” 같은 <b>해석·판단</b>만 담당해요.</div>
+
+<p class="muted">여기까지가 <b>기사 1건 단위</b>입니다. 이 개별 판단들을 <b>여러 건 → 한 종목의 신호 1개</b>로 합치는 게 다음 단계(<code>build_news_bundle</code>, §7 공식)이고, 그 결과가 29컬럼입니다.</p>
+
+<!-- ═══════════════ 2 ═══════════════ -->
+<h2 id="c2"><span class="n">2.</span>전달 계약 상세 — 전략가가 실제 받는 JSON</h2>
+<p>전략가에게 넘어가는 건 <code>pack_news_signal(dict) → dict</code>가 만드는 <b>납작한 JSON</b>입니다. 구조는 이렇게 3덩어리예요.</p>
+
+<pre class="json"><span class="c"># pack_news_signal 이 만드는 전달 JSON의 뼈대</span>
+{
+  <span class="k">"has_signal"</span>: <span class="v">true/false</span>,        <span class="c"># ① 항상 존재 — 신호가 있나?</span>
+
+  <span class="c"># ② has_signal=true 일 때만 붙는 12개 (판단 본문)</span>
+  <span class="k">"article_count"</span>:   <span class="v">3</span>,       <span class="c"># 뭉쳐진 기사 수 (저장의 news_count)</span>
+  <span class="k">"event_type"</span>:      <span class="s">"product_deal"</span>,
+  <span class="k">"importance_score"</span>: <span class="v">0.63</span>,    <span class="c"># 저장의 importance 를 개명</span>
+  <span class="k">"peak_importance_score"</span>:  <span class="v">0.70</span>,
+  <span class="k">"sentiment_score"</span>:  <span class="v">0.64</span>,
+  <span class="k">"risk_score"</span>:      <span class="v">0.06</span>,
+  <span class="k">"trust_score"</span>:     <span class="v">0.84</span>,    <span class="c"># 저장의 source_trust 를 개명</span>
+
+  <span class="c"># _score마다 왜 그 값인지 한 문장 근거 (배치 종합 LLM 생성)</span>
+  <span class="k">"importance_score_reason"</span>:      <span class="s">"..."</span>,
+  <span class="k">"peak_importance_score_reason"</span>: <span class="s">"..."</span>,
+  <span class="k">"sentiment_score_reason"</span>:       <span class="s">"..."</span>,
+  <span class="k">"risk_score_reason"</span>:            <span class="s">"..."</span>,
+  <span class="k">"trust_score_reason"</span>:           <span class="s">"..."</span>,
+
+  <span class="k">"hard_block"</span>: <span class="v">false</span>,          <span class="c"># ③ 항상 존재 — 즉시 매수 차단?</span>
+  <span class="k">"summary"</span>: <span class="s">"..."</span>            <span class="c"># has_signal=true 일 때만</span>
+}</pre>
+
+<h3>설계 포인트 4가지 (주니어가 놓치기 쉬운 것)</h3>
+<table>
+  <tr><th style="width:180px">포인트</th><th>내용</th></tr>
+  <tr><td><b>항상 있는 2필드</b></td><td><code>has_signal</code>·<code>hard_block</code>은 신호가 없어도 <b>항상</b> 옵니다. 전략가가 “필드 존재 여부”로 분기하지 않고 <b>불리언 값</b>으로 안전하게 분기하도록.</td></tr>
+  <tr><td><b>조건부 13필드</b></td><td>점수 7개 + <code>_score</code> 근거 5개 + <code>summary</code>는 <code>has_signal=true</code>일 때만 존재. 신호가 없으면 <b>0.00 같은 가짜 값 대신 아예 생략</b> — “0점”과 “측정 안 함”을 혼동하지 않게.</td></tr>
+  <tr><td><b>_score 근거 5개</b></td><td>각 점수마다 <code>{score}_reason</code>이 붙습니다(<code>importance_score_reason</code>·<code>peak_importance_score_reason</code>·<code>sentiment_score_reason</code>·<code>risk_score_reason</code>·<code>trust_score_reason</code>). “왜 그 값인지”를 배치 종합 LLM이 한 문장으로 생성 — 전략가가 점수의 근거를 바로 확인.</td></tr>
+  <tr><td><b>개명</b></td><td>전달 계약에서만 <code>importance→importance_score</code>, <code>peak_importance→peak_importance_score</code>, <code>source_trust→trust_score</code>로 이름을 바꿉니다. 저장 컬럼·LLM 스키마는 그대로예요(파급 최소화). 이름 뒤 <code>_score</code>로 “이건 0~1 점수”임을 명확히.</td></tr>
+  <tr><td><b>hard_block 시 summary</b></td><td>차단이 걸리면 <code>summary</code> 맨 앞에 <code>[차단: 사유]</code>가 자동으로 붙습니다(<code>_summary_with_block</code>). 전략가가 “왜 막혔나”를 요약 첫 줄에서 바로 보게.</td></tr>
+</table>
+
+<div class="note purple">
+  <b>공시(pack_disclosure_signal)와 비교.</b> 공시 전달은 <b>7필드</b>(<code>has_signal·event_type·importance_score·sentiment_score·risk_score·hard_block·summary</code>)로 더 단출합니다.
+  뉴스에만 있는 3개(<code>article_count·peak_importance_score·trust_score</code>)는 <b>“여러 기사를 뭉쳤다”</b>는 뉴스 고유 성격 때문이에요. 공시는 1건이 곧 사실이라 건수·매체신뢰·희석 개념이 필요 없습니다.
+</div>
+
+<!-- ═══════════════ 3 ═══════════════ -->
+<h2 id="c3"><span class="n">3.</span>전달 JSON 실물 예시 3개 (+ 필드별 해설)</h2>
+<p>아래 JSON은 설명용으로 지어낸 게 아니라 <b>실제 <code>pack_news_signal</code>을 돌려 뽑은 결과</b>입니다. 세 가지 대표 상황을 보여줄게요.</p>
+
+<h3>예시 1 · 확정된 호재 (기사들이 서로를 뒷받침)</h3>
+<p class="muted">엔비디아(NVDA)에 로이터·블룸버그의 확정 기사 2건 + 저신뢰 블로그 1건이 들어온 상황(§8 워크드 예제의 최종 산출물).</p>
+<pre class="json">{
+  <span class="k">"has_signal"</span>: <span class="v">true</span>,
+  <span class="k">"article_count"</span>: <span class="v">3</span>,
+  <span class="k">"event_type"</span>: <span class="s">"product_deal"</span>,
+  <span class="k">"importance_score"</span>: <span class="v">0.63</span>,
+  <span class="k">"peak_importance_score"</span>: <span class="v">0.7</span>,
+  <span class="k">"sentiment_score"</span>: <span class="v">0.64</span>,
+  <span class="k">"risk_score"</span>: <span class="v">0.06</span>,
+  <span class="k">"trust_score"</span>: <span class="v">0.84</span>,
+  <span class="k">"importance_score_reason"</span>: <span class="s">"Two high-trust outlets report a large multi-year deal, lifting weighted intensity."</span>,
+  <span class="k">"peak_importance_score_reason"</span>: <span class="s">"The strongest verified article (Reuters) alone reaches 0.7, above the average."</span>,
+  <span class="k">"sentiment_score_reason"</span>: <span class="s">"Clearly positive but dampened by moderate certainty, so not a strong bullish reading."</span>,
+  <span class="k">"risk_score_reason"</span>: <span class="s">"No litigation, regulatory, or downside triggers appear in any article."</span>,
+  <span class="k">"trust_score_reason"</span>: <span class="s">"Reuters and Bloomberg dominate the weighting; the low-trust blog barely contributes."</span>,
+  <span class="k">"hard_block"</span>: <span class="v">false</span>,
+  <span class="k">"summary"</span>: <span class="s">"NVIDIA signed a multi-year GPU supply agreement with a major cloud provider; analysts raised price targets."</span>
+}</pre>
+<table>
+  <tr><th>필드</th><th>이 값이 전략가에게 말하는 것</th></tr>
+  <tr><td><code>event_type: product_deal</code></td><td>가장 신뢰가중이 큰 대표 기사가 “대형 계약/제품” 유형이라는 뜻.</td></tr>
+  <tr><td><code>sentiment_score: 0.64</code></td><td>0.5(중립)보다 위 → <b>호재</b>. 다만 확신도(0.45)로 한 번 눌려서 “강한 호재(0.9)”까지는 아닌 <b>완만한 호재</b>.</td></tr>
+  <tr><td><code>importance_score: 0.63 · peak 0.7</code></td><td>평균 강도 0.63인데 peak가 더 높음 → <b>믿을 만한 기사 중 더 센 게 하나 있다</b>는 신호.</td></tr>
+  <tr><td><code>trust_score: 0.84</code></td><td>매체 신뢰가 높음(로이터·블룸버그 주도). 블로그의 영향은 거의 없음.</td></tr>
+  <tr><td><code>risk_score: 0.06 · hard_block:false</code></td><td>하방 위험 거의 없음, 즉시 차단 사유도 없음.</td></tr>
+</table>
+
+<h3>예시 2 · 저신뢰 루머 위주 (약한 신호)</h3>
+<p class="muted">확인 안 된 블로그 인수설이 4건. 신호는 있지만 <b>믿을 근거가 얇은</b> 상황.</p>
+<pre class="json">{
+  <span class="k">"has_signal"</span>: <span class="v">true</span>,
+  <span class="k">"article_count"</span>: <span class="v">4</span>,
+  <span class="k">"event_type"</span>: <span class="s">"ma"</span>,
+  <span class="k">"importance_score"</span>: <span class="v">0.35</span>,
+  <span class="k">"peak_importance_score"</span>: <span class="v">0.35</span>,
+  <span class="k">"sentiment_score"</span>: <span class="v">0.55</span>,
+  <span class="k">"risk_score"</span>: <span class="v">0.2</span>,
+  <span class="k">"trust_score"</span>: <span class="v">0.35</span>,
+  <span class="k">"importance_score_reason"</span>: <span class="s">"Only unconfirmed blog chatter, so weighted intensity stays modest."</span>,
+  <span class="k">"peak_importance_score_reason"</span>: <span class="s">"No verified article qualifies, so peak collapses to the average."</span>,
+  <span class="k">"sentiment_score_reason"</span>: <span class="s">"Mildly positive framing but heavily discounted by low certainty."</span>,
+  <span class="k">"risk_score_reason"</span>: <span class="s">"Speculative M&A talk carries some downside if it is denied."</span>,
+  <span class="k">"trust_score_reason"</span>: <span class="s">"All sources are low-trust blogs, keeping media trust weak."</span>,
+  <span class="k">"hard_block"</span>: <span class="v">false</span>,
+  <span class="k">"summary"</span>: <span class="s">"Unconfirmed blog posts speculate about a possible acquisition; no official confirmation."</span>
+}</pre>
+<div class="note amber">
+  <b>여기서 배울 점.</b> 기사가 4건이나 되고 “인수설”이라 자극적이지만 — <code>trust_score 0.35</code>, <code>sentiment_score 0.55</code>(간신히 호재쪽),
+  그리고 <code>peak_importance_score(0.35) = importance_score(0.35)</code>입니다. peak가 평균과 같다는 건 <b>“신뢰검증된 강한 기사가 하나도 없다”</b>는 뜻이에요(§7-⑥ 참고).
+  전략가는 이 조합을 보고 “화제성은 있으나 근거가 약함 → 신중”으로 읽습니다.
+</div>
+
+<h3>예시 3 · hard_block 발동 (거래정지·상장폐지 우려)</h3>
+<p class="muted">거래소에서 상장폐지 통지를 받은 상황. 점수와 무관하게 <b>즉시 매수 차단</b>.</p>
+<pre class="json">{
+  <span class="k">"has_signal"</span>: <span class="v">true</span>,
+  <span class="k">"article_count"</span>: <span class="v">2</span>,
+  <span class="k">"event_type"</span>: <span class="s">"delisting_halt"</span>,
+  <span class="k">"importance_score"</span>: <span class="v">0.8</span>,
+  <span class="k">"peak_importance_score"</span>: <span class="v">0.85</span>,
+  <span class="k">"sentiment_score"</span>: <span class="v">0.05</span>,
+  <span class="k">"risk_score"</span>: <span class="v">0.9</span>,
+  <span class="k">"trust_score"</span>: <span class="v">0.7</span>,
+  <span class="k">"importance_score_reason"</span>: <span class="s">"A delisting notice is a high-impact corporate event, driving intensity up."</span>,
+  <span class="k">"peak_importance_score_reason"</span>: <span class="s">"The exchange-notice article is verified and stands as the strongest single signal."</span>,
+  <span class="k">"sentiment_score_reason"</span>: <span class="s">"Strongly negative; bad news is not softened by certainty."</span>,
+  <span class="k">"risk_score_reason"</span>: <span class="s">"Delisting threatens near-total downside, so risk is near maximum."</span>,
+  <span class="k">"trust_score_reason"</span>: <span class="s">"Reported by mainstream outlets, giving solid media trust."</span>,
+  <span class="k">"hard_block"</span>: <span class="v">true</span>,
+  <span class="k">"summary"</span>: <span class="s">"[차단: delisting risk (Item 3.01)] Company received a delisting notice from the exchange."</span>
+}</pre>
+<table>
+  <tr><th>필드</th><th>해설</th></tr>
+  <tr><td><code>hard_block: true</code></td><td>가장 중요한 신호. 점수가 어떻든 <b>매수 금지</b>. 전략가는 이 하나로 매수 후보에서 제외합니다.</td></tr>
+  <tr><td><code>summary</code> 앞의 <code>[차단: …]</code></td><td>차단 사유가 요약 맨 앞에 자동 삽입 → “왜 막혔는지”를 즉시 파악.</td></tr>
+  <tr><td><code>sentiment_score: 0.05</code></td><td>강한 악재. 참고로 악재는 확신도로 <b>감쇠하지 않아</b> 0.5쪽으로 흐려지지 않습니다(§7-③).</td></tr>
+  <tr><td><code>risk_score: 0.9</code></td><td>하방 위험 매우 높음.</td></tr>
+</table>
+
+<h3>번외 · 신호 없음 (오늘 이 종목엔 뉴스 신호가 없음)</h3>
+<pre class="json">{
+  <span class="k">"has_signal"</span>: <span class="v">false</span>,
+  <span class="k">"hard_block"</span>: <span class="v">false</span>
+}</pre>
+<p class="muted">점수 필드가 <b>아예 없습니다</b>. “측정했더니 0”이 아니라 “측정할 신호가 없음”을 뜻해요. 전략가는 <code>has_signal</code>만 보고 이 종목의 뉴스 축을 건너뜁니다.</p>
+
+<!-- ═══════════════ 4 ═══════════════ -->
+<h2 id="c4"><span class="n">4.</span>저장 29컬럼을 10개 의미 그룹으로</h2>
+<p>이제 창고(저장 29컬럼)를 봅시다. 평평한 29줄이라 압도적으로 느껴지는 것뿐, <b>“무슨 질문에 답하는 컬럼인가”</b>로 묶으면 10덩어리입니다.</p>
+<table>
+  <tr><th style="width:34px">#</th><th>그룹 — 답하는 질문</th><th>컬럼</th><th>전달에 포함?</th></tr>
+  <tr><td>①</td><td><b>식별·메타</b> — 어느 종목, 언제?</td><td><code>ticker</code> <code>collected_at</code> <code>trade_date</code> <code>has_signal</code></td><td>has_signal만</td></tr>
+  <tr><td>②</td><td><b>대표 기사 원문</b> — 근거 기사가 뭐야?</td><td><code>news_title</code> <code>source</code> <code>published_at</code> <code>ref</code></td><td>✗ (감사용)</td></tr>
+  <tr><td>③</td><td><b>건수</b></td><td><code>news_count</code></td><td>✓ (article_count)</td></tr>
+  <tr><td>④</td><td><b>무슨 사건</b></td><td><code>event_type</code> <code>disclosure_ref</code></td><td>event_type만</td></tr>
+  <tr><td>⑤</td><td><b>방향</b> — 호재냐 악재냐</td><td><code>sentiment</code> <code>sentiment_score</code> <code>sentiment_score_reason</code></td><td>sentiment_score · sentiment_score_reason</td></tr>
+  <tr><td>⑥</td><td><b>강도</b></td><td><code>importance_score</code> <code>peak_importance_score</code> <code>importance_score_reason</code> <code>peak_importance_score_reason</code></td><td>✓ 넷 다</td></tr>
+
+  <tr><td>⑦</td><td><b>위험</b></td><td><code>risk_score</code> <code>risk_score_reason</code></td><td>✓ 둘 다</td></tr>
+  <tr><td>⑧</td><td><b>신뢰</b> — 믿어도 돼?</td><td><code>confidence_score</code> <code>trust_score</code> <code>grade_score</code> <code>trust_score_reason</code></td><td>trust_score · trust_score_reason</td></tr>
+  <tr><td>⑨</td><td><b>안전장치</b></td><td><code>hard_block</code> <code>hard_block_reason</code></td><td>hard_block만</td></tr>
+  <tr><td>⑩</td><td><b>요약</b></td><td><code>summary</code> <code>keywords</code> <code>top_evidence</code></td><td>summary만</td></tr>
+</table>
+<p class="muted">보다시피 전달 10필드는 이 그룹들에서 <b>각각 대표 1개씩</b>만 뽑아 나갑니다. 나머지는 근거·원문·중간계산이라 창고에 남아요.</p>
+
+<!-- ═══════════════ 5 ═══════════════ -->
+<h2 id="c5"><span class="n">5.</span>그룹별 컬럼 상세 (정의·산출·왜·예시)</h2>
+
+<div class="card">
+  <div class="grp-h"><span class="idx">④</span><b>무슨 사건인가</b><span class="cols">event_type · disclosure_ref</span></div>
+  <table>
+    <tr><th style="width:130px">컬럼</th><th>정의 / 산출</th><th>왜 있나</th><th>예시</th></tr>
+    <tr><td><code>event_type</code> <span class="tag-type">str</span></td>
+      <td>대표 기사의 사건 유형. LLM이 분류 → 온톨로지 <b>12종</b>으로 정규화(<code>norm_event</code>). 대표 기사 = <code>importance×신뢰가중</code> 최고인 기사.</td>
+      <td>백테스트·집계를 같은 라벨로 묶으려면 유형이 통일돼야 함(과세분화 금지).</td>
+      <td><span class="ex">product_deal</span> <span class="ex">earnings</span> <span class="ex">ma</span></td></tr>
+    <tr><td><code>disclosure_ref</code> <span class="tag-type">str|None</span></td>
+      <td>대표 <code>event_type</code>과 <b>같은 종목·같은 날 공식 공시</b>가 매칭되면 그 <code>filing_no</code>, 없으면 <code>None</code>.</td>
+      <td>루머/팩트를 LLM으로 이진판별하는 대신 <b>공식 문서 존재 여부</b>로 사실성 보강.</td>
+      <td><span class="ex">0000320193-26-…</span> / <span class="ex">None</span></td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="grp-h"><span class="idx">⑤</span><b>방향 — 호재냐 악재냐</b><span class="cols">sentiment · sentiment_score · sentiment_score_reason</span></div>
+  <table>
+    <tr><th style="width:130px">컬럼</th><th>정의 / 산출</th><th>왜 있나</th><th>예시</th></tr>
+    <tr><td><code>sentiment_score</code> <span class="tag-type">0~1</span></td>
+      <td><b>방향의 핵심 숫자.</b> 0=강한 악재·0.5=중립·1=강한 호재. 기사별 <code>방향×강도</code>를 신뢰가중 평균 → 매핑. <b>호재만 confidence로 감쇠</b>, 악재는 감쇠 안 함.</td>
+      <td>“가장 보수적 채택” — 근거 약한 호재에 덜 휘둘리고 경고는 안 흐림.</td>
+      <td><span class="ex">0.64</span></td></tr>
+    <tr><td><code>sentiment</code> <span class="tag-type">str</span></td>
+      <td><code>sentiment_score</code>에서 <b>파생한 라벨</b>. 강한악재 1건→<code>negative</code>, 호·악재 둘 다 30%↑→<code>mixed</code>, 그 외 &gt;.5 <code>positive</code>/&lt;.5 <code>negative</code>/=.5 <code>neutral</code>.</td>
+      <td>사람이 빨리 읽게. <b>항상 점수와 방향 일치</b> 보장.</td>
+      <td><span class="ex">positive</span> <span class="ex">mixed</span></td></tr>
+    <tr><td><code>sentiment_score_reason</code> <span class="tag-type">str</span></td>
+      <td><code>sentiment_score</code>가 왜 그 값인지 한 문장(배치 종합 LLM, 영어). 🤖LLM.</td>
+      <td>점수만으론 “왜?”를 모름. 전략가·감사에 근거 제공.</td>
+      <td><span class="muted">"Clearly positive but dampened by moderate certainty…"</span></td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="grp-h"><span class="idx">⑥⑦</span><b>강도 · 위험</b><span class="cols">importance_score · peak_importance_score · risk_score · (+_reason)</span></div>
+  <table>
+    <tr><th style="width:130px">컬럼</th><th>정의 / 산출</th><th>왜 있나</th><th>예시</th></tr>
+    <tr><td><code>importance_score</code> <span class="tag-type">0~1</span></td>
+      <td>기사별 강도(방향 무관)의 <b>신뢰가중 평균</b>. 호·악재가 섞여도 상쇄되지 않음.</td>
+      <td>방향(⑤)과 강도를 <b>다른 축</b>으로 분리 — 섞으면 큰 호재+큰 악재가 0으로 붕괴.</td>
+      <td><span class="ex">0.63</span></td></tr>
+    <tr><td><code>peak_importance_score</code> <span class="tag-type">0~1</span></td>
+      <td><b>가장 센 기사 1건</b>의 강도. 단 <b>신뢰검증 기사</b>(확정 or trust≥0.6 or 등급 ALLOW) 중에서만. <code>max(importance_score, 신뢰기사 강도들)</code>.</td>
+      <td>평균에 희석된 <b>단독 대형 신호</b>를 놓치지 않으려고. 저신뢰 과장이 가짜 peak를 못 세우게.</td>
+      <td><span class="ex">0.70</span></td></tr>
+    <tr><td><code>risk_score</code> <span class="tag-type">0~1</span></td>
+      <td>기사별 하방 위험의 신뢰가중 평균.</td>
+      <td>호재라도 소송·규제 등 하방을 별도 표시.</td>
+      <td><span class="ex">0.06</span></td></tr>
+    <tr><td><code>importance_score_reason</code> · <code>peak_importance_score_reason</code> · <code>risk_score_reason</code> <span class="tag-type">str</span></td>
+      <td>각 점수가 왜 그 값인지 한 문장씩(배치 종합 LLM, 영어). 🤖LLM.</td>
+      <td>점수의 근거를 전략가·감사에 제공.</td>
+      <td><span class="muted">"…lifting weighted intensity." / "…strongest verified article." / "No downside triggers…"</span></td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <div class="grp-h"><span class="idx">⑧</span><b>신뢰 — 세 각도</b><span class="cols">confidence_score · trust_score · grade_score · (+_reason)</span></div>
+  <table>
+    <tr><th style="width:130px">컬럼</th><th>정의 / 산출</th><th>왜 있나</th><th>예시</th></tr>
+    <tr><td><code>confidence_score</code> <span class="tag-type">0~1</span></td>
+      <td><b>이 집계 자체의 확신도.</b> 기사별 신뢰가중치(<code>_news_conf</code>)의 <b>평균</b>. 저신뢰 기사뿐이면 낮게.</td>
+      <td>“신호는 있는데 근거가 얇음”을 정직하게 드러냄.</td>
+      <td><span class="ex">0.45</span></td></tr>
+    <tr><td><code>trust_score</code> <span class="tag-type">0~1</span></td>
+      <td><b>LLM이 읽고 본 매체 신뢰</b>(사후 판단)의 신뢰가중 평균. <code>trust_score = Σ(source_trust × 무게)/tw</code>.</td>
+      <td>도메인 등급만으론 못 잡는 “내용상” 신뢰 반영.</td>
+      <td><span class="ex">0.84</span></td></tr>
+    <tr><td><code>grade_score</code> <span class="tag-type">0~1</span></td>
+      <td><b>코드가 매긴 출처 도메인 등급</b>(사전). ALLOW=1·GRAY=.6·BLOCK=0, 신뢰가중 평균.</td>
+      <td>LLM 판단과 <b>독립된</b> 규칙 기반 축(이중 방어).</td>
+      <td><span class="ex">0.99</span></td></tr>
+    <tr><td><code>trust_score_reason</code> <span class="tag-type">str</span></td>
+      <td><code>trust_score</code>가 왜 그 값인지 한 문장(배치 종합 LLM, 영어). 🤖LLM.</td>
+      <td>매체 신뢰 점수의 근거를 전략가·감사에 제공.</td>
+      <td><span class="muted">"Reuters and Bloomberg dominate the weighting…"</span></td></tr>
+  </table>
+  <p class="muted">⚠️ 셋이 비슷해 보이지만 다릅니다 → §6에서 정리.</p>
+</div>
+
+<div class="card">
+  <div class="grp-h"><span class="idx">⑨⑩</span><b>안전장치 · 요약 · 원문</b><span class="cols">hard_block(_reason) · summary · keywords · top_evidence · 원문식별</span></div>
+  <table>
+    <tr><th style="width:130px">컬럼</th><th>정의 / 산출</th><th>왜 있나</th></tr>
+    <tr><td><code>hard_block</code> <span class="tag-type">0/1</span></td><td>어느 기사든 최종권한이 <code>BLOCK_ALL/BLOCK_BUY</code>면 1(<code>_BLOCK</code> 집합).</td><td>점수 무관 <b>즉시 매수 차단</b>(상폐·거래정지 등).</td></tr>
+    <tr><td><code>hard_block_reason</code> <span class="tag-type">str|None</span></td><td>차단 사유. 전달 시 <code>summary</code> 앞에 <code>[차단:…]</code> 삽입.</td><td>“왜 막혔나”를 즉시 파악.</td></tr>
+    <tr><td><code>summary</code> / <code>keywords</code></td><td>대표 기사 3~4줄 요약 / 핵심 키워드 5개(LLM, 영어).</td><td>사람이 읽는 압축본·빠른 스캔.</td></tr>
+    <tr><td><code>top_evidence</code> <span class="tag-type">list[str|None]</span></td><td>신뢰가중 상위 <b>정확히 3개</b> 헤드라인(부족분 <code>None</code> 패딩).</td><td>근거 헤드라인 추적(감사).</td></tr>
+    <tr><td><code>news_title·source·published_at·ref</code></td><td>대표 기사의 제목·언론사·발행시각(초 포함)·원문 링크.</td><td>원문 역추적 — “진짜 이 기사 맞아?” 확인.</td></tr>
+  </table>
+</div>
+
+<!-- ═══════════════ 6 ═══════════════ -->
+<h2 id="c6"><span class="n">6.</span>헷갈리기 쉬운 3쌍 정면돌파</h2>
+<p>“이해가 안 된다”의 진짜 원인은 <b>비슷해 보이는 컬럼들</b>입니다. 세 쌍만 구분하면 됩니다.</p>
+
+<div class="note">
+  <b>쌍 1 · importance_score ↔ sentiment_score</b> — <span class="arrow">강도 vs 방향</span><br>
+  <code>importance_score</code>는 “<b>얼마나 큰 일이냐</b>”(부호 없음). <code>sentiment_score</code>는 “<b>좋은 일이냐 나쁜 일이냐</b>”(방향).
+  큰 악재는 강도 높고 방향 점수는 낮아요. <b>독립된 축</b>이라 하나로 못 합칩니다.
+</div>
+<div class="note teal">
+  <b>쌍 2 · confidence_score ↔ trust_score ↔ grade_score</b> — <span class="arrow">세 종류의 “신뢰”</span><br>
+  · <code>confidence_score</code> = <b>우리 집계의 확신</b>(근거가 두꺼운가) — 기사별 신뢰치의 <b>평균</b>.<br>
+  · <code>trust_score</code> = <b>LLM이 내용을 읽고 본 매체 신뢰</b>(사후).<br>
+  · <code>grade_score</code> = <b>코드가 도메인만 보고 매긴 등급</b>(사전, 규칙: ALLOW/GRAY/BLOCK).<br>
+  일부러 따로 둡니다 — LLM 판단과 규칙 판단을 <b>이중 교차검증</b>(감사축)하려고요. 하나가 속아도 다른 하나가 잡습니다.
+</div>
+<div class="note amber">
+  <b>쌍 3 · importance_score ↔ peak_importance_score</b> — <span class="arrow">평균 vs 최고</span><br>
+  <code>importance_score</code>는 전체 기사의 <b>평균 강도</b>, <code>peak_importance_score</code>는 <b>가장 센 신뢰기사 1건</b>.
+  평균이 밋밋해도 단독 대형 신호가 있으면 peak가 튀어요. <b><code>peak ≥ importance_score</code>는 항상 성립</b>(peak가 importance를 포함해 max를 취하므로).
+</div>
+
+<!-- ═══════════════ 7 ═══════════════ -->
+<h2 id="c7"><span class="n">7.</span>공식 상세 — 영어 코드를 한글로 풀고 숫자로 확인</h2>
+<p>코드에 있는 함수들을 <b>영어 그대로 두지 않고</b>, ①한글 정의 → ②단계별 숫자 예시 → ③왜 이렇게 순으로 풀겠습니다. 여섯 개면 전부 계산됩니다.</p>
+
+<h3>① <code>_n10</code> — “0~10 점수를 0~1로 줄이기”</h3>
+<p>LLM은 보통 <b>0~10</b>으로 답합니다. 우리는 모든 점수를 <b>0~1</b>로 통일해요. 함수 이름 <code>_n10</code>은 “normalize from 10”의 뜻입니다.</p>
+<pre class="fx"><span class="c"># 한글로 풀면:</span>
+결과 = (값을 0~10 사이로 자른 뒤) ÷ 10, 소수점 둘째 자리 반올림
+<span class="c"># 원래 코드: round(clamp(v, 0, 10) / 10, 2)</span></pre>
+<div class="step-calc"><b>예시</b> · 7 → 0.7 · 9 → 0.9 · 13 → 1.0(10으로 잘림) · -2 → 0.0(0으로 잘림)</div>
+<p class="muted">왜: 방향·강도·위험·신뢰가 전부 같은 0~1 자로 재져야 서로 곱하고 비교하기 쉽습니다.</p>
+
+<h3>② <code>_news_conf</code> — “기사 한 건의 신뢰 무게”</h3>
+<p>여러 기사를 합칠 때 쓰는 <b>기사별 가중치(무게)</b>입니다. 세 요소의 <b>곱</b>이에요. 하나라도 낮으면 무게가 확 줄어듭니다.</p>
+<pre class="fx"><span class="c"># 한글로 풀면:</span>
+기사 무게 = 확신도 × 확인계수 × 매체신뢰
+
+  <span class="k">확신도</span>   (LLM certainty) : High=0.9 · Medium=0.6 · Low=0.3
+  <span class="k">확인계수</span> (is_confirmed): 확인된 사실이면 1.0, 아직 소문이면 0.5
+  <span class="k">매체신뢰</span> (source_trust): LLM이 본 0~1 값</pre>
+<div class="step-calc"><b>예시</b> · 확실(High) + 확인됨 + 매체0.9 → 0.9 × 1.0 × 0.9 = <b>0.81</b><br>
+· 애매(Low) + 소문 + 매체0.3 → 0.3 × 0.5 × 0.3 = <b>0.045</b> ← 무게가 거의 0</div>
+<div class="note red"><b>주의(코드 함정).</b> <code>매체신뢰</code>가 <code>0.0</code>(완전 무신뢰)일 때 파이썬 <code>x or 1.0</code> 관용구를 쓰면 <b>0.0을 1.0으로 오인</b>합니다.
+그래서 코드는 <code>st if st is not None else 1.0</code>으로 <b>None만</b> 1.0 취급하고 0.0은 그대로 곱합니다.</div>
+
+<h3>③ <code>_senti_score</code> — “방향을 0~1로 (비대칭 감쇠)”</h3>
+<p>“방향×강도”(-1~+1)를 0~1 점수로 바꿉니다. 핵심은 <b>호재만 확신도로 깎고, 악재는 안 깎는</b> 비대칭성이에요.</p>
+<pre class="fx"><span class="c"># 한글로 풀면:</span>
+방향강도 = (-1 ~ +1 사이로 자름)         <span class="c"># 양수=호재, 음수=악재</span>
+<span class="p">만약</span> 방향강도 &gt; 0 (호재):  방향강도 = 방향강도 × 확신도   <span class="c"># 호재만 감쇠</span>
+sentiment_score = 0.5 + 0.5 × 방향강도    <span class="c"># 악재(-)는 그대로</span></pre>
+<div class="step-calc"><b>호재 예시</b> · 방향강도 +0.635, 확신도 0.45 → 0.635×0.45 = 0.286 → 0.5 + 0.5×0.286 = <b>0.64</b><br>
+<b>악재 예시</b> · 방향강도 -0.8 (감쇠 없음) → 0.5 + 0.5×(-0.8) = <b>0.1</b></div>
+<p class="muted">왜: 근거 약한 장밋빛 소문에 속아 매수하는 게 가장 위험합니다. 그래서 호재는 “정말?” 하고 한 번 더 의심(중립 0.5쪽으로 감쇠)하고, 악재(경고)는 흐리지 않습니다. — “가장 보수적 채택” 사상.</p>
+
+<h3>④ 신뢰가중 평균 — “믿을수록 크게 반영한 평균”</h3>
+<p><code>importance_score·risk_score·trust_score·grade_score</code>가 전부 이 패턴으로 계산됩니다(예: <code>trust_score = Σ(source_trust × 무게)/tw</code> — 여기서 <code>source_trust</code>는 기사별 입력).</p>
+<pre class="fx"><span class="c"># 한글로 풀면:</span>
+지표 = Σ(각 기사 값 × 그 기사 무게) ÷ Σ(무게)
+<span class="c"># 무게 = ②의 _news_conf</span>
+<span class="c"># 예외: 모든 기사 무게가 0이면 → 등가중(전부 1)으로 폴백해 0 붕괴 방지</span></pre>
+<div class="step-calc"><b>예시(importance_score)</b> · 강도[0.7, 0.5, 0.9], 무게[0.81, 0.48, 0.045], 무게합 1.335<br>
+→ (0.7×0.81 + 0.5×0.48 + 0.9×0.045) ÷ 1.335 = 0.8475 ÷ 1.335 = <b>0.63</b></div>
+<p class="muted">주목: 세 번째 기사는 강도가 0.9로 제일 높지만 무게가 0.045라 결과에 거의 기여하지 못합니다.</p>
+
+<h3>⑤ <code>peak_importance_score</code> — “신뢰검증된 기사 중 가장 센 것”</h3>
+<pre class="fx"><span class="c"># 한글로 풀면:</span>
+신뢰기사 = (확인됨 이거나 매체신뢰≥0.6 이거나 등급 ALLOW) 인 기사
+peak = max( importance_score, 신뢰기사들의 강도… )</pre>
+<div class="step-calc"><b>예시</b> · importance_score 0.63, 신뢰기사 강도 [0.7, 0.5] (저신뢰 0.9는 제외) → max(0.63, 0.7, 0.5) = <b>0.70</b></div>
+<p class="muted">왜: 평균에 묻힌 단독 대형 신호를 살리되, <b>저신뢰 매체의 과장(0.9)</b>이 가짜 peak를 세우지 못하게 신뢰기사만 후보로 씁니다. importance_score를 항상 후보에 넣어 <code>peak ≥ importance_score</code>를 보장합니다.</p>
+
+<h3>⑥ 방향 집계 & 라벨 규칙 — “강한 악재는 우선한다”</h3>
+<p>기사별 방향강도를 합칠 때, <b>아주 나쁜 기사 1건이 있으면 평균 대신 그쪽을 택합니다</b>(보수).</p>
+<pre class="fx"><span class="c"># 방향 집계:</span>
+<span class="p">만약</span> 가장 나쁜 기사 ≤ -0.7 :  집계값 = 그 가장 나쁜 값     <span class="c"># 강한 악재 우선</span>
+<span class="p">아니면</span>                      집계값 = 신뢰가중 평균
+sentiment_score = ③(_senti_score)(집계값, 확신도)
+
+<span class="c"># 라벨(sentiment) 규칙:</span>
+강한 악재 있음                → negative
+호재무게·악재무게 각 30%↑     → mixed          <span class="c"># 둘 다 유의미</span>
+점수 &gt; 0.5 → positive / &lt; 0.5 → negative / = 0.5 → neutral</pre>
+<div class="step-calc"><b>예시</b> · 방향강도 [+0.7,+0.5,+0.9](강한 악재 없음) → 가중평균 0.635 → _senti_score(0.635, 0.45) = 0.64 → <b>positive</b></div>
+<p class="muted">라벨을 <b>최종 점수에서 파생</b>하기 때문에 “라벨은 positive인데 점수는 0.4” 같은 모순이 생기지 않습니다.</p>
+
+<div class="note green"><b>정리.</b> 위 6개 공식이면 tb_news의 점수 컬럼 숫자가 전부 재현됩니다(근거 _reason 5개는 LLM 생성). <code>grade_score</code>도 ④와 같은 신뢰가중 평균이고, 값만 <code>{ALLOW:1, GRAY:.6, BLOCK:0}</code>을 씁니다.</div>
+
+<!-- ═══════════════ 8 ═══════════════ -->
+<h2 id="c8"><span class="n">8.</span>통짜 워크드 예제 — 뉴스 3건이 29컬럼이 되기까지</h2>
+<p>§7 공식들을 실제 데이터에 한 번에 적용해 봅시다. 최종 결과가 <b>§3 예시1 JSON</b>과 일치합니다.</p>
+<table>
+  <tr><th>기사</th><th>출처(등급)</th><th>유형/방향</th><th>강도(0~10)</th><th>확인?</th><th>매체신뢰</th><th>확신도</th></tr>
+  <tr><td>A1</td><td>Reuters (ALLOW)</td><td>product_deal / 호재</td><td>7</td><td>✅</td><td>0.9</td><td>High</td></tr>
+  <tr><td>A2</td><td>Bloomberg (ALLOW)</td><td>analyst_rating / 호재</td><td>5</td><td>✅</td><td>0.8</td><td>Medium</td></tr>
+  <tr><td>A3</td><td>어느블로그 (GRAY)</td><td>product_deal / 호재</td><td><b>9</b>(과장)</td><td>❌</td><td>0.3</td><td>Low</td></tr>
+</table>
+
+<h4>1단계 · 기사별 무게 (<code>_news_conf</code>, 공식 ②)</h4>
+<pre class="fx">A1 = 0.9(High) × 1.0(확인) × 0.9 = <span class="v">0.81</span>
+A2 = 0.6(Med)  × 1.0(확인) × 0.8 = <span class="v">0.48</span>
+A3 = 0.3(Low)  × 0.5(소문) × 0.3 = <span class="v">0.045</span>   <span class="c"># 과장 기사, 무게 거의 0</span>
+무게합(tw) = 1.335</pre>
+
+<h4>2단계 · 주요 컬럼 계산</h4>
+<table>
+  <tr><th>컬럼</th><th>계산 (공식)</th><th>결과</th></tr>
+  <tr><td><code>news_count</code></td><td>분석된 기사 수</td><td><b>3</b></td></tr>
+  <tr><td><code>confidence_score</code></td><td>무게 평균 (0.81+0.48+0.045)/3</td><td><b>0.45</b></td></tr>
+  <tr><td><code>importance_score</code></td><td>공식 ④ 신뢰가중 평균</td><td><b>0.63</b></td></tr>
+  <tr><td><code>peak_importance_score</code></td><td>공식 ⑤ · 신뢰기사(A1·A2)만, A3 제외 → max(0.63,0.7,0.5)</td><td><b>0.70</b></td></tr>
+  <tr><td><code>sentiment_score</code></td><td>공식 ⑥→③ · 가중평균 0.635 → ×0.45(호재 감쇠)</td><td><b>0.64</b></td></tr>
+  <tr><td><code>sentiment</code></td><td>0.64 &gt; 0.5 → 라벨 파생</td><td><b>positive</b></td></tr>
+  <tr><td><code>trust_score</code></td><td>공식 ④ (0.9·0.81+0.8·0.48+0.3·0.045)/1.335</td><td><b>0.84</b></td></tr>
+  <tr><td><code>grade_score</code></td><td>공식 ④ · {ALLOW1,GRAY.6} (1·0.81+1·0.48+0.6·0.045)/1.335</td><td><b>0.99</b></td></tr>
+  <tr><td><code>event_type</code>(대표)</td><td>강도×무게 최대: A1 7·0.81=5.67 &gt; A3 9·0.045=0.41</td><td><b>product_deal</b></td></tr>
+</table>
+
+<h4>3단계 · 전달 JSON으로 압축 (<code>pack_news_signal</code>)</h4>
+<p>위 29컬럼 중 15개만 뽑고 <code>importance→importance_score</code>, <code>peak_importance→peak_importance_score</code>, <code>source_trust→trust_score</code>로 개명하면(+ <code>_score</code>마다 근거 5개 첨부) → <b>§3 예시1</b>의 JSON이 그대로 나옵니다.</p>
+
+<div class="note red">
+  <b>이 예제의 교훈.</b> A3는 강도가 <b>9로 제일 높지만</b> — 소문·저신뢰·GRAY라 무게가 0.045로 쪼그라들어
+  ❶ 평균을 거의 못 움직이고 ❷ peak 후보에서 <b>제외</b>되며 ❸ 대표 기사도 <b>못 됩니다</b>.
+  신뢰 컬럼이 3개인 이유가 이거예요 — <b>시끄러운 과장이 자동으로 걸러지는 구조</b>.
+</div>
+
+<!-- ═══════════════ 9 ═══════════════ -->
+<h2 id="c9"><span class="n">9.</span>자주 묻는 질문(FAQ) & 흔한 오해</h2>
+
+<h4>Q. 컬럼이 29개나 되는데 좀 줄이면 안 되나요?</h4>
+<p>전략가가 읽는 건 15개뿐이라 <b>“많다”의 체감 주체가 사실 없습니다</b>. 저장 29컬럼은 감사·백테스트용 창고라, 줄이면 “왜 이 신호가 나왔나”를 되짚는 능력을 잃습니다.
+“비슷해 보이는” 컬럼도 실은 §6의 서로 다른 축이고, <code>_score_reason</code> 5개는 각 점수의 근거라 중복이 아닙니다.</p>
+
+<h4>Q. <code>confidence_score</code>랑 <code>trust_score</code>랑 <code>grade_score</code>, 결국 다 “신뢰” 아닌가요?</h4>
+<p>아니요. <b>우리 확신 / LLM이 본 매체 / 코드가 매긴 도메인등급</b>으로 출처가 다릅니다(§6 쌍2). 특히 뒤 둘을 나눈 건 <b>LLM과 규칙이 서로를 교차검증</b>하게 하려는 감사 설계예요.</p>
+
+<h4>Q. <code>ALLOW</code>가 붙으면 “사도 된다”는 뜻인가요?</h4>
+<p>아닙니다. <code>ALLOW/GRAY/BLOCK</code>은 <b>출처(언론사) 신뢰 등급</b>일 뿐, 매수 허가가 아닙니다. 매수 판단은 전략가 몫이고, 우리 쪽 “차단”은 <code>hard_block</code>이 담당합니다.</p>
+
+<h4>Q. <code>sentiment_score</code>가 0.5면 “호재 절반”인가요?</h4>
+<p>0.5는 <b>중립</b>입니다. 방향이 없다는 뜻이지 “50% 호재”가 아니에요. 강도(중요도)는 <code>importance_score</code>가 따로 표현합니다.</p>
+
+<h4>Q. 왜 저신뢰 기사도 버리지 않고 집계에 넣나요?</h4>
+<p>완전히 버리는 대신 <b>무게를 아주 작게</b> 줍니다(§7-②). 그래야 <code>confidence_score</code>가 “근거가 얇다”를 정직하게 낮게 반영할 수 있어요. 아예 버리면 그 사실이 사라집니다. (단, 사전필터에서 명백한 노이즈·BLOCK 도메인은 LLM 전에 제거됩니다.)</p>
+
+<h4>Q. <code>peak_importance_score</code>가 <code>importance_score</code>랑 똑같이 나오면?</h4>
+<p><b>신뢰검증된 강한 기사가 없다</b>는 뜻입니다(§3 예시2). peak가 importance_score로 수렴했다는 건 “평균 이상으로 튀는 믿을 만한 단독 신호가 없음”이에요.</p>
+
+<!-- ═══════════════ 10 ═══════════════ -->
+<h2 id="c10"><span class="n">10.</span>코드에서 어디를 보면 되나</h2>
+<table>
+  <tr><th>보고 싶은 것</th><th>파일 · 심볼</th></tr>
+  <tr><td>NewsBundle 29필드 정의</td><td><code>app/common/analysis_bundle.py</code> · <code>class NewsBundle</code></td></tr>
+  <tr><td>집계 로직(모든 컬럼 산출)</td><td>같은 파일 · <code>build_news_bundle()</code></td></tr>
+  <tr><td>공식 ①~③ 헬퍼</td><td>같은 파일 상단 · <code>_n10</code> · <code>_senti_score</code> · <code>_news_conf</code> · <code>_news_credible</code></td></tr>
+  <tr><td>전달 계약(15필드 압축)</td><td>같은 파일 · <code>pack_news_signal()</code> · <code>_summary_with_block()</code></td></tr>
+  <tr><td>저장 스키마(DDL·컬럼목록)</td><td><code>app/storage/db.py</code> · <code>_TB_NEWS_DDL</code> · <code>_TB_NEWS_COLS</code></td></tr>
+  <tr><td>출처 등급 정책(ALLOW/GRAY/BLOCK)</td><td><code>app/policies/source_trust_policy.py</code> · <code>config/news_trust_policy.yaml</code></td></tr>
+  <tr><td>온톨로지 12종(event_type)</td><td><code>app/common/ontology.py</code> · <code>EventType</code> · <code>norm_event</code></td></tr>
+</table>
+
+<hr class="soft">
+<p class="muted">📌 공시편은 자매 문서 <a href="공시_컬럼_완전가이드_팀공유.html">「공시 컬럼 완전 가이드 + event_type 카탈로그」</a>를 보세요 — 공시 3축(8-K·10-Q/K·Form4)·저장 19컬럼·전달 7필드를 같은 깊이로 다루고, <b>event_type 12종 전체 카탈로그</b>가 거기 있습니다. 요약하면 공시(<code>tb_disclosure</code>, 19컬럼)는 뉴스의 <b>부분집합</b>이에요 — <code>news_count·peak_importance_score·trust_score·grade_score·disclosure_ref·top_evidence</code>가 없고(공시는 1건이 곧 사실이라 집계·매체신뢰 개념이 불필요), 대신 <code>filing_title·filing_no·filed_at</code>로 원문을 식별합니다. 방향·강도·위험·안전장치·요약 축은 동일합니다.</p>
+<p class="muted">근거: <code>app/common/analysis_bundle.py</code>·<code>app/storage/db.py</code>. 본문 JSON 3개는 실제 <code>pack_news_signal</code> 실행 결과이며, 워크드 예제 수치는 <code>round(2)</code> 기준입니다.</p>
+</div>

@@ -1,0 +1,1772 @@
+<!DOCTYPE html>
+<!-- saved from url=(0050)https://minnieming.github.io/quantinue-strategist/ -->
+<html lang="ko"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Quantinue · Strategist 진행상황 — 이은미</title>
+
+<link rel="preconnect" href="https://cdn.jsdelivr.net/">
+<link rel="stylesheet" href="./Quantinue · Strategist 진행상황 — 이은미_files/pretendardvariable-dynamic-subset.min.css">
+<style>
+  :root {
+    --bg: #f7f9fc;
+    --bg-soft: #eef2f9;
+    --card: #ffffff;
+    --card-hover: #f4f7fc;
+    --line: #e2e7f1;
+    --text: #1b2338;
+    --text-dim: #5c6788;
+    --accent: #16a34a;       /* 매수/긍정 그린 */
+    --accent-soft: rgba(22, 163, 74, 0.10);
+    --gold: #b45309;         /* 강조 앰버 */
+    --gold-soft: rgba(180, 83, 9, 0.10);
+    --red: #dc2626;          /* 위험 레드 */
+    --red-soft: rgba(220, 38, 38, 0.09);
+    --blue: #2563eb;
+    --blue-soft: rgba(37, 99, 235, 0.09);
+    --mono: "SF Mono", ui-monospace, "Cascadia Code", Menlo, monospace;
+  }
+  /* ───── 다크 모드 (토글 시 적용) ───── */
+  html[data-theme="dark"] {
+    --bg: #0b1020;
+    --bg-soft: #111830;
+    --card: #151d38;
+    --card-hover: #1a2344;
+    --line: #26304f;
+    --text: #e8ecf6;
+    --text-dim: #9aa5c4;
+    --accent: #4ade80;
+    --accent-soft: rgba(74, 222, 128, 0.12);
+    --gold: #fbbf24;
+    --gold-soft: rgba(251, 191, 36, 0.12);
+    --red: #f87171;
+    --red-soft: rgba(248, 113, 113, 0.12);
+    --blue: #60a5fa;
+    --blue-soft: rgba(96, 165, 250, 0.12);
+  }
+  html[data-theme="dark"] pre { background: #0d1226; color: #c7d2ee; }
+  html[data-theme="dark"] pre .c { color: #667099; }
+  html[data-theme="dark"] .sidebar { background: #151d38; }
+  html[data-theme="dark"] .theme-toggle { box-shadow: 0 2px 10px rgba(0,0,0,0.4); }
+
+  /* ───── 테마 토글 버튼 ───── */
+  .theme-toggle {
+    position: fixed; bottom: 22px; right: 22px; z-index: 100;
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid var(--line); background: var(--card); color: var(--text);
+    cursor: pointer; font-size: 20px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 12px rgba(0,0,0,0.12); transition: transform .12s;
+  }
+  .theme-toggle:hover { transform: scale(1.08); }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Pretendard Variable", Pretendard, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    letter-spacing: -0.01em;
+    counter-reset: secnum;
+    padding-left: 248px;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+  [id] { scroll-margin-top: 80px; }
+
+  /* ───── Sidebar 목차 ───── */
+  .sidebar {
+    position: fixed; top: 0; left: 0; width: 248px; height: 100vh;
+    overflow-y: auto; background: #fff; border-right: 1px solid var(--line);
+    padding: 22px 14px; z-index: 50;
+  }
+  .sidebar .side-title { font-size: 14px; font-weight: 800; color: var(--text); margin: 2px 8px 4px; letter-spacing: -0.02em; }
+  .sidebar .side-sub { font-size: 11.5px; font-weight: 600; color: var(--text-dim); margin: 0 8px 16px; }
+  .sidebar nav { display: flex; flex-direction: column; gap: 2px; }
+  .sidebar a {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px;
+    font-size: 13px; color: var(--text-dim); text-decoration: none; transition: background .12s, color .12s;
+  }
+  .sidebar a:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar a .num { font-family: var(--mono); font-size: 11px; font-weight: 700; color: var(--accent); flex-shrink: 0; width: 20px; }
+  @media (max-width: 900px) {
+    body { padding-left: 0; }
+    .sidebar {
+      position: sticky; top: 0; width: 100%; height: auto;
+      border-right: none; border-bottom: 1px solid var(--line); padding: 8px 10px;
+    }
+    .sidebar .side-title, .sidebar .side-sub { display: none; }
+    .sidebar nav { flex-direction: row; overflow-x: auto; gap: 4px; }
+    .sidebar a { flex-shrink: 0; white-space: nowrap; padding: 6px 10px; background: var(--bg-soft); }
+  }
+
+  /* ───── 섹션 번호 (h2 자동 카운터) ───── */
+  h2::before {
+    counter-increment: secnum;
+    content: counter(secnum, decimal-leading-zero);
+    color: var(--accent); font-family: var(--mono); font-weight: 800;
+    font-size: 0.62em; margin-right: 12px; vertical-align: 2px;
+  }
+
+  /* ───── Hero ───── */
+  header {
+    padding: 88px 0 64px;
+    background:
+      radial-gradient(ellipse 60% 50% at 70% 0%, rgba(74, 222, 128, 0.09), transparent),
+      radial-gradient(ellipse 50% 40% at 20% 10%, rgba(96, 165, 250, 0.08), transparent);
+    border-bottom: 1px solid var(--line);
+  }
+  .badge-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+  .badge {
+    font-size: 12.5px; font-weight: 600; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--text-dim); background: var(--bg-soft);
+  }
+  .badge.green { color: var(--accent); border-color: rgba(74,222,128,.35); background: var(--accent-soft); }
+  .badge.gold  { color: var(--gold);  border-color: rgba(251,191,36,.35);  background: var(--gold-soft); }
+  h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.25; }
+  h1 .grad {
+    background: linear-gradient(90deg, var(--accent), var(--blue));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .subtitle { margin-top: 14px; font-size: 17px; color: var(--text-dim); max-width: 640px; }
+  .meta { margin-top: 28px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 14px; color: var(--text-dim); }
+  .meta b { color: var(--text); font-weight: 700; }
+
+  /* ───── Sections ───── */
+  section { padding: 56px 0 8px; }
+  .sec-label {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 8px;
+  }
+  h2 { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; margin-bottom: 8px; }
+  .sec-desc { color: var(--text-dim); font-size: 15px; margin-bottom: 24px; max-width: 720px; }
+
+  /* ───── Pipeline ───── */
+  .pipeline { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; margin-bottom: 12px; }
+  .pipe-step {
+    flex: 1 1 100px; min-width: 104px; padding: 14px 10px; text-align: center;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    font-size: 13px; color: var(--text-dim); position: relative;
+  }
+  .pipe-step .num { display: block; font-size: 11px; color: var(--text-dim); opacity: .7; margin-bottom: 2px; }
+  .pipe-step .name { font-weight: 700; color: var(--text); font-size: 13.5px; }
+  .pipe-step.mine {
+    background: var(--accent-soft); border-color: rgba(74,222,128,.45);
+    box-shadow: 0 0 24px rgba(74,222,128,.12);
+  }
+  .pipe-step.mine .name { color: var(--accent); }
+  .pipe-step.mine::after {
+    content: "내 담당"; position: absolute; top: -10px; right: 8px;
+    font-size: 10.5px; font-weight: 700; color: #0b1020;
+    background: var(--accent); padding: 1px 8px; border-radius: 999px;
+  }
+  .pipe-note { font-size: 13.5px; color: var(--text-dim); }
+
+  /* ───── Cards ───── */
+  .grid { display: grid; gap: 14px; }
+  .grid.c2 { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .grid.c3 { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    padding: 22px;
+  }
+  .card h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .card p { font-size: 14px; color: var(--text-dim); }
+  .step-chip {
+    font-family: var(--mono); font-size: 11.5px; font-weight: 700;
+    color: var(--accent); background: var(--accent-soft);
+    padding: 2px 8px; border-radius: 6px; flex-shrink: 0;
+  }
+
+  /* ───── Tables ───── */
+  .tbl-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: var(--card); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 560px; }
+  th {
+    text-align: left; padding: 13px 16px; font-size: 12.5px; font-weight: 700;
+    color: var(--text-dim); text-transform: uppercase; letter-spacing: .06em;
+    border-bottom: 1px solid var(--line); background: var(--bg-soft); white-space: nowrap;
+  }
+  td { padding: 12px 16px; border-bottom: 1px solid var(--line); color: var(--text); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  td .dim { color: var(--text-dim); font-size: 13px; }
+  .tag {
+    display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 9px;
+    border-radius: 6px; white-space: nowrap;
+  }
+  .tag.use  { color: var(--accent); background: var(--accent-soft); }
+  .tag.ref  { color: var(--blue); background: var(--blue-soft); }
+  .tag.no   { color: var(--text-dim); background: rgba(154,165,196,.12); }
+  .tag.hot  { color: var(--red); background: var(--red-soft); }
+
+  /* ───── POLICY compare ───── */
+  .policy { border-radius: 14px; border: 1px solid var(--line); overflow: hidden; }
+  .policy .head { padding: 18px 22px; font-weight: 800; font-size: 17px; display: flex; align-items: center; gap: 10px; }
+  .policy.safe .head { background: var(--blue-soft); color: var(--blue); }
+  .policy.aggr .head { background: var(--gold-soft); color: var(--gold); }
+  .policy ul { list-style: none; padding: 8px 0; background: var(--card); }
+  .policy li {
+    display: flex; justify-content: space-between; gap: 12px;
+    padding: 9px 22px; font-size: 14px; border-bottom: 1px solid var(--line);
+  }
+  .policy li:last-child { border-bottom: none; }
+  .policy li span:first-child { color: var(--text-dim); }
+  .policy li b { font-family: var(--mono); font-weight: 700; font-size: 13.5px; }
+
+  /* ───── Flow 11 steps ───── */
+  .flow { counter-reset: step; display: grid; gap: 10px; }
+  .flow-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 18px;
+  }
+  .flow-item::before {
+    counter-increment: step; content: counter(step);
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+    background: var(--bg-soft); border: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12.5px; font-weight: 800; color: var(--accent); font-family: var(--mono);
+  }
+  .flow-item .t { font-weight: 700; font-size: 14.5px; }
+  .flow-item .d { font-size: 13.5px; color: var(--text-dim); }
+  .flow-item.gate { border-color: rgba(248,113,113,.4); }
+  .flow-item.gate::before { color: var(--red); }
+  .flow-item.gpt { border-color: rgba(251,191,36,.4); }
+  .flow-item.gpt::before { color: var(--gold); }
+
+  /* ───── Why callout ───── */
+  .why {
+    background: var(--gold-soft); border-left: 3px solid var(--gold);
+    border-radius: 0 10px 10px 0; padding: 12px 16px; margin-top: 10px;
+    font-size: 13.5px; color: var(--text-dim);
+  }
+  .why b { color: var(--gold); font-weight: 700; }
+  .step-h {
+    font-size: 18px; font-weight: 800; margin: 28px 0 12px;
+    display: flex; align-items: center; gap: 10px; letter-spacing: -0.02em;
+  }
+  .step-h .n {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+    background: var(--accent-soft); color: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; font-family: var(--mono);
+  }
+  .sub-h { font-size: 15px; font-weight: 700; margin: 16px 0 8px; color: var(--text); }
+
+  /* ───── ERD ───── */
+  .erd-flow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  .erd-flow-box {
+    flex: 1 1 160px; text-align: center; padding: 14px 12px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    font-size: 13.5px; font-weight: 700; color: var(--text);
+  }
+  .erd-flow-box small { display: block; font-weight: 500; color: var(--text-dim); font-size: 11.5px; margin-top: 3px; }
+  .erd-flow-box.mine { background: var(--accent-soft); border-color: rgba(74,222,128,.5); color: var(--accent); }
+  .erd-arrow { font-size: 18px; color: var(--text-dim); flex-shrink: 0; }
+  .erd-legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12.5px; color: var(--text-dim); margin-bottom: 16px; }
+  .erd-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(255px, 1fr)); }
+  .erd-tbl { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .erd-tbl.mine { border-color: rgba(74,222,128,.5); box-shadow: 0 0 20px rgba(74,222,128,.1); }
+  .erd-tbl .th { padding: 10px 14px; background: var(--bg-soft); border-bottom: 1px solid var(--line); }
+  .erd-tbl.mine .th { background: var(--accent-soft); }
+  .erd-tbl .tname { font-family: var(--mono); font-weight: 700; font-size: 13.5px; color: var(--text); }
+  .erd-tbl.mine .tname { color: var(--accent); }
+  .erd-tbl .owner { display: block; font-size: 11px; font-weight: 600; color: var(--text-dim); margin-top: 3px; }
+  .erd-tbl ul { list-style: none; }
+  .erd-tbl li { display: flex; justify-content: space-between; gap: 8px; padding: 6px 14px; font-size: 12px; border-bottom: 1px solid var(--line); }
+  .erd-tbl li:last-child { border-bottom: none; }
+  .erd-tbl .cn { font-family: var(--mono); color: var(--text); }
+  .erd-tbl .ct { font-family: var(--mono); color: var(--text-dim); font-size: 11px; white-space: nowrap; }
+  .erd-tbl .key { color: var(--gold); }
+
+  /* ───── Sandwich (코드 vs LLM) ───── */
+  .sandwich { display: flex; align-items: stretch; gap: 10px; flex-wrap: wrap; margin: 8px 0 24px; }
+  .sw-box { flex: 1 1 210px; border-radius: 14px; padding: 18px; border: 1px solid var(--line); }
+  .sw-box.code { background: var(--blue-soft); border-color: rgba(96,165,250,.4); }
+  .sw-box.llm { background: var(--gold-soft); border-color: rgba(251,191,36,.4); }
+  .sw-box h4 { font-size: 14.5px; font-weight: 800; margin-bottom: 10px; }
+  .sw-box.code h4 { color: var(--blue); }
+  .sw-box.llm h4 { color: var(--gold); }
+  .sw-box ul { list-style: none; font-size: 13px; color: var(--text); }
+  .sw-box li { padding: 4px 0; }
+  .sw-box .foot { margin-top: 8px; font-size: 12px; color: var(--text-dim); font-style: italic; }
+  .sw-arrow { display: flex; align-items: center; font-size: 20px; color: var(--text-dim); flex-shrink: 0; }
+  @media (max-width: 640px) { .sw-arrow { transform: rotate(90deg); margin: 0 auto; } }
+
+  /* ───── Code ───── */
+  pre {
+    background: #f3f6fb; border: 1px solid var(--line); border-radius: 14px;
+    padding: 20px 22px; overflow-x: auto; font-family: var(--mono);
+    font-size: 13px; line-height: 1.75; color: #33405c;
+  }
+  pre .k { color: var(--blue); font-weight: 600; }
+  pre .s { color: var(--accent); font-weight: 600; }
+  pre .c { color: #8b95ac; }
+  pre .n { color: var(--gold); font-weight: 600; }
+
+  /* ───── Open questions ───── */
+  .q-item {
+    display: flex; gap: 14px; align-items: flex-start;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 15px 18px;
+  }
+  .q-item .who {
+    flex-shrink: 0; font-size: 12.5px; font-weight: 800; color: var(--red);
+    background: var(--red-soft); padding: 3px 10px; border-radius: 6px; margin-top: 2px; white-space: nowrap;
+  }
+  .q-item .q { font-size: 14px; }
+  .q-item .q .dim { color: var(--text-dim); font-size: 13px; }
+
+  /* ───── Todo ───── */
+  .todo li {
+    list-style: none; display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 0; font-size: 15px; border-bottom: 1px dashed var(--line);
+  }
+  .todo li:last-child { border-bottom: none; }
+  .todo .box {
+    flex-shrink: 0; width: 18px; height: 18px; margin-top: 4px; border-radius: 5px;
+    border: 1.5px solid var(--text-dim);
+  }
+  .todo .box.done { background: var(--accent); border-color: var(--accent); position: relative; }
+  .todo .box.done::after {
+    content: "✓"; position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: #0b1020; font-size: 12px; font-weight: 900;
+  }
+  .todo .done-text { color: var(--text-dim); text-decoration: line-through; }
+
+  footer {
+    margin-top: 72px; padding: 32px 0 48px; border-top: 1px solid var(--line);
+    font-size: 13.5px; color: var(--text-dim); text-align: center;
+  }
+  footer b { color: var(--text); }
+
+  @media (max-width: 640px) {
+    header { padding: 56px 0 40px; }
+    section { padding: 44px 0 4px; }
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="side-title">Quantinue · Strategist</div>
+  <div class="side-sub">이은미 · 목차</div>
+  <nav>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s01"><span class="num">01</span>파이프라인 위치</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s02"><span class="num">02</span>내 담당 범위</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s03"><span class="num">03</span>핵심 결정사항</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s04"><span class="num">04</span>4개 신호 필드</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s05"><span class="num">05</span>받는 JSON 예시</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s06"><span class="num">06</span>요청 스펙</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s07"><span class="num">07</span>ERD</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s08"><span class="num">08</span>판단 문턱 POLICY</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s09"><span class="num">09</span>판단 순서 10단계</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#schangelog"><span class="num">10</span>판단 로직 변경 이력</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s10"><span class="num">11</span>처리 로직·이유</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s11"><span class="num">12</span>코드 vs LLM</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s12"><span class="num">13</span>Critic 전달</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#strigger"><span class="num">14</span>Critic 연결·트리거</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s13"><span class="num">15</span>팀 확인 요청</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#s14"><span class="num">16</span>다음 할 일</a>
+    <a href="https://minnieming.github.io/quantinue-strategist/#stest"><span class="num">17</span>1차 목데이터 테스트 (마지막)</a>
+  </nav>
+</aside>
+
+<header>
+  <div class="wrap">
+    <div class="badge-row">
+      <span class="badge gold">팀 여름이었다</span>
+      <span class="badge green">⑤ Strategist 담당</span>
+      <span class="badge">v3.8 · 2026-07-09</span>
+      <span class="badge">🕒 최종 수정 2026-07-09 16:29 KST · 03:29 ET</span>
+    </div>
+    <h1>Quantinue<br><span class="grad">Strategist 파트 진행상황</span></h1>
+    <p class="subtitle">
+      미국 주식 자율 AI 트레이딩 시스템에서 4개 팀의 신호를 모아
+      <b>매수/보류를 판단하는 전략가(Strategist) 에이전트</b> — 현재까지의 설계 확정사항과 팀 확인 요청을 공유합니다.
+    </p>
+    <div class="meta">
+      <span>작성자 <b>이은미</b></span>
+      <span>버전 <b>v3.8</b></span>
+      <span>수정일시 <b>2026-07-09 16:29 KST (03:29 ET)</b></span>
+      <span>기술 스택 <b>Python · PydanticAI · PostgreSQL · GPT-4o</b></span>
+    </div>
+  </div>
+</header>
+
+<!-- ───────── 파이프라인 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s01">Pipeline</div>
+    <h2>전체 파이프라인에서 내 위치</h2>
+    <p class="sec-desc">데이터가 들어와서 실제 주문이 나가기까지 8단계. 나는 <b>③ Strategist</b> — 분석팀 신호를 읽고 최초의 매수/보류 판단을 내리는 자리야.</p>
+    <div class="pipeline">
+      <div class="pipe-step"><span class="num">①</span><span class="name">데이터 수집</span></div>
+      <div class="pipe-step"><span class="num">②</span><span class="name">분석팀 4종</span>공시·뉴스·기술·매크로</div>
+      <div class="pipe-step mine"><span class="num">③</span><span class="name">Strategist</span>매수/보류 판단</div>
+      <div class="pipe-step"><span class="num">④</span><span class="name">Risk Critic</span>반박·검증</div>
+      <div class="pipe-step"><span class="num">⑤</span><span class="name">Portfolio Manager</span>포지션 크기</div>
+      <div class="pipe-step"><span class="num">⑥</span><span class="name">Risk Gate</span></div>
+      <div class="pipe-step"><span class="num">⑦</span><span class="name">실행</span></div>
+      <div class="pipe-step"><span class="num">⑧</span><span class="name">Reviewer</span>기록</div>
+    </div>
+    <p class="pipe-note">데이터 흐름은 <b>Pull 방식</b> — 각 팀이 DB에 저장해두면 내가 SELECT로 읽어감. (택배로 받는 게 아니라 우편함에서 직접 꺼내는 방식)</p>
+  </div>
+</section>
+
+<!-- ───────── 담당 범위 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s02">My Scope</div>
+    <h2>내 담당: STEP 2 ~ 7</h2>
+    <div class="grid c3">
+      <div class="card"><h3><span class="step-chip">STEP 2</span>신호 읽기</h3><p>4개 신호(공시·뉴스·기술·매크로)를 DB에서 SELECT로 읽어옴</p></div>
+      <div class="card"><h3><span class="step-chip">STEP 3</span>전처리</h3><p>hard_block → 신호별 카운트 → 확인 보너스 → 매크로 위험 감점</p></div>
+      <div class="card"><h3><span class="step-chip">STEP 4</span>정책 적용</h3><p>공격형 문턱값 POLICY 적용</p></div>
+      <div class="card"><h3><span class="step-chip">STEP 5</span>메모리 로딩</h3><p>tb_memory_entries에서 ticker별 최근 5개 과거 기록 조회</p></div>
+      <div class="card"><h3><span class="step-chip">STEP 6</span>GPT-4o 판단</h3><p>PydanticAI로 맥락 판단 요청 — GPT는 계산 없이 판단만</p></div>
+      <div class="card"><h3><span class="step-chip">STEP 7</span>검증·전달</h3><p>min_conviction 검증 → tb_strategist_signals 저장 → Critic에 payload 전달</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 핵심 결정사항 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s03">Decisions</div>
+    <h2>핵심 결정사항 (확정)</h2>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th style="width:180px">항목</th><th>결정</th></tr></thead>
+        <tbody>
+          <tr><td><b>투자유형</b></td><td><b>공격형 단일</b> <span class="dim">(안정형·균형형 제거 — MVP는 공격형 하나로)</span></td></tr>
+          <tr><td><b>데이터 흐름</b></td><td>Push 아니고 <b>Pull</b> — 각 팀이 DB 저장, 내가 SELECT로 읽음</td></tr>
+          <tr><td><b>데이터 형식</b></td><td>JSON (Pydantic model_dump_json) = DB row 한 줄</td></tr>
+          <tr><td><b>내 저장 책임</b></td><td><b>내 결과(tb_strategist_signals)만.</b> 원본 신호는 각 팀이 저장</td></tr>
+          <tr><td><b>판단 기준</b></td><td><b>공격형 단일 문턱</b> (아래 POLICY) — 이원화 폐지로 단순해짐</td></tr>
+          <tr><td><b>Critic 전달</b></td><td>원본 4개 안 보냄 — 요약 + 근거 + signal_id(내 결과행 id)만 (설득 payload)</td></tr>
+
+          <tr><td><b>Critic 반려</b></td><td>MVP 1: 반려 = 끝(기록만) · MVP 2: 최대 2회 재검토 루프</td></tr>
+          <tr><td><b>포지션 크기</b></td><td>PM 담당. 나는 sizing_hint(제안값)만 전달</td></tr>
+          <tr><td><b>페르소나</b></td><td>MVP 2로 연기 <span class="dim">(지금은 persona_notes = null)</span></td></tr>
+          <tr><td><b>hard_block 권한</b></td><td>객관 사실(상폐·거래정지·going concern)만. 주관 판단은 내 몫</td></tr>
+          <tr><td><b>매크로 처리</b></td><td><b>거부권 폐지 → conviction 감점</b>으로 변경 (시장 역행 기회 살림, 팀원 제안 반영)</td></tr>
+          <tr><td><b>Critic에 약점</b></td><td>bear_case 안 보냄 — key_risk(인지한 위험)만. 반대 논리 총동원은 Critic 몫</td></tr>
+          <tr><td><b>메모리</b></td><td>벡터DB 불필요 — tb_memory_entries에서 ticker + 최신순 5개</td></tr>
+          <tr><td><b>트리거</b></td><td>08:30 AM ET 스케줄 (APScheduler) <span class="dim">= 한국시간 21:30 (미국 서머타임 EDT 기준 · ET+13h · 겨울 EST면 22:30)</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 4개 신호 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s04">Signals</div>
+    <h2>4개 신호 — 실제 쓰는 필드만 (다이어트 버전)</h2>
+    <p class="sec-desc"><span class="tag use">✅ 사용</span> 내 판단 로직에 직접 사용 &nbsp;·&nbsp; <span class="tag ref">📄 GPT 참고</span> 프롬프트에 맥락으로만 전달 &nbsp;·&nbsp; <span class="tag no">❌ 안 씀</span></p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>신호</th><th>✅ 쓰는 필드</th><th>📄 GPT 참고</th><th>❌ 안 씀</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><b>공시</b></td>
+            <td>hard_block · sentiment_score · importance</td>
+            <td class="dim">event_type · reason · summary · risk_score</td>
+            <td class="dim">filing_title/no/at · confidence · keywords · sentiment 라벨</td>
+          </tr>
+          <tr>
+            <td><b>뉴스</b></td>
+            <td>hard_block · sentiment_score · grade_score · source_trust</td>
+            <td class="dim">top_evidence · reason · summary · disclosure_ref · news_count</td>
+            <td class="dim">news_title · source · published_at · ref · keywords · importance · peak_importance · confidence · sentiment 라벨</td>
+          </tr>
+          <tr>
+            <td><b>기술</b></td>
+            <td>trend · ml_prob_up</td>
+            <td class="dim">rsi · macd</td>
+            <td class="dim">—</td>
+          </tr>
+          <tr>
+            <td><b>매크로</b></td>
+            <td>regime · risk_score</td>
+            <td class="dim">reason</td>
+            <td class="dim">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="height:14px"></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th style="width:220px">핵심 필드</th><th>의미</th></tr></thead>
+        <tbody>
+          <tr><td><code>sentiment_score</code></td><td>0 = 강한 악재 · 0.5 = 중립 · 1 = 강한 호재</td></tr>
+          <tr><td><code>hard_block</code></td><td>1이면 GPT 없이 <b>즉시 보류</b> (상폐·거래정지 같은 객관 사실)</td></tr>
+          <tr><td><code>grade_score</code></td><td>출처 등급 — ALLOW 1.0 / GRAY 0.6 / WATCH 0.3 / BLOCK 0.0</td></tr>
+          <tr><td><code>source_trust</code></td><td>(뉴스) 출처 신뢰도 0~1 — <b>삭제된 confirmed_score 자리를 대체</b>하는 관문 기준</td></tr>
+          <tr><td><code>disclosure_ref</code></td><td>(뉴스) 연결된 공식 공시번호 — 있으면 '공식 확인된 뉴스'로 보너스 가산 (드묾, 없으면 null)</td></tr>
+          <tr><td><code>regime</code></td><td>risk-on(맑음) / risk-off(태풍)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 받는 것: JSON 예시 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s05">Input Examples</div>
+    <h2>받는 것 — 4개 신호 JSON 예시</h2>
+    <p class="sec-desc">시나리오: 2026-07-02, 종목 <b>NVDA</b> 하나를 판단하는 상황. 각 팀이 DB에 저장해둔 JSON을 내가 읽어옴. 주석: <span class="tag use">✅ 판단에 씀</span> <span class="tag ref">📄 GPT 참고</span> <span class="tag no">❌ 안 씀</span></p>
+
+    <h3 style="font-size:17px; font-weight:800; margin:18px 0 10px;">① 공시 신호 (tb_disclosure · 정본 18필드 전체 · 종목당 사이클당 집계 1행)</h3>
+<pre>{
+  <span class="c">// ── A. 종목·시각 메타 (코드가 세팅) ──</span>
+  "created_at": "2026-07-02T10:05:00Z",   <span class="c">// ✅ 스냅샷 시각 (PK · 최신 행 선택) 🟡 collected_at 통일은 아직 '제안'</span>
+  "ticker": "NVDA",                       <span class="c">// ✅ 어느 종목인지 (PK)</span>
+  "as_of": "2026-07-02",                  <span class="c">// ✅ 분석 기준일 (FK) 🟡 → trade_date 이름 제안(미확정)</span>
+  "has_signal": <span class="n">1</span>,                       <span class="c">// ✅ 공시 있나 (0이면 뒤 컬럼 전부 null · 나는 =1인 행만 읽음)</span>
+
+  <span class="c">// ── B. 원문 정보 (감사·추적용) ──</span>
+  "filing_title": "NVIDIA to Acquire ...", <span class="c">// ❌ 원문 제목</span>
+  "filing_no": "0001-24-000123",          <span class="c">// ❌ SEC 접수번호(accession)</span>
+  "filed_at": "2026-07-02T08:55:00Z",     <span class="c">// ❌ 실제 제출 시각(look-ahead 방지)</span>
+
+  <span class="c">// ── C. 점수 (내 판단 핵심) ──</span>
+  "event_type": "ma",                     <span class="c">// 📄 공시 종류(11종) — ma = M&amp;A(인수합병)</span>
+  "importance": <span class="n">0.80</span>,                    <span class="c">// ✅★ 사건 크기 (≥0.25이어야 신경씀)</span>
+  "risk_score": <span class="n">0.30</span>,                    <span class="c">// 📄 위험도(별개 축)</span>
+  "sentiment": "positive",                <span class="c">// ❌ 라벨 (아래 점수로 대체)</span>
+  "sentiment_score": <span class="n">0.86</span>,               <span class="c">// ✅★ 호재/악재 (≥0.70이면 호재)</span>
+  "reason": "35% 인수 프리미엄·전액 현금",   <span class="c">// 📄 점수 근거 (GPT 프롬프트)</span>
+
+  <span class="c">// ── D. 차단·부가 ──</span>
+  "hard_block": <span class="n">0</span>,                       <span class="c">// ✅★★ 1이면 즉시 보류 (제일 먼저 체크)</span>
+  "hard_block_reason": <span class="k">null</span>,             <span class="c">// 📄 차단 이유</span>
+  "confidence": <span class="n">0.9</span>,                     <span class="c">// ❌ 분석 신뢰도 (거의 안 씀)</span>
+  "summary": "엔비디아, 대형 반도체사 인수 발표…", <span class="c">// 📄 3~4줄 요약 (GPT 참고)</span>
+  "keywords": ["인수", "반도체", "프리미엄"]  <span class="c">// ❌ 핵심 키워드 5개</span>
+}</pre>
+    <p class="sec-desc" style="margin-top:10px;"><b>읽는 법:</b> NVDA가 다른 회사 인수를 공식 발표. 호재(0.86), 큰 사건(0.80), 차단 아님(0) → <b>매수 방향 +1</b> · <span class="dim">18필드 중 ✅ 7 · 📄 5 · ❌ 6 · 순서=원문 그대로(메타→원문→점수→차단)</span></p>
+
+    <h3 style="font-size:17px; font-weight:800; margin:18px 0 10px;">② 뉴스 신호 (tb_news · 정본 25필드 전체)</h3>
+<pre>{
+  <span class="c">// ── A. 메타 (누가·언제) ──</span>
+  "ticker": "NVDA",                       <span class="c">// ✅ 어느 종목인지 (PK)</span>
+  "trade_date": "2026-07-02",             <span class="c">// ✅ 분석 기준일 (FK)</span>
+  "collected_at": "2026-07-02T09:30:00Z", <span class="c">// ✅ 스냅샷 생성 시각 (PK)</span>
+  "has_signal": <span class="n">1</span>,                       <span class="c">// ✅ 뉴스 있나 (0이면 뒤 컬럼 전부 null · 나는 =1인 행만 읽음)</span>
+
+  <span class="c">// ── B. 대표 기사 (신뢰가중 최상위 1건) ──</span>
+  "news_title": "Nvidia earnings beat Q2", <span class="c">// ❌ 대표 기사 제목 (표시용)</span>
+  "source": "reuters.com",                <span class="c">// ❌ 언론사 (grade_score로 대체)</span>
+  "published_at": "2026-07-02T07:10:00Z", <span class="c">// ❌ 발행 시각 (≠ 수집 collected_at)</span>
+  "ref": "https://reuters.com/...",       <span class="c">// ❌ 원문 링크 (감사용)</span>
+  "event_type": "earnings",               <span class="c">// 📄 뉴스 종류 (실적, 공시와 공유)</span>
+  "disclosure_ref": "0001-24-000123",     <span class="c">// 📄 연결 공시번호 — 있으면 확인 가산(드묾·대개 null)</span>
+  "reason": "실적 서프라이즈",              <span class="c">// 📄 점수 근거 (GPT 프롬프트)</span>
+  "summary": "엔비디아 2분기 실적 예상 상회…", <span class="c">// 📄 3~4줄 요약 (GPT 참고)</span>
+  "keywords": ["실적", "데이터센터"],        <span class="c">// ❌ 핵심 키워드 5개</span>
+
+  <span class="c">// ── C. 전체 기사 신뢰가중 집계 ──</span>
+  "news_count": <span class="n">3</span>,                       <span class="c">// 📄 오늘 분석한 기사 총 건수</span>
+  "importance": <span class="n">0.67</span>,                    <span class="c">// ❌ 전체 뉴스 영향도(집계) → 무시</span>
+  "peak_importance": <span class="n">0.8</span>,                <span class="c">// ❌ 신뢰검증 강도 최댓값(협의중) → 무시</span>
+  "risk_score": <span class="n">0.22</span>,                    <span class="c">// 📄 하락 위험도(별개 축)</span>
+  "sentiment_score": <span class="n">0.84</span>,               <span class="c">// ✅★ 호재/악재 (≥0.70이면 호재)</span>
+  "sentiment": "positive",                <span class="c">// ❌ 라벨 (점수로 대체)</span>
+  "source_trust": <span class="n">0.88</span>,                  <span class="c">// ✅★ 출처 신뢰도 (≥0.55 — 삭제 confirmed_score 대체)</span>
+  "grade_score": <span class="n">0.95</span>,                   <span class="c">// ✅★ 출처 등급 (≥0.55)</span>
+  "confidence": <span class="n">0.6</span>,                     <span class="c">// ❌ 분석 신뢰도 (거의 안 씀)</span>
+
+  <span class="c">// ── D. 하드 스캔 (차단) ──</span>
+  "hard_block": <span class="n">0</span>,                       <span class="c">// ✅★★ 1이면 즉시 보류</span>
+  "hard_block_reason": <span class="k">null</span>,             <span class="c">// 📄 차단 이유(예: Chapter 11)</span>
+
+  <span class="c">// ── E. 정렬 상위 3 ──</span>
+  "top_evidence": ["reuters.com: Nvidia beats Q2", "bloomberg.com: …", "cnbc.com: …"] <span class="c">// 📄 대표 헤드라인 정확히 3개(신뢰순)</span>
+}</pre>
+    <p class="sec-desc" style="margin-top:10px;"><b>읽는 법:</b> 기사 3건, 실적 호재(0.84), 출처 신뢰도 높음(source_trust 0.88 ≥ 0.55), 출처 최상급(grade 0.95), 공시번호까지 연결(disclosure_ref) → <b>믿을 만한 매수 방향 +1 (+ 확인 가산)</b> · <span class="dim">25필드 중 ✅ 8 · 📄 8 · ❌ 9 · 순서=원문 5그룹(A메타·B대표복사·C집계·D하드·E정렬)</span></p>
+
+    <div class="card" style="border-color: rgba(234,179,8,.45); background: var(--gold-soft); margin-top:14px;">
+      <h3 style="color:var(--gold)">⚠️ 날짜 컬럼·입력 연결 — 정본과 맞춘 주의사항 (팀 확인 필요)</h3>
+      <ul style="margin:6px 0 0; padding-left:18px; line-height:1.7;">
+        <li><b>공시는 <code>created_at</code>, 뉴스는 <code>collected_at</code></b> — 이름이 다르다(정본 원문 그대로). 공시 쪽 "collected_at으로 통일"은 아직 <b>제안</b>일 뿐 미확정. 컬럼명이 달라 코드가 그대로 매칭 못 하니 <b>팀 통일 필요</b>.</li>
+        <li>마찬가지로 <b>공시 FK는 <code>as_of</code>, 뉴스 FK는 <code>trade_date</code></b> (공시 as_of→trade_date 이름 제안 중).</li>
+        <li><b>업데이트 시간이 신호마다 다른데 어떻게 가져오나?</b> → 판단 시점에 종목마다 시각(<code>created_at</code>/<code>collected_at</code>)이 <b>가장 최근인 행 1개</b>를 SELECT. (공시 1시간·뉴스 5분 주기로 append되니 각자 최신 스냅샷을 집음)</li>
+        <li><b>"내가 어디까지 봤는지"는 어디 저장?</b> → 하루 1행인 <b>데일리픽·기술</b>은 <code>(trade_date, ticker)</code>로, 하루에 여러 번 쌓이는 <b>공시·뉴스·매크로</b>는 내가 읽은 행의 시각을 복사한 <code>src_disclosure_at</code>·<code>src_news_at</code>·<code>src_macro_at</code>로 <b>선언된 FK 연결</b>(없으면 null). 자세한 건 §07 "키 정리 + FK 선언" 참고.</li>
+        <li><b>✅ <code>cycle_id</code>는 안 쓴다.</b> 입력 4개 표엔 cycle_id 컬럼이 아예 없고 생성 주체도 미정이라, <b>유령 키 대신 실제 PK(위 src_*_at)로 연결</b>한다. Critic과는 내 <code>id</code>(=<code>signal_id</code>) 하나로 이어짐. <span style="color:var(--red)">🔴 정본 Critic 스키마엔 cycle_id가 남아있어 팀 합의(제거) 필요.</span></li>
+      </ul>
+    </div>
+
+    <h3 style="font-size:17px; font-weight:800; margin:18px 0 10px;">③ 기술 신호 (TechnicalSignal)</h3>
+<pre>{
+  "ticker": "NVDA",             <span class="c">// ✅ 어느 종목인지</span>
+  "as_of": "2026-07-02",        <span class="c">// ✅ 오늘 신호인지</span>
+
+  "trend": "상승(골든크로스)",    <span class="c">// ✅★ 오름세인가 (★ 정확한 값 형태 팀 확인 중)</span>
+  "rsi": <span class="n">34.0</span>,                  <span class="c">// 📄 RSI = Relative Strength Index(상대강도지수) — &lt;30이면 과매도/반등권</span>
+  "macd": "골든크로스",          <span class="c">// 📄 MACD = Moving Average Convergence Divergence(이동평균 수렴확산) — 힘의 방향</span>
+  "ml_prob_up": <span class="n">0.73</span>            <span class="c">// ✅★ ML(Machine Learning, 머신러닝) 상승확률 (&gt;0.60이어야 인정)</span>
+}</pre>
+    <p class="sec-desc" style="margin-top:10px;"><b>읽는 법:</b> 흐름 상승세, RSI 34(반등권), AI 상승확률 73% → <b>매수 방향 +1</b></p>
+
+    <h3 style="font-size:17px; font-weight:800; margin:18px 0 10px;">④ 매크로 신호 (MacroSignal) — ticker 없음</h3>
+<pre>{
+  "as_of": "2026-07-02",   <span class="c">// ✅ 오늘 신호인지 (ticker 없음 — 시장 전체라서)</span>
+
+  "regime": "risk-on",     <span class="c">// ✅★ 시장 날씨 (risk-on 맑음 / risk-off 태풍)</span>
+  "risk_score": <span class="n">3</span>,         <span class="c">// ✅★ 위험도 (risk-off일수록 conviction 감점 ↑) ★ 범위 0~10 vs 0~1 확인 중</span>
+  "reason": "나스닥 상승, VIX 16 안정, 금리 보합" <span class="c">// 📄 근거 (GPT 참고)</span>
+}</pre>
+    <p class="sec-desc" style="margin-top:10px;"><b>읽는 법:</b> 시장 날씨 맑음(risk-on), 위험도 낮음(3) → <b>표 아님 · 감점 없음</b> (risk-off였다면 conviction 감점)</p>
+
+    <h3 style="font-size:17px; font-weight:800; margin:18px 0 10px;">→ 이 4개를 받아서 내가 계산하는 것 (전처리 결과)</h3>
+<pre><span class="c"># STEP 1: hard_block 체크</span>
+공시.hard_block = 0, 뉴스.hard_block = 0  →  통과 (차단 없음)
+
+<span class="c"># STEP 2~4: 매수 방향 신호 카운트 (v3 빡센 문턱 · 매크로는 표 아님)</span>
+공시:   sentiment <span class="n">0.9</span> ≥ 0.70 ✓  AND  importance <span class="n">0.8</span> ≥ 0.25 ✓   → <span class="s">+1</span>
+뉴스:   sentiment <span class="n">0.84</span> ≥ 0.70 ✓  grade <span class="n">0.95</span> ≥ 0.55 ✓  source_trust <span class="n">0.88</span> ≥ 0.55 ✓  → <span class="s">+1</span>
+기술:   trend "상승" ✓  AND  ml_prob_up <span class="n">0.73</span> ≥ 0.60 ✓          → <span class="s">+1</span>
+매크로: regime "risk-on" → <span class="c">표 아님 (감점 없음. risk-off였다면 conviction 감점)</span>
+
+<span class="s">signal_consensus = 3</span>   (공시·뉴스·기술 3개 전원 매수! 매크로는 표 제외)
+
+<span class="c"># 확인 보너스 (source_trust 비례 + disclosure_ref 있으면 가산)</span>
+source_trust <span class="n">0.88</span> × 0.03 = <span class="s">+0.026</span>       →  기본 확신 힌트
+disclosure_ref 있음(0001-24-000123) = <span class="s">+0.02</span>  →  공식 공시로 확인된 뉴스 (드문 케이스)</pre>
+  </div>
+</section>
+
+<!-- ───────── 요청 스펙 (인터페이스 계약) ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s06">Request Spec · 인터페이스 계약</div>
+    <h2>내가 요청하는 것 — 필요한 필드만 (다이어트 JSON)</h2>
+    <p class="sec-desc">
+      위 예시는 "전체 메뉴"고, <b>이건 내가 실제로 주문하는 것만</b> 추린 최소 스펙이야.
+      우리 구조는 <b>Pull 방식</b> — 각 팀이 DB에 저장해두면, 나는 <code>SELECT</code>로 아래 필드만 읽어옴.
+      각 팀은 이 표를 보고 "이 필드만 채워주면 된다"는 걸 알 수 있어. (= 인터페이스 계약)
+    </p>
+
+    <div class="card" style="border-color: rgba(96,165,250,.4); margin-bottom:18px;">
+      <h3 style="color:var(--blue)">💡 Pull 방식이란?</h3>
+      <p>택배(Push)처럼 상대가 나한테 <b>보내주는</b> 게 아니라, 내가 우편함(DB)에서 <b>필요한 것만 꺼내오는</b> 방식. 그래서 각 팀은 "저장"만, 필요한 필드 선택은 "내가" 함. ❌ 표시 필드는 저장해도 내가 안 읽으니 안 만들어도 돼.</p>
+    </div>
+
+    <div class="grid c2">
+      <div>
+        <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">① 공시 — 요청 필드</h3>
+<pre>{
+  <span class="k">"ticker"</span>: <span class="s">"NVDA"</span>,          <span class="c">// 공통</span>
+  <span class="k">"as_of"</span>: <span class="s">"2026-07-02"</span>,     <span class="c">// 공통</span>
+  <span class="k">"hard_block"</span>: <span class="n">0</span>,           <span class="c">// ✅ 즉시보류 여부</span>
+  <span class="k">"sentiment_score"</span>: <span class="n">0.9</span>,   <span class="c">// ✅ 호재/악재</span>
+  <span class="k">"importance"</span>: <span class="n">0.8</span>,        <span class="c">// ✅ 사건 크기</span>
+  <span class="k">"event_type"</span>: <span class="s">"ma"</span>,        <span class="c">// 📄 GPT 참고</span>
+  <span class="k">"reason"</span>: <span class="s">"대형 인수 발표"</span>   <span class="c">// 📄 GPT 참고</span>
+}</pre>
+      </div>
+      <div>
+        <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">② 뉴스 — 요청 필드</h3>
+<pre>{
+  <span class="k">"ticker"</span>: <span class="s">"NVDA"</span>,               <span class="c">// 공통</span>
+  <span class="k">"trade_date"</span>: <span class="s">"2026-07-02"</span>,     <span class="c">// 공통 (뉴스는 trade_date · 공시는 as_of)</span>
+  <span class="k">"hard_block"</span>: <span class="n">0</span>,                <span class="c">// ✅ 즉시보류</span>
+  <span class="k">"sentiment_score"</span>: <span class="n">0.84</span>,       <span class="c">// ✅ 호재/악재</span>
+  <span class="k">"grade_score"</span>: <span class="n">0.95</span>,           <span class="c">// ✅ 출처 등급</span>
+  <span class="k">"source_trust"</span>: <span class="n">0.88</span>,          <span class="c">// ✅ 출처 신뢰도 (confirmed_score 대체)</span>
+  <span class="k">"news_count"</span>: <span class="n">3</span>,               <span class="c">// 📄 기사 건수</span>
+  <span class="k">"top_evidence"</span>: [<span class="s">"reuters: ..."</span>], <span class="c">// 📄 GPT 참고</span>
+  <span class="k">"disclosure_ref"</span>: <span class="s">"0001-24-000123"</span>, <span class="c">// 📄 연결 공시번호(있으면·드묾)</span>
+  <span class="k">"reason"</span>: <span class="s">"실적 서프라이즈"</span>       <span class="c">// 📄 GPT 참고</span>
+}</pre>
+      </div>
+      <div>
+        <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">③ 기술 — 요청 필드</h3>
+<pre>{
+  <span class="k">"ticker"</span>: <span class="s">"NVDA"</span>,        <span class="c">// 공통</span>
+  <span class="k">"as_of"</span>: <span class="s">"2026-07-02"</span>,   <span class="c">// 공통</span>
+  <span class="k">"trend"</span>: <span class="s">"상승"</span>,          <span class="c">// ✅ 오름세 여부</span>
+  <span class="k">"ml_prob_up"</span>: <span class="n">0.73</span>,     <span class="c">// ✅ AI 상승확률</span>
+  <span class="k">"rsi"</span>: <span class="n">34.0</span>,            <span class="c">// 📄 GPT 참고</span>
+  <span class="k">"macd"</span>: <span class="s">"골든크로스"</span>     <span class="c">// 📄 GPT 참고</span>
+}</pre>
+      </div>
+      <div>
+        <h3 style="font-size:16px; font-weight:800; margin-bottom:8px;">④ 매크로 — 요청 필드 <span style="font-weight:500; color:var(--text-dim); font-size:13px;">(ticker 없음)</span></h3>
+<pre>{
+  <span class="k">"as_of"</span>: <span class="s">"2026-07-02"</span>,   <span class="c">// 공통 (시장 전체라 ticker 없음)</span>
+  <span class="k">"regime"</span>: <span class="s">"risk-on"</span>,    <span class="c">// ✅ 시장 날씨</span>
+  <span class="k">"risk_score"</span>: <span class="n">3</span>,        <span class="c">// ✅ 위험도</span>
+  <span class="k">"reason"</span>: <span class="s">"나스닥 상승, VIX 16 안정"</span> <span class="c">// 📄 GPT 참고</span>
+}</pre>
+      </div>
+    </div>
+
+    <div style="height:18px"></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>신호</th><th>✅ 필수 (판단에 씀)</th><th>📄 선택 (GPT 참고)</th><th>❌ 안 받음</th></tr></thead>
+        <tbody>
+          <tr><td><b>공시</b></td><td>hard_block · sentiment_score · importance</td><td class="dim">event_type · reason · summary · risk_score</td><td class="dim">filing_title/no/at · confidence · keywords · sentiment 라벨</td></tr>
+          <tr><td><b>뉴스</b></td><td>hard_block · sentiment_score · grade_score · source_trust</td><td class="dim">top_evidence · reason · summary · disclosure_ref · news_count</td><td class="dim">news_title · source · published_at · ref · keywords · importance · peak_importance · confidence · sentiment 라벨</td></tr>
+          <tr><td><b>기술</b></td><td>trend · ml_prob_up</td><td class="dim">rsi · macd</td><td class="dim">—</td></tr>
+          <tr><td><b>매크로</b></td><td>regime · risk_score</td><td class="dim">reason</td><td class="dim">—</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pipe-note" style="margin-top:12px;">📌 공통 필드 <code>ticker</code> + 날짜 키(<b>공시 <code>as_of</code> · 뉴스 <code>trade_date</code></b> · 스냅샷 <code>collected_at</code>)는 "어느 종목·언제"라 모든 신호에 필수 (매크로만 ticker 제외 — 시장 전체라서).</p>
+  </div>
+</section>
+
+<!-- ───────── ERD ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s07">ERD · 내가 다루는 테이블</div>
+    <h2>내 쪽 ERD — 읽는 테이블 &amp; 쓰는 테이블</h2>
+    <p class="sec-desc">
+      <b>ERD</b> = Entity Relationship Diagram(개체 관계도) — 어떤 테이블이 있고 각 테이블에 무슨 컬럼이 들어가는지, 서로 어떻게 연결되는지 보여주는 그림.
+      내 쪽은 <b>입력 5개 테이블에서 읽어(SELECT) → 판단 → 내 결과 1개 테이블에 씀(INSERT)</b>.
+    </p>
+
+    <div class="erd-flow">
+      <div class="erd-flow-box">입력 5개 테이블<small>각 팀이 저장 · 내가 읽기(SELECT)</small></div>
+      <div class="erd-arrow">▶</div>
+      <div class="erd-flow-box mine">⑤ Strategist (나)<small>판단</small></div>
+      <div class="erd-arrow">▶</div>
+      <div class="erd-flow-box">tb_strategist_signals<small>내 결과 쓰기(INSERT)</small></div>
+    </div>
+
+    <div class="erd-legend">
+      <span><b class="key" style="color:var(--gold)">🔑</b> PK = Primary Key(기본키, 행 구분)</span>
+      <span><b style="color:var(--blue)">🔗</b> FK = Foreign Key(외래키, 다른 테이블 참조)</span>
+      <span><b style="color:var(--accent)">✅</b> 내가 판단에 씀</span>
+      <span><b style="color:var(--blue)">📄</b> GPT 참고</span>
+    </div>
+
+    <div class="erd-grid">
+      <!-- 50종목 데일리픽 (허브) -->
+      <div class="erd-tbl">
+        <div class="th"><span class="tname">tb_daily_pick ⭐허브</span><span class="owner">오늘의 50종목 · 스크리너팀(김지현) 소유 (내가 읽기)</span></div>
+        <ul>
+          <li><span class="cn"><span class="key">🔑🔗</span> trade_date</span><span class="ct">DATE</span></li>
+          <li><span class="cn"><span class="key">🔑</span> ticker ✅</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">bucket</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">rank 📄</span><span class="ct">INT</span></li>
+          <li><span class="cn">sector 📄</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">score 📄</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn" style="color:var(--text-dim)">※ 여기 50개 ticker가 내 판단 대상. 공시·뉴스·기술이 모두 이 (trade_date,ticker)로 연결</span><span class="ct"></span></li>
+        </ul>
+      </div>
+
+      <!-- 공시 -->
+      <div class="erd-tbl">
+        <div class="th"><span class="tname">tb_disclosure</span><span class="owner">공시 · 정보분석팀 소유 (내가 읽기) · 18필드</span></div>
+        <ul>
+          <li><span class="cn"><span class="key">🔑</span> ticker</span><span class="ct">TEXT</span></li>
+          <li><span class="cn"><span class="key">🔑</span> created_at <span style="color:var(--gold)">🟡</span></span><span class="ct">TIMESTAMP</span></li>
+          <li><span class="cn"><span class="key">🔗</span> as_of</span><span class="ct">DATE</span></li>
+          <li><span class="cn">has_signal</span><span class="ct">INT</span></li>
+          <li><span class="cn">hard_block ✅</span><span class="ct">INT</span></li>
+          <li><span class="cn">sentiment_score ✅</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">importance ✅</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">event_type 📄</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">reason 📄</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">summary 📄</span><span class="ct">TEXT</span></li>
+        </ul>
+      </div>
+
+      <!-- 뉴스 -->
+      <div class="erd-tbl">
+        <div class="th"><span class="tname">tb_news</span><span class="owner">뉴스 · 정보분석팀 소유 (내가 읽기) · 25필드</span></div>
+        <ul>
+          <li><span class="cn"><span class="key">🔑</span> ticker</span><span class="ct">TEXT</span></li>
+          <li><span class="cn"><span class="key">🔑</span> collected_at</span><span class="ct">TIMESTAMP</span></li>
+          <li><span class="cn"><span class="key">🔗</span> trade_date</span><span class="ct">DATE</span></li>
+          <li><span class="cn">has_signal</span><span class="ct">INT</span></li>
+          <li><span class="cn">hard_block ✅</span><span class="ct">INT</span></li>
+          <li><span class="cn">sentiment_score ✅</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">grade_score ✅</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">source_trust ✅</span><span class="ct">NUMERIC</span></li>
+          <li style="background:rgba(74,222,128,.12)"><span class="cn">disclosure_ref 📄 🆕</span><span class="ct">TEXT·null</span></li>
+          <li style="background:rgba(74,222,128,.12)"><span class="cn">news_count 📄 🆕</span><span class="ct">INT</span></li>
+          <li><span class="cn">top_evidence 📄</span><span class="ct">TEXT[]</span></li>
+          <li><span class="cn">reason 📄</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">summary 📄</span><span class="ct">TEXT</span></li>
+        </ul>
+      </div>
+
+      <!-- 기술 -->
+      <div class="erd-tbl">
+        <div class="th"><span class="tname">tb_technical</span><span class="owner">기술 · 기술팀(김지현) 소유 (내가 읽기)</span></div>
+        <ul>
+          <li><span class="cn"><span class="key">🔑🔗</span> trade_date</span><span class="ct">DATE</span></li>
+          <li><span class="cn"><span class="key">🔑</span> ticker</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">trend ✅</span><span class="ct">VARCHAR</span></li>
+          <li><span class="cn">ml_prob_up ✅</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">rsi 📄</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">macd 📄</span><span class="ct">VARCHAR</span></li>
+        </ul>
+      </div>
+
+      <!-- 매크로 -->
+      <div class="erd-tbl">
+        <div class="th"><span class="tname">tb_macro</span><span class="owner">매크로 · 매크로팀(김지현) 소유 (내가 읽기)</span></div>
+        <ul>
+          <li><span class="cn"><span class="key">🔑</span> as_of</span><span class="ct">TIMESTAMP</span></li>
+          <li><span class="cn">regime ✅</span><span class="ct">VARCHAR</span></li>
+          <li><span class="cn">risk_score ✅</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">reason 📄</span><span class="ct">TEXT</span></li>
+          <li><span class="cn" style="color:var(--text-dim)">※ ticker 없음 (시장 전체)</span><span class="ct"></span></li>
+        </ul>
+      </div>
+
+      <!-- 메모리 -->
+      <div class="erd-tbl">
+        <div class="th"><span class="tname">tb_memory_entries</span><span class="owner">과거기록 · Reviewer(⑧) 저장 (내가 읽기)</span></div>
+        <ul>
+          <li><span class="cn"><span class="key">🔑</span> id</span><span class="ct">BIGSERIAL</span></li>
+          <li><span class="cn"><span class="key">🔗</span> ticker</span><span class="ct">VARCHAR</span></li>
+          <li><span class="cn"><span class="key">🔗</span> signal_id → tb_strategist_signals</span><span class="ct">BIGINT</span></li>
+          <li><span class="cn">side</span><span class="ct">VARCHAR</span></li>
+          <li><span class="cn">conviction</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">outcome</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">lesson</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">created_at</span><span class="ct">TIMESTAMPTZ</span></li>
+        </ul>
+      </div>
+
+      <!-- 내 결과 -->
+      <div class="erd-tbl mine">
+        <div class="th"><span class="tname">tb_strategist_signals ⭐</span><span class="owner">내 판단 결과 · 내 소유 (내가 쓰기)</span></div>
+        <ul>
+          <li><span class="cn"><span class="key">🔑</span> id <span style="color:var(--accent)">(autoincrement · =Critic의 signal_id)</span></span><span class="ct">BIGSERIAL</span></li>
+          <li><span class="cn"><span class="key">🔗</span> trade_date → tb_daily_pick · tb_technical</span><span class="ct">DATE</span></li>
+          <li><span class="cn"><span class="key">🔗</span> ticker → tb_daily_pick · tb_technical</span><span class="ct">TEXT</span></li>
+          <li style="border-top:1px dashed var(--gold); margin-top:4px; padding-top:4px;"><span class="cn" style="color:var(--gold)">🔗 append 표 FK (읽은 시각 복사 · 없으면 null)</span><span class="ct"></span></li>
+          <li><span class="cn">src_disclosure_at → tb_disclosure</span><span class="ct">TIMESTAMP·null</span></li>
+          <li><span class="cn">src_news_at → tb_news</span><span class="ct">TIMESTAMP·null</span></li>
+          <li><span class="cn">src_macro_at → tb_macro</span><span class="ct">TIMESTAMP·null</span></li>
+          <li style="border-top:1px dashed rgba(37,99,235,.25); margin-top:4px; padding-top:4px;"><span class="cn">inv_type</span><span class="ct">VARCHAR</span></li>
+          <li><span class="cn">side</span><span class="ct">VARCHAR</span></li>
+          <li><span class="cn">conviction</span><span class="ct">NUMERIC(4,3)</span></li>
+          <li><span class="cn">signal_consensus</span><span class="ct">SMALLINT</span></li>
+          <li><span class="cn">summary</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">bull_case</span><span class="ct">TEXT</span></li>
+          <li><span class="cn">key_risk <span style="color:var(--text-dim)">(보류=null)</span></span><span class="ct">TEXT·null</span></li>
+          <li><span class="cn">risk_rebuttal <span style="color:var(--text-dim)">(보류=null)</span></span><span class="ct">TEXT·null</span></li>
+          <li><span class="cn">counter_scenarios <span style="color:var(--text-dim)">(보류=null)</span></span><span class="ct">JSONB·null</span></li>
+          <li><span class="cn">evidence</span><span class="ct">JSONB</span></li>
+          <li><span class="cn">sizing_hint</span><span class="ct">JSONB</span></li>
+          <li><span class="cn">persona_notes</span><span class="ct">TEXT · null</span></li>
+          <li style="border-top:1px dashed var(--blue); margin-top:4px; padding-top:4px;"><span class="cn" style="color:var(--blue)">⚡ 실시간 스냅샷 (알파카)</span><span class="ct"></span></li>
+          <li><span class="cn">current_price</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">day_high / day_low</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">volume</span><span class="ct">BIGINT</span></li>
+          <li><span class="cn">turnover</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">high_52w / low_52w</span><span class="ct">NUMERIC</span></li>
+          <li><span class="cn">created_at</span><span class="ct">TIMESTAMPTZ</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="height:18px"></div>
+    <h3 class="sub-h">테이블 간 관계 (Relationships)</h3>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>관계</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><b>입력 4개 → 나</b></td><td>읽기(SELECT). <code>ticker</code>별 <b>최신 행</b>을 각 표에서 집음(공시=최신 created_at · 뉴스=최신 collected_at · 기술=trade_date · 매크로=as_of). <b>그때 읽은 행의 PK(시각)를 내 결과행 <code>src_*_at</code>에 저장</b> → "내가 어디까지 봤는지" 기록·재현.</td></tr>
+          <tr><td><b>나 → tb_strategist_signals</b></td><td>쓰기(INSERT). 내 판단 결과 1행 저장 + <code>(trade_date,ticker)</code>로 데일리픽·기술, <code>src_disclosure_at·src_news_at·src_macro_at</code>로 공시·뉴스·매크로와 <b>선언된 FK 연결</b> (원본 신호는 각 팀이 이미 저장, 나는 결과 + 참조만).</td></tr>
+          <tr><td><b>나 → Critic</b> (tb_critic_verdict)</td><td>Critic이 내 <code>id</code>를 <code>signal_id</code> FK로 참조 → 1:1 연결. <b>cycle_id 안 씀</b> — 내 <code>id</code>(PK) 하나면 이 판단과 그 입력 스냅샷(src_*_at)까지 다 추적됨.</td></tr>
+          <tr><td><b>tb_memory_entries → 나</b></td><td>읽기. 같은 <code>ticker</code>의 <b>최근 5개</b> 과거 기록을 GPT 프롬프트에 넣음 (memory는 <code>signal_id</code>로 내 행 참조).</td></tr>
+          <tr><td><b>공통 키 <code>ticker</code></b></td><td>종목 식별 (<code>tb_macro</code>만 없음 — 매크로는 시장 전체라서)</td></tr>
+          <tr><td><b>⚡ 실시간 스냅샷 (알파카)</b></td><td>DB 테이블이 아니라 <b>판단 순간</b> Alpaca API로 50개를 <b>배치 조회</b> → 현재가·당일고저·거래량·52주고저를 내 결과 행에 저장. 시세는 금방 낡아서 시계열로 안 쌓음</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pipe-note" style="margin-top:12px;">📌 입력 테이블에는 다른 컬럼도 더 있지만, <b>여기엔 내가 실제로 SELECT하는 컬럼만</b> 그렸어 (Pull 방식 = 필요한 것만 읽음). ❌ 필드는 위 "요청 스펙" 섹션 참고. 컬럼 타입은 PostgreSQL 기준 제안값이라 팀 합의로 조정 가능.</p>
+
+    <div style="height:16px"></div>
+    <h3 class="sub-h">🔑 키(PK/FK) 한눈 정리 — "어디까지 봤는지 저장 + 테이블 연결" (cycle_id 안 씀)</h3>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>구분</th><th>키</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td><b>① 내 결과표 PK</b><br>(tb_strategist_signals)</td><td><code>id</code> <b>BIGSERIAL</b> (autoincrement)</td><td>행마다 DB가 자동 1씩 증가시키는 고유번호. <b>그냥 autoincrement로 만들면 됨.</b> 이게 곧 <b>Critic이 참조하는 <code>signal_id</code></b>.</td></tr>
+          <tr><td><b>② 데일리픽·기술 연결</b><br>(하루 1행 표)</td><td><code>trade_date</code> + <code>ticker</code></td><td>둘을 짝지어 <b>tb_daily_pick(50종목)·tb_technical</b>의 PK<code>(trade_date,ticker)</code>를 가리키는 <b>선언된 FK</b>. 이 두 표는 하루 1행이라 시각(시간)까지는 필요 없음.</td></tr>
+          <tr><td><b>③ 공시·뉴스·매크로 연결</b><br>(하루 여러 행 append)</td><td><code>src_disclosure_at</code> · <code>src_news_at</code> · <code>src_macro_at</code> (+ <code>ticker</code>)</td><td>이 표들은 <b>하루에 여러 번 쌓여서</b>, 내가 읽은 행의 <b>시각까지 복사 저장</b>해야 정확한 1행을 가리킴. <code>(ticker + 그 시각)</code> = 그 표 PK → <b>선언된 복합 FK</b>. <b>그 신호 없으면 null.</b></td></tr>
+          <tr><td><b>④ Critic으로 넘길 때</b></td><td><code>signal_id</code> (= 내 <code>id</code>)</td><td>Critic(tb_critic_verdict)은 <code>signal_id</code> FK 하나로 내 행을 가리킴 → 1:1. 내 행에 ②③이 있으니 <b>signal_id 하나로 원본까지 추적</b>. <b>cycle_id 불필요.</b></td></tr>
+          <tr><td><b>⑤ 메모리 → 나</b></td><td><code>signal_id</code></td><td>Reviewer가 회고를 남길 때 내 <code>id</code>를 <code>signal_id</code>로 참조.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sec-desc" style="margin:10px 0 6px;"><b>↓ 실제 선언되는 FK (그 테이블이 어딘지 DB가 알게 하는 부분)</b></p>
+<pre><span class="k">CREATE TABLE</span> tb_strategist_signals (
+  id            <span class="k">BIGSERIAL</span> <span class="k">PRIMARY KEY</span>,        <span class="c">-- ① autoincrement = signal_id</span>
+  trade_date    <span class="k">DATE</span>,
+  ticker        <span class="k">TEXT</span>,
+  src_disclosure_at <span class="k">TIMESTAMP</span>,                 <span class="c">-- 없으면 NULL</span>
+  src_news_at       <span class="k">TIMESTAMP</span>,                 <span class="c">-- 없으면 NULL</span>
+  src_macro_at      <span class="k">TIMESTAMP</span>,                 <span class="c">-- 없으면 NULL</span>
+  <span class="c">-- ... 판단 결과 컬럼들 ...</span>
+
+  <span class="c">-- ② 하루 1행 표: (trade_date, ticker)로 연결</span>
+  <span class="k">FOREIGN KEY</span> (trade_date, ticker) <span class="k">REFERENCES</span> tb_daily_pick(trade_date, ticker),
+  <span class="k">FOREIGN KEY</span> (trade_date, ticker) <span class="k">REFERENCES</span> tb_technical(trade_date, ticker),
+  <span class="c">-- ③ 하루 여러 행 표: (ticker, 읽은 시각)으로 정확한 1행 연결</span>
+  <span class="k">FOREIGN KEY</span> (ticker, src_disclosure_at) <span class="k">REFERENCES</span> tb_disclosure(ticker, created_at),
+  <span class="k">FOREIGN KEY</span> (ticker, src_news_at)       <span class="k">REFERENCES</span> tb_news(ticker, collected_at),
+  <span class="k">FOREIGN KEY</span> (src_macro_at)              <span class="k">REFERENCES</span> tb_macro(as_of)
+);</pre>
+    <div class="why"><b>정리 (질문 답):</b> ① 그 값(<code>src_*_at</code>)은 <b>내가 공시·뉴스에서 읽은 행의 시각을 그대로 복사</b>한 거야(맞아). ② 그리고 위 <b><code>FOREIGN KEY … REFERENCES</code></b>로 <b>어느 테이블인지 DB에 선언</b>해서 진짜로 연결돼 — 그냥 떠도는 값이 아님. ③ 신호가 없으면 그 <code>src_*_at</code>은 <b>NULL</b>(예: 그 종목 오늘 뉴스 없음 → <code>src_news_at</code>=null). ④ <b>cycle_id는 안 써</b> — 실제 PK로 연결하니까. <span class="dim">한 칸짜리 더 깔끔한 FK를 원하면 입력표에 surrogate <code>id</code>를 달면 되는데(정창욱·김지현 합의 필요) — 지금 스키마(복합 PK) 그대로면 위처럼 복합 FK가 정석.</span></div>
+
+    <div style="height:22px"></div>
+    <h3 class="sub-h">📖 내가 읽는 입력 필드 — 뜻 · 스케일 · 예시 (NVDA 기준)</h3>
+
+    <p style="font-weight:700; margin:10px 0 6px;">① 공시 (tb_disclosure · 18필드 중 내가 읽는 것)</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>필드</th><th>뜻</th><th>스케일</th><th>NVDA 예시</th></tr></thead>
+        <tbody>
+          <tr><td><code>sentiment_score</code></td><td>호재/악재 강도</td><td>0~1 (0=악재·0.5중립·1=호재)</td><td>0.85</td></tr>
+          <tr><td><code>importance</code></td><td>이 공시가 얼마나 큰일인가</td><td>0~1</td><td>0.70</td></tr>
+          <tr><td><code>risk_score</code></td><td>하방 위험도</td><td>0~1</td><td>0.30</td></tr>
+          <tr><td><code>hard_block</code></td><td>위험해서 즉시 매수차단?</td><td>0/1</td><td>0</td></tr>
+          <tr><td><code>event_type</code></td><td>사건 종류(온톨로지)</td><td>문자</td><td>"earnings"(실적)</td></tr>
+          <tr><td><code>reason</code></td><td>점수 근거 한 줄</td><td>문자</td><td>"분기 실적 서프라이즈"</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="font-weight:700; margin:16px 0 6px;">② 뉴스 (tb_news · 25필드 중 내가 읽는 것) <span style="font-size:12px; color:var(--accent);">— 🆕 = 2026-07-08 이후 새로 받는 필드</span></p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>필드</th><th>뜻</th><th>스케일</th><th>NVDA 예시</th><th>상태</th></tr></thead>
+        <tbody>
+          <tr><td><code>sentiment_score</code></td><td>호재/악재 강도(집계)</td><td>0~1</td><td>0.80</td><td>유지</td></tr>
+          <tr><td><code>grade_score</code></td><td>출처 등급(로이터=1.0·GRAY=0.6·차단=0)</td><td>0~1</td><td>0.90</td><td>유지</td></tr>
+          <tr><td><code>source_trust</code></td><td>LLM이 내용 보고 매긴 신뢰</td><td>0~1</td><td>0.85</td><td>유지</td></tr>
+          <tr style="background:rgba(74,222,128,.12)"><td><code>importance</code> 🆕</td><td>뉴스 전체 강도(신뢰가중 평균)</td><td>0~1</td><td>0.72</td><td><b>🆕 추가</b></td></tr>
+          <tr style="background:rgba(74,222,128,.12)"><td><code>peak_importance</code> 🆕</td><td>믿을 만한 기사 중 <b>최고 강도</b>(숨은 강한 뉴스 포착)</td><td>0~1</td><td>0.88</td><td><b>🆕 추가</b></td></tr>
+          <tr style="background:rgba(74,222,128,.12)"><td><code>confidence</code> 🆕</td><td>분석 신뢰도(루머 많으면 ↓) · 참고용 (관문 대체는 source_trust)</td><td>0~1</td><td>0.70</td><td><b>🆕 추가</b></td></tr>
+          <tr style="background:rgba(74,222,128,.12)"><td><code>news_count</code> 🆕</td><td>분석한 뉴스 건수(표본 크기)</td><td>정수</td><td>12</td><td><b>🆕 추가</b></td></tr>
+          <tr style="background:rgba(74,222,128,.12)"><td><code>disclosure_ref</code> 🆕</td><td>연결된 공식 공시번호(뉴스↔공시) — 있으면 확인 보너스, <b>대개 null</b>(정창욱 신설)</td><td>문자·null</td><td>"0001-24-000123"</td><td><b>🆕 추가</b></td></tr>
+          <tr><td><code>top_evidence</code></td><td>근거가 된 기사 헤드라인(상위 3, 부족분 null)</td><td>리스트</td><td>["로이터: 데이터센터 매출 급증"]</td><td>유지</td></tr>
+          <tr><td><code>hard_block</code></td><td>위험 즉시 매수차단?</td><td>0/1</td><td>0</td><td>유지</td></tr>
+          <tr><td><code>event_type</code> · <code>reason</code></td><td>대표 기사의 사건 종류 · 근거</td><td>문자</td><td>"earnings" · "실적 상향"</td><td>유지</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pipe-note" style="margin-top:10px;">🗑️ <b>제거됨:</b> <code>confirmed_score</code>(정보분석팀이 2026-07-08 폐지) · <code>cross_source_confirmed</code>(문서에 신설 안 됨). → 뉴스 신뢰 판단은 <b>관문 = source_trust·grade_score</b>, <b>확인 보너스 = source_trust 비례 + disclosure_ref 있으면 가산</b>으로 재설계(문서 v3.2 확정). <span style="color:var(--red)">⚠️ 내 <code>vote_news</code>·확인 보너스 <b>코드</b>는 아직 옛 필드에 의존 → 코드 재설계 필요(P0).</span></p>
+
+    <div style="height:22px"></div>
+    <h3 class="sub-h">⭐ tb_strategist_signals — 컬럼별 내용 (내 결과 테이블)</h3>
+    <p class="sec-desc" style="margin-bottom:12px;">이 테이블 한 행 = <b>종목 하나에 대한 내 최종 판단 결과</b>. 각 컬럼에 뭐가 들어가는지 정리했어.</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>컬럼</th><th>타입</th><th>들어가는 내용</th><th>예시</th></tr></thead>
+        <tbody>
+          <tr><td><code>id</code> 🔑</td><td class="dim">BIGSERIAL</td><td>행 고유번호 (autoincrement, 자동 1씩 증가) = <b>Critic의 signal_id</b></td><td class="dim">4021</td></tr>
+          <tr><td><code>trade_date</code> 🔗</td><td class="dim">DATE</td><td>판단 기준일. <code>(trade_date + ticker)</code> → <b>tb_daily_pick(50종목)·tb_technical FK</b> (이 두 표는 하루 1행이라 이 키면 딱 1행)</td><td class="dim">2026-07-02</td></tr>
+          <tr><td><code>ticker</code> 🔗</td><td class="dim">VARCHAR</td><td>종목 코드 (위 <code>trade_date</code>와 짝지어 FK)</td><td class="dim">"NVDA"</td></tr>
+          <tr><td colspan="4" style="background:rgba(234,179,8,.10); font-weight:700; color:var(--gold)">🔗 append 표(공시·뉴스·매크로) FK — <b>하루에 여러 번 쌓여서</b> "읽은 시각"까지 있어야 정확한 1행을 가리킴. 내가 <b>읽은 행의 시각을 그대로 복사</b>, <b>그 신호 없으면 null</b>. (내 PK 아님 · cycle_id 대신)</td></tr>
+          <tr><td><code>src_disclosure_at</code> 🔗</td><td class="dim">TIMESTAMP · null</td><td>내가 읽은 공시 행의 <code>created_at</code>을 복사 → <code>(ticker + 이 값)</code> = <b>tb_disclosure FK</b>. 공시 없으면 null</td><td class="dim">2026-07-02 10:05</td></tr>
+          <tr><td><code>src_news_at</code> 🔗</td><td class="dim">TIMESTAMP · null</td><td>내가 읽은 뉴스 행의 <code>collected_at</code>을 복사 → <code>(ticker + 이 값)</code> = <b>tb_news FK</b>. 뉴스 없으면 null</td><td class="dim">2026-07-02 10:03</td></tr>
+          <tr><td><code>src_macro_at</code> 🔗</td><td class="dim">TIMESTAMP · null</td><td>내가 읽은 매크로 행의 <code>as_of</code>를 복사 → <code>(이 값)</code> = <b>tb_macro FK</b> (매크로는 ticker 없음). 없으면 null</td><td class="dim">2026-07-02 09:00</td></tr>
+          <tr><td><code>inv_type</code></td><td class="dim">VARCHAR</td><td>투자유형 (현재 공격형 단일)</td><td class="dim">"공격형"</td></tr>
+          <tr><td><code>side</code></td><td class="dim">VARCHAR</td><td>최종 결정 (1차: 매도→보류 흡수)</td><td class="dim">"매수"/"보류"</td></tr>
+          <tr><td><code>conviction</code></td><td class="dim">NUMERIC(4,3)</td><td>확신 점수 (0~1, 소수 3자리)</td><td class="dim">0.85</td></tr>
+          <tr><td><code>signal_consensus</code></td><td class="dim">SMALLINT</td><td>매수 방향 신호 개수 (0~3 · 매크로 제외)</td><td class="dim">3</td></tr>
+          <tr><td><code>summary</code></td><td class="dim">TEXT</td><td>한 줄 요약</td><td class="dim">"3개 신호 전원 매수 방향"</td></tr>
+          <tr><td><code>bull_case</code></td><td class="dim">TEXT</td><td>매수 근거 상세</td><td class="dim">"①인수 ②실적 ③반등 ④risk-on"</td></tr>
+          <tr><td><code>key_risk</code></td><td class="dim">TEXT·null</td><td>내가 인정한 핵심 위험. <b>매수면 항상 채움</b>(안전해 보여도 1개는 적음—Critic 통과 조건), <b>보류면 null</b></td><td class="dim">"인수 프리미엄 과다"</td></tr>
+          <tr><td><code>risk_rebuttal</code></td><td class="dim">TEXT·null</td><td>그 위험에 대한 반박/방어. key_risk와 세트 (매수=채움 / 보류=null)</td><td class="dim">"출처신뢰↑+hard_block 없음"</td></tr>
+          <tr><td><code>counter_scenarios</code></td><td class="dim">JSONB·null</td><td>틀렸을 때 대응책 (목록/배열). 매수=채움 / 보류=null</td><td class="dim">["무산 시 -5% 손절"]</td></tr>
+          <tr><td><code>evidence</code></td><td class="dim">JSONB</td><td>숫자 증거 (묶음/객체)</td><td class="dim">{"source_trust":0.88,"disclosure_ref":null}</td></tr>
+          <tr><td><code>sizing_hint</code></td><td class="dim">JSONB</td><td>PM에게 주는 크기 제안 (묶음)</td><td class="dim">{"suggested_weight":0.03}</td></tr>
+          <tr><td><code>persona_notes</code></td><td class="dim">TEXT · null</td><td>투자 레전드 관점 (MVP2, 지금은 비어있음)</td><td class="dim">null</td></tr>
+          <tr><td colspan="4" style="background:rgba(37,99,235,.08); font-weight:700; color:var(--blue)">⚡ 실시간 스냅샷 — 판단 순간 알파카(Alpaca) API로 50개 배치 조회한 그 순간 값. 시세는 몇 초만 지나도 낡아서 별도 시계열 테이블 대신 이 행에 박아둠</td></tr>
+          <tr><td><code>current_price</code></td><td class="dim">NUMERIC</td><td>판단 순간 현재가</td><td class="dim">125.30</td></tr>
+          <tr><td><code>day_high / day_low</code></td><td class="dim">NUMERIC</td><td>당일 고가 / 저가</td><td class="dim">126.1 / 121.4</td></tr>
+          <tr><td><code>volume</code></td><td class="dim">BIGINT</td><td>당일 거래량</td><td class="dim">3,820,000</td></tr>
+          <tr><td><code>turnover</code></td><td class="dim">NUMERIC</td><td>당일 거래대금</td><td class="dim">480,000,000</td></tr>
+          <tr><td><code>high_52w / low_52w</code></td><td class="dim">NUMERIC</td><td>52주 최고 / 최저 — <b>현재가가 1년 범위 어디쯤인지</b> 판단용</td><td class="dim">140 / 88</td></tr>
+          <tr><td><code>created_at</code></td><td class="dim">TIMESTAMPTZ</td><td>저장된 시각 (타임존 포함)</td><td class="dim">2026-07-03 08:30</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why" style="border-left-color: var(--gold); background: var(--gold-soft);"><b>❓ "위험하지 않으면 이 값들 null이야?"</b> — <code>key_risk</code>·<code>risk_rebuttal</code>·<code>counter_scenarios</code>는 "종목이 위험하냐"가 아니라 <b>"내가 매수하며 인정한 위험"</b>이야. <b>매수(BUY)면 아무리 안전해 보여도 항상 채움</b> — 위험 1개는 반드시 적어야 Critic을 통과하거든(진짜 잔잔하면 "시장 급변 가능성" 같은 걸 적음). <b>보류(HOLD)면 null</b> — Critic에 안 가니까 설득 필드를 안 채워도 돼. 함께 설득용인 <code>bull_case</code>·<code>evidence</code>·<code>sizing_hint</code>도 <b>보류일 땐 대부분 null</b>(보류는 회고용으로 가볍게만 저장). 즉 <b>null 여부는 "위험도"가 아니라 "매수냐 보류냐"로 갈려.</b></div>
+    <div class="why" style="border-left-color: var(--blue); background: var(--blue-soft);"><b>❓ 스냅샷에 왜 52주(1년) 최고·최저를 넣나?</b> 신호(공시·뉴스)는 "호재냐"를 알려주지만 <b>지금 가격이 싼지 비싼지</b>는 안 알려줘. 52주 고저는 <b>현재가의 위치</b>를 준다: 현재가가 52주 <b>최고 근처</b>면 "이미 많이 올라 과열·고점 추격" 위험을, 52주 <b>최저 근처</b>면 "바닥권 반등 기회 or 떨어지는 칼날" 가능성을 GPT가 함께 보고 판단해. 즉 <b>같은 호재라도 진입 위치</b>에 따라 conviction을 다르게 주려는 <b>맥락 정보</b>야. (하한: 당일 고저(day_high/low)는 "오늘 흐름", 52주 고저는 "1년 큰 그림" — 둘 다 있어야 단기·장기 위치를 같이 봄.) <b>일봉 시계열을 따로 안 쌓는 이유</b>는 판단 순간의 위치만 필요하고 시세는 금방 낡아서, 그 순간 값만 결과 행에 박아두는 게 효율적이라서.</div>
+
+    <div style="height:14px"></div>
+    <h3 class="sub-h">📖 데이터 타입 왕초보 사전</h3>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>타입</th><th>뜻 (쉽게)</th></tr></thead>
+        <tbody>
+          <tr><td><code>BIGSERIAL</code></td><td>자동으로 1씩 늘어나는 큰 정수 — 행에 자동으로 번호를 매겨줌</td></tr>
+          <tr><td><code>BIGINT</code></td><td>큰 정수 (아주 큰 숫자까지 저장)</td></tr>
+          <tr><td><code>VARCHAR</code></td><td>짧은 글자 (가변 길이 문자열) — 이름·코드 같은 것</td></tr>
+          <tr><td><code>NUMERIC(4,3)</code></td><td>소수 숫자 — 소수점 3자리까지 (예: 0.850). 정확한 수치용</td></tr>
+          <tr><td><code>SMALLINT</code></td><td>작은 정수 (0~4처럼 범위 작은 숫자)</td></tr>
+          <tr><td><code>TEXT</code></td><td>긴 글 (문장·설명 통째로)</td></tr>
+          <tr><td><code>JSONB</code></td><td>JSON을 통째로 저장 — 목록/묶음처럼 <b>구조가 있는 데이터</b>를 한 칸에</td></tr>
+          <tr><td><code>TIMESTAMPTZ</code></td><td>타임존(시간대) 포함 날짜+시각 — "언제 저장됐나"</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>왜 JSONB를 쓰나?</b> <code>counter_scenarios</code>(목록), <code>evidence</code>·<code>sizing_hint</code>(여러 값 묶음)처럼 <b>한 칸에 여러 개/구조</b>가 들어가는 건 문자열로 쪼개지 말고 JSON 덩어리째 저장하는 게 깔끔하고, 나중에 꺼내 쓰기도 편해서.</div>
+  </div>
+</section>
+
+<!-- ───────── POLICY ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s08">Policy</div>
+    <h2>판단 문턱값 — 공격형 (단일)</h2>
+    <p class="sec-desc">MVP는 <b>공격형 하나</b>로 간다 (안정형·균형형 제거). 공격형의 철학은 <b>"확실해질 때까지 기다리지 말고, 방향이 잡히는 초기에 움직인다"</b>. 아래가 config.py의 POLICY 값이야.</p>
+
+    <div class="grid c2">
+      <div class="policy aggr">
+        <div class="head">🔥 공격형 — 기회면 움직임</div>
+        <ul>
+          <li><span>공시 sentiment / importance</span><b>0.70 / 0.25</b></li>
+          <li><span>뉴스 sentiment / grade / source_trust</span><b>0.70 / 0.55 / 0.55</b></li>
+          <li><span>뉴스 확인 보너스</span><b>source_trust 비례 + disclosure_ref 가산</b></li>
+          <li><span>기술 ml_prob_up</span><b>0.60</b></li>
+          <li><span>필요 합의 수 (3개 중 · 매크로 제외)</span><b>2개 이상</b></li>
+          <li><span>매크로 (risk-off 시)</span><b>conviction 감점 (표 아님)</b></li>
+          <li><span>최소 확신 (min_conviction)</span><b>0.6</b></li>
+        </ul>
+      </div>
+      <div class="card" style="border-color: rgba(37,99,235,.35);">
+        <h3 style="color:var(--blue)">🧭 공격형이란 어떤 성향?</h3>
+        <p>승률을 100%로 만들려고 완벽한 신호를 기다리면, 그땐 이미 주가가 다 오른 뒤야(늦은 진입). 공격형은 <b>"방향이 잡히는 초기"에 자주 시도</b>하고, 대신 틀린 건 <b>손절(-5%)로 빠르게 끊어</b> 손실을 제한해. 즉 <b>승률보다 "기대값"</b>을 노리는 전략.</p>
+      </div>
+    </div>
+
+    <div class="why" style="border-left-color: var(--gold); background: var(--gold-soft);"><b>📈 "기대값(Expected Value)"이란?</b> 승률이 조금 낮아도 = <b>(이길 확률 × 이길 때 수익)</b>이 <b>(질 확률 × 질 때 손실)</b>보다 크면 장기적으로 이득이야. 공격형은 손실을 손절로 <b>-5%에 묶어두고</b>, 이기는 건 크게 먹어서(예: +15%) 기대값을 +로 만드는 걸 노려.<p></p></div>
+
+    <div class="sub-h">🧪 테스트용 공격형 프리셋 3종 (A 신중 / B 표준 / C 초공격)</div>
+    <p class="sec-desc" style="margin-bottom:12px;">공격형 안에서도 <b>얼마나 공격적이냐</b>를 3단계로 나눴어. 백테스트로 A·B·C 각각 돌려보고 <b>기대값이 제일 높은 걸</b> 고르면 돼. (문턱이 낮을수록 = 더 자주 진입 = 더 공격적)</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>파라미터</th><th>A. 신중 공격형</th><th>B. 표준 공격형 ⭐</th><th>C. 초공격형</th></tr></thead>
+        <tbody>
+          <tr><td>공시 sentiment / importance</td><td>0.65 / 0.30</td><td>0.60 / 0.25</td><td>0.55 / 0.20</td></tr>
+          <tr><td>뉴스 sentiment / grade / source_trust</td><td>0.65 / 0.55 / 0.55</td><td>0.60 / 0.50 / 0.45</td><td>0.55 / 0.45 / 0.35</td></tr>
+          <tr><td>뉴스 확인 보너스 (disclosure_ref)</td><td>권장(가중)</td><td>선택</td><td>선택</td></tr>
+          <tr><td>기술 ml_prob_up &gt;</td><td>0.55</td><td>0.50</td><td>0.50</td></tr>
+          <tr><td><b>필요 합의 수</b> (3개 중 · 매크로 제외)</td><td><b>3개</b></td><td><b>2개</b></td><td><b>2개</b></td></tr>
+          <tr><td><b>min_conviction</b></td><td><b>0.6</b></td><td><b>0.5</b></td><td><b>0.4</b></td></tr>
+          <tr><td>매크로 감점</td><td>표준</td><td>표준</td><td>완화 (×0.5)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="grid c3" style="margin-top:14px;">
+      <div class="card">
+        <h3 style="color:var(--blue)">A. 신중 공격형</h3>
+        <p><b>진입:</b> 적음 · <b>승률:</b> 높음 · <b>놓침:</b> 많음<br>공격형이지만 "확실한 것 위주". 잦은 거래가 부담되거나 초기 안정 테스트용.<br><b>기대값:</b> 건당 승률↑, 대신 기회 수↓</p>
+      </div>
+      <div class="card" style="border-color: rgba(22,163,74,.4)">
+        <h3 style="color:var(--accent)">B. 표준 공격형 ⭐</h3>
+        <p><b>진입:</b> 보통 · <b>승률:</b> 중간 · <b>놓침:</b> 보통<br>기회 포착과 리스크의 균형. <b>기본 추천값</b> (앞에서 설명한 그 값).<br><b>기대값:</b> 빈도·승률 균형 → 무난</p>
+      </div>
+      <div class="card" style="border-color: rgba(220,38,38,.4)">
+        <h3 style="color:var(--red)">C. 초공격형</h3>
+        <p><b>진입:</b> 매우 많음 · <b>승률:</b> 낮음 · <b>놓침:</b> 거의 없음<br>신호 조금만 좋아도 진입. 손절(-5%)로 방어하며 <b>빈도로 승부</b>. 리스크 큼.<br><b>기대값:</b> 다수 시도 중 몇 개 크게 → 손절 규율이 생명</p>
+      </div>
+    </div>
+    <div class="why"><b>어떻게 고르나?</b> 이건 "정답"이 아니라 <b>실험 대상</b>이야. 과거 데이터로 A·B·C를 각각 돌려서 <b>누적 수익(기대값)이 최대인 프리셋</b>을 채택하면 돼. config.py에 <code>PRESET = "B"</code>처럼 두고 바꿔가며 테스트하는 걸 추천. 시작은 <b>B(표준)</b>부터.</div>
+
+    <div class="sub-h">왜 이 숫자로 정했나 — 표준(B) 핵심 3개 (수치 이유 + 기대값)</div>
+    <div class="grid" style="gap:12px">
+      <div class="card">
+        <h3>① 필요 합의 수 = <b style="color:var(--accent)">2개</b> (3개 신호 중 · 매크로 제외)</h3>
+        <p><b>왜 2개?</b> 3개(공시·뉴스·기술) 다 맞기를 기다리면 이미 뉴스 다 퍼지고 주가 오른 뒤야. 2개(예: 공시+기술)면 "방향이 잡히기 시작한 초기"라고 봐. (매크로는 표에서 빠지고 감점으로만 반영)<br><b>기대값:</b> 진입 기회가 확 늘어남 → 시도 횟수 ↑. 대신 애매한 것도 섞이니까, 뒤에서 min_conviction과 손절이 걸러줌.</p>
+      </div>
+      <div class="card">
+        <h3>② 최소 확신 min_conviction = <b style="color:var(--accent)">0.6</b> (0~1 중)</h3>
+        <p><b>왜 0.6?</b> 중간(0.5)보다 살짝 위 — "반반보다 확실할 때만" 시도한다는 뜻. 0.8(안정형)으로 잡으면 웬만한 기회를 다 놓쳐서 공격형 취지가 죽어.<br><b>기대값:</b> 중간 확신도 진입 → 기회 포착률 ↑. 틀린 것도 있지만 counter_scenario(손절 -5%)로 손실 제한 → 다수 시도 중 몇 개 크게 먹는 구조.</p>
+      </div>
+      <div class="card">
+        <h3>③ 뉴스 확인 보너스 = <b style="color:var(--accent)">선택</b> (필수 아님)</h3>
+        <p><b>왜 필수 아님?</b> 공식 공시(disclosure_ref)로 확인될 때까지 기다리면 이미 뉴스 확산 후 = 주가 반영됨. 게다가 disclosure_ref는 <b>거의 안 붙어서</b> 관문으로 쓰면 대부분 탈락해버려. 그래서 공격형은 <b>source_trust 0.55 + grade_score 0.55</b>만 넘으면 시도하고, disclosure_ref가 있으면 <b>보너스만</b> 얹어 준다.<br><b>기대값:</b> 빠른 진입으로 초기 상승분 확보. 대신 루머 위험 ↑ → source_trust·grade 최소선 + 매크로 감점으로 최소 방어.</p>
+      </div>
+    </div>
+    <div class="sub-h" style="margin-top:22px;">각 문턱값을 왜 그 숫자로? — 개별 근거</div>
+    <p class="sec-desc" style="margin-bottom:10px;">위 3개(합의·확신·확인)는 전략 축이고, 아래는 <b>신호별 점수 문턱</b>을 왜 그 수치로 잡았는지야. 전부 <b>제안값</b> — 백테스트로 조정.</p>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>문턱</th><th>값(표준 B)</th><th>왜 이 값인가 (근거)</th></tr></thead>
+        <tbody>
+          <tr><td><code>sentiment_score</code> ≥</td><td><b>0.70</b></td><td>0~1에서 0.5=중립. 0.70은 "확실히 호재 쪽"으로 기운 지점 — 0.5~0.65의 애매한 호재는 노이즈가 많아 제외. 너무 높이면(0.85+) 대형 호재만 남아 기회를 놓침 → 공격형은 0.70.</td></tr>
+          <tr><td><code>importance</code> ≥ (공시)</td><td><b>0.25</b></td><td>사건 크기 하한. 0.25 미만은 "경미한 정정·소액 계약"급이라 주가를 못 흔듦 → 무시. 낮게(0.25) 잡아 <b>어지간한 사건은 다 후보</b>로 올리고, 방향(sentiment)으로 거른다.</td></tr>
+          <tr><td><code>grade_score</code> ≥ (뉴스)</td><td><b>0.55</b></td><td>출처 도메인 등급(로이터 1.0·미등록 0.6·차단 0). 0.55는 <b>미등록(0.6) 언저리까지는 허용</b>하되 차단(0)·저급은 배제 — 공격형이라 로이터급만 기다리지 않고 선점.</td></tr>
+          <tr><td><code>source_trust</code> ≥ (뉴스)</td><td><b>0.55</b></td><td>LLM이 내용까지 보고 매긴 신뢰도. 삭제된 confirmed_score 자리를 대체하는 <b>관문</b>. 0.55는 "반반보다 확실히 믿을 만" 지점 — grade(코드)와 trust(LLM) <b>두 축을 함께</b> 넘어야 루머·펌프를 걸러냄.</td></tr>
+          <tr><td><code>ml_prob_up</code> &gt; (기술)</td><td><b>0.60</b></td><td>ML 상승확률. 0.5=동전던지기라 그보다 확실히 위(0.60)일 때만 기술 +1. 0.60은 "10번 중 6번 이상 오름" — 승률 우위가 생기는 최소선.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>공통 논리:</b> 공격형은 <b>단일 문턱을 무리하게 높이지 않는</b> 대신, <b>여러 축(방향·크기·출처·기술)을 각각 최소선</b>만 넘게 하고 <b>2개 이상 합의(consensus≥2)</b>로 교차검증한다. 즉 "하나가 아주 세다"보다 "여럿이 방향이 맞다"를 본다. 그래서 개별 문턱은 <b>중간값보다 살짝 위</b>(0.55~0.70)에 모여 있다.</div>
+
+    <p class="pipe-note" style="margin-top:12px;">📌 이 숫자들은 <b>제안값(초기값)</b>이야 — 테스트 데이터로 백테스트하면서 "기대값이 최대가 되는" 값으로 조정할 예정. 공격형이라도 무모하게 다 사는 게 아니라, <b>"기회는 자주 잡되 손실은 짧게"</b>가 핵심.</p>
+  </div>
+</section>
+
+<!-- ───────── 판단 순서 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s09">Flow</div>
+    <h2>판단 순서 — 10단계</h2>
+    <p class="sec-desc">★ 핵심 원칙: <b>GPT는 숫자 계산을 하지 않는다.</b> 내가(코드가) 계산한 요약을 보고 맥락 판단만 한다.</p>
+    <div class="flow">
+      <div class="flow-item gate"><div><div class="t">hard_block 체크</div><div class="d">공시 + 뉴스 — 1이면 즉시 보류</div></div></div>
+      <div class="flow-item"><div><div class="t">공시 카운트</div><div class="d">문턱 통과 시 +1</div></div></div>
+      <div class="flow-item"><div><div class="t">뉴스 카운트</div><div class="d">문턱 통과 시 +1</div></div></div>
+      <div class="flow-item"><div><div class="t">기술 카운트</div><div class="d">문턱 통과 시 +1</div></div></div>
+      <div class="flow-item"><div><div class="t">consensus 합산</div><div class="d">0~3점 (공시·뉴스·기술) — 필요 합의 2개 이상 · 매크로는 표 아님</div></div></div>
+      <div class="flow-item"><div><div class="t">확인 보너스</div><div class="d">source_trust × 0.03 비례 가산 + disclosure_ref 있으면 추가</div></div></div>
+      <div class="flow-item"><div><div class="t">매크로 위험 감점</div><div class="d">risk-off이면 위험도만큼 conviction 차감 (표 아님 · 감점만)</div></div></div>
+      <div class="flow-item gpt"><div><div class="t">GPT 판단</div><div class="d">요약본 + 판정결과 + consensus + 메모리 + 정책을 보고 맥락 판단만</div></div></div>
+      <div class="flow-item gate"><div><div class="t">min_conviction 검증</div><div class="d">확신이 <b>0.6</b> 미달인 매수 → 보류로 강등 (공격형)</div></div></div>
+      <div class="flow-item"><div><div class="t">저장 · 전달</div><div class="d">tb_strategist_signals에 저장(append) → <b>매수만</b> Critic에 payload 전달 (보류는 회고용으로 가볍게 저장, Critic 안 거침)</div></div></div>
+    </div>
+
+    <div class="sub-h" style="margin-top:22px;">🔁 이 10단계를 50개 종목마다 반복 — 순회 &amp; 순위매김</div>
+    <div class="grid c2" style="gap:12px;">
+      <div class="card">
+        <h3 style="color:var(--accent)">50개 전체 순회 (매 사이클)</h3>
+        <p>스크리너가 뽑은 <b>오늘의 50개(tb_daily_pick)를 매 사이클 전부</b> 위 10단계로 판단해. 뉴스·공시가 없는 종목도 기술·매크로만으로 후보가 될 수 있고, <b>보류도 다 기록</b>해야 나중에 회고(⑧)가 "왜 안 샀나 → 놓친 기회였나"를 배워. 같은 종목도 사이클마다 <b>새 행으로 쌓임(append)</b> → 이전 사이클과 비교 가능(시세·판단 변화 추적). 그래서 <code>updated_at</code>은 없음 — 행을 고치지 않으니까.</p>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--blue)">순위매김 (금액은 몰라도 됨)</h3>
+        <p>50개 중 매수가 여럿 나오면 돈은 한정 → 다 못 사. 나는 <b>몇 개·얼마 살지는 정하지 않고</b>, <code>conviction</code>(0~1)·<code>signal_consensus</code>(0~3)로 <b>"이게 저것보다 더 확신"이라는 순위</b>만 매겨. 실제 <b>매수 개수·금액은 PM(⑦)</b>이 잔고 보고 상위부터 골라 결정. 나는 <code>sizing_hint</code>로 비중 <b>제안</b>만 얹어.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 판단 로직 변경 이력 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="schangelog">Changelog · 판단 로직 변경</div>
+    <h2>판단 로직 변경 이력 (버전별)</h2>
+    <p class="sec-desc">Strategist가 "어떻게 판단하는지"를 바꿀 때마다 <b>기존 → 상황·생각 → 변경 → 기대값 → 테스트 결과</b> 순으로 남겨. 왜 그렇게 바꿨는지 근거를 팀 누구나 볼 수 있게.</p>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>① 매크로: 표(vote) → 감점(penalty)만 <span class="dim">· 2026-07-08</span></h3>
+      <div class="tbl-scroll"><table><tbody>
+        <tr><td style="width:96px"><b>기존</b></td><td>매크로가 4신호 중 하나로 표(+1/-1)를 던짐</td></tr>
+        <tr><td><b>상황·생각</b></td><td>매크로는 시장 전체라 50개 종목에 <b>공통 +1</b> → 종목 변별을 오염. 테스트에서 매수 부합 과다(52%), 매도가 0(악재도 매크로 +1에 상쇄)으로 나옴</td></tr>
+        <tr><td><b>변경</b></td><td>매크로를 종목 표에서 <b>제외</b>, risk_off <b>감점</b>으로만 반영. 합의는 공시·뉴스·기술 3개 중 2개</td></tr>
+        <tr><td><b>기대값</b></td><td>종목 신호로만 판단 → 변별력↑. 시장 위험은 감점이 '강한 종목만 생존'시켜 전체 조절</td></tr>
+        <tr><td><b>테스트</b></td><td>목데이터 50개 매수 12개(순수 신호 기반). 자동 테스트 27개 통과</td></tr>
+      </tbody></table></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3>② 매도(sell) → 보류 흡수 (1차 MVP) <span class="dim">· 2026-07-08</span></h3>
+      <div class="tbl-scroll"><table><tbody>
+        <tr><td style="width:96px"><b>기존</b></td><td>매수/매도/보류 3종 판정</td></tr>
+        <tr><td><b>상황·생각</b></td><td>1차 MVP는 매수만(능동 매도는 2차, 청산은 손절 자동) → 매도 판정이 불필요</td></tr>
+        <tr><td><b>변경</b></td><td>side는 <b>매수/보류 2종</b>. 악재는 '안 삼=보류'. sell은 2차용 스키마에만 남김</td></tr>
+        <tr><td><b>기대값</b></td><td>1차 역할('살 종목 고르기')에 집중 — 단순·명확</td></tr>
+        <tr><td><b>테스트</b></td><td>악재 방향 8개 종목 → 전부 보류로 흡수 확인</td></tr>
+      </tbody></table></div>
+    </div>
+
+    <div class="card">
+      <h3>③ 판단 문턱 빡세게 (v1 B표준 → v2 빡센2) <span class="dim">· 2026-07-08</span></h3>
+      <div class="tbl-scroll"><table><tbody>
+        <tr><td style="width:96px"><b>기존</b></td><td>sentiment 0.60 / grade 0.50 / ml 0.50 / 합의 2 / 최소확신 5.0</td></tr>
+        <tr><td><b>상황·생각</b></td><td>1차 테스트 매수 부합 26개(52%)로 과다. 합의 수만 올리면(2→3) 26→24로 거의 안 줆(매크로 공통표 탓)</td></tr>
+        <tr><td><b>변경</b></td><td>sentiment 0.70 / grade 0.55 / confirmed 0.50 / ml 0.60 / 최소확신 6.0 (합의+문턱 함께↑)</td></tr>
+        <tr><td><b>기대값</b></td><td>약한 신호를 걸러 매수 후보를 절반 이하로 선별</td></tr>
+        <tr><td><b>테스트</b></td><td>매수 26 → 12개(24%)</td></tr>
+      </tbody></table></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 처리 로직 상세 (기준 + 이유) ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s10">Rationale · 판단 근거</div>
+    <h2>내가 처리하는 것 — 각 단계 기준과 이유</h2>
+    <p class="sec-desc">위 10단계를 하나씩, <b>어떤 기준으로 · 어떻게 처리하고 · 왜 그렇게 하는지(이유)</b>까지 풀어놓은 거야. "얘가 무슨 근거로 매수/보류를 정하나"를 팀원 누구나 볼 수 있게.</p>
+
+    <!-- 1. hard_block -->
+    <div class="step-h"><span class="n">1</span>hard_block 체크 (공시 + 뉴스)</div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th style="width:130px">항목</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td><b>기준</b></td><td>공시 또는 뉴스의 <code>hard_block == 1</code></td></tr>
+          <tr><td><b>처리</b></td><td><b>GPT 호출 없이 즉시 "보류"</b> (conviction = 0)</td></tr>
+          <tr><td><b>투자유형 차이</b></td><td><b>없음</b> — 상폐 종목은 유형과 무관하게 무조건 차단</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>왜?</b> 상폐·거래정지는 판단이 아니라 <b>사실</b>. LLM은 확률적이라 드물게 "그래도 분석해보자"고 할 수 있음 → 절대 규칙은 Python이 강제.</div>
+
+    <!-- 2. 매크로 위험 감점 -->
+    <div class="step-h"><span class="n">2</span>매크로 위험 감점 (구 macro_veto)</div>
+    <div class="why" style="border-left-color: var(--red); background: var(--red-soft);"><b style="color:var(--red)">⚠️ 설계 변경:</b> 원래는 "risk-off면 무조건 보류(거부권)"였는데 → <b>폐지했음.</b> 시장이 나빠도 개별 종목은 오를 수 있어서(시장 역행) 단정하면 좋은 기회를 놓침. 그래서 <b>"거부권" → "conviction 감점"</b>으로 바꿈. (팀원 제안 반영)</div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th style="width:130px">항목</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td><b>기준</b></td><td><code>regime == "risk-off"</code>일 때, <code>risk_score</code>가 높을수록 conviction을 많이 깎음</td></tr>
+          <tr><td><b>처리</b></td><td>보류 강제 ❌ → <b>conviction에서 감점만</b> (진짜 강한 종목은 살아남음)</td></tr>
+          <tr><td><b>최종 필터</b></td><td>감점된 conviction이 min_conviction(0.6) 미달이면 → 보류로 강등</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="height:10px"></div>
+    <div class="sub-h">매크로 감점표 (risk-off일 때, 제안값)</div>
+<pre>매크로_감점 = {   <span class="c"># risk-on이면 감점 0 (매크로는 표 아님·감점만)</span>
+     <span class="n">5</span>: <span class="n">-0.05</span>,
+     <span class="n">6</span>: <span class="n">-0.10</span>,
+     <span class="n">7</span>: <span class="n">-0.15</span>,
+     <span class="n">8</span>: <span class="n">-0.20</span>,
+     <span class="n">9</span>: <span class="n">-0.30</span>,
+    <span class="n">10</span>: <span class="n">-0.40</span>,
+}
+conviction = conviction - 매크로_감점[risk_score]   <span class="c"># 시장 나쁠수록 많이 깎임</span></pre>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>상황 (risk-off, 위험도 8 → 감점 -0.20)</th><th>결과</th></tr></thead>
+        <tbody>
+          <tr><td>강한 종목 conviction 0.95</td><td>0.95 − 0.20 = 0.75 → 문턱 넘으면 <span class="tag use">매수 가능</span> (기회 안 놓침)</td></tr>
+          <tr><td>애매한 종목 conviction 0.6</td><td>0.6 − 0.20 = 0.40 → 문턱 미달 → <span class="tag hot">자연히 보류</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>왜 이렇게?</b> 시장이 나쁘면 좋은 종목도 같이 떨어지는 건 맞지만(태풍), <b>"무조건 취소"는 시장 역행 기회를 놓침.</b> 그래서 "강하게 눌러주기(감점)"로 바꿔서 — 정말 강한 종목만 눌려도 살아남고, 애매한 건 min_conviction 문턱에서 자연히 걸러지게 함. GPT에게도 regime·risk_score·이유를 넘겨서 "이 종목이 역행할 근거가 있나" 판단하게 함. 진짜 위험(상폐 등)은 여전히 <b>hard_block</b>이 지킴.</div>
+
+    <!-- 3. 신호별 카운트 -->
+    <div class="step-h"><span class="n">3</span>신호별 매수 카운트 (+1 / 0)</div>
+    <p class="sec-desc" style="margin-bottom:14px;">각 신호를 아래 로직으로 <b>+1(=1) / 0</b> 판정. 합계 = <code>signal_consensus</code> (0~3 · 매크로 제외).
+    <br>★ 각 신호의 조건들은 전부 <b>AND(그리고)</b>로 묶여 있어 — <b>모든 조건을 만족해야 +1</b>, 하나라도 못 넘으면 0.</p>
+
+    <div class="card" style="border-color: rgba(37,99,235,.35); margin-bottom:14px;">
+      <h3 style="color:var(--blue)">🔎 <code>if disc.has_signal</code>은 어디서·왜 검증하나 — 검증 순서</h3>
+      <p><b>어디서:</b> 내 <code>preprocess.py</code>의 각 카운트 함수(<code>공시_카운트</code>·<code>뉴스_카운트</code>) <b>맨 첫 줄</b>에서 검증해. 아래 코드의 <code>if …has_signal == 0: return 0</code>이 바로 그 지점.</p>
+      <p style="margin-top:8px;"><b>왜 필요한가:</b> 정보분석팀은 <b>공시·뉴스가 없는 종목도 행을 만들어</b>(항상 50행/사이클로 균일) — 대신 그 행은 <code>has_signal=0</code>이고 <b>뒤 컬럼이 전부 null</b>이야. null인 채로 <code>sentiment_score ≥ 0.70</code> 같은 비교를 하면 에러나 오판이 나지. 그래서 <b>"빈 행이냐"부터 걸러</b> 0(기권)으로 즉시 반환해.</p>
+      <p style="margin-top:8px;"><b>전체 검증 순서(한 종목):</b> ① <code>has_signal==0</code> → 기권(스킵) &nbsp;→&nbsp; ② <code>hard_block==1</code> → 즉시 보류(STEP 1) &nbsp;→&nbsp; ③ 점수 문턱(sentiment·importance·grade·source_trust) 통과 시 <b>+1</b>. ①②는 <b>안전장치</b>(null·차단 방어), ③이 <b>실제 표 세기</b>.</p>
+    </div>
+    <div class="sub-h">3-1. 공시 판정</div>
+<pre><span class="k">def</span> 공시_카운트(disc):
+    <span class="k">if</span> disc.has_signal == <span class="n">0</span>:
+        <span class="k">return</span> <span class="n">0</span>                        <span class="c"># 오늘 공시 없음 → 카운트 없음</span>
+    <span class="c"># 공격형 문턱: sentiment 0.70, importance 0.25</span>
+    <span class="k">if</span> disc.sentiment_score &gt;= <span class="n">0.70</span> <span class="k">and</span> disc.importance &gt;= <span class="n">0.25</span>:
+        <span class="k">return</span> <span class="n">1</span>                        <span class="c"># 호재이면서(AND) 충분히 큰 사건 → +1</span>
+    <span class="k">return</span> <span class="n">0</span></pre>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>조건 (전부 AND)</th><th>공격형 문턱</th><th>예시 (sentiment 0.9, importance 0.8)</th></tr></thead>
+        <tbody>
+          <tr><td>sentiment_score ≥</td><td>0.70</td><td>0.9 ✓</td></tr>
+          <tr><td>importance ≥</td><td>0.25</td><td>0.8 ✓</td></tr>
+          <tr><td><b>결과</b></td><td colspan="2"><b>+1</b> (둘 다 충족)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub-h">3-2. 뉴스 판정 <span style="font-weight:500; color:var(--text-dim); font-size:13px;">(조건 제일 많음 — 루머 방어)</span></div>
+<pre><span class="k">def</span> 뉴스_카운트(news):
+    <span class="k">if</span> news.has_signal == <span class="n">0</span>:
+        <span class="k">return</span> <span class="n">0</span>
+    <span class="c"># 공격형: 3개 조건 (disclosure_ref는 필수 아님 — 거의 없어서 보너스로만)</span>
+    <span class="k">if</span> (news.sentiment_score &gt;= <span class="n">0.70</span>
+        <span class="k">and</span> news.grade_score &gt;= <span class="n">0.55</span>          <span class="c"># 최소 신뢰 출처</span>
+        <span class="k">and</span> news.source_trust &gt;= <span class="n">0.55</span>):      <span class="c"># 출처 신뢰도 (confirmed_score 대체)</span>
+        <span class="k">return</span> <span class="n">1</span>
+    <span class="k">return</span> <span class="n">0</span></pre>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>조건 (전부 AND)</th><th>공격형 문턱</th></tr></thead>
+        <tbody>
+          <tr><td>sentiment_score ≥</td><td>0.70</td></tr>
+          <tr><td>grade_score ≥</td><td>0.55</td></tr>
+          <tr><td>source_trust ≥</td><td>0.55</td></tr>
+          <tr><td>disclosure_ref</td><td class="dim">필수 아님 (있으면 확인 보너스 가산 · 대개 null)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>AND의 의미:</b> 위 3개 조건을 <b>전부</b> 넘어야 +1(=1). 하나라도 못 넘으면 0. <br><b>공격형이라 공시 확인(disclosure_ref)은 관문에서 뺐어</b> — 공식 공시 연결은 거의 안 붙어서 관문으로 쓰면 대부분 탈락. 단독 출처라도 source_trust·grade 0.55 넘으면 시도하고, 출처 신뢰도가 높으면 source_trust×0.03, 공시번호까지 붙으면 추가로 확신에 얹어줌.</div>
+
+    <div class="sub-h">3-3. 기술 판정</div>
+<pre><span class="k">def</span> 기술_카운트(tech):
+    <span class="c"># 공격형 문턱: ml_prob_up 0.60</span>
+    <span class="k">if</span> <span class="s">"상승"</span> <span class="k">in</span> tech.trend <span class="k">and</span> tech.ml_prob_up &gt; <span class="n">0.60</span>:
+        <span class="k">return</span> <span class="n">1</span>                        <span class="c"># 오름세 + AI도 상승 예측 → +1</span>
+    <span class="k">return</span> <span class="n">0</span></pre>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>조건 (AND)</th><th>공격형 문턱</th></tr></thead>
+        <tbody>
+          <tr><td>trend</td><td>"상승" 포함</td></tr>
+          <tr><td>ml_prob_up &gt;</td><td>0.60 (AI 상승확률 60% 초과)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="sub-h">3-4. 매크로 위험 감점 (표 아님)</div>
+<pre><span class="c"># 매크로는 표(vote)에 안 들어감 — 시장 전체 조정이라 conviction 감점으로만 반영</span>
+<span class="k">def</span> 매크로_감점(macro):
+    <span class="k">return</span> 위험도별_감점(macro.risk_score) <span class="k">if</span> macro.regime == <span class="s">"risk-off"</span> <span class="k">else</span> <span class="n">0</span></pre>
+
+    <div class="sub-h">3-5. 합산 + 매수 후보 문턱 (공격형 = 2개)</div>
+<pre>consensus = 공시 + 뉴스 + 기술   <span class="c"># 0~3 (매크로는 표 아님)</span>
+
+매수_후보 = (consensus &gt;= <span class="n">2</span>)          <span class="c"># 공격형: 3개 중 2개 이상이면 후보 (미달이면 GPT에 "보류 권장")</span></pre>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>consensus</th><th>공격형 (2개 필요)</th></tr></thead>
+        <tbody>
+          <tr><td>0~1</td><td class="dim">보류 권장</td></tr>
+          <tr><td>2</td><td><span class="tag use">매수 후보</span></td></tr>
+          <tr><td>3</td><td><span class="tag use">강한 매수 후보</span> (공시·뉴스·기술 전원 일치)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 4. 확인 보너스 -->
+    <div class="step-h"><span class="n">4</span>확인 보너스 (뉴스)</div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th style="width:130px">항목</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td><b>출처</b></td><td><b>뉴스팀이 NewsBundle로 주는 입력 필드</b> — 나(Strategist)는 계산·근사하지 않고 <b>읽기만</b> 함</td></tr>
+          <tr><td><b>기준</b></td><td><code>source_trust</code>(항상 있음) + <code>disclosure_ref</code>(있으면·드묾)</td></tr>
+          <tr><td><b>처리</b></td><td>확신(conviction) <b>+ source_trust×0.03</b> (비례), disclosure_ref 있으면 <b>추가 가산</b> + GPT에 "출처 신뢰·공시 확인" 참고정보로 전달</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>왜?</b> 신뢰도 높은 출처(source_trust↑)나 공식 공시(disclosure_ref)로 확인된 뉴스 = 루머 아님. 반대로 buzz만 높고 신뢰도 낮으면 펌프(작전) 의심 → 가중치 축소.<br><b>★ 이 값은 내가 만드는 게 아니야.</b> source_trust·disclosure_ref는 뉴스팀이 판정해서 넘겨줌 — 나는 그 필드를 읽어서 보너스만 얹음.</div>
+
+    <!-- 5. GPT-4o 판단 -->
+    <div class="step-h"><span class="n">5</span>GPT-4o 판단 — 뭘 보고 판단하나</div>
+    <div class="why" style="border-left-color: var(--accent); background: var(--accent-soft);"><b style="color:var(--accent)">★ 핵심 원칙:</b> GPT는 숫자 계산을 다시 하지 않는다. 내가 계산 끝낸 요약본을 보고 <b>"맥락 판단"만</b> 한다.</div>
+<pre><span class="c">GPT에게 넘어가는 것:</span>
+① 신호 4개 요약     <span class="c">← ①에서 받은 값 (핵심 필드 + reason 텍스트)</span>
+② 신호별 판정 결과   <span class="c">← 3번에서 계산 (공시+1, 뉴스0, 기술+1 · 매크로는 표 아님)</span>
+③ consensus 합계    <span class="c">← "3개 중 2개 매수 방향" + 매수 후보 여부 (매크로는 표 제외)</span>
+④ 과거 메모리       <span class="c">← DB tb_memory_entries 테이블</span>
+⑤ 투자유형 정책      <span class="c">← config.py POLICY</span>
+
+<span class="c">GPT가 내놓는 것:</span>
+side(매수/보류 · 1차 MVP는 매도→보류로 흡수) + conviction(0~1) + rationale + key_risk</pre>
+    <div class="grid c2" style="margin-top:12px;">
+      <div class="card">
+        <h3>④ 과거 메모리는 어디서?</h3>
+        <p>Reviewer(파이프라인 ⑧)가 매 사이클 결과를 <code>tb_memory_entries</code>에 기록. 예: <i>"2026-06-20 NVDA 매수 → -3% 손실. 원인: 실적 기대 과열에 늦게 진입"</i>. 나는 판단 전 그 ticker의 <b>최근 5개</b>를 꺼내 GPT 프롬프트에 넣음. → 같은 실수 반복 방지.</p>
+      </div>
+      <div class="card">
+        <h3>⑤ 정책(POLICY)은 어디서?</h3>
+        <p>공격형 문턱 숫자(0.70, 0.6 등)는 <code>config.py</code>의 <code>POLICY</code>에 정의돼 있음. 실행 시 그 값을 꺼내 씀. (지금은 공격형 하나라 유형 분기 없음)</p>
+      </div>
+    </div>
+    <p class="pipe-note" style="margin-top:10px;">페르소나(투자 레전드 관점)는 <b>MVP 2단계</b>에서 추가 예정 — 지금은 안 넣음.</p>
+
+
+    <!-- 6. 확신 검증 -->
+    <div class="step-h"><span class="n">6</span>확신 검증 (min_conviction = 0.6)</div>
+<pre><span class="k">if</span> signal.side == <span class="s">"매수"</span> <span class="k">and</span> signal.conviction &lt; <span class="n">0.6</span>:
+    signal.side = <span class="s">"보류"</span>    <span class="c"># Python이 강제 (공격형 문턱 0.6)</span></pre>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>GPT 판단 예시</th><th>공격형 (문턱 0.6)</th></tr></thead>
+        <tbody>
+          <tr><td>매수, conviction 0.9</td><td class="dim">0.9 ≥ 0.6 → 매수 유지</td></tr>
+          <tr><td>매수, conviction 0.65</td><td class="dim">0.65 ≥ 0.6 → 매수 유지</td></tr>
+          <tr><td>매수, conviction 0.4</td><td><span class="tag hot">0.4 &lt; 0.6 → 보류 강등</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>왜 0.6?</b> "확신 없는 매수"를 코드가 차단하되, 공격형이라 문턱을 0.6에 둠 → 반반보다 확실하면 통과. (안정형이면 0.8으로 더 깐깐했겠지만, 지금은 공격형 하나)</div>
+
+    <!-- 7. 저장·전달 -->
+    <div class="step-h"><span class="n">7</span>저장 · 전달</div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th style="width:130px">항목</th><th>내용</th></tr></thead>
+        <tbody>
+          <tr><td><b>처리</b></td><td>내 결과를 <code>tb_strategist_signals</code>에 저장 → Critic에게 payload 전달</td></tr>
+          <tr><td><b>이유</b></td><td>원본 4개 신호는 각 팀이 이미 저장 → 나는 <b>내 판단 결과만</b> 저장</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 판단 구조: 코드 vs LLM ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s11">Architecture · 코드 vs LLM</div>
+    <h2>누가 뭘 결정하나 — 코드 게이트 + LLM 판단 (샌드위치 구조)</h2>
+    <p class="sec-desc">확실한 규칙은 <b>코드가 강제</b>하고, 맥락 판단은 <b>LLM(GPT-4o)</b>이 해. LLM은 앞문·뒷문(코드 게이트) 사이에 <b>갇혀서</b> 판단하는 구조야 — GPT가 아무리 "매수!"라 우겨도 게이트를 못 넘으면 소용없음.</p>
+
+    <div class="sandwich">
+      <div class="sw-box code">
+        <h4>① 코드 게이트 (앞문)</h4>
+        <ul>
+          <li>🔒 hard_block → 즉시 보류</li>
+          <li>✅ consensus 계산 (0~3 · 매크로 제외)</li>
+          <li>📊 매크로 위험 감점 계산</li>
+        </ul>
+        <div class="foot">hard_block 걸리면 GPT까지 안 감</div>
+      </div>
+      <div class="sw-arrow">▶</div>
+      <div class="sw-box llm">
+        <h4>② LLM 판단 (GPT-4o)</h4>
+        <ul>
+          <li>신호 요약 + consensus + <b>매크로 맥락</b> + 메모리 + 정책을 종합</li>
+          <li>→ <b>conviction (0~1)</b> + side(매수/보류)</li>
+        </ul>
+        <div class="foot">매크로는 이제 여기서 "참고" (감점 + 맥락)</div>
+      </div>
+      <div class="sw-arrow">▶</div>
+      <div class="sw-box code">
+        <h4>③ 코드 게이트 (뒷문)</h4>
+        <ul>
+          <li>🔒 min_conviction 검증</li>
+          <li>매수인데 확신 &lt; 문턱 → 보류 강등</li>
+        </ul>
+        <div class="foot">GPT가 매수라 우겨도 여기서 최종 검문</div>
+      </div>
+    </div>
+
+    <h3 class="sub-h">확실하게 강제되는 규칙은 2개 (나머지는 감점·힌트·판단)</h3>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>#</th><th>규칙</th><th>누가</th><th>강제력</th><th>하는 일</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><b>hard_block</b></td><td>코드</td><td><span class="tag hot">🔒 강제</span></td><td>상폐·거래정지 → 즉시 보류 (GPT 안 감)</td></tr>
+          <tr><td>2</td><td>consensus 카운트</td><td>코드</td><td><span class="tag use">✅ 계산</span></td><td>매수 신호 몇 개인지 셈 (0~3 · 매크로 제외)</td></tr>
+          <tr><td>3</td><td><b>매크로 위험 감점</b></td><td>코드</td><td><span class="tag ref">📊 감점</span></td><td>risk-off면 conviction 차감 (보류 강제 ❌)</td></tr>
+          <tr><td>—</td><td>"보류 권장"</td><td>코드→GPT</td><td><span class="tag ref">🟡 권고</span></td><td>consensus 미달이면 GPT에 힌트만 (강제 아님)</td></tr>
+          <tr><td>4</td><td><b>conviction 판단</b></td><td>GPT</td><td><span class="tag ref">🔵 판단</span></td><td>데이터 종합 → 0~1 점수 + 매수/보류</td></tr>
+          <tr><td>5</td><td><b>min_conviction</b></td><td>코드</td><td><span class="tag hot">🔒 강제</span></td><td>매수인데 확신 &lt; 문턱 → 보류 강등</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>매수를 "무조건" 막는 건 hard_block 하나뿐.</b> hard_block(상폐·거래정지)은 어떤 상황이든 즉시 보류. 반면 <b>min_conviction은 "조건부"</b> — 확신 점수가 문턱(0.6) 미달일 때만 강등하고, <b>매크로 감점은 아예 못 막고 점수만 깎아.</b> 즉 코드가 강제로 개입하는 지점은 hard_block(무조건) + min_conviction(조건부) 2개고, 매크로·"보류 권장"은 막는 게 아니라 감점·힌트로 유연하게 반영.</div>
+
+    <!-- conviction 상세 -->
+    <div class="step-h"><span class="n">◆</span>conviction은 어떻게 나오나 — "공식 없음, GPT가 채점"</div>
+    <p class="sec-desc" style="margin-bottom:12px;"><code>conviction = consensus×2 + 보너스</code> 같은 <b>사칙연산 공식이 없어.</b> GPT-4o가 자료를 보고 <b>채점하듯</b> 0~1 점수를 매기는 거야. (면접관이 "음… 8점 정도?" 하는 것처럼)</p>
+
+    <div class="sub-h">GPT는 아무렇게나? → 아니, "채점 기준표"를 같이 줌</div>
+<pre><span class="c">[너의 임무] 아래 자료를 보고 매수 확신도를 0~10으로 매겨라.</span>
+
+<span class="c">[채점 기준]</span>
+· consensus 3개 전원 + 출처신뢰 높음 + 위험 낮음 → 0.8~1.0
+· consensus 3개 + 무난한 근거                → 0.6~0.8
+· consensus 2개 or 위험 요소 있음            → 0.4~0.6
+· consensus 낮거나 과거 실패 이력 있음        → 0~0.3
+
+<span class="c">[이번 종목 자료]</span>
+· NVDA · consensus 3 · 출처신뢰 높음(공시 확인)
+· 위험: 인수 프리미엄 과다
+· 과거 메모리: 지난달 NVDA 매수 -3% 물림
+
+<span class="c"># → GPT: "consensus 3 + 출처신뢰 높아 높은데, 과거에 물렸고</span>
+<span class="c">#         프리미엄 위험 있으니 만점은 아니고 → 0.85"</span></pre>
+
+    <div class="sub-h">conviction을 올리는 / 내리는 요인</div>
+    <div class="grid c2">
+      <div class="card" style="border-color: rgba(74,222,128,.4)">
+        <h3 style="color:var(--accent)">⬆️ 올리는 요인</h3>
+        <p>consensus 높음(3개 전원) · 신호 강함(sentiment 0.9) · 출처 신뢰 높음(공시 확인) · 과거 이 패턴에서 수익 · 위험 요소 적음</p>
+      </div>
+      <div class="card" style="border-color: rgba(248,113,113,.4)">
+        <h3 style="color:var(--red)">⬇️ 내리는 요인</h3>
+        <p>consensus 낮음(1~2개) · 신호 애매(0.65) · 출처 신뢰 낮음(루머 의심) · 과거 이 패턴에서 손실 · 위험 요소 많음</p>
+      </div>
+    </div>
+
+    <div class="sub-h">코드(나)가 conviction에 손대는 건 2가지뿐</div>
+<pre>conviction = GPT가_매긴_점수                <span class="c"># 예: 0.835</span>
+conviction += news.source_trust * <span class="n">0.03</span>      <span class="c"># ① 확인 보너스 (source_trust 비례)</span>
+<span class="k">if</span> news.disclosure_ref:
+    conviction += <span class="n">0.02</span>                      <span class="c">#    공시번호 연결 시 추가 가산 (드묾)</span>
+<span class="k">if</span> regime == <span class="s">"risk-off"</span>:
+    conviction -= 매크로_감점[risk_score]      <span class="c"># ② 매크로 위험 감점</span>
+<span class="c"># → 최종 conviction</span></pre>
+    <div class="why" style="border-left-color: var(--blue); background: var(--blue-soft);"><b style="color:var(--blue)">왜 공식 대신 GPT?</b> 숫자 규칙만으론 "신호끼리 충돌"(공시는 호재인데 뉴스는 이미 반영됐다더라)이나 "맥락"을 못 잡음. 이건 사람 같은 판단이 필요해서 GPT에 맡김. 대신 명확한 규칙(🔒 게이트 2개: hard_block·min_conviction)은 코드가 강제해서 GPT가 폭주 못 하게 울타리를 침.</div>
+
+    <div style="height:8px"></div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>구분</th><th>누가</th><th>방식</th></tr></thead>
+        <tbody>
+          <tr><td><b>딱딱한 규칙</b> (차단·문턱)</td><td>코드(나)</td><td>정해진 숫자 비교 (결정론적)</td></tr>
+          <tr><td><b>conviction 점수</b></td><td>GPT-4o</td><td>채점 기준 보고 종합 판단 (감각적)</td></tr>
+          <tr><td><b>확인 보너스 / 매크로 감점</b></td><td>코드(나)</td><td>source_trust×0.03 + disclosure_ref 가산 · risk-off 차감</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="pipe-note" style="margin-top:12px;">📌 스케일 — 신호 점수(sentiment·grade 등)도, conviction·문턱도 <b>모두 0~1로 통일</b> (예: 신호 0.8 / conviction 0.85 / 문턱 0.6).</p>
+  </div>
+</section>
+
+<!-- ───────── Critic payload ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s12">Output → Critic</div>
+    <h2>Critic에게 보내는 것 — 설득 payload</h2>
+    <p class="sec-desc">내 판단 다음은 <b>Risk Critic(반박 담당)</b>. 내 매수 결정에 일부러 반박해서 못 버티면 기각시킴. 그래서 "매수 0.85"만 던지면 안 되고 <b>위험 인정 + 선제 반박 + 대응책</b> 세트로 설득해야 통과됨.</p>
+<pre>{
+  <span class="c">// ─── 기본 결정 (숫자) ───</span>
+  <span class="k">"ticker"</span>: <span class="s">"NVDA"</span>,
+  <span class="k">"inv_type"</span>: <span class="s">"공격형"</span>,
+  <span class="k">"side"</span>: <span class="s">"매수"</span>,
+  <span class="k">"conviction"</span>: <span class="n">0.85</span>,
+  <span class="k">"signal_consensus"</span>: <span class="n">3</span>,          <span class="c">// 공시·뉴스·기술 3개 매수 (매크로는 표 제외) → 강한 근거</span>
+  <span class="k">"signal_id"</span>: <span class="n">4021</span>,             <span class="c">// 🔑 내 결과행 id(autoincrement) — Critic이 이 하나로 내 판단·입력 스냅샷까지 추적 (cycle_id 안 씀)</span>
+
+  <span class="c">// ─── 설득용 요약 (LLM 텍스트) ───</span>
+  <span class="k">"summary"</span>: <span class="s">"3개 신호 전원 매수 방향. 공시(인수)·뉴스(실적,출처신뢰↑)·기술(반등) 일치. 매크로(우호)는 감점 없음."</span>,
+  <span class="k">"bull_case"</span>: <span class="s">"① 대형 인수 공식 발표(프리미엄 30%) — 법적 확정 사실. ② 실적 서프라이즈, 출처 신뢰도 높음(source_trust 0.88, Reuters급)에 공시번호까지 연결됨. ③ RSI 34 과매도 반등권. ④ 시장 risk-on, VIX 16 안정."</span>,
+
+  <span class="c">// ─── 반박 대비 (Critic이 칠 만한 것 선제 방어) ───</span>
+  <span class="k">"key_risk"</span>: <span class="s">"인수 프리미엄 30% 과다 지불 → 단기 조정 가능"</span>,        <span class="c">// 위험 인정 (신뢰↑)</span>
+  <span class="k">"risk_rebuttal"</span>: <span class="s">"importance 0.8로 시장이 이미 긍정 반영 중, hard_block 없음, 공격형 기준(0.6) 충족(0.85)"</span>,
+  <span class="k">"counter_scenarios"</span>: [                                          <span class="c">// 틀렸을 때 대응책</span>
+    <span class="s">"인수 무산 시 → 손절 라인 -5%"</span>,
+    <span class="s">"시장 급변(risk-off 전환) 시 → 포지션 축소"</span>
+  ],
+
+  <span class="c">// ─── 신뢰 근거 (숫자 증거) ───</span>
+  <span class="k">"evidence"</span>: {
+    <span class="k">"disclosure_ref"</span>: <span class="s">"0001-24-000123"</span>, <span class="c">// 🆕 연결된 공식 공시번호 → 공식 확인 (없으면 null·대개 null)</span>
+    <span class="k">"source_trust"</span>: <span class="n">0.88</span>,        <span class="c">// 출처 신뢰도 (삭제된 confirmed_score 대체)</span>
+    <span class="k">"grade_score"</span>: <span class="n">0.95</span>,         <span class="c">// 출처 등급</span>
+    <span class="k">"news_count"</span>: <span class="n">3</span>,             <span class="c">// 분석 기사 건수</span>
+    <span class="k">"hard_block"</span>: <span class="n">0</span>,             <span class="c">// 차단 없음</span>
+    <span class="k">"macro_regime"</span>: <span class="s">"risk-on"</span>
+  },
+
+  <span class="k">"persona_notes"</span>: <span class="k">null</span>            <span class="c">// MVP 2에서 투자 레전드 관점 추가 예정</span>
+}
+<span class="c">// ※ sizing_hint(PM용 크기 힌트)는 Critic payload에서 제외 — DB(tb_strategist_signals)에 저장해두면 PM이 직접 읽어감(Pull)</span></pre>
+
+    <div style="height:20px"></div>
+    <h3 style="font-size:17px; font-weight:800; margin-bottom:10px;">payload 구성 요소 — 왜 넣나</h3>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>항목</th><th>역할</th><th>왜 넣나</th></tr></thead>
+        <tbody>
+          <tr><td><code>side</code>·<code>conviction</code>·<code>consensus</code></td><td>결정 숫자</td><td class="dim">기본 판단</td></tr>
+          <tr><td><code>summary</code></td><td>한 줄 요약</td><td class="dim">Critic이 빠르게 파악</td></tr>
+          <tr><td><code>bull_case</code></td><td>매수 근거 상세</td><td><b>설득의 핵심</b></td></tr>
+          <tr><td><code>key_risk</code></td><td>위험 인정</td><td class="dim">위험 알고도 판단했음을 보여줌 (신뢰↑)</td></tr>
+          <tr><td><code>risk_rebuttal</code></td><td>위험 반박</td><td class="dim">Critic 공격 선제 방어</td></tr>
+          <tr><td><code>counter_scenarios</code></td><td>대응 시나리오</td><td class="dim">"틀리면 이렇게 대응" (안전장치)</td></tr>
+          <tr><td><code>evidence</code></td><td>숫자 증거</td><td class="dim">주장이 아닌 데이터로 뒷받침 (disclosure_ref·source_trust·grade_score·news_count 등)</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="height:20px"></div>
+    <h3 style="font-size:17px; font-weight:800; margin-bottom:10px;">원본 4개 JSON도 넘기나? — 아니, 요약만</h3>
+    <div class="grid c2">
+      <div class="card">
+        <h3 style="color:var(--accent)">✅ 넘기는 것</h3>
+        <p>내 결정(side·conviction·consensus) · 요약·설득(summary·bull_case) · 핵심 근거 숫자(evidence) · 위험·반박·대응 · <b>signal_id + ticker (Critic 연결 열쇠 — 내 결과행 참조)</b></p>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--text-dim)">❌ 안 넘기는 것</h3>
+        <p>공시·뉴스·기술·매크로 <b>원본 JSON 전체</b> — 이미 DB에 있으니 토큰 낭비. Critic이 의심되면 <b>signal_id로 내 행을 찾고, 거기 저장된 <code>src_*_at</code>로 원본 스냅샷을 직접 조회</b>해서 검증. <b>+ <code>sizing_hint</code>(PM용 크기 힌트)</b> — Critic엔 불필요, DB에 저장만 하면 PM이 직접 읽어감(Pull).</p>
+      </div>
+    </div>
+
+    <div style="height:20px"></div>
+    <h3 style="font-size:17px; font-weight:800; margin-bottom:10px;">핵심 설득 전략</h3>
+    <div class="grid c2">
+      <div class="card" style="border-color: rgba(248,113,113,.4)">
+        <h3 style="color:var(--red)">❌ 나쁜 예 → 기각</h3>
+        <p>"매수 0.85. 신호 좋음."<br><span style="color:var(--red)">Critic: "근거가 뭐야? 위험은 생각했어?"</span></p>
+      </div>
+      <div class="card" style="border-color: rgba(74,222,128,.4)">
+        <h3 style="color:var(--accent)">✅ 좋은 예 → 통과</h3>
+        <p>"매수 0.85. 3개 신호 일치(bull_case), 위험은 프리미엄 과다지만 출처 신뢰 높음 + hard_block 없음으로 상쇄(rebuttal), 틀리면 -5% 손절(counter_scenario)."</p>
+      </div>
+    </div>
+
+    <div style="height:20px"></div>
+    <h3 style="font-size:17px; font-weight:800; margin-bottom:10px;">역할 경계 — 어디까지가 내 몫?</h3>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr><th>항목</th><th>내(Strategist) 몫</th><th>Critic 몫</th></tr></thead>
+        <tbody>
+          <tr><td><b>판단</b></td><td>매수/보류 결정 + 근거(bull_case)</td><td>그 판단에 반박·검증</td></tr>
+          <tr><td><b>위험</b></td><td>내가 <b>인지한</b> 핵심 위험 1개 표시(key_risk)</td><td>내가 <b>놓친</b> 위험 새로 발굴</td></tr>
+          <tr><td><b>원본 신호</b></td><td>열쇠(signal_id)만 넘김</td><td>필요하면 src_*_at로 직접 조회</td></tr>
+          <tr><td><b>반대 논리 총동원 (bear_case)</b></td><td>❌ 안 함</td><td>✅ Critic이 함</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="why"><b>왜 bear_case(반대 근거)를 다 안 주나?</b> 완전한 반대 논리를 짜는 건 <b>Critic의 일</b>이라 내가 대신 안 함. 나는 "내가 보기엔 이 위험이 있다"(<code>key_risk</code>)까지만 — 이건 "위험 알고도 판단했다"는 <b>신뢰 표시</b>지, Critic 일을 대신하는 게 아님. 그래서 지금 payload면 충분.</div>
+  </div>
+</section>
+
+<!-- ───────── Critic 연결 · 트리거 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="strigger">Trigger · Critic 연결</div>
+    <h2>Critic 연결 방식 — 폴링 대신 트리거</h2>
+    <p class="sec-desc">Strategist 판단이 끝났을 때 Critic이 그 결과를 어떻게 넘겨받는가. 핵심은 <b>Critic이 계속 확인(폴링)하지 않고, Strategist가 끝나면 넘겨주는(트리거)</b> 방식.</p>
+
+    <div class="grid c2">
+      <div class="card" style="border-color: rgba(220,38,38,.4)">
+        <h3 style="color:var(--red)">❌ 폴링 (비효율)</h3>
+        <p>Critic이 "Strategist 끝났나?"를 <b>계속 물어봄</b> → 자원 낭비 + 반응 지연.<br><b>비유:</b> 택배 올 때까지 문 앞에서 계속 확인 🚪</p>
+      </div>
+      <div class="card" style="border-color: rgba(22,163,74,.4)">
+        <h3 style="color:var(--accent)">✅ 트리거 (권장)</h3>
+        <p>Strategist가 완료하면 <b>Critic을 부름(호출)/알림</b> → 즉시 반응, 낭비 없음.<br><b>비유:</b> 초인종 — 도착하면 알림 🔔</p>
+      </div>
+    </div>
+
+    <h3 class="sub-h">현재 설계 (1차 MVP) — 직접 호출 트리거</h3>
+    <p class="sec-desc">오케스트레이터가 Strategist 완료 직후 <b>매수 시그널만</b> 즉시 Critic에 넘긴다. Critic은 폴링하지 않는다.</p>
+<pre><span class="c"># pipeline/orchestrator.py</span>
+signal  = fundmanager.propose_signal(bundle)   <span class="c"># ⑤ 끝나면</span>
+verdict = critic.critique(signal)              <span class="c"># ⑥ 즉시 호출 (트리거!)</span></pre>
+    <p class="pipe-note">📌 매수만 Critic으로(split_for_routing) · 보류는 회고용 저장만 → Critic 부하도 줄인다.</p>
+
+    <h3 class="sub-h">2차 확장 — 이벤트 기반</h3>
+    <p class="sec-desc">종목이 많거나 비동기 처리가 필요하면: 메시지 큐 / DB의 LISTEN·NOTIFY 등으로 <b>Strategist 저장 시 이벤트 발행 → Critic 구독</b>. 지금은 단방향 1패스라 직접 호출로 충분.</p>
+  </div>
+</section>
+
+<!-- ───────── 팀 확인 요청 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s13">Action Needed</div>
+    <h2>🔴 팀에 확인 요청 (미해결)</h2>
+    <p class="sec-desc">아래 항목 회신 부탁드려요! 특히 매크로팀 risk_score 범위는 감점 계산 기준이 갈려서 급해요.</p>
+    <div class="grid" style="gap:10px">
+      <div class="q-item"><span class="who">기술팀</span><div class="q"><code>trend</code>의 정확한 값이 뭔가요? ("상승"? "bullish"?) / <code>macd</code>는 라벨인가요 숫자인가요?</div></div>
+      <div class="q-item"><span class="who">매크로팀</span><div class="q"><code>regime</code>의 정확한 값 / <code>risk_score</code> 범위가 <b>0~10인가요 0~1인가요?</b> <span class="dim">— 매크로 감점표 스케일이 갈립니다 (0~10 기준이면 감점표 그대로, 0~1이면 재조정 필요)</span></div></div>
+      <div class="q-item"><span class="who">정보분석팀</span><div class="q">hard_block은 객관 사실(상폐·거래정지 등)만 걸어주세요. <b>확정 반영:</b> confirmed_score 폐지(2026-07-08) 확인 → 뉴스 신뢰 관문을 <code>source_trust</code>·<code>grade_score</code>로 대체하고, <code>disclosure_ref</code>는 있으면 확인 보너스로만 씁니다(문서 v3.2 반영 완료).</div></div>
+      <div class="q-item"><span class="who">정보분석팀(정창욱)</span><div class="q">🆕 <b>뉴스↔공시 연결 필드(<code>disclosure_ref</code>) 신설 요청</b> — 이 뉴스가 어떤 공시로 뒷받침되는지 연결되면, Critic에 "공시로 확인된 뉴스"라고 근거를 줄 수 있어요. 현재 문서엔 없어서 신설 가능한지 봐주세요.</div></div>
+      <div class="q-item"><span class="who">오케스트레이터</span><div class="q"><b>cycle_id는 안 쓰기로</b> — 대신 내 결과행에 입력 스냅샷 시각(<code>src_*_at</code>)을 저장해 PK로 연결합니다. 신호 4개(공시·뉴스·기술·매크로) <b>준비 완료를 어떻게 알려주나요?</b>(폴링 대신 트리거?)</div></div>
+      <div class="q-item"><span class="who">Critic(김미연)</span><div class="q">tb_critic_verdict가 내 판단을 <code>signal_id</code>(=내 id) FK로만 참조하도록 합의 — <b>정본에 남은 cycle_id 컬럼 제거</b> 괜찮을까요?</div></div>
+      <div class="q-item"><span class="who">Critic 담당</span><div class="q">payload 구조 합의해요 (설득 필드 구성 — 위 Output 섹션 참고)</div></div>
+      <div class="q-item"><span class="who">PM 담당</span><div class="q">sizing_hint 형식 합의해요 (suggested_weight + note면 될까요?)</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 다음 할 일 ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="s14">Next</div>
+    <h2>다음 할 일</h2>
+    <ul class="todo">
+      <li><span class="box"></span>팀 확인사항 회신 반영</li>
+      <li><span class="box"></span>PostgreSQL 로컬 세팅 (<code>quantinue</code> DB)</li>
+      <li><span class="box"></span>schemas.py / config.py(POLICY) 실코드 작성</li>
+      <li><span class="box"></span>preprocess.py — 신호별 카운트 함수(공시·뉴스·기술) + hard_block + 매크로 감점</li>
+      <li><span class="box"></span>테스트 데이터로 검증 → GPT-4o 프롬프트 튜닝</li>
+      <li><span class="box"></span>MVP 2: 페르소나 + Critic 재검토 루프(최대 2회)</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ───────── 1차 목데이터 테스트 (맨 마지막) ───────── -->
+<section>
+  <div class="wrap">
+    <div class="sec-label" id="stest">Test · 검증</div>
+    <h2>1차 목데이터 테스트 (2026-07-08)</h2>
+    <p class="sec-desc">모든 설계·판단 로직·Critic 전달까지 설명한 <b>뒤에</b> 배치 — 실제로 이 기준이 종목을 얼마나 걸러내는지 <b>목(가짜) 신호 50개 + 실제 시세</b>로 점검한 결과. 기준을 "빡세게" 조정한 근거야.</p>
+
+    <h3 class="sub-h">① 조건</h3>
+    <div class="tbl-scroll"><table>
+      <tbody>
+        <tr><td style="width:110px"><b>대상</b></td><td>목데이터 <b>50개 종목</b> (미국 대형주)</td></tr>
+        <tr><td><b>기준</b></td><td>공격형 <b>v2 "빡센2"</b> — 합의 3표 · sentiment 0.70 · grade 0.55 · confirmed 0.50 · ml 0.60 · 최소확신 0.6 <span class="dim">(당시 confirmed_score 기준 — 현재는 source_trust 0.55로 대체됨)</span></td></tr>
+        <tr><td><b>시세</b></td><td>알파카 실시간 <b>IEX(무료)</b> 50개 배치 조회</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3 class="sub-h">② 진행</h3>
+    <div class="flow">
+      <div class="flow-item"><div><div class="t">전처리(코드)</div><div class="d">하드블록·표세기·합의로 매수 부합 판정 — LLM 없이 무료</div></div></div>
+      <div class="flow-item"><div><div class="t">실시간 시세</div><div class="d">알파카 IEX로 50개 현재가·거래량 배치 조회(무료)</div></div></div>
+      <div class="flow-item gpt"><div><div class="t">GPT 판단</div><div class="d">부합 상위 3개만 실제 GPT(gpt-4o-mini)로 최종 확신·근거 생성</div></div></div>
+    </div>
+
+    <h3 class="sub-h">③ 결과</h3>
+    <div class="grid c2">
+      <div class="card">
+        <h3>기준 버전별 매수 부합 (같은 50개)</h3>
+        <div class="tbl-scroll"><table>
+          <thead><tr><th>기준 버전</th><th>매수 부합</th><th>핵심 변경</th></tr></thead>
+          <tbody>
+            <tr><td>v1 (초기)</td><td>26개 (52%)</td><td>관대한 기준</td></tr>
+            <tr><td><b>v3 (현재)</b></td><td><b>12개 (24%)</b></td><td><b>문턱↑ + 매크로 표 제외 + 매도 보류 흡수</b></td></tr>
+          </tbody>
+        </table></div>
+        <p class="dim" style="margin-top:8px">v1→v3로 매수 부합 <b>26개→12개</b>. 문턱을 올리고, 종목 변별을 흐리던 매크로 공통표를 아예 빼 <b>순수 신호 기반</b>으로 선별.</p>
+      </div>
+      <div class="card">
+        <h3>v3 최종 판정 (50개)</h3>
+        <div class="tbl-scroll"><table>
+          <tbody>
+            <tr><td>✅ 매수</td><td><b>12개</b></td></tr>
+            <tr><td>⏸ 보류</td><td>35개</td></tr>
+            <tr><td>🔻 매도</td><td>판정 없음 (1차: 보류 흡수)</td></tr>
+            <tr><td>⛔ 하드블록</td><td>3개</td></tr>
+          </tbody>
+        </table></div>
+        <p class="dim" style="margin-top:8px">GPT 상위3: <b>MSFT(0.55) &gt; NVDA(0.50) &gt; GOOGL(0.50)</b> <span class="dim">(0~1 환산)</span></p>
+      </div>
+    </div>
+    <p class="pipe-note" style="margin-top:12px;">📌 목데이터라 절대 수치보다 <b>"기준 강도에 따른 변화"</b>가 포인트. 실데이터 연결 시 재측정 예정.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <b>Quantinue — Strategist</b> · 작성 이은미 · v3.5 · 최종 수정 2026-07-09 15:55 KST · 02:55 ET<br>
+    <span style="opacity:.7">변경 이력 — v1.0 최초 작성 · v1.1 신호 JSON 예시 + Critic payload 상세 · v1.2 요청 스펙(인터페이스 계약) 추가 + 수정시간 표기 · v1.3 테이블명 tb_ 접두사 + category→sector · v1.4 처리 로직 상세(기준+이유+Python) 추가 · v1.5 내 쪽 ERD(테이블 6개 + 관계) 추가 · v1.6 tb_strategist_signals 컬럼 사전 + 데이터타입 설명 추가 · v1.7 판단 구조(코드 게이트+LLM 샌드위치) + conviction 채점 방식 설명 추가 · v1.8 라이트 테마 전환 + 왼쪽 목차 메뉴 + 섹션 번호 · v1.9 매크로 거부권→conviction 감점 전환 + Critic 역할경계(bear_case 제외) 정리 · v2.0 투자유형 공격형 단일화(안정형 제거) + 수치 선정 이유·기대값 설명 추가 · v2.1 공격형 프리셋 3종(A신중/B표준/C초공격) 비교표 + 다크모드 토글 추가 · v2.2 코드↔문서 검증 반영(교차확인=뉴스팀 입력·읽기전용 명시, 무조건 차단은 hard_block뿐 명확화) · v2.3 실시간 스냅샷 컬럼(알파카 배치조회: current_price·day_high/low·volume·turnover·high_52w/low_52w) 추가 + 50개 순회·순위매김 명시 + 매수만 Critic/보류 저장 분기 + min_conviction 8.0 잔재 정리 + 포트폴리오 링크 제거(개인문서 배포 제외) · v2.4 1차 목데이터 테스트(50개·실제 시세·GPT) 섹션 + 판단 로직 변경 이력(매크로 표→감점 · 매도→보류 흡수 · 문턱 빡센2) 섹션 추가 · v2.5 테스트 결과 버전별 표 명확화 + v3 최종 판정 반영 · v2.6 테스트 결과 표를 v1↔v3 비교로 간소화(중간 v2 제외) · v2.7 테스트·변경이력을 목차 10·11번으로 정식 편입(기존 10~14 → 12~16 재번호) · v2.8 문서 전반의 옛 v1 수치를 v3로 통일(문턱 0.70/0.55/0.50/0.60 · min_conviction 6.0 · 교차확인 confirmed_score 비례 · 매크로 표 제거→3신호 consensus 0~3 · 판단 10단계) · v2.9 conviction 스케일 0~10 → 0~1 소수3자리 통일(min_conviction 0.6 · 매크로 감점·교차확인 보너스 ÷10 · 모든 스코어 0~1) · v3.0 「Critic 연결·트리거」 섹션 추가(폴링 대신 트리거 · 현재 orchestrator 직접호출 · 2차 이벤트 확장) 목차 15번 · v3.1 §07 ERD 뉴스 입력필드 최신화(confirmed_score·cross_source_confirmed 제거 · peak_importance·importance·confidence·news_count 🆕 추가 · 입력필드 뜻·예시 표 신설) + disclosure_ref 신설 요청(정창욱) · v3.2 뉴스 신뢰 판단 재설계(삭제된 confirmed_score·cross_source_confirmed 제거 → source_trust 관문 + disclosure_ref 확인 보너스) 전면 반영: §04 요약표·§05 입력JSON+계산·§06 요청스펙·§08 문턱값·§09 흐름·§10 판정로직·§11 conviction조정 정합 + §12 Critic payload에 disclosure_ref 추가 &amp; sizing_hint(PM용) 제외(DB→PM Pull) · §07 ERD 뉴스 입력표에 disclosure_ref 행 추가(누락 보완) · 전수 감사 반영: §07 ERD 박스에 disclosure_ref 추가 &amp; importance·peak_importance·confidence ✅오표시 교정(❌/📄) · §05 공시 JSON 문턱 0.65/0.30→0.70/0.25 · §10 consensus 표 4행 삭제(최대 3) · §13 관문 문구 source_trust·grade_score 확정 · side 매수/보류(매도 흡수) 정합 · 단계수 10 통일 · footer 버전·schemas.py 정정 · v3.3 pipeline.html 정본 전면 정합: §05 공시18/뉴스25 전체필드·순서·체크로 재작성 · 삭제필드 company_name·sector·공시ref 제거 · 테이블명 tb_disclosure_signals·tb_news_signals→tb_disclosure·tb_news · 키 cycle_id→(ticker,collected_at)+as_of/trade_date · §07 ERD 박스·관계·입력표 · §04·§06 요약표 ❌칸 정본화 · Critic evidence disclosure_ref 확인 · v3.4 pipeline.html 원문 직접 대조 정정: 공시 날짜컬럼 collected_at→<b>created_at</b>(뉴스는 collected_at·둘 다름 명시) · 공시 FK as_of / 뉴스 FK trade_date 구분 · 입력 4개 테이블 <b>cycle_id 없음</b> 정정(ticker+최신시각으로 읽기·cycle_id는 결과/Critic에만·생성 미정) · 기술 tb_technical(trade_date,ticker)·매크로 tb_macro(as_of) 키 정정 · §05 날짜·사이클 주의 박스 · §08 문턱값 개별 근거표 · has_signal 검증순서 설명 · 스냅샷 52주 근거 · Test 섹션 맨 마지막 이동 · v3.5 키/시간/모델 정리: §07 키(PK/FK) 한눈 정리표(입력=ticker+최신시각·내 PK=id autoincrement=signal_id·FK=ticker+cycle_id·Critic=signal_id+cycle_id) + id를 autoincrement=signal_id로 명시 · §12 Critic payload에 signal_id 추가 · §10 GPT temperature 미설정(기본1.0)→0.2~0.3 권장 안내 · 헤더·footer 시각 KST+ET 병기 · 트리거 08:30 ET=21:30 KST 병기 · 공시 importance 0.25 근거 명시 · v3.6 <b>cycle_id 폐기</b>(사용자 지시): 유령키 대신 결과행에 내가 읽은 입력 스냅샷 시각 src_disclosure_at·src_news_at·src_technical_date·src_macro_at 저장 → (ticker+시각)로 입력표 PK와 실제 FK 연결(="어디까지 봤나" 기록) · Critic 연결은 signal_id(=내 id) 하나 · §07 ERD박스·관계·키정리표·컬럼사전·§12 payload에서 cycle_id 제거 · memory는 signal_id 참조 · temperature 안내는 제거(나중에) · v3.7 <b>FK 모델 정리</b>: src_technical_date 제거(→trade_date로 통합) · (trade_date,ticker)로 tb_daily_pick(50종목 허브)·tb_technical FK, (ticker,src_*_at)로 공시·뉴스·매크로 복합 FK · <b>실제 FOREIGN KEY 선언 DDL 블록 추가</b> · src_*_at는 읽은 행 시각 복사·없으면 null 명시 · tb_daily_pick ERD 박스 추가 · v3.8 위험 컬럼 null 규칙 명시: key_risk·risk_rebuttal·counter_scenarios는 "매수=항상 채움(위험 1개 필수)/보류=null" — 위험도가 아니라 매수/보류로 갈림. bull_case·evidence·sizing_hint도 보류면 대부분 null. ERD박스·컬럼사전·설명박스 반영</span><br>
+    팀 여름이었다 · 문의는 은미에게 직접 or 팀 채널로!
+  </div>
+</footer>
+
+<script>
+  (function () {
+    var KEY = 'qs-theme';
+    var root = document.documentElement;
+    if (localStorage.getItem(KEY) === 'dark') root.setAttribute('data-theme', 'dark');
+    var btn = document.createElement('button');
+    btn.className = 'theme-toggle';
+    function refresh() {
+      var dark = root.getAttribute('data-theme') === 'dark';
+      btn.textContent = dark ? '☀️' : '🌙';
+      btn.title = dark ? '라이트 모드로 전환' : '다크 모드로 전환';
+      btn.setAttribute('aria-label', btn.title);
+    }
+    btn.addEventListener('click', function () {
+      var dark = root.getAttribute('data-theme') === 'dark';
+      if (dark) { root.removeAttribute('data-theme'); localStorage.setItem(KEY, 'light'); }
+      else { root.setAttribute('data-theme', 'dark'); localStorage.setItem(KEY, 'dark'); }
+      refresh();
+    });
+    document.body.appendChild(btn);
+    refresh();
+  })();
+</script><button class="theme-toggle" title="다크 모드로 전환" aria-label="다크 모드로 전환">🌙</button>
+
+
+
+</body></html>

@@ -1,0 +1,377 @@
+<meta charset="utf-8">
+<title>누구나 이해하는 공시·뉴스 완전설명서 · Quantinue</title>
+<style>
+  :root{
+    --bg:#fbfaf7; --card:#ffffff; --ink:#232a33; --sub:#616b78; --line:#ece7dd;
+    --blue:#2f6fed; --blueBg:#eef3ff; --teal:#0e9488; --tealBg:#e4f6f3;
+    --amber:#c2760a; --amberBg:#fdf3e3; --red:#d94a3d; --redBg:#fdeceb;
+    --green:#2f9e57; --greenBg:#eaf7ee; --purple:#7b5bd6; --purpleBg:#f1ecfd;
+    --mute:#f2efe8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Pretendard","Noto Sans KR",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    line-height:1.85;font-size:16px;word-break:keep-all}
+  .wrap{max-width:860px;margin:0 auto;padding:48px 22px 140px}
+  header.hero{margin-bottom:30px}
+  .kicker{color:var(--blue);font-weight:800;font-size:13px;letter-spacing:.06em}
+  h1{font-size:32px;line-height:1.35;margin:10px 0 14px;letter-spacing:-.01em}
+  .lead{color:var(--sub);font-size:17px}
+  .lead b{color:var(--ink)}
+  h2{font-size:24px;margin:56px 0 6px;padding-top:16px;border-top:3px solid var(--line);scroll-margin-top:20px}
+  h2 .n{color:var(--blue);font-weight:800}
+  h3{font-size:18px;margin:30px 0 6px}
+  h4{font-size:16px;margin:20px 0 4px;color:var(--ink)}
+  p{margin:12px 0}
+  .big{font-size:17px}
+  em{font-style:normal;background:linear-gradient(transparent 62%,#fff2b8 62%);padding:0 2px;font-weight:600}
+  .term{border-bottom:2px dotted var(--blue);font-weight:600;color:var(--blue)}
+  .toc{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 24px;margin:28px 0}
+  .toc h4{margin:0 0 10px}
+  .toc a{color:var(--ink);text-decoration:none;display:block;padding:4px 0;font-size:15px}
+  .toc a:hover{color:var(--blue)}
+  .toc .num{color:var(--blue);font-weight:800;display:inline-block;width:2em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:22px 24px;margin:18px 0;
+    box-shadow:0 1px 3px rgba(40,30,10,.04)}
+  .easy{border-left:5px solid var(--amber);background:var(--amberBg);border-radius:0 14px 14px 0;padding:16px 20px;margin:18px 0}
+  .easy .h{font-weight:800;color:var(--amber);display:block;margin-bottom:2px}
+  .note{border-left:5px solid var(--blue);background:var(--blueBg);border-radius:0 14px 14px 0;padding:16px 20px;margin:18px 0}
+  .warn{border-left:5px solid var(--red);background:var(--redBg);border-radius:0 14px 14px 0;padding:16px 20px;margin:18px 0}
+  .good{border-left:5px solid var(--green);background:var(--greenBg);border-radius:0 14px 14px 0;padding:16px 20px;margin:18px 0}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:18px 0;justify-content:center}
+  .step{background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:10px 14px;font-weight:700;font-size:14px;text-align:center}
+  .step small{display:block;font-weight:400;color:var(--sub);font-size:12px;margin-top:2px}
+  .arw{color:var(--blue);font-weight:800;font-size:18px}
+  table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px}
+  th,td{border:1px solid var(--line);padding:10px 12px;text-align:left;vertical-align:top}
+  th{background:var(--mute);font-weight:800;font-size:13.5px}
+  .tag{display:inline-block;font-size:12.5px;font-weight:700;padding:2px 10px;border-radius:20px;margin:2px 3px 2px 0}
+  .tag.b{background:var(--blueBg);color:var(--blue)} .tag.t{background:var(--tealBg);color:var(--teal)}
+  .tag.g{background:var(--greenBg);color:var(--green)} .tag.a{background:var(--amberBg);color:var(--amber)}
+  .tag.r{background:var(--redBg);color:var(--red)} .tag.p{background:var(--purpleBg);color:var(--purple)}
+  .scale{display:flex;height:26px;border-radius:8px;overflow:hidden;margin:10px 0;font-size:12px;font-weight:700;color:#fff;text-align:center}
+  .scale div{display:flex;align-items:center;justify-content:center}
+  ul.clean{list-style:none;padding-left:0} ul.clean li{padding:4px 0 4px 26px;position:relative}
+  ul.clean li::before{content:"›";position:absolute;left:8px;color:var(--blue);font-weight:800}
+  .q{color:var(--sub);font-size:15px;font-style:italic}
+  hr.soft{border:none;border-top:1px dashed var(--line);margin:26px 0}
+  .mini{font-size:13.5px;color:var(--sub)}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:2px 14px;margin:8px 0}
+  .kv .k{font-weight:700;color:var(--blue)}
+  @media(max-width:620px){.kv{grid-template-columns:1fr}.kv .k{margin-top:8px}}
+</style>
+
+<div class="wrap">
+<div style="max-width:1100px;margin:14px auto;padding:14px 18px;border:2px solid #d5473c;background:#fdeceb;border-radius:12px;color:#8a1c12;font-family:system-ui,sans-serif;line-height:1.6;font-size:14px">⚠️ <b>구버전 · 참고용 문서입니다.</b> 이 문서는 신·구 스키마가 섞여 자기모순이 있을 수 있어 <b>절대적으로 신뢰하지 마세요.</b> Quantinue의 <b>단일 정본</b>은 <code>docs/Quantinue_통합설계서_v2.html</code>이며, 세부(컬럼·전달 JSON·출처등급 등)가 어긋나면 <b>항상 정본이 이깁니다.</b> 여기 내용은 배경 이해용으로만 교차확인하세요. <span style="color:#5b6678">(2026-07-11 부착 · AI 제안 #13)</span></div>
+
+<header class="hero">
+  <div class="kicker">QUANTINUE · 팀 "여름이었다"</div>
+  <h1>우리 프로젝트, 처음부터 끝까지<br>— 공시와 뉴스로 주식 신호를 만드는 법</h1>
+  <p class="lead big">이 글은 <b>이 프로젝트를 처음 보는 사람</b>을 위해 썼어요. 어려운 공식이나 영어는 최대한 빼고,
+  <b>초등학생이 읽어도 “아, 이런 거구나”</b> 하고 이해할 수 있게 하나하나 풀어서 설명합니다.
+  천천히 위에서 아래로 읽으면 우리가 만든 <b>공시·뉴스 분석기</b>가 어떻게 돌아가는지 전부 알게 돼요.</p>
+</header>
+
+<div class="toc">
+  <h4>📚 차례</h4>
+  <a href="#c1"><span class="num">1</span>이 프로젝트는 도대체 뭐예요?</a>
+  <a href="#c2"><span class="num">2</span>먼저 알아야 할 두 단어 — 공시와 뉴스</a>
+  <a href="#c3"><span class="num">3</span>재료는 어디서 가져오나요?</a>
+  <a href="#c4"><span class="num">4</span>전체 흐름 한눈에 보기</a>
+  <a href="#c5"><span class="num">5</span>공시 파트 — 회사의 공식 서류 읽기</a>
+  <a href="#c6"><span class="num">6</span>뉴스 파트 — 기사 걸러 읽기</a>
+  <a href="#c7"><span class="num">7</span>AI가 만들어내는 “결과값”의 뜻</a>
+  <a href="#c8"><span class="num">8</span>점수는 어떻게 계산하나요? (공식을 말로)</a>
+  <a href="#c9"><span class="num">9</span>우리는 겁쟁이처럼 판단해요 (안전장치)</a>
+  <a href="#c10"><span class="num">10</span>결과를 어디 저장하고, 누가 보나요?</a>
+  <a href="#c11"><span class="num">11</span>우리 역할의 경계선</a>
+  <a href="#c12"><span class="num">12</span>잘 맞췄는지 어떻게 확인해요? (채점)</a>
+  <a href="#c13"><span class="num">13</span>한 컷 예시 — 뉴스 3개가 결과가 되기까지</a>
+  <a href="#c14"><span class="num">14</span>어려운 말 쉬운 사전</a>
+</div>
+
+<!-- 1 -->
+<h2 id="c1"><span class="n">1.</span> 이 프로젝트는 도대체 뭐예요?</h2>
+<p class="big">우리 팀은 <em>미국 주식을 자동으로 사고파는 프로그램</em>을 만들고 있어요. 사람이 하루 종일 화면을 보지 않아도,
+컴퓨터가 스스로 “지금 이 회사 주식을 조금 사자” 또는 “팔자”를 판단하게 하는 거예요.</p>
+<p>그런데 주식을 잘 사고팔려면 먼저 <b>세상에서 무슨 일이 벌어지고 있는지</b>를 알아야 해요.
+어떤 회사가 돈을 많이 벌었는지, 큰 계약을 땄는지, 아니면 소송에 걸렸는지 같은 소식들 말이죠.</p>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+우리가 맡은 부분은 <b>“정보를 읽고 이해하는 뇌”</b>예요. 쏟아지는 소식들을 대신 읽어서
+<b>“이건 좋은 소식(호재), 이건 나쁜 소식(악재), 이건 별거 아님”</b> 하고 정리해주는 도우미라고 보면 돼요.
+실제로 “사자/팔자”를 <b>최종 결정</b>하는 건 다른 친구(전략가)가 맡아요. 우리는 <b>재료를 손질해서 넘겨주는</b> 역할이에요.</p>
+</div>
+<p>우리가 판단하는 시간의 단위는 <em>1~5일짜리</em>예요. 1초 만에 사고파는 초단타가 아니라,
+“이번 주에 이 소식 때문에 주가가 움직이겠다” 정도의 <span class="term">이벤트 스윙</span>
+(사건 하나로 며칠간 출렁이는 움직임)을 노려요.</p>
+
+<!-- 2 -->
+<h2 id="c2"><span class="n">2.</span> 먼저 알아야 할 두 단어 — 공시와 뉴스</h2>
+<p>우리가 읽는 소식은 크게 <b>두 종류</b>예요. 이 둘의 차이를 아는 게 제일 중요해요.</p>
+
+<div class="card">
+<h3>📄 공시 (公示) — 회사가 내는 “공식 서류”</h3>
+<p><span class="term">공시</span>는 회사가 <b>법으로 꼭 내야만 하는 공식 문서</b>예요. “우리 회사 이번에 이만큼 벌었습니다”,
+“임원이 바뀌었습니다”, “큰 계약을 맺었습니다” 같은 걸 정해진 양식으로 나라(정부기관)에 제출해요.</p>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+공시는 <b>학교에 내는 공식 서류(생활기록부 같은 것)</b>예요. 거짓으로 쓰면 <b>법으로 처벌</b>받기 때문에,
+느리지만 <b>거의 100% 사실</b>이에요. 그래서 우리는 공시를 <b>가장 믿을 수 있는 재료</b>로 취급해요.</p>
+</div>
+</div>
+
+<div class="card">
+<h3>📰 뉴스 — 기자·언론이 쓴 “기사”</h3>
+<p><span class="term">뉴스</span>는 기자나 언론사가 쓴 기사예요. 공시보다 <b>훨씬 빠르게</b> 세상 소식을 전해주지만,
+<b>틀릴 수도 있고, 확인 안 된 소문(루머)</b>도 섞여 있어요.</p>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+뉴스는 <b>친구들이 전해주는 말</b>이에요. 빠르지만 “카더라”가 섞여 있죠. 그래서 뉴스는
+<b>“누가 한 말인지(믿을 만한 언론인지)”, “진짜 확인된 건지”</b>를 꼭 따져봐야 해요.</p>
+</div>
+</div>
+
+<table>
+  <tr><th>비교</th><th>📄 공시</th><th>📰 뉴스</th></tr>
+  <tr><td>믿을 수 있나?</td><td>매우 높음 (법적 사실)</td><td>출처마다 다름 (루머 섞임)</td></tr>
+  <tr><td>속도</td><td>느림</td><td>빠름</td></tr>
+  <tr><td>우리가 하는 일</td><td>정확히 <b>해석</b>하기</td><td>먼저 <b>걸러내고</b> 해석하기</td></tr>
+</table>
+
+<!-- 3 -->
+<h2 id="c3"><span class="n">3.</span> 재료는 어디서 가져오나요?</h2>
+<ul class="clean">
+  <li><b>공시</b>는 <span class="term">SEC</span>(미국 증권거래위원회 — 미국의 주식 감독 기관)라는 곳에서 가져와요.
+  모든 미국 회사가 여기에 공식 서류를 제출하거든요. 일종의 <b>거대한 공식 문서 창고</b>예요.</li>
+  <li><b>뉴스</b>는 <span class="term">구글 뉴스</span>에서 회사 이름으로 검색해서 최신 기사를 모아와요.</li>
+</ul>
+<div class="note">💡 둘 다 <b>돈을 내거나 특별한 열쇠(유료 키) 없이</b> 가져올 수 있어요. 그래서 비용 걱정 없이 많은 회사를 살펴볼 수 있죠.</div>
+<p>우리는 처음엔 대표적인 큰 회사 <b>50개</b>로 시작해서, 점점 늘려 <b>최종적으로는 시가총액(회사의 몸값) 상위 2,000개 회사</b>까지 살펴보는 걸 목표로 해요.</p>
+
+<!-- 4 -->
+<h2 id="c4"><span class="n">4.</span> 전체 흐름 한눈에 보기</h2>
+<p>재료(공시·뉴스)가 들어와서 <b>쓸 만한 신호</b>가 되어 나가기까지, 이런 <em>여섯 칸짜리 컨베이어 벨트</em>를 지나요.</p>
+<div class="flow">
+  <div class="step">① 모으기<small>수집</small></div><span class="arw">→</span>
+  <div class="step">② 걸러내기<small>쓰레기·루머 제거</small></div><span class="arw">→</span>
+  <div class="step">③ AI가 읽기<small>이해·분류</small></div><span class="arw">→</span>
+  <div class="step">④ 점수 매기기<small>합치고 계산</small></div><span class="arw">→</span>
+  <div class="step">⑤ 저장<small>기록·보관</small></div><span class="arw">→</span>
+  <div class="step">⑥ 넘겨주기<small>전략가에게</small></div>
+</div>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+<b>과일 공장</b>이랑 똑같아요. ① 과일을 <b>모아서</b> ② 상한 건 <b>골라내고</b> ③ 뭐가 사과고 뭐가 배인지 <b>알아보고</b>
+④ 등급(점수)을 <b>매기고</b> ⑤ 상자에 <b>담아 보관하고</b> ⑥ 손님(전략가)에게 <b>배달</b>해요.</p>
+</div>
+<p>여기서 중요한 규칙이 하나 있어요. <b>“숫자 계산은 컴퓨터 코드가, 말의 뜻 해석은 AI가”</b> 나눠서 해요.
+숫자는 컴퓨터가 실수 없이 정확하고, “이 문장이 좋은 뜻인지”는 AI가 잘하니까요. 서로 잘하는 걸 맡기는 거예요.</p>
+
+<!-- 5 -->
+<h2 id="c5"><span class="n">5.</span> 공시 파트 — 회사의 공식 서류 읽기</h2>
+<p>공시에도 <b>여러 종류</b>가 있어요. 우리는 그중 중요한 <b>세 가지</b>를 서로 다른 방법으로 처리해요.</p>
+
+<h3>① 8-K — “속보” 같은 사건 서류</h3>
+<p>회사에 <b>갑자기 생긴 큰 일</b>을 알리는 서류예요. 큰 계약, 임원 교체, 인수합병 같은 것들이죠.
+8-K 안에는 “무슨 일인지”를 나타내는 <span class="term">항목 번호(Item)</span>가 붙어 있어서,
+우리는 <b>번호만 봐도 무슨 종류의 사건인지</b> 대충 알 수 있어요. 그 다음 AI가 자세히 읽고 좋은 소식인지 판단해요.</p>
+
+<h3>② 10-Q / 10-K — “성적표” 같은 실적 서류</h3>
+<p>회사가 <b>3개월(10-Q) 또는 1년(10-K) 동안 얼마나 벌었는지</b> 숫자로 정리한 서류예요. 학교 성적표 같은 거죠.</p>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+여기선 <b>숫자는 코드가 정확히 계산</b>해요 — “작년보다 매출이 20% 늘었네!” 같은 걸 컴퓨터가 딱 뽑아내죠.
+그리고 <b>그 숫자가 좋은 건지 나쁜 건지 “해석”만 AI</b>가 해요. 숫자 자체를 AI가 지어내게 두지 않는 게 핵심이에요.</p>
+</div>
+
+<h3>③ Form 4 — “임원이 자기 회사 주식을 샀나 팔았나”</h3>
+<p>회사 임원이 <b>자기 회사 주식을 사거나 팔면</b> 반드시 내야 하는 서류예요. 이건 중요해요 —
+<b>회사를 제일 잘 아는 사람이 자기 돈으로 자기 회사 주식을 샀다면</b>, 앞으로 잘될 거라 믿는다는 신호일 수 있거든요.</p>
+<div class="note">💡 Form 4는 <b>AI 없이 코드만으로</b> 점수를 매겨요. 규칙이 단순하거든요 —
+<b>공개시장에서 사면 좋은 신호</b>, <b>팔면 약한 나쁜 신호</b>, <b>세금·보상으로 받은 건 중립</b>. 직급이 높을수록 더 크게 봐요.</div>
+
+<!-- 6 -->
+<h2 id="c6"><span class="n">6.</span> 뉴스 파트 — 기사 걸러 읽기</h2>
+<p>뉴스는 루머가 섞여 있어서 <b>읽기 전에 걸러내는 단계</b>가 더 있어요. 순서대로 볼게요.</p>
+
+<h3>1단계 · 출처에 등급 매기기</h3>
+<p>기사를 쓴 <b>언론사가 얼마나 믿을 만한지</b>를 먼저 봐요. 3단계로 나눠요.</p>
+<table>
+  <tr><th>등급</th><th>뜻</th><th>예</th></tr>
+  <tr><td><span class="tag g">ALLOW</span></td><td>믿을 만한 언론사 — 통과</td><td>로이터, 블룸버그 같은 곳</td></tr>
+  <tr><td><span class="tag a">GRAY</span></td><td>애매함 — 일단 받되 조심</td><td>개인 블로그, SNS, 처음 보는 사이트</td></tr>
+  <tr><td><span class="tag r">BLOCK</span></td><td>믿을 수 없음 — 차단</td><td>가짜뉴스로 알려진 곳</td></tr>
+</table>
+
+<h3>2단계 · 쓰레기·루머 미리 걸러내기</h3>
+<p>AI한테 읽히기 <b>전에</b>, 특정 단어(예: 노골적인 광고성 단어)가 들어간 기사는 <b>미리 버려요</b>.
+AI를 부르는 건 시간과 비용이 드니까, 명백한 쓰레기는 그 전에 치우는 거예요.</p>
+
+<h3>3단계 · AI가 읽고 판단</h3>
+<p>걸러진 기사를 AI가 읽고 <b>확정된 사실인지, 아직 소문인지</b>, 그리고 <b>이 언론이 내용상 믿을 만한지</b>까지 판단해요.</p>
+
+<h3>4단계 · 여러 기사를 하나로 합치기</h3>
+<p>한 회사에 대해 기사가 여러 개 있으면, 그걸 <b>하나의 신호로 합쳐야</b> 해요. 이때 규칙이 중요해요.</p>
+<div class="good">✅ <b>믿을 만한 기사일수록 크게 반영</b>해요. 확인된 사실 + 믿을 만한 언론 + AI도 확신 → 이 기사는 <b>무게(가중치)가 큼</b>.
+반대로 확인 안 된 + 애매한 블로그 → <b>무게가 아주 작아서</b> 결과에 거의 영향을 못 줘요.
+그래서 <b>시끄러운 루머 하나가 전체를 흔들지 못하게</b> 막혀 있어요.</div>
+
+<!-- 7 -->
+<h2 id="c7"><span class="n">7.</span> AI가 만들어내는 “결과값”의 뜻</h2>
+<p>공시·뉴스를 읽고 나면, 우리는 그 회사에 대해 여러 개의 <b>점수와 딱지</b>를 만들어요. 하나씩 쉽게 볼게요.</p>
+
+<div class="kv">
+  <div class="k">무슨 일이야?</div><div><b>event_type</b> — 사건의 종류. 실적발표·인수합병·큰계약·임원변경·소송 등 <b>12가지</b> 중 하나로 정리해요.</div>
+  <div class="k">좋은 일? 나쁜 일?</div><div><b>sentiment_score</b> — 방향 점수. <b>0에 가까우면 나쁜 소식, 1에 가까우면 좋은 소식, 0.5는 중립.</b></div>
+  <div class="k">얼마나 큰일이야?</div><div><b>importance_score</b> — 중요도(강도). 사소한 소식이면 낮고, 아주 큰 사건이면 높아요. (좋고 나쁨과는 <b>별개</b>!)</div>
+  <div class="k">위험은?</div><div><b>risk_score</b> — 하방 위험. 좋은 소식이라도 소송·규제 같은 <b>위험이 숨어 있으면</b> 따로 표시해요.</div>
+  <div class="k">믿어도 돼?</div><div><b>신뢰 점수들</b> — “이 신호를 얼마나 믿을 수 있나”를 <b>세 가지 다른 각도</b>로 재요. (바로 아래 설명)</div>
+  <div class="k">즉시 정지!</div><div><b>hard_block</b> — 상장폐지·거래정지처럼 <b>무조건 사면 안 되는</b> 상황이면 켜지는 “빨간 정지 버튼”이에요.</div>
+  <div class="k">요약·근거</div><div><b>summary·keywords</b> — 사람이 빨리 읽으라고 만든 <b>3~4줄 요약, 핵심 단어</b>예요.</div>
+</div>
+
+<h3>“믿어도 돼?”가 왜 세 개나 있나요? (제일 헷갈리는 부분)</h3>
+<p>겉으론 비슷해 보이지만, <b>서로 다른 것을 재기 때문에 일부러 나눠</b> 뒀어요.</p>
+<table>
+  <tr><th>점수</th><th>무엇을 재나</th><th>비유</th></tr>
+  <tr><td><b>confidence_score</b></td><td>우리 판단 자체의 확신 — 근거가 두꺼운가?</td><td>“내가 이만큼 자신 있어”</td></tr>
+  <tr><td><b>trust_score</b></td><td>AI가 기사를 읽어보고 느낀 언론의 신뢰</td><td>“읽어보니 믿을 만한 글이네”</td></tr>
+  <tr><td><b>grade_score</b></td><td>코드가 언론사 주소만 보고 매긴 등급</td><td>“어느 신문사인지 보고 매긴 점수”</td></tr>
+</table>
+<div class="note">💡 <b>AI의 판단(trust_score)</b>과 <b>기계적 규칙(grade_score)</b>을 <b>따로</b> 두는 이유는,
+둘이 서로를 <b>이중으로 검사</b>하게 하려는 거예요. 하나가 속아도 다른 하나가 잡아내죠.</div>
+
+<h3>importance_score(강도)와 sentiment_score(방향)는 왜 따로예요?</h3>
+<p>이 둘을 섞으면 큰일 나요. 예를 들어 <b>“회사가 망할 뻔한 엄청 큰 나쁜 소식”</b>은
+<b>강도(importance_score)는 매우 높지만</b>, <b>방향(sentiment_score)은 매우 낮아요(나쁨).</b>
+“얼마나 큰일이냐”와 “좋은 일이냐 나쁜 일이냐”는 <b>완전히 다른 질문</b>이라 반드시 나눠서 재야 해요.</p>
+<div class="scale">
+  <div style="flex:1;background:#d94a3d">0 · 강한 악재</div>
+  <div style="flex:1;background:#c2760a">0.3</div>
+  <div style="flex:1;background:#9aa4b1">0.5 · 중립</div>
+  <div style="flex:1;background:#3f9d63">0.7</div>
+  <div style="flex:1;background:#2f9e57">1 · 강한 호재</div>
+</div>
+<p class="mini">▲ sentiment_score(방향)의 눈금. importance_score(강도)는 이것과 <b>별개로</b> 0~1로 “얼마나 센 사건인지”만 잽니다.</p>
+
+<!-- 8 -->
+<h2 id="c8"><span class="n">8.</span> 점수는 어떻게 계산하나요? (공식을 말로)</h2>
+<p>어려운 수식 대신 <b>말로</b> 풀어볼게요. 규칙은 딱 네 가지 생각만 알면 돼요.</p>
+
+<h4>생각 ① · 점수를 0~1로 통일하기</h4>
+<p>AI는 보통 “10점 만점에 7점” 식으로 답해요. 우리는 이걸 전부 <b>0~1 사이 숫자</b>로 바꿔요(7점 → 0.7).
+모든 점수가 같은 자로 재져야 서로 비교하기 쉽거든요.</p>
+
+<h4>생각 ② · 믿을수록 크게 (가중평균)</h4>
+<p>기사 여러 개를 합칠 때 <b>그냥 평균</b>내지 않아요. <b>믿을 만한 기사에는 큰 무게, 못 믿을 기사에는 작은 무게</b>를 주고 평균 내요.</p>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+반 친구들에게 “내일 소풍 갈까?”를 물어봐요. 근데 <b>선생님 말은 크게, 장난꾸러기 말은 작게</b> 세는 거예요.
+그래야 진짜 믿을 만한 의견 쪽으로 결론이 나겠죠? 기사의 무게는 <b>“얼마나 확실하냐 × 확인됐냐 × 언론이 믿을 만하냐”</b>를 곱해서 정해요.</p>
+</div>
+
+<h4>생각 ③ · 좋은 소식은 의심, 나쁜 소식은 곧이곧대로</h4>
+<p>이게 우리 프로젝트의 <b>성격</b>을 보여주는 규칙이에요. <b>좋은 소식(호재)은 근거가 약하면 살짝 깎아서</b> 덜 단정해요.
+반대로 <b>나쁜 소식(악재)은 깎지 않고</b> 그대로 둬요.</p>
+<div class="warn">⚠️ 왜냐면 <b>“근거 약한 장밋빛 소문”에 속아서 샀다가 손해 보는 것</b>이 제일 위험하거든요.
+그래서 좋은 소식은 “정말?” 하고 한 번 더 의심하고, 나쁜 소식(경고)은 <b>흐리지 않고 또렷하게</b> 남겨둬요.</div>
+
+<h4>생각 ④ · 평균과 “가장 센 하나”를 따로 보기</h4>
+<p>기사들의 <b>평균 강도</b>(importance_score)만 보면, 딱 하나 있는 <b>엄청 큰 신호</b>가 평균에 묻혀 사라질 수 있어요.
+그래서 <b>믿을 만한 기사 중 가장 센 것 하나</b>(peak_importance_score)를 따로 챙겨봐요.
+단, 못 믿을 언론이 <b>부풀린 자극적인 기사</b>는 여기서 제외해요 — 가짜로 “가장 센 신호”가 되면 안 되니까요.</p>
+
+<!-- 9 -->
+<h2 id="c9"><span class="n">9.</span> 우리는 겁쟁이처럼 판단해요 (안전장치)</h2>
+<p>주식에서 제일 무서운 건 <b>“잘못 사서 크게 손해 보는 것”</b>이에요. 그래서 우리 시스템은 일부러 <b>겁이 많게</b> 만들었어요.</p>
+<ul class="clean">
+  <li><b>가장 보수적인 쪽을 택함</b> — 여러 판단(코드 규칙, AI, 항목 번호)이 있으면 <b>그중 제일 조심스러운 결론</b>을 골라요.</li>
+  <li><b>확인 안 된 좋은 소식은 한 단계 낮춤</b> — 시장 반응이 확인되기 전엔 “사자”를 “일단 지켜보자”로 낮춰요.</li>
+  <li><b>빨간 정지 버튼(hard_block)</b> — 상장폐지·거래정지처럼 위험한 사건은 점수와 상관없이 <b>즉시 매수 금지</b>.</li>
+</ul>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+<b>“돌다리도 두들겨 보고 건너라”</b>예요. 확실하지 않으면 안 사요. 좋은 기회 몇 개를 놓치더라도,
+<b>크게 잃지 않는 것</b>을 훨씬 더 중요하게 여기는 성격이에요.</p>
+</div>
+
+<!-- 10 -->
+<h2 id="c10"><span class="n">10.</span> 결과를 어디 저장하고, 누가 보나요?</h2>
+<p>여기서 많이들 헷갈려 해요. 우리 결과는 <b>두 개의 층</b>으로 나뉘어요.</p>
+<table>
+  <tr><th>층</th><th>무엇</th><th>왜</th><th>누가 봄</th></tr>
+  <tr><td>🗄️ <b>저장</b></td><td>공시 20칸 · 뉴스 29칸의 <b>자세한 기록</b></td><td>“왜 이런 신호가 나왔나”를 나중에 되짚고, 성적을 채점하려고</td><td>우리(점검·감사용)</td></tr>
+  <tr><td>🎯 <b>전달</b></td><td>공시 10칸 · 뉴스 15칸의 <b>핵심 요약</b></td><td>전략가가 <b>판단에 꼭 필요한 것만</b> 빠르게 보라고</td><td>전략가(실제로 이것만 봄)</td></tr>
+</table>
+<div class="note">💡 그래서 <b>“컬럼(칸)이 너무 많다”</b>는 걱정은 사실 크게 안 해도 돼요.
+전략가가 실제로 읽는 건 <b>15칸(뉴스 기준)</b>뿐이고, 나머지 자세한 칸들은 <b>창고에 보관된 근거 자료</b>예요.</div>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+<b>재료 창고(저장)</b>는 크지만, 손님상에 나가는 건 <b>완성된 요리 몇 접시(전달)</b>예요.
+창고가 넓다고 손님이 재료를 다 보는 게 아니죠. 창고는 “이 요리 왜 이렇게 만들었지?”를 나중에 확인하려고 있는 거예요.</p>
+</div>
+
+<!-- 11 -->
+<h2 id="c11"><span class="n">11.</span> 우리 역할의 경계선</h2>
+<p>이건 팀 안에서 <b>누가 무엇을 맡는지</b>에 대한 약속이에요. 아주 중요해요.</p>
+<div class="good">✅ <b>우리(정보분석)가 하는 것:</b> 공시·뉴스를 읽고 → <b>정리된 신호 + 조심스러운 1차 의견</b>까지 만들어 넘김.</div>
+<div class="warn">🚫 <b>우리가 안 하는 것:</b> 실제로 “몇 주를 얼마에 사라”라고 <b>최종 결정</b>하는 것.
+이건 <b>전략가(Strategist)</b> 친구가 우리 신호를 받아서 해요. (시장 반응 확인, 실제 매수 결정 등)</div>
+<div class="easy"><span class="h">🍳 쉽게 말하면</span>
+우리는 <b>요리 재료를 손질해서 예쁘게 담아 주는 사람</b>이고, <b>최종 요리를 완성해 손님에게 내는 건 주방장(전략가)</b>이에요.
+서로 역할이 딱 나뉘어 있어서, 우리는 <b>재료를 정확하고 정직하게</b> 만드는 데만 집중해요.</p>
+</div>
+
+<!-- 12 -->
+<h2 id="c12"><span class="n">12.</span> 잘 맞췄는지 어떻게 확인해요? (채점)</h2>
+<p>우리가 “이건 호재!”라고 했는데 정말 주가가 올랐을까요? 이걸 <b>며칠 뒤 실제 주가로 채점</b>해요.
+이걸 <span class="term">백테스트</span>(지난 기록으로 성적 매기기)라고 해요.</p>
+<ul class="clean">
+  <li>신호가 나온 날로부터 <b>1일·3일·5일 뒤</b> 주가가 얼마나 움직였는지 확인해요.</li>
+  <li>우리가 말한 방향(호재/악재)이 <b>맞았으면 적중, 틀렸으면 실패</b>로 기록해요.</li>
+</ul>
+<div class="note">💡 단, 지금은 <b>점수만 매기고 규칙을 자동으로 바꾸지는 않아요.</b>
+데이터가 아직 적은데 섣불리 규칙을 바꾸면 <b>과거에만 잘 맞는 이상한 규칙</b>(과적합)이 될 수 있거든요. 그래서 <b>측정까지만</b> 해요.</div>
+
+<!-- 13 -->
+<h2 id="c13"><span class="n">13.</span> 한 컷 예시 — 뉴스 3개가 결과가 되기까지</h2>
+<p>어떤 회사(예: 엔비디아)에 대해 <b>기사 3개</b>가 들어왔다고 해볼게요.</p>
+<table>
+  <tr><th>기사</th><th>어디서</th><th>내용</th><th>확인됐나</th></tr>
+  <tr><td>A</td><td>로이터 <span class="tag g">믿음직</span></td><td>“큰 공급 계약 체결” (좋은 소식, 크기 中)</td><td>✅ 확인됨</td></tr>
+  <tr><td>B</td><td>블룸버그 <span class="tag g">믿음직</span></td><td>“전문가 등급 상향” (좋은 소식, 크기 中)</td><td>✅ 확인됨</td></tr>
+  <tr><td>C</td><td>어느 블로그 <span class="tag a">애매</span></td><td>“대박 계약설!” (엄청 큰 소식처럼 <b>부풀림</b>)</td><td>❌ 소문</td></tr>
+</table>
+<p>이제 우리 시스템이 어떻게 처리하는지 볼까요?</p>
+<div class="good">
+✅ 기사 A·B는 <b>믿을 만해서 무게가 큼</b> → 결과를 주도해요. 최종 결론: <b>“좋은 소식(호재), 크기는 보통, 꽤 믿을 만함”</b>.<br><br>
+❌ 기사 C는 “대박!”이라고 <b>제일 크게 떠들었지만</b> — 확인 안 됨 + 애매한 블로그라 <b>무게가 거의 0</b>이 돼요. 그래서:
+<ul class="clean" style="margin-top:6px">
+  <li>전체 평균을 <b>거의 못 움직이고</b>,</li>
+  <li>“가장 센 신호(peak)” 후보에서도 <b>제외</b>되고,</li>
+  <li>대표 기사로도 <b>뽑히지 못해요.</b></li>
+</ul>
+</div>
+<div class="warn">⚠️ 이게 핵심이에요. <b>제일 시끄럽게 떠든 소문이 자동으로 힘을 잃어요.</b>
+“믿을 만한가”를 여러 각도로 재는 이유가 바로 이거예요 — <b>과장된 루머에 속지 않으려고</b>요.</div>
+<p class="mini">더 자세한 실제 숫자 계산이 궁금하면 같은 폴더의 <b>「뉴스_컬럼_쉽게_이해하기」</b> 문서를 보세요.</p>
+
+<!-- 14 -->
+<h2 id="c14"><span class="n">14.</span> 어려운 말 쉬운 사전</h2>
+<table>
+  <tr><th>말</th><th>쉬운 뜻</th></tr>
+  <tr><td><b>공시</b></td><td>회사가 법으로 꼭 내야 하는 공식 서류 (거의 사실)</td></tr>
+  <tr><td><b>SEC</b></td><td>미국 주식 감독 기관. 공시가 모이는 곳</td></tr>
+  <tr><td><b>호재 / 악재</b></td><td>좋은 소식 / 나쁜 소식</td></tr>
+  <tr><td><b>event_type</b></td><td>사건의 종류 (실적·계약·소송 등 12가지)</td></tr>
+  <tr><td><b>sentiment_score</b></td><td>좋은지 나쁜지 방향 점수 (0 나쁨 ~ 1 좋음)</td></tr>
+  <tr><td><b>importance_score</b></td><td>얼마나 큰 사건인지 (좋고 나쁨과 별개)</td></tr>
+  <tr><td><b>risk_score</b></td><td>숨은 위험의 크기</td></tr>
+  <tr><td><b>confidence_score</b></td><td>우리 판단의 자신감</td></tr>
+  <tr><td><b>trust_score</b></td><td>AI가 본 언론의 신뢰</td></tr>
+  <tr><td><b>grade_score</b></td><td>코드가 언론사 주소로 매긴 등급 점수</td></tr>
+  <tr><td><b>hard_block</b></td><td>무조건 사면 안 될 때 켜지는 빨간 정지 버튼</td></tr>
+  <tr><td><b>가중평균</b></td><td>믿을 만한 것에 더 큰 무게를 주고 낸 평균</td></tr>
+  <tr><td><b>백테스트</b></td><td>지난 기록으로 “잘 맞췄나” 채점하기</td></tr>
+  <tr><td><b>이벤트 스윙</b></td><td>사건 하나로 며칠간 주가가 출렁이는 움직임</td></tr>
+  <tr><td><b>전략가(Strategist)</b></td><td>우리 신호를 받아 실제 매수를 결정하는 팀원</td></tr>
+</table>
+
+<hr class="soft">
+<p class="mini">이 문서는 <b>Quantinue 정보분석(공시·뉴스) 파트</b>를 처음 접하는 사람을 위한 안내서예요.
+더 기술적인 내용은 같은 폴더의 상세 명세·데이터계보·컬럼 설명 문서를 참고하세요.
+설명이 어렵거나 빠진 부분이 있으면 언제든 알려주세요 — 더 쉽게 고칠게요. 🙂</p>
+</div>

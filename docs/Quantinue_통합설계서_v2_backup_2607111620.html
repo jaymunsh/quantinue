@@ -1,0 +1,1350 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Quantinue 통합 설계서 v2.0 — 팀 여름이었다</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f8fa; --card:#ffffff; --ink:#1f2328; --sub:#57606a; --line:#d0d7de;
+    --blue:#0969da; --green:#1a7f37; --amber:#9a6700; --red:#cf222e; --purple:#8250df;
+    --green-bg:#dafbe1; --amber-bg:#fff8c5; --red-bg:#ffebe9; --blue-bg:#ddf4ff; --purple-bg:#fbefff;
+    --code-bg:#f6f8fa;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Pretendard","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;line-height:1.65;font-size:15px}
+  .wrap{max-width:1080px;margin:0 auto;padding:24px 20px 80px}
+  h1{font-size:30px;margin:8px 0 4px}
+  h2{font-size:22px;margin:0 0 6px;padding-top:8px}
+  h3{font-size:17px;margin:22px 0 8px}
+  h4{font-size:15px;margin:18px 0 6px}
+  p{margin:8px 0}
+  a{color:var(--blue);text-decoration:none}
+  .muted{color:var(--sub)}
+  .small{font-size:13px}
+  section.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px 26px;margin:26px 0;scroll-margin-top:16px}
+  /* 배지 */
+  .b{display:inline-block;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:700;vertical-align:1px;white-space:nowrap}
+  .b-new{background:var(--green-bg);color:var(--green)}
+  .b-chg{background:var(--blue-bg);color:var(--blue)}
+  .b-fix{background:var(--amber-bg);color:var(--amber)}
+  .b-hot{background:var(--red-bg);color:var(--red)}
+  .b-ok{background:var(--green-bg);color:var(--green)}
+  .b-gray{background:#eff2f5;color:var(--sub)}
+  .b-p{background:var(--purple-bg);color:var(--purple)}
+  /* 섹션 헤더 메타 */
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 4px}
+  .meta span{background:#eff2f5;border-radius:8px;padding:3px 10px;font-size:12.5px;color:var(--sub)}
+  .meta b{color:var(--ink)}
+  /* 파이프라인 스트립 */
+  .pipe{display:flex;flex-wrap:wrap;align-items:stretch;gap:0;margin:14px 0;padding:14px;background:#f0f4f8;border-radius:10px;overflow-x:auto}
+  .pipe .st{background:#fff;border:1.5px solid var(--line);border-radius:8px;padding:8px 12px;font-size:13px;min-width:110px;text-align:center;display:flex;flex-direction:column;justify-content:center}
+  .pipe .st b{font-size:13.5px}
+  .pipe .st .d{color:var(--sub);font-size:11.5px;margin-top:2px}
+  .pipe .ar{align-self:center;padding:0 8px;color:var(--sub);font-weight:700}
+  .pipe .st.llm{border-color:var(--purple);background:var(--purple-bg)}
+  .pipe .st.code{border-color:var(--blue)}
+  .pipe .st.out{border-color:var(--green);background:var(--green-bg)}
+  .pipe .st.block{border-color:var(--red);background:var(--red-bg)}
+  /* 표 */
+  table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13.5px;background:#fff}
+  th,td{border:1px solid var(--line);padding:7px 10px;text-align:left;vertical-align:top}
+  th{background:#eff2f5;font-size:12.5px;white-space:nowrap}
+  tr.hl-new td{background:#f2fcf5}
+  tr.hl-chg td{background:#f3faff}
+  tr.hl-del td{background:#fafbfc;color:var(--sub);text-decoration:line-through}
+  tr.hl-del td .keep{text-decoration:none}
+  td.c,th.c{text-align:center}
+  .twrap{overflow-x:auto}
+  code{background:var(--code-bg);border:1px solid var(--line);border-radius:5px;padding:1px 5px;font-size:12.5px;font-family:Consolas,"D2Coding",monospace}
+  pre{background:#0d1117;color:#e6edf3;border-radius:10px;padding:14px 16px;overflow-x:auto;font-size:12.5px;line-height:1.55}
+  pre code{background:none;border:0;color:inherit;padding:0;font-size:inherit}
+  /* 콜아웃 */
+  .note{border-left:4px solid var(--blue);background:var(--blue-bg);border-radius:0 8px 8px 0;padding:10px 14px;margin:12px 0;font-size:14px}
+  .warn{border-left:4px solid var(--amber);background:var(--amber-bg);border-radius:0 8px 8px 0;padding:10px 14px;margin:12px 0;font-size:14px}
+  .danger{border-left:4px solid var(--red);background:var(--red-bg);border-radius:0 8px 8px 0;padding:10px 14px;margin:12px 0;font-size:14px}
+  .good{border-left:4px solid var(--green);background:var(--green-bg);border-radius:0 8px 8px 0;padding:10px 14px;margin:12px 0;font-size:14px}
+  /* TOC */
+  nav.toc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 22px;margin:20px 0}
+  nav.toc ol{margin:6px 0;padding-left:22px;columns:2;column-gap:36px}
+  nav.toc li{margin:3px 0;font-size:14px;break-inside:avoid}
+  .mermaid{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin:14px 0;text-align:center;overflow-x:auto}
+  .hero{background:linear-gradient(135deg,#0b3a6b,#0969da);color:#fff;border-radius:14px;padding:28px 30px;margin-bottom:8px}
+  .hero .b{background:rgba(255,255,255,.18);color:#fff}
+  .hero p{color:#dbe9ff}
+  .kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin:14px 0}
+  .kv .cell{background:rgba(255,255,255,.1);border-radius:10px;padding:10px 14px;font-size:13px}
+  .kv .cell b{display:block;font-size:14.5px}
+  /* AI 추천 제안 — 항목 카드 (항목당 카드 1장 · 가로 스크롤 없음) */
+  .ai-item{border:1.5px solid #8c959f;border-radius:12px;margin:18px 0;background:#fff;overflow:hidden}
+  .ai-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;background:#eff2f5;border-bottom:1.5px solid #8c959f}
+  .ai-head b{font-size:15px}
+  .ai-no{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:999px;background:#1f2328;color:#fff;font-weight:700;font-size:13px}
+  .ai-head .sp{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .ai-who{background:#fff;border:1px solid var(--line);border-radius:8px;padding:2px 9px;font-size:12.5px;color:var(--sub)}
+  .ai-row{display:grid;grid-template-columns:92px 1fr;border-top:1px solid var(--line)}
+  .ai-head + .ai-row{border-top:0}
+  .ai-k{padding:10px 12px;background:#f6f8fa;border-right:1px solid var(--line);font-weight:700;font-size:12.5px;color:var(--sub)}
+  .ai-v{padding:10px 14px;font-size:13.5px;min-width:0;overflow-wrap:break-word}
+  .ai-res{border-top:1.5px solid #82c98f;background:#dafbe1;padding:11px 14px;font-size:13.5px}
+  .ai-item.done{border-color:#82c98f}
+  .ai-item.done .ai-head{background:#dafbe1;border-bottom-color:#82c98f}
+  .ai-item.done .ai-no{background:var(--green)}
+  .ai-item.done .ai-v{color:var(--sub)}
+  .ai-item.done .ai-k{background:#f2fcf5}
+  .ai-item.hold{border-color:#d4a72c}
+  .ai-item.hold .ai-head{background:#fff8c5;border-bottom-color:#d4a72c}
+  .ai-item.hold .ai-no{background:var(--amber)}
+  @media (max-width:720px){ nav.toc ol{columns:1} .ai-row{grid-template-columns:1fr} .ai-k{border-right:0;padding:8px 14px 2px} .ai-v{padding-top:4px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ══════════════════════ HERO ══════════════════════ -->
+<div class="hero">
+  <span class="b">⭐ 정본 (2026-07-11 승격)</span> <span class="b">통합본 v2.0</span> <span class="b">팀 여름이었다</span>
+  <p class="small" style="margin:6px 0 0">본 문서가 Quantinue의 <b>단일 정본</b>이다. docs/ 하위 원본 문서 7종(특히 collector_agent 4종)은 구버전·참고용 — 서술이 어긋나면 <b>항상 이 문서가 이긴다</b>.</p>
+  <h1>🌊 Quantinue 통합 설계서</h1>
+  <p>공시·뉴스·기술지표·매크로를 읽고 → AI가 매수를 제안하고 → AI가 반박하고 → 코드가 리스크를 계산해 → 가상매매(페이퍼)로 사고 → 5일 뒤 복기하는 <b>하루 한 사이클 자동매매 파이프라인</b>. 이 문서 하나로 01~11 전체 흐름·DB 스키마·에이전트 간 데이터 계약을 파악할 수 있게 팀 문서 7종을 통합·단순화했다.</p>
+  <div class="kv">
+    <div class="cell"><b>1차 MVP</b>공격형 1종 · 전부 페이퍼 · 시드 5인 각 1억</div>
+    <div class="cell"><b>구성</b>컴포넌트 01→11 · Postgres 1개</div>
+    <div class="cell"><b>PM · 인프라</b>김지현 (본 설계 원본 작성)</div>
+    <div class="cell"><b>담당</b>수집 정창욱 · 전략 이은미 · 반박 김미연 · 회고 문성혁</div>
+  </div>
+</div>
+
+<!-- ══════════════════════ 읽는 법 ══════════════════════ -->
+<section class="card" id="legend">
+  <h2>📖 이 문서 읽는 법</h2>
+  <p>각 섹션은 <b>① 파이프라인(흐름 그림) → ② 설명 → ③ 테이블 스키마 → ④ 전달 JSON</b> 순서다. 그림부터 보고 표로 내려가면 된다.</p>
+  <div class="twrap"><table>
+    <tr><th>표시</th><th>뜻</th></tr>
+    <tr><td><span class="b b-new">🆕 신규 추가됨</span></td><td>기존 문서(Official_Document 및 팀원 문서)에 없던 내용을 이번 통합에서 새로 넣은 것</td></tr>
+    <tr><td><span class="b b-chg">🔄 변경됨</span></td><td>기존 내용에서 크게 바뀐 것 (이름 변경·구조 개편 포함)</td></tr>
+    <tr><td><span class="b b-ok">🟢 확정</span></td><td>팀 합의가 끝난 내용</td></tr>
+    <tr><td><span class="b b-fix">🟡 협의</span></td><td>담당자 간 조율이 필요한 내용 — <a href="#issues">협의 현황판</a>과 <a href="#ai">AI 추천 제안</a> 참고</td></tr>
+    <tr><td><span class="b b-hot">🔴 충돌</span></td><td>문서·코드 간 서로 안 맞아 지금 결정해야 하는 것</td></tr>
+  </table></div>
+  <div class="note"><b>시각 컬럼 3대 약속 (전 테이블 공통)</b><br>
+    ① 모든 테이블은 행 생성 시각 <code>created_at</code>을 가진다.<br>
+    ② 행이 갱신(upsert)되는 테이블은 <code>updated_at</code>을 추가로 가진다. <span class="b b-new">🆕 신규 추가됨</span><br>
+    ③ 기존 tb_disclosure·tb_news의 <code>collected_at</code>은 <b>created_at으로 이름 통일</b>한다(팀 약속). <span class="b b-chg">🔄 변경됨</span> — “언제 수집했나”와 “언제 행이 생겼나”가 이 파이프라인에선 같은 순간이므로 컬럼 하나로 충분하다. 사건이 실제로 일어난 시각은 별도 컬럼(<code>published_at</code>·<code>filed_at</code>)이 담당한다.</div>
+</section>
+
+<!-- ══════════════════════ 공통 컨벤션 ══════════════════════ -->
+<section class="card" id="conv">
+  <h2>📏 공통 컨벤션 — 네이밍·타입 규칙 <span class="b b-new">🆕 2026-07-11 원샷 확정</span></h2>
+  <p>trend "상승" vs "up" 문자열 불일치로 매수 조건이 영원히 거짓이 되는 버그를 이미 겪었다. 같은 사고를 막기 위해 <b>코드가 아직 적은 지금, 규칙을 한 번에 확정</b>한다. 아래 8규칙은 이 문서의 모든 스키마·JSON에 이미 반영돼 있다.</p>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>규칙</th><th>내용</th><th>왜</th></tr>
+    <tr><td class="c">1</td><td><b>Boolean</b></td><td>타입은 <code>BOOLEAN</code>, 이름은 <code>is_</code>/<code>has_</code> 접두 — INT 0/1 금지. <b>is_ = 상태·성질</b>(is_dropped “걸러진 상태다”) · <b>has_ = 보유·존재</b>(has_signal “신호를 갖고 있다”) — 혼용이 아니라 의미가 다른 두 접두라 겹치지 않는다</td><td>2·3 같은 쓰레기값을 DB가 차단 + 전달 JSON(true/false)과 변환 마찰 제거</td></tr>
+    <tr><td class="c">2</td><td><b>ENUM·코드값</b></td><td>영어 소문자 snake_case — trend·regime·sentiment·event_type·decision에 이어 <b>side(buy/hold)·inv_type(aggressive)·bucket</b>도 통일. 한글은 문서·UI 라벨로만. <b>※ 여기서 “ENUM”은 허용값 집합이라는 논리 표현 — Postgres 네이티브 ENUM 타입은 쓰지 않는다</b>(값 추가마다 ALTER TYPE 마이그레이션 부담). 물리 타입은 전부 TEXT이고, 값 검증의 1차 책임은 <b>백엔드(Pydantic Literal · core/schemas.py — event_type은 ontology.py가 정본)</b>, DB는 선택적으로 CHECK 제약만. <b>참조 테이블은 두지 않는다 — event_type도 예외 없이 TEXT (ENUM)</b> <span class="b b-chg">🔄 07-11 확정 (AI 제안 #12)</span>. <b>🆕 문서 규칙: ENUM 컬럼은 스키마 표 설명란에 허용값 전체를 필히 명시</b> — 값 목록이 미확정이면 <b>⚠️ ENUM 값 미확정</b> 표시를 남기고 확정 즉시 업데이트</td><td>문자열 비교 버그(trend 사건)의 재발 방지 — DB 값과 코드 상수가 항상 같은 어휘 · ENUM 타입의 마이그레이션 함정 회피</td></tr>
+    <tr><td class="c">3</td><td><b>시각</b></td><td><code>*_at</code> = TIMESTAMPTZ (<b>UTC 저장 · 표시만 KST</b>) · <code>*_date</code> = DATE. 전 테이블 created_at, upsert 테이블만 updated_at</td><td>타임존 사고 방지(미국장 + KST 운영) — 저장과 표시를 분리</td></tr>
+    <tr><td class="c">4</td><td><b>점수 스케일</b></td><td>모든 점수는 <b>0~1 · NUMERIC(4,3) 소수 3자리</b> — <b>예외 없음</b> (conviction·sentiment_score·confidence·tb_macro.risk_score 전부). regime 경계 0.30/0.70, 매크로 감점표도 0~1 구간표 <span class="b b-chg">🔄 07-11 확정 — 개발 전이라 전환 비용 0</span></td><td>0~10 vs 0~1 눈금 불일치로 게이트가 무력화되는 사고(conviction 8.0 사건) 방지 — 예외가 0개면 규칙이 가장 단순</td></tr>
+    <tr><td class="c">5</td><td><b>전달 JSON</b></td><td>JSON 필드명 = DB 컬럼명 그대로 (전달 시 개명 금지 — importance→importance_score 같은 이중 이름 폐기)</td><td>수신자(07·08)가 어느 계약으로 파싱할지 헷갈리지 않게 — 이름은 한 곳에서만 정의</td></tr>
+    <tr><td class="c">6</td><td><b>테이블 역할</b></td><td><code>tb_</code> 접두 · 원본 원장 = 자연 명사(tb_news) · 전달용 집계 = <code>_signal</code> 접미 · 뷰 = <code>v_</code> 접두. <s>코드값 마스터 = 참조 테이블(tb_event_type)</s> <span class="b b-chg">🔄 07-11 — 참조 테이블 미사용 확정(규칙 2·AI 제안 #12), 코드값 정본은 ontology.py + 문서 허용값 표</span></td><td>이름만 보고 “원본인지 전달용인지”를 알 수 있게</td></tr>
+    <tr><td class="c">7</td><td><b>불변 append</b></td><td>신호·판단 테이블(공시/뉴스 signal·strategist·verdict)은 append 전용 — 덮어쓰기(update) 금지. “최신 상태”는 <code>v_*_latest</code> 뷰 또는 (ticker, cycle_ts DESC) 인덱스로 조회 (cycle_ts 없는 테이블은 created_at DESC)</td><td>src_*_at FK가 가리키는 행이 판단 이후 변하면 재현·회고·백테스트가 전부 무너짐</td></tr>
+    <tr class="hl-new"><td class="c">8</td><td><b>PK·대리키</b> <span class="b b-new">🆕 07-11</span></td><td><b>created_at 등 시각 컬럼은 PK 금지</b> — “DB에 언제 들어갔나” 확인용 기록일 뿐, 행의 정체성이 아니다. <b>ticker 단독 PK도 금지</b>(FK·복합키 구성원으로만). 사이클 append 테이블은 <b>대리키 PK — 이름은 테이블 약어 + _id</b>(tb_news_signal→<code>tns_id</code> · tb_disclosure_signal→<code>tds_id</code>) — 에 <b>UNIQUE(ticker, cycle_ts)</b>를 함께 건다(cycle_ts = 그 사이클의 계획된 슬롯 시각, 예: 09:30:00 정각). 대리키는 신분증, cycle_ts 유니크가 멱등 장치 — id만으론 재실행 중복을 못 막는다. 일봉 테이블(tb_universe·tb_daily_pick·tb_technical)은 <b>(날짜, ticker) 자연 복합 PK 유지</b> — “하루 1행” 규칙을 PK가 강제한다</td><td>같은 초 재실행 시 PK 충돌·중복 행 누적 방지(AI 제안 #8) — 시각은 “기록”이지 “정체성”이 아니다</td></tr>
+  </table></div>
+
+  <h3>원샷 리네임 매핑표 — 구 이름은 오늘부로 폐기</h3>
+  <div class="twrap"><table>
+    <tr><th>위치</th><th>구 (폐기)</th><th>신 (확정)</th><th>타입</th><th>비고</th></tr>
+    <tr class="hl-chg"><td>tb_disclosure_signal · tb_news_signal</td><td>has_signal <span class="muted">INT 0/1</span></td><td><b>has_signal</b></td><td>BOOLEAN</td><td><span class="b b-chg">🔄</span> 이름 유지 · 타입만 변경</td></tr>
+    <tr class="hl-chg"><td>tb_disclosure_signal · tb_news_signal</td><td>hard_block <span class="muted">INT 0/1</span></td><td><b>is_hard_blocked</b></td><td>BOOLEAN</td><td><span class="b b-chg">🔄</span> hard_block_reason은 이름 유지</td></tr>
+    <tr class="hl-chg"><td>tb_news (원본)</td><td>dropped <span class="muted">INT 0/1</span></td><td><b>is_dropped</b></td><td>BOOLEAN</td><td><span class="b b-chg">🔄</span></td></tr>
+    <tr class="hl-chg"><td>tb_news (원본)</td><td>is_confirmed <span class="muted">INT 0/1</span></td><td><b>is_confirmed</b></td><td>BOOLEAN</td><td><span class="b b-chg">🔄</span> 이름 유지 · 타입만 변경</td></tr>
+    <tr class="hl-chg"><td>tb_critic_verdict</td><td>agree <span class="muted">BOOL</span></td><td><b>is_agreed</b></td><td>BOOLEAN·null</td><td><span class="b b-chg">🔄</span></td></tr>
+    <tr class="hl-chg"><td>tb_review</td><td>hit <span class="muted">BOOL</span></td><td><b>is_hit</b></td><td>BOOLEAN</td><td><span class="b b-chg">🔄</span></td></tr>
+    <tr class="hl-chg"><td>tb_strategist_signals</td><td>side <span class="muted">"매수"/"보류"</span></td><td><b>buy / hold</b> (2차 +sell)</td><td>TEXT ENUM</td><td><span class="b b-chg">🔄</span> 규칙 2</td></tr>
+    <tr class="hl-chg"><td>tb_strategist_signals</td><td>inv_type <span class="muted">"공격형"</span></td><td><b>aggressive</b> (2차 +conservative)</td><td>TEXT ENUM</td><td><span class="b b-chg">🔄</span></td></tr>
+    <tr class="hl-chg"><td>tb_daily_pick</td><td>bucket <span class="muted">"추세 리더" 등 한글</span></td><td><b>trend_leader / volume_surge / high_52w_breakout / pullback / squeeze_breakout / backfill</b></td><td>TEXT ENUM</td><td><span class="b b-chg">🔄</span> AI 제안 #10 채택</td></tr>
+    <tr class="hl-chg"><td>전 테이블</td><td>TIMESTAMP</td><td><b>TIMESTAMPTZ</b> (UTC)</td><td>—</td><td><span class="b b-chg">🔄</span> 규칙 3</td></tr>
+    <tr class="hl-chg"><td>tb_macro</td><td>risk_score <span class="muted">0~100 · 경계 30/70</span></td><td><b>risk_score 0~1 · 경계 0.30/0.70</b></td><td>NUMERIC(4,3)</td><td><span class="b b-chg">🔄</span> 규칙 4 · AI 제안 #5 해결</td></tr>
+    <tr class="hl-chg"><td>tb_disclosure_signal · tb_news_signal</td><td>collected_at</td><td><b>created_at</b></td><td>TIMESTAMPTZ</td><td><span class="b b-chg">🔄</span> 기존 약속 재확인 · 키에서는 제외(규칙 8)</td></tr>
+    <tr class="hl-new"><td>tb_disclosure_signal · tb_news_signal</td><td>PK(ticker, created_at)</td><td><b>PK(tds_id / tns_id) + UNIQUE(ticker, cycle_ts)</b> 🆕</td><td>BIGSERIAL · TIMESTAMPTZ</td><td><span class="b b-new">🆕</span> 규칙 8 · AI 제안 #8 해결 — created_at은 순수 기록용으로 강등</td></tr>
+  </table></div>
+  <div class="danger"><b>⚠️ 반쪽 마이그레이션 금지</b> — 이 리네임은 스키마 DDL·수집 코드·POLICY 게이트·Critic 하드룰/픽스처·LLM 프롬프트·전달 JSON을 <b>한 PR에서 동시에</b> 바꿔야 한다. 반영 체크리스트: 정창욱(수집·pack JSON) · 이은미(게이트·payload·evidence) · 김미연(Layer 0 조건·fixtures) · 문성혁(Scorer의 is_hit) · 김지현(DDL·오케스트레이터).</div>
+</section>
+
+<!-- ══════════════════════ 목차 ══════════════════════ -->
+<nav class="toc">
+  <b>☰ 목차</b>
+  <ol>
+    <li><a href="#conv">공통 컨벤션 — 네이밍·타입 규칙 🆕</a></li>
+    <li><a href="#big">전체 흐름 한눈에 (01~11)</a></li>
+    <li><a href="#sched">시간대·스케줄 설계 🆕</a></li>
+    <li><a href="#erd">DB 전체 관계도 (ERD)</a></li>
+    <li><a href="#mvp">1차 MVP vs 2차</a></li>
+    <li><a href="#s01">01 · 1차 스크리너 (유니버스 2,000)</a></li>
+    <li><a href="#s02">02 · 기술 분석</a></li>
+    <li><a href="#s03">03 · 2차 스크리너 (오늘의 50)</a></li>
+    <li><a href="#s04">04 · 매크로 분석</a></li>
+    <li><a href="#s05">05 · 공시 분석 — 재개편 🔄</a></li>
+    <li><a href="#s06">06 · 뉴스 분석 — 재개편 🔄</a></li>
+    <li><a href="#s07">07 · 전략 종합 (Strategist)</a></li>
+    <li><a href="#s08">08 · 크리틱 검증 (Critic)</a></li>
+    <li><a href="#s09">09 · 리스크·포트폴리오</a></li>
+    <li><a href="#s10">10 · 주문·체결 (Alpaca)</a></li>
+    <li><a href="#s11">11 · 리뷰·회고 (Reviewer)</a></li>
+    <li><a href="#relay">에이전트 간 데이터 릴레이 (JSON 계약)</a></li>
+    <li><a href="#issues">협의 현황판 (해결/미해결)</a></li>
+    <li><a href="#llm">AI 사용 모델·요금 (LLM 호출 지도) 🆕</a></li>
+    <li><a href="#ai">AI 추천 제안 ⭐</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════════════ 전체 흐름 ══════════════════════ -->
+<section class="card" id="big">
+  <h2>🍳 전체 흐름 한눈에 — 01부터 11까지</h2>
+  <p><b>큰 그림</b> — ① 주1회 감시할 2,000개를 정하고(01) → ② 지표를 계산해(02) → ③ 오늘의 50을 뽑는다(03). ④ 시장 날씨(매크로)와 ⑤⑥ 공시·뉴스를 얹어 → ⑦ Strategist가 매수/보류를 판단하고 → ⑧ Critic이 적대적으로 반박 → ⑨ 리스크·비중 계산 → ⑩ 주문·체결 → ⑪ 회고(lesson)가 다음 판단으로 되돌아온다(피드백).</p>
+
+  <div class="mermaid">
+flowchart LR
+  subgraph BATCH["매일 아침 배치 (08:50~09:00 KST 시장 공백)"]
+    A01["01 유니버스<br/>2,000 (주1회)"] --> A02["02 기술지표<br/>계산"] --> A03["03 오늘의 50<br/>(5버킷)"]
+  end
+  A04["04 매크로<br/>(1시간)"]
+  A03 --> A05["05 공시 수집·분석<br/>(1시간)"]
+  A03 --> A06["06 뉴스 수집·분석<br/>(30분)"]
+  A05 --> S05[("tb_disclosure_signal<br/>집계 스냅샷")]
+  A06 --> S06[("tb_news_signal<br/>집계 스냅샷")]
+  S05 --> A07["07 Strategist<br/>매수/보류 판단"]
+  S06 --> A07
+  A04 --> A07
+  A02 --> A07
+  RT["⚡ 실시간 시세<br/>(Alpaca 50배치)"] --> A07
+  A07 -- "매수 signal만" --> A08["08 Critic<br/>적대적 반박"]
+  A08 -- "pass" --> A09["09 리스크·<br/>포트폴리오"]
+  A09 --> A10["10 주문·체결<br/>Alpaca 브래킷"]
+  A10 --> A11["11 리뷰·회고<br/>T+5 복기"]
+  A11 -. "lesson 피드백" .-> A07
+  A08 -. "기각 → 쿨다운" .-> A07
+  style S05 fill:#dafbe1,stroke:#1a7f37
+  style S06 fill:#dafbe1,stroke:#1a7f37
+  style RT fill:#fff8c5,stroke:#9a6700
+  </div>
+
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>컴포넌트</th><th>하는 일</th><th>산출 테이블</th><th>주기</th><th>담당</th><th>비고</th></tr>
+    <tr><td class="c">01</td><td>1차 스크리너</td><td>NASDAQ 시총 top 2,000 감시 유니버스</td><td><code>tb_universe</code></td><td>주1회</td><td>김지현</td><td>🟢 확정</td></tr>
+    <tr><td class="c">02</td><td>기술 분석</td><td>캔들 → 지표 계산(rs_20·rsi·macd…)</td><td><code>tb_technical</code></td><td>매일</td><td>김지현</td><td>🟢 확정</td></tr>
+    <tr><td class="c">03</td><td>2차 스크리너</td><td>공통필터 + 5버킷 → 오늘의 50</td><td><code>tb_daily_pick</code></td><td>매일</td><td>김지현</td><td>🟢 확정</td></tr>
+    <tr><td class="c">04</td><td>매크로 분석</td><td>지수·VIX·금리·달러 → 국면 판정</td><td><code>tb_macro</code></td><td>1시간</td><td>김지현</td><td>🟢 확정</td></tr>
+    <tr class="hl-chg"><td class="c">05</td><td>공시 분석</td><td>공시 <b>원본 수집(tb_disclosure)</b> + LLM 분석 → 종목당 <b>집계 1행 전달(tb_disclosure_signal)</b></td><td><code>tb_disclosure</code> · <code>tb_disclosure_signal</code></td><td>1시간</td><td>정창욱</td><td><span class="b b-chg">🔄 변경됨</span> 수집/전달 테이블 분리</td></tr>
+    <tr class="hl-chg"><td class="c">06</td><td>뉴스 분석</td><td>뉴스 <b>원본 수집(tb_news)</b> + LLM 분석 → 종목당 <b>집계 1행 전달(tb_news_signal)</b></td><td><code>tb_news</code> · <code>tb_news_signal</code></td><td><b>30분</b> <span class="small muted">(1차 · 구 5분)</span></td><td>정창욱</td><td><span class="b b-chg">🔄 변경됨</span> 수집/전달 테이블 분리</td></tr>
+    <tr><td class="c">07</td><td>전략 종합</td><td>신호 4종+실시간시세 → 코드게이트+GPT → 매수/보류</td><td><code>tb_strategist_signals</code></td><td>2h→1h→10분 단계 축소</td><td>이은미</td><td>🟢 v3.8 반영 · cycle_id 폐기 <span class="b b-chg">🔄</span></td></tr>
+    <tr><td class="c">08</td><td>크리틱 검증</td><td>4계층(관문→하드룰→LLM 5각도→게이트) 적대적 반박</td><td><code>tb_critic_verdict</code></td><td>매수 제안마다</td><td>김미연</td><td>🟢 구현·테스트 78개 통과 · 협의 9건 🟡</td></tr>
+    <tr><td class="c">09</td><td>리스크·포트폴리오</td><td>이벤트회피·중복방지·비중·손절 계산 (전부 코드)</td><td><code>tb_order</code>(주문계획)</td><td>매수 시</td><td>김지현</td><td>🟢 확정</td></tr>
+    <tr><td class="c">10</td><td>주문·체결</td><td>Alpaca 브래킷 주문(진입+손절+익절)·체결 기록</td><td><code>tb_account</code>·<code>tb_order</code>·<code>tb_fill</code></td><td>매수 시</td><td>김지현</td><td>🟡 설계 예정</td></tr>
+    <tr><td class="c">11</td><td>리뷰·회고</td><td>T+5 복기 → lesson(다음 판단 메모리)</td><td><code>tb_review_price_snapshots</code>·<code>tb_review</code></td><td>매일 + T+5</td><td>문성혁</td><td>🟢 반영 · 메모리 tb_review.lesson 통일 <span class="b b-chg">🔄</span></td></tr>
+  </table></div>
+
+  <div class="note"><b>⏰ 배치는 언제 도나 (KST)</b> — 하루 1회 무거운 배치(01 주1회·02·03)는 <b>08:50 아침 배치</b>로, 04(1시간)·05(1시간)·06(<b>30분</b> 🔄 <a href="#ai">AI 제안 #14 채택</a>)·07(2시간→10분 단계 축소)은 장중 스케줄러가 각자 주기로 돈다. <b>누가 언제 왜 그 시각에 도는지는 → <a href="#sched">시간대·스케줄 설계</a> 섹션에 전부 정리.</b></div>
+</section>
+
+<!-- ══════════════════════ 시간대·스케줄 ══════════════════════ -->
+<section class="card" id="sched">
+  <h2>⏰ 시간대·스케줄 설계 — 무엇이 언제, 왜 그때 도나 <span class="b b-new">🆕 신규 추가됨 (2026-07-11)</span></h2>
+  <p>스케줄이 꼬이면 파이프라인 전체가 꼬인다. 헷갈리는 원인은 딱 하나 — <b>우리는 KST에 살고, 시장은 미국 동부(ET)에 산다.</b> 아래 순서대로 보면 된다: ① 시간 3원칙 → ② 미국장 하루를 KST로 변환 → ③ 하루 타임라인 → ④ 스케줄 총괄표 → ⑤ 주기를 정하는 규칙.</p>
+
+  <div class="note"><b>시간 3원칙</b><br>
+    ① <b>저장은 전부 UTC</b>(TIMESTAMPTZ) — <a href="#conv">컨벤션 규칙 3</a>. 사람 눈에 보여줄 때만 KST로 변환.<br>
+    ② 스케줄 기준은 “KST 몇 시”가 아니라 <b>“시장이 어느 국면인가”</b> — 개장 전·장중·마감 후. 서머타임으로 KST 벽시계가 1시간 밀려도 국면 기준은 변하지 않는다.<br>
+    ③ 주기 숫자(30분·1시간·2시간)는 코드가 아니라 <b>config(yaml) 값</b> — 아래 “구현 원칙” 참조.</div>
+
+  <h3>① 미국장 하루를 KST로 보면</h3>
+  <div class="twrap"><table>
+    <tr><th>시장 국면</th><th>ET (현지)</th><th>KST — 여름 (3~11월 EDT)</th><th>KST — 겨울 (11~3월 EST)</th><th>우리 파이프라인에서 벌어지는 일</th></tr>
+    <tr><td>프리마켓</td><td>04:00–09:30</td><td>17:00–22:30</td><td>18:00–23:30</td><td>수집 사이클(04·05·06) 가동 시작 — 개장 전 뉴스·공시를 미리 쌓는다</td></tr>
+    <tr><td><b>정규장</b></td><td><b>09:30–16:00</b></td><td><b>22:30–05:00</b></td><td><b>23:30–06:00</b></td><td><b>판단(07)·반박(08)·주문(09·10)이 도는 유일한 구간</b> — 실시간 시세 스냅샷이 필요하므로</td></tr>
+    <tr><td>애프터마켓</td><td>16:00–20:00</td><td>05:00–09:00</td><td>06:00–10:00</td><td>실적 발표·8-K가 몰리는 시간대 — 수집(05·06)은 계속 돈다</td></tr>
+    <tr><td>장외 공백</td><td>20:00–04:00</td><td>09:00–17:00</td><td>10:00–18:00</td><td>시장이 완전히 조용한 유일한 구간 — <b>무거운 배치(01·02·03)와 보존 정리의 자리</b></td></tr>
+  </table></div>
+
+  <h3>② 하루 타임라인 (KST · 여름 기준)</h3>
+  <div class="pipe">
+    <div class="st code"><b>08:50 아침 배치</b><div class="d">01(주1회)·02·03<br>전일 일봉 확정 후</div></div><div class="ar">→</div>
+    <div class="st"><b>09:00~17:00</b><div class="d">장외 공백<br>스케줄러 휴지</div></div><div class="ar">→</div>
+    <div class="st code"><b>17:00 프리마켓</b><div class="d">04·05·06<br>수집 사이클 가동</div></div><div class="ar">→</div>
+    <div class="st llm"><b>22:30 개장</b><div class="d">07 판단 사이클 시작<br>2시간 간격 (예: 23:00·01:00·03:00)</div></div><div class="ar">→</div>
+    <div class="st out"><b>~05:00 마감</b><div class="d">사이클 3~4회<br>08→09→10은 매수 시 즉시</div></div><div class="ar">→</div>
+    <div class="st"><b>05:00~09:00</b><div class="d">애프터 — 실적·8-K<br>수집만 계속</div></div>
+  </div>
+  <p class="small muted">08:50 배치의 본질 조건은 “전일 정규장 일봉이 확정된 뒤(마감 05:00 이후) + 다음 프리마켓 전”이다. 정확히는 애프터마켓 꼬리 구간(여름 기준 종료 09:00 KST)과 겹치지만, 02·03이 쓰는 일봉은 정규장 기준이라 이미 확정된 뒤이므로 무방하다.</p>
+
+  <h3>③ 스케줄 총괄표 — 1차 MVP 확정 주기</h3>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>무엇</th><th>유형</th><th>주기 (1차)</th><th>도는 시간대</th><th>왜 그 주기·그 시각인가</th></tr>
+    <tr><td class="c">01</td><td>유니버스 2,000</td><td>배치</td><td>주 1회</td><td>아침 배치 슬롯</td><td>시총 순위는 천천히 변한다</td></tr>
+    <tr><td class="c">02</td><td>기술지표</td><td>배치</td><td>매일 08:50</td><td>장외 공백</td><td>전일 일봉 확정 후여야 계산 가능</td></tr>
+    <tr><td class="c">03</td><td>오늘의 50</td><td>배치</td><td>매일 08:50 (02 직후)</td><td>장외 공백</td><td>02의 산출물을 바로 소비 — 순서 의존</td></tr>
+    <tr><td class="c">04</td><td>매크로</td><td>장중 주기</td><td>1시간</td><td>프리 ~ 마감</td><td>국면(regime)은 시간 단위로 충분히 느리게 변한다</td></tr>
+    <tr><td class="c">05</td><td>공시 수집</td><td>장중 주기</td><td>1시간</td><td>프리 ~ 애프터</td><td>공시는 장 마감 후에도 나온다 (8-K·실적)</td></tr>
+    <tr class="hl-chg"><td class="c">06</td><td>뉴스 수집</td><td>장중 주기</td><td><b>30분</b> <span class="b b-chg">🔄 구 5분 · #14 채택</span></td><td>프리 ~ 애프터</td><td><b>판단 주기(2h) ÷ 4</b> — 아래 경험칙</td></tr>
+    <tr><td class="c">07</td><td>Strategist 판단</td><td>장중 주기</td><td>2시간 → 사이클 3~4회/일</td><td><b>정규장만</b></td><td>실시간 시세 스냅샷이 필요 → 정규장 밖에선 의미 없음</td></tr>
+    <tr><td class="c">08</td><td>Critic 반박</td><td><b>트리거</b></td><td>주기 없음</td><td>07 직후 즉시</td><td>매수 제안마다 07이 직접 호출 — 스케줄러 등록 대상 아님</td></tr>
+    <tr><td class="c">09·10</td><td>리스크 → 주문</td><td><b>트리거</b></td><td>주기 없음</td><td>08 pass 직후 즉시</td><td>릴레이 체인 — <a href="#relay">이음새</a> 참조</td></tr>
+    <tr><td class="c">11</td><td>Reviewer</td><td>배치</td><td>매일(가격 스냅샷) + T+5(회고)</td><td>장외 공백</td><td>T+5 종가가 확정된 뒤 복기</td></tr>
+  </table></div>
+
+  <h3>④ 주기를 정하는 규칙 — “수집 ≈ 판단 ÷ 2~4” + 단계 축소 로드맵</h3>
+  <p><b>원리</b> — 판단(07)은 실행될 때 각 신호의 <b>최신 스냅샷 1개</b>만 읽는다. 수집이 판단보다 2~4배 빠르면 “판단 시점 기준 최악 15~30분 묵은 뉴스” 수준으로 충분히 신선하고, 그보다 더 빠르게 돌리는 건 <b>아무도 안 읽는 스냅샷</b>만 쌓는다 (5분 주기였다면 판단 1회당 24개 중 23개가 버려짐 — AI 제안 #14의 근거).</p>
+  <div class="twrap"><table>
+    <tr><th>단계</th><th>07 판단</th><th>06 뉴스</th><th>05 공시</th><th>04 매크로</th><th>비고</th></tr>
+    <tr class="hl-new"><td><b>1차 MVP (지금)</b></td><td>2시간</td><td><b>30분</b></td><td>1시간</td><td>1시간</td><td>✅ 확정 (07-11)</td></tr>
+    <tr><td>중간 단계</td><td>1시간</td><td>15분</td><td>1시간</td><td>1시간</td><td>07 축소 시 뉴스 동조</td></tr>
+    <tr><td>최종 (2차 목표)</td><td>10분</td><td>5분 복원</td><td>1시간 (그때 재검토)</td><td>1시간</td><td>파티셔닝 재검토 시점 (AI 제안 #9)</td></tr>
+  </table></div>
+
+  <div class="good"><b>🔧 구현 원칙 — 주기는 코드가 아니라 설정이다</b><br>
+  수집·집계·판단의 비즈니스 메서드는 <b>“자신이 언제 불리는지” 모르게(주기 무관·멱등)</b> 만들고, 스케줄러는 config(yaml)에 적힌 주기 값으로 그 메서드를 호출만 한다. LLM 모델명과 같은 원칙(<a href="#llm">#llm</a>) — 주기 변경(30분→15분)이 코드 수정·배포 없이 <b>숫자 하나</b>로 끝나야 위 로드맵이 굴러간다. 재실행 안전(멱등 append)은 <a href="#ai">AI 제안 #8</a>과 세트로 확정할 것.</div>
+
+  <div class="warn"><b>⚠️ 서머타임 함정</b> — 11월 첫 일요일 ~ 3월 둘째 일요일(겨울)엔 미국장이 KST 기준 1시간 늦어진다(개장 23:30). 스케줄을 KST 고정 시각으로 하드코딩하면 겨울에 “개장 1시간 전에 판단 사이클 시작” 같은 어긋남이 생긴다. 스케줄러는 <b>ET 기준(또는 거래소 캘린더)으로 국면을 계산</b>하고 KST는 표시용으로만 쓸 것 — 시간 3원칙 ②. 휴장일(연휴·조기폐장) 처리도 같은 캘린더로 해결된다. <span class="small">(구현 확인: 김지현 스케줄러)</span></div>
+</section>
+
+<!-- ══════════════════════ ERD ══════════════════════ -->
+<section class="card" id="erd">
+  <h2>🗄️ DB 전체 관계도 (ERD)</h2>
+  <p>위 흐름도는 “일의 순서”, 이 그림은 “DB 구조”다. 박스 = 테이블, 선 = 관계(FK). 중심은 <code>tb_daily_pick</code>(오늘의 50) — 여기서 기술·공시·뉴스가 파생되고, 신호가 <code>tb_strategist_signals</code> → <code>tb_critic_verdict</code> → <code>tb_order</code> → <code>tb_fill</code>로 흘러 <code>tb_review</code>가 피드백으로 돌아온다.</p>
+  <div class="mermaid">
+erDiagram
+  tb_universe ||--o{ tb_daily_pick : "주1회 2000 → 매일 50"
+  tb_daily_pick ||--|| tb_technical : "지표 1:1"
+  tb_daily_pick ||--o{ tb_disclosure : "공시 원본(건별)"
+  tb_daily_pick ||--o{ tb_news : "뉴스 원본(건별)"
+  tb_disclosure ||--o{ tb_disclosure_signal : "집계(대표 filing_no)"
+  tb_news ||--o{ tb_news_signal : "집계(대표 rep_news_id)"
+  tb_daily_pick ||--o{ tb_strategist_signals : "trade_date+ticker"
+  tb_disclosure_signal ||--o| tb_strategist_signals : "src_disclosure_at"
+  tb_news_signal ||--o| tb_strategist_signals : "src_news_at"
+  tb_macro ||--o| tb_strategist_signals : "src_macro_at"
+  tb_strategist_signals ||--o| tb_critic_verdict : "매수만 반박"
+  tb_strategist_signals ||--o{ tb_order : "pass → 주문"
+  tb_account ||--o{ tb_order : ""
+  tb_order ||--o{ tb_fill : "체결"
+  tb_strategist_signals ||--o{ tb_review_price_snapshots : "T+1~5 종가"
+  tb_strategist_signals ||--o| tb_review : "최종 회고 1행"
+
+  tb_universe {
+    DATE as_of_date PK
+    TEXT ticker PK
+    BIGINT market_cap
+    TIMESTAMPTZ created_at
+  }
+  tb_daily_pick {
+    DATE trade_date PK
+    TEXT ticker PK
+    DATE universe_as_of FK
+    TEXT bucket
+    INT rank
+    TEXT sector
+    TIMESTAMPTZ created_at
+  }
+  tb_technical {
+    DATE trade_date PK
+    TEXT ticker PK
+    NUMERIC close "어제 종가"
+    NUMERIC rs_20
+    NUMERIC rsi
+    TEXT trend "up/mixed/down/no_data"
+    TIMESTAMPTZ created_at
+  }
+  tb_macro {
+    TIMESTAMPTZ as_of PK
+    TEXT regime "risk_on/neutral/risk_off"
+    NUMERIC risk_score "0~1"
+    TIMESTAMPTZ created_at
+  }
+  tb_disclosure {
+    BIGSERIAL id PK
+    TEXT ticker FK
+    TEXT filing_no UK "accession"
+    TEXT event_type
+    TIMESTAMPTZ filed_at
+    TIMESTAMPTZ created_at
+    TIMESTAMPTZ updated_at
+  }
+  tb_news {
+    BIGSERIAL id PK
+    TEXT ticker FK
+    TEXT news_key UK "링크 정규화"
+    TEXT event_type
+    TIMESTAMPTZ published_at
+    TIMESTAMPTZ created_at
+    TIMESTAMPTZ updated_at
+  }
+  tb_disclosure_signal {
+    BIGSERIAL tds_id PK "규칙 8"
+    TEXT ticker UK "UNIQUE(ticker, cycle_ts)"
+    TIMESTAMPTZ cycle_ts UK "계획 슬롯 시각"
+    NUMERIC sentiment_score
+    NUMERIC importance
+    BOOLEAN is_hard_blocked
+    TIMESTAMPTZ created_at "기록용 - 구 collected_at"
+  }
+  tb_news_signal {
+    BIGSERIAL tns_id PK "규칙 8"
+    TEXT ticker UK "UNIQUE(ticker, cycle_ts)"
+    TIMESTAMPTZ cycle_ts UK "계획 슬롯 시각"
+    NUMERIC sentiment_score
+    NUMERIC source_trust
+    TEXT disclosure_ref
+    BOOLEAN is_hard_blocked
+    TIMESTAMPTZ created_at "기록용 - 구 collected_at"
+  }
+  tb_strategist_signals {
+    BIGSERIAL id PK "= signal_id"
+    DATE trade_date FK
+    TEXT ticker FK
+    TEXT side "buy/hold"
+    NUMERIC conviction "0~1"
+    TIMESTAMPTZ created_at
+  }
+  tb_critic_verdict {
+    BIGSERIAL id PK
+    BIGINT signal_id FK
+    TEXT decision "pass/reject/hold"
+    NUMERIC confidence "0~1"
+    TIMESTAMPTZ created_at
+  }
+  tb_account {
+    BIGINT id PK
+    NUMERIC cash
+    NUMERIC equity
+    TIMESTAMPTZ updated_at
+  }
+  tb_order {
+    BIGINT id PK
+    BIGINT signal_id FK
+    NUMERIC qty
+    NUMERIC stop_price
+    TIMESTAMPTZ updated_at
+  }
+  tb_fill {
+    BIGINT id PK
+    BIGINT order_id FK
+    NUMERIC price
+    TIMESTAMPTZ filled_at
+  }
+  tb_review_price_snapshots {
+    BIGINT signal_id PK
+    INT day_offset PK "1~5"
+    NUMERIC close
+    TIMESTAMPTZ updated_at
+  }
+  tb_review {
+    BIGINT signal_id PK
+    NUMERIC ret_5d
+    BOOLEAN is_hit
+    TEXT lesson "메모리"
+    TIMESTAMPTZ updated_at
+  }
+  </div>
+
+  <h3>테이블 총람 — 소유자·키·시각 컬럼</h3>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>테이블</th><th>역할</th><th>PK / 주요 FK</th><th class="c">created_at</th><th class="c">updated_at</th><th>소유자</th><th>비고</th></tr>
+    <tr><td class="c">1</td><td><code>tb_universe</code> 🕐</td><td>감시 2,000 (주1회 스냅샷 누적)</td><td>PK(as_of_date, ticker)</td><td class="c">✅</td><td class="c">—</td><td>김지현</td><td>🟢</td></tr>
+    <tr><td class="c">2</td><td><code>tb_daily_pick</code> 🕐</td><td>오늘의 50</td><td>PK(trade_date, ticker) · FK(universe_as_of, ticker)→universe</td><td class="c">✅</td><td class="c">—</td><td>김지현</td><td>🟢</td></tr>
+    <tr><td class="c">3</td><td><code>tb_technical</code> 🕐</td><td>50개 지표 (1:1)</td><td>PK(trade_date, ticker) · FK→daily_pick</td><td class="c">✅</td><td class="c">—</td><td>김지현</td><td>🟢</td></tr>
+    <tr><td class="c">4</td><td><code>tb_macro</code> 🕐</td><td>시장 국면 (1시간 1행)</td><td>PK(as_of)</td><td class="c">✅</td><td class="c">—</td><td>김지현</td><td>🟢</td></tr>
+    <tr class="hl-chg"><td class="c">5</td><td><code>tb_disclosure</code> 🕐</td><td><b>공시 원본 — 공시 1건 = 1행</b></td><td>PK(id) · UNIQUE(filing_no)</td><td class="c">✅</td><td class="c">✅ (백테스트 사후기입)</td><td>정창욱</td><td><span class="b b-chg">🔄 역할 변경</span> 집계→원본</td></tr>
+    <tr class="hl-new"><td class="c">5′</td><td><code>tb_disclosure_signal</code> 🕐</td><td><b>공시 집계 스냅샷 — 종목당 사이클 1행 → 07·08 전달</b></td><td>PK(tds_id) · UNIQUE(ticker, cycle_ts) · FK(trade_date, ticker)→daily_pick</td><td class="c">✅ 기록용 (구 collected_at)</td><td class="c">—</td><td>정창욱</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr class="hl-chg"><td class="c">6</td><td><code>tb_news</code> 🕐</td><td><b>뉴스 원본 — 기사 1건 = 1행</b></td><td>PK(id) · UNIQUE(news_key)</td><td class="c">✅</td><td class="c">✅ (백테스트 사후기입)</td><td>정창욱</td><td><span class="b b-chg">🔄 역할 변경</span> 집계→원본</td></tr>
+    <tr class="hl-new"><td class="c">6′</td><td><code>tb_news_signal</code> 🕐</td><td><b>뉴스 집계 스냅샷 — 종목당 사이클 1행 → 07·08 전달</b></td><td>PK(tns_id) · UNIQUE(ticker, cycle_ts) · FK(trade_date, ticker)→daily_pick</td><td class="c">✅ 기록용 (구 collected_at)</td><td class="c">—</td><td>정창욱</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr><td class="c">7</td><td><code>tb_strategist_signals</code></td><td>매수/보류 판단 (append)</td><td>PK(id=signal_id) · FK(trade_date,ticker)→daily_pick · src_*_at→신호 3종</td><td class="c">✅</td><td class="c">—</td><td>이은미</td><td><span class="b b-chg">🔄</span> cycle_id 폐기 → src_*_at FK</td></tr>
+    <tr><td class="c">8</td><td><code>tb_critic_verdict</code></td><td>반박 판정 (매수당 0~1행+)</td><td>PK(id) · FK(signal_id)→signals</td><td class="c">✅</td><td class="c">—</td><td>김미연</td><td><span class="b b-chg">🔄</span> cycle_id 제거 · source/skipped_rules 신설</td></tr>
+    <tr><td class="c">9</td><td><code>tb_account</code></td><td>5인 계좌 잔고</td><td>PK(id)</td><td class="c">✅</td><td class="c">✅ <span class="b b-new">🆕</span></td><td>김지현</td><td>🟡 설계 예정</td></tr>
+    <tr><td class="c">10</td><td><code>tb_order</code></td><td>브래킷 주문 계획·상태</td><td>PK(id) · FK(signal_id)·FK(account_id)</td><td class="c">✅</td><td class="c">✅ <span class="b b-new">🆕</span> (상태 변경)</td><td>김지현</td><td>🟡 설계 예정</td></tr>
+    <tr><td class="c">11</td><td><code>tb_fill</code></td><td>체결 기록</td><td>PK(id) · FK(order_id)</td><td class="c">✅</td><td class="c">—</td><td>김지현</td><td>🟡 설계 예정</td></tr>
+    <tr><td class="c">12</td><td><code>tb_review_price_snapshots</code> 🕐</td><td>판단별 T+1~5 종가</td><td>PK(signal_id, day_offset) · FK→signals</td><td class="c">✅</td><td class="c">✅ <span class="b b-new">🆕</span> (upsert)</td><td>문성혁</td><td>🟢</td></tr>
+    <tr><td class="c">13</td><td><code>tb_review</code></td><td>signal당 최종 회고 1행</td><td>PK(signal_id) · FK→signals</td><td class="c">✅</td><td class="c">✅ <span class="b b-new">🆕</span> (upsert)</td><td>문성혁</td><td>🟢</td></tr>
+    <tr class="hl-del"><td class="c">14</td><td><s><code>tb_event_type</code></s></td><td><s><b>사건 종류 마스터 (참조)</b> — 12종 seed · 4개 테이블의 event_type이 FK 참조</s></td><td class="c" colspan="4">—</td><td><span class="b b-chg">🔄 폐기 (07-11 · AI 제안 #12)</span> — event_type은 다른 ENUM과 동일하게 <b>TEXT (ENUM)</b>. 정본 = ontology.py Literal + <a href="#s05">05 허용값 12종 표</a></td></tr>
+    <tr><td class="c">💾</td><td>candle 캐시</td><td>DB 아님 — 메모리/CSV (조회 속도용)</td><td>—</td><td class="c">—</td><td class="c">—</td><td>김지현</td><td>🟢</td></tr>
+  </table></div>
+
+  <div class="note"><b>📖 PK·FK 30초 요약</b> — PK(기본키) = 한 줄을 콕 집는 이름표 — 일봉 표는 <code>(날짜, ticker)</code> 복합 PK, 사이클 append 표는 <code>tns_id</code> 같은 대리 PK + UNIQUE(ticker, cycle_ts) (규칙 8). FK(외래키) = 다른 표의 줄을 가리키는 화살표 — 뽑히지도 않은 종목이 끼어들면 DB가 에러로 막아준다. 화살표는 상대 이름표(복합 PK)를 <b>통째로</b> 가리켜야 성립한다 — 반쪽 FK는 Postgres가 만들어주지 않는다.</div>
+  <div class="good"><b>✅ 기존 🔴 3건이 이렇게 풀렸다</b> — 공식 문서의 미해결 3건(① cycle_id 가리킬 표 없음 ② ticker 반쪽 FK ③ verdict.cycle_id)은 이은미 v3.6~3.8 설계로 해소: <b>cycle_id를 폐기</b>하고 tb_strategist_signals에 <code>trade_date</code>(daily_pick 복합 FK 성립)와 <code>src_disclosure_at·src_news_at·src_macro_at</code>(읽은 신호 행을 직접 가리키는 FK)을 넣는다. “같은 판 묶기”는 cycle 번호 대신 <b>어떤 원본을 읽고 판단했는지</b>를 행마다 기록하는 방식으로 대체된다. <span class="b b-chg">🔄 변경됨</span> → 상세는 <a href="#s07">07</a>.</div>
+</section>
+
+<!-- ══════════════════════ MVP ══════════════════════ -->
+<section class="card" id="mvp">
+  <h2>🟢 1차 MVP vs 🔵 2차 — 지금 만드는 것 / 나중에</h2>
+  <div class="twrap"><table>
+    <tr><th>영역</th><th>🟢 1차 MVP (지금)</th><th>🔵 2차 (나중)</th></tr>
+    <tr><td>투자유형</td><td>공격형 하나 (aggressive.yaml)</td><td>안정형 추가 (2종 · 균형형 안 함)</td></tr>
+    <tr><td>ML(가격예측)</td><td>안 씀 — ml_probs 빈값 <code>{}</code></td><td>트리플 배리어 등 ML → ml_probs 채움(보조필터)</td></tr>
+    <tr><td>매도(청산)</td><td>자동 — 손절/트레일링 브래킷</td><td>Strategist 능동 매도(side=매도) 판단</td></tr>
+    <tr><td>Strategist↔Critic</td><td>단일턴 1패스 — 기각=스킵</td><td>다회전 토론(멀티턴 재제안)</td></tr>
+    <tr><td>Critic 반박각도</td><td>5개 (2층 구조)</td><td>+⑥ 논리적 모순</td></tr>
+    <tr><td>페르소나</td><td>없음 (persona_notes=null)</td><td>거장 페르소나(버핏·린치 등)</td></tr>
+    <tr><td>인프라</td><td>로컬 · 전부 페이퍼</td><td>AWS 5계좌 · 텔레그램 · (앱 미정)</td></tr>
+  </table></div>
+</section>
+<!-- ══════════════════════ 01 ══════════════════════ -->
+<section class="card" id="s01">
+  <h2>01 · 1차 스크리너 — 감시할 2,000개 고르기</h2>
+  <div class="meta"><span>📥 입력 <b>미국 상장 전체 ~16,000</b></span><span>📤 출력 <b>tb_universe 2,000</b></span><span>🔁 <b>주1회</b></span><span>🗃️ NASDAQ screener API (무료)</span><span>담당 <b>김지현</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>전체 스냅샷</b><div class="d">~16,000 종목</div></div><div class="ar">→</div>
+    <div class="st code"><b>보통주 필터</b><div class="d">우선주·채권·워런트 제외 (453개)</div></div><div class="ar">→</div>
+    <div class="st code"><b>시총 정렬</b><div class="d">내림차순 top 2,000</div></div><div class="ar">→</div>
+    <div class="st out"><b>tb_universe</b><div class="d">주1회 append</div></div>
+  </div>
+
+  <p><b>왜 보통주만 남기나</b> — NASDAQ의 market_cap은 “주가 × 회사 전체 발행주식수”라, 우선주·채권에도 모회사 주식수를 곱해버린다(실측: AT&T 2066년 만기 채권 TBB가 시총 147.4B로 잡힘). 안 거르면 살 수도 없는 증권이 top 2,000 자리를 차지한다 — 필터 적용 후 96개가 교체됐다. 단 <b>ADR(American Depositary)·MLP(Common Units)는 유지</b>한다 — 외국기업의 정상 상장 형태(ARM·BABA·SONY)이기 때문.</p>
+  <p><b>여기서 안 하는 것</b> — ① 가격($5)·유동성 컷은 03이 매일 신선한 종가로 판정 ② sector는 03이 최종 50개에만 붙임(2,000개 조회는 배치 창 초과) ③ 형제 클래스(GOOGL/GOOG) 정리는 거래대금을 아는 03의 몫.</p>
+
+  <h3>ERD — tb_universe 🕐</h3>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>as_of_date</td><td>DATE</td><td class="c">🔑</td><td>이 2,000개 명단이 확정된 “그 주의 기준일”(배치 돌린 날짜 아님 — 재실행해도 같은 값)</td><td>🟢</td></tr>
+    <tr><td>ticker</td><td>TEXT</td><td class="c">🔑</td><td>티커 (예: NVDA)</td><td>🟢</td></tr>
+    <tr><td>company_name</td><td>TEXT</td><td class="c"></td><td>회사 정식명</td><td>🟢</td></tr>
+    <tr><td>market_cap</td><td>BIGINT</td><td class="c"></td><td>시가총액 — top 2,000 정렬 기준 (회사 전체 시총 — 정렬 목적엔 이게 맞음)</td><td>🟢</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>행 기록 시각 (감사·디버깅 — 전 테이블 공통)</td><td>🟢</td></tr>
+  </table></div>
+  <div class="note"><b>왜 PK가 (as_of_date, ticker) 두 칸인가</b> — 이 표는 “지금 명단”이 아니라 <b>매주 찍은 단체사진 앨범</b>이다. ticker만 PK면 매주 덮어써서 과거가 사라지고, 살아남은 종목만으로 과거를 시험하는 <b>생존편향</b>이 생긴다. 두 칸을 묶으면 배치를 다시 돌려도 같은 자리를 덮어쓸 뿐(ON CONFLICT DO UPDATE)이라 결과가 항상 같다. 주1회 × 2,000줄 = 연 10만 줄 — 용량 걱정 없는 크기.</div>
+</section>
+
+<!-- ══════════════════════ 02 ══════════════════════ -->
+<section class="card" id="s02">
+  <h2>02 · 기술 분석 — 지표 계산 (규칙, LLM 아님)</h2>
+  <div class="meta"><span>📥 입력 <b>tb_universe 2,000 티커</b></span><span>📤 출력 <b>tb_technical (최종 50개)</b></span><span>🔁 <b>매일</b> · 로드 2.4분 실측</span><span>🗃️ yfinance 캔들 + ^GSPC</span><span>담당 <b>김지현</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>캔들 로드</b><div class="d">2,000개 · 200개씩 10묶음</div></div><div class="ar">→</div>
+    <div class="st code"><b>지표 일괄 계산</b><div class="d">pandas · 2,000행 DF</div></div><div class="ar">→</div>
+    <div class="st code"><b>03 필터·버킷</b><div class="d">오늘의 50 선정</div></div><div class="ar">→</div>
+    <div class="st out"><b>tb_technical</b><div class="d">50행만 저장</div></div>
+  </div>
+
+  <p>매일 2,000개의 1년치 캔들(OHLCV)을 받아 <b>모든 지표를 한 번에 계산</b>하고, 03 필터를 통과한 50행만 저장한다(나머지 1,950행은 버림). 거래 이력 60거래일 미만(신규 상장 ~28개)은 캔들 단계에서 제외 — ma50(50일)+추세 판정 여유(10일) 때문이며 3개월 뒤 자동 합류한다. 제외 사유는 배치 로그에 남긴다(조용히 사라지지 않음).</p>
+
+  <h3>ERD — tb_technical 🕐 (tb_daily_pick과 1:1)</h3>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>trade_date</td><td>DATE</td><td class="c">🔑🔗</td><td>매매하는 날(오늘) — ticker와 한 쌍으로 → tb_daily_pick</td><td>🟢</td></tr>
+    <tr><td>ticker</td><td>TEXT</td><td class="c">🔑🔗</td><td>→ tb_daily_pick</td><td>🟢</td></tr>
+    <tr><td>close</td><td>NUMERIC</td><td class="c"></td><td><b>어제 종가</b> (배치가 아침에 도니 오늘 종가는 아직 없음) — 현재가로 착각 금지</td><td>🟢</td></tr>
+    <tr><td>rs_20</td><td>NUMERIC</td><td class="c"></td><td>상대강도 — 20일 종목수익률 − S&amp;P500 수익률(%p). 0↑ = 시장보다 강함</td><td>🟢</td></tr>
+    <tr><td>vol_ratio</td><td>NUMERIC</td><td class="c"></td><td>거래량비 — 어제 ÷ 직전 20일 평균. 2.0 = 평소의 2배</td><td>🟢</td></tr>
+    <tr><td>ret_5d</td><td>NUMERIC</td><td class="c"></td><td>5일 수익률 — <b>퍼센트 표기</b>(15% 상승 = 15.0, 0.15 아님 · 실측 확정)</td><td>🟢 단위 주의</td></tr>
+    <tr><td>ret_20d</td><td>NUMERIC</td><td class="c"></td><td>20일 수익률(%) — 지속성 게이트(&gt;0)의 기준</td><td>🟢 단위 주의</td></tr>
+    <tr><td>atr_pct</td><td>NUMERIC</td><td class="c"></td><td>변동성(ATR÷종가 %) — “하루 평균 몇 % 흔들리나”. 필터 상한 15%</td><td>🟢</td></tr>
+    <tr><td>high_252_ratio</td><td>NUMERIC</td><td class="c"></td><td>52주 고가 대비 (1.0 = 신고가)</td><td>🟡 60일 신규상장 왜곡 미결</td></tr>
+    <tr><td>rsi</td><td>NUMERIC</td><td class="c"></td><td>RSI(14) — 70↑ 과열 · 30↓ 과매도</td><td>🟢</td></tr>
+    <tr><td>macd</td><td>NUMERIC</td><td class="c"></td><td>EMA12 − EMA26 — 양수면 상승 모멘텀 쪽</td><td>🟡 macd_signal 컬럼 추가 검토</td></tr>
+    <tr><td>ma20</td><td>NUMERIC</td><td class="c"></td><td>20일 이동평균 — ma20&gt;ma50이면 정배열</td><td>🟢</td></tr>
+    <tr><td>ma50</td><td>NUMERIC</td><td class="c"></td><td>50일 이동평균</td><td>🟢</td></tr>
+    <tr><td>trend</td><td>TEXT (ENUM)</td><td class="c"></td><td><code>up</code>(종가&gt;ma20&gt;ma50) / <code>mixed</code> / <code>down</code> / <code>no_data</code> — 영어 소문자 확정(PR #8)</td><td>🟢 07 게이트는 <code>trend == "up"</code> 한 줄</td></tr>
+    <tr><td>ml_probs</td><td>JSONB</td><td class="c"></td><td>상승/보합/하락 확률 — 1차 빈값 <code>{}</code> (2차 ML)</td><td>🟢</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>행 기록 시각</td><td>🟢</td></tr>
+  </table></div>
+  <div class="warn"><b>🕐 이 값들은 하루 고정</b> — 08:50 배치가 완성된 일봉으로 계산 → 다음 배치까지 안 바뀐다. 장중 변하는 현재가·당일고저는 07이 <b>실시간 스냅샷</b>으로 따로 조회한다(“정보 2층 구조” → <a href="#s07">07</a>).<br><b>🔴 남은 어휘 정리 2건</b> — ① Critic 픽스처가 존재하지 않는 trend 값 6종("상승(골든크로스)" 등)을 씀 → up/mixed/down으로 교체 필요 ② 이은미 게이트가 <code>"상승" in trend</code> 문자열 검사 → <code>trend == "up"</code>으로 교체 필요.</div>
+</section>
+
+<!-- ══════════════════════ 03 ══════════════════════ -->
+<section class="card" id="s03">
+  <h2>03 · 2차 스크리너 — 오늘의 50 뽑기 (5버킷)</h2>
+  <div class="meta"><span>📥 입력 <b>2,000행 지표 DF</b></span><span>📤 출력 <b>tb_daily_pick 50</b></span><span>🔁 <b>매일</b></span><span>🧮 규칙(공격형)</span><span>담당 <b>김지현</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>공통 필터</b><div class="d">가격·유동성·변동성·방향</div></div><div class="ar">→</div>
+    <div class="st code"><b>형제 클래스 정리</b><div class="d">거래대금 큰 쪽만</div></div><div class="ar">→</div>
+    <div class="st code"><b>5버킷 × 10</b><div class="d">정렬키만 다름</div></div><div class="ar">→</div>
+    <div class="st code"><b>중복제거·백필</b><div class="d">score 순</div></div><div class="ar">→</div>
+    <div class="st out"><b>tb_daily_pick 50</b><div class="d">bucket·rank·sector</div></div>
+  </div>
+
+  <div class="twrap"><table>
+    <tr><th>공통 필터</th><th>기준</th><th>왜</th></tr>
+    <tr><td>주가 최소선</td><td>종가 ≥ $5</td><td>동전주 배제 — 조작·급락 위험</td></tr>
+    <tr><td>거래대금 하한</td><td>20일 평균 ≥ $5M</td><td>유동성 — 팔 때 살 사람 있어야</td></tr>
+    <tr><td>ATR 상한</td><td>ATR ≤ 종가의 15%</td><td>변동성 미친 펌프·도박 컷</td></tr>
+    <tr><td>방향 게이트</td><td>종가 &gt; ma20</td><td>“오르는 중”만 — 떨어지는 칼날 배제</td></tr>
+    <tr><td>지속성 게이트</td><td>ret_20d &gt; 0</td><td>하루 반짝 급등(펌프) 제거</td></tr>
+  </table></div>
+  <div class="twrap"><table>
+    <tr><th>버킷 (각 10개)</th><th>DB 코드 <span class="b b-chg">🔄</span></th><th>선정 기준</th><th>성격</th></tr>
+    <tr><td>추세 리더</td><td><code>trend_leader</code></td><td>rs_20 내림차순 top 10</td><td>꾸준히 시장보다 강함</td></tr>
+    <tr><td>거래량 급증</td><td><code>volume_surge</code></td><td>ret_5d &gt; 0 → vol_ratio 순</td><td>오늘 돈·관심 몰림</td></tr>
+    <tr><td>신고가 돌파</td><td><code>high_52w_breakout</code></td><td>high_252_ratio ≥ 0.95</td><td>천장 뚫기 직전/직후</td></tr>
+    <tr><td>눌림목</td><td><code>pullback</code></td><td>pullback(종가&gt;ma20 &amp; 3일 저점 후 반등) → rs_20 순</td><td>쉴 때 진입</td></tr>
+    <tr><td>변동성 스퀴즈 돌파</td><td><code>squeeze_breakout</code></td><td>밴드폭 pctile ≤ 0.25 &amp; 확장중 → vol_ratio 순</td><td>폭발 직전</td></tr>
+    <tr><td>백필</td><td><code>backfill</code></td><td>50개 미달 시 score 순 보충</td><td>—</td></tr>
+  </table></div>
+
+  <h3>ERD — tb_daily_pick 🕐</h3>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>trade_date</td><td>DATE</td><td class="c">🔑</td><td>매매하는 날(오늘)</td><td>🟢</td></tr>
+    <tr><td>ticker</td><td>TEXT</td><td class="c">🔑🔗</td><td>universe_as_of와 한 쌍으로 → tb_universe</td><td>🟢</td></tr>
+    <tr><td>universe_as_of</td><td>DATE</td><td class="c">🔗</td><td>몇 주차 유니버스에서 나왔나 — trade_date(매일)와 as_of_date(주1회)는 값이 달라 대신 못 쓴다</td><td>🟢 (07-10 신설)</td></tr>
+    <tr><td>bucket</td><td>TEXT (ENUM)</td><td class="c"></td><td>출신 버킷 — <code>trend_leader</code>·<code>volume_surge</code>·<code>high_52w_breakout</code>·<code>pullback</code>·<code>squeeze_breakout</code>·<code>backfill</code> (한글명은 라벨로만)</td><td><span class="b b-chg">🔄 영어 ENUM 확정 (컨벤션 2 · 구 한글 문자열 폐기)</span></td></tr>
+    <tr><td>rank</td><td>INT</td><td class="c"></td><td>최종 50 안 <b>전체 순위</b>(1~50, 버킷 내 순위 아님)</td><td>🟢</td></tr>
+    <tr><td>sector</td><td>TEXT</td><td class="c"></td><td>Yahoo 11섹터 — 여기서 처음 붙음(50개만 조회). GICS 이름과 6개 다름 — 그대로 비교할 것</td><td>🟢</td></tr>
+    <tr><td>score</td><td>NUMERIC</td><td class="c"></td><td>통합 모멘텀 점수 = rank(rs_20)+rank(vol_ratio)+rank(ret_20d) — 백필 정렬용</td><td>🔴 코드가 저장 안 함 — 컬럼 삭제 vs 전체 계산 택1</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>행 기록 시각</td><td>🟢</td></tr>
+  </table></div>
+</section>
+
+<!-- ══════════════════════ 04 ══════════════════════ -->
+<section class="card" id="s04">
+  <h2>04 · 매크로 분석 — 시장 전체 국면(날씨)</h2>
+  <div class="meta"><span>📥 입력 <b>지수·VIX·금리·달러</b></span><span>📤 출력 <b>tb_macro</b></span><span>🔁 <b>1시간</b></span><span>🗃️ yfinance (키 불필요)</span><span>담당 <b>김지현</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>지표 수집</b><div class="d">나스닥·S&amp;P·VIX·금리·달러</div></div><div class="ar">→</div>
+    <div class="st code"><b>sub-score 환산</b><div class="d">각 0~1</div></div><div class="ar">→</div>
+    <div class="st code"><b>가중합</b><div class="d">risk_score 0~1</div></div><div class="ar">→</div>
+    <div class="st out"><b>tb_macro</b><div class="d">regime 라벨 · 1시간 1행</div></div>
+  </div>
+
+  <p><code>risk_score = 0.40×VIX + 0.30×지수등락 + 0.15×금리 + 0.15×달러</code> — VIX가 공포를 가장 직접 보여줘 가장 무겁다. 결과는 <b>0~1</b>(클수록 위험 · NUMERIC(4,3)) — 구 0~100 눈금은 폐기 <span class="b b-chg">🔄 컨벤션 4 (07-11)</span>. 경계값(0.30/0.70)은 백테스트로 튜닝.</p>
+  <div class="twrap"><table>
+    <tr><th>regime</th><th>구간</th><th>뜻</th><th>매매</th></tr>
+    <tr><td>risk_on ☀️</td><td>risk_score ≤ 0.30</td><td>낙관 — 적극 매수 분위기</td><td>평소대로</td></tr>
+    <tr><td>neutral ⛅</td><td>0.30 ~ 0.70</td><td>애매 — 방향 없음</td><td>평소~약간 조심</td></tr>
+    <tr><td>risk_off 🌩️</td><td>risk_score ≥ 0.70</td><td>공포 — 현금 도피</td><td>신규 매수↓ 현금↑ (Critic 즉시 컷)</td></tr>
+  </table></div>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>as_of</td><td>TIMESTAMPTZ</td><td class="c">🔑</td><td>수집 시각(1시간 단위) — 종목별 아님, 시장 전체 1행</td><td>🟢</td></tr>
+    <tr><td>regime</td><td>TEXT (ENUM)</td><td class="c"></td><td>risk_on / neutral / risk_off (영어 소문자)</td><td>🟢</td></tr>
+    <tr><td>risk_score</td><td>NUMERIC(4,3)</td><td class="c"></td><td><b>0~1</b> (클수록 위험) — 구 0~100 폐기</td><td><span class="b b-chg">🔄 0~1 통일 (컨벤션 4 · AI 제안 #5 해결)</span></td></tr>
+    <tr><td>vix</td><td>NUMERIC</td><td class="c"></td><td>공포지수 원값 — 가중치 0.40 (가장 무거움)</td><td>🟢</td></tr>
+    <tr><td>nasdaq_ret</td><td>NUMERIC</td><td class="c"></td><td>나스닥 등락률(%)</td><td>🟢</td></tr>
+    <tr><td>sp500_ret</td><td>NUMERIC</td><td class="c"></td><td>S&amp;P500 등락률(%)</td><td>🟢</td></tr>
+    <tr><td>rate</td><td>NUMERIC</td><td class="c"></td><td>미 국채 금리</td><td>🟢</td></tr>
+    <tr><td>dollar</td><td>NUMERIC</td><td class="c"></td><td>달러 강세 지표(환율)</td><td>🟢</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>행 기록 시각</td><td>🟢</td></tr>
+  </table></div>
+</section>
+<!-- ══════════════════════ 05 ══════════════════════ -->
+<section class="card" id="s05">
+  <h2>05 · 공시 분석 — 50개 종목의 공식 발표 <span class="b b-chg">🔄 구조 재개편</span></h2>
+  <div class="meta"><span>📥 입력 <b>tb_daily_pick 50 티커 + SEC EDGAR</b></span><span>📤 출력 <b>tb_disclosure(원본) · tb_disclosure_signal(집계)</b></span><span>🔁 <b>1시간 간격</b></span><span>담당 <b>정창욱</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>① 수집</b><div class="d">SEC 새 accession만<br>(메타레벨 증분)</div></div><div class="ar">→</div>
+    <div class="st llm"><b>② 분석</b><div class="d">8-K/10-Q = LLM<br>Form 4 = 100% 코드</div></div><div class="ar">→</div>
+    <div class="st out"><b>③ tb_disclosure</b><div class="d">공시 1건 = 1행<br>원본 원장</div></div><div class="ar">→</div>
+    <div class="st code"><b>④ 집계</b><div class="d">종목당 오늘 공시<br>→ 1행 요약</div></div><div class="ar">→</div>
+    <div class="st out"><b>⑤ tb_disclosure_signal</b><div class="d">사이클당 50행 append<br>→ 07·08이 읽음</div></div>
+  </div>
+
+  <div class="danger"><b>🔄 무엇이 왜 바뀌었나 — “수집”과 “전달”을 테이블로 분리</b><br>
+  기존 설계는 tb_disclosure 하나가 <b>집계 결과만</b> 저장했다. 그러면 ① 하루에 공시가 여러 건일 때 개별 공시 원문을 역추적할 수 없고 ② Critic이 “근거가 진짜냐”를 검증할 원본이 없으며 ③ 백테스트(공시별 수익률 추적)가 불가능했다. 그래서 <b>tb_disclosure = 공시 1건 1행 원본 원장</b>으로 역할을 바꾸고, Strategist·Critic에게 전달하는 <b>집계 스냅샷은 tb_disclosure_signal</b> <span class="b b-new">🆕 신규 추가됨</span>로 분리한다. (창욱 문서의 내부 로그 disclosure_signals 개념을 정식 테이블로 승격한 것 — 이은미가 부르던 이름 “tb_disclosure_signals”와도 자연스럽게 만난다.)</div>
+
+  <h3>공시 3축 처리 — “숫자는 코드, 해석은 LLM”</h3>
+  <div class="twrap"><table>
+    <tr><th>공시 종류</th><th>처리 방식</th></tr>
+    <tr><td><b>8-K</b> (수시 보고)</td><td>Item 번호로 코드가 1차 부여(event_type·중요도·권한 — item_event_map.yaml) → LLM이 본문 읽고 방향·강도·요약. 하드리스크 Item(3.01 상폐통보·4.01 감사인변경 등)은 LLM 판단보다 <b>코드가 우선</b></td></tr>
+    <tr><td><b>10-Q / 10-K</b> (실적)</td><td>XBRL에서 코드가 매출·이익·YoY를 정확 계산, LLM은 해석만. going concern 등 위험 문구는 코드가 별도 스캔</td></tr>
+    <tr><td><b>Form 4</b> (내부자 거래)</td><td><b>100% 코드 스코어링</b>(LLM 없음) — 매수 P=호재 / 매도 S=약한 악재 / 10b5-1·M·F·A=중립, 직급 가중. event_type=insider_trade로 합류</td></tr>
+  </table></div>
+
+  <h3>ERD — tb_disclosure 🕐 공시 원본 (공시 1건 = 1행) <span class="b b-chg">🔄 역할 변경</span></h3>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>id</td><td>BIGSERIAL</td><td class="c">🔑</td><td>행 고유번호</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>ticker</td><td>TEXT</td><td class="c">🔗</td><td>trade_date와 한 쌍으로 → tb_daily_pick</td><td>🟢</td></tr>
+    <tr><td>trade_date</td><td>DATE</td><td class="c">🔗</td><td>어느 날의 50을 위해 수집됐나 (구 as_of)</td><td><span class="b b-chg">🔄 이름 확정</span></td></tr>
+    <tr><td>filing_no</td><td>TEXT</td><td class="c">UNIQUE</td><td>SEC 접수번호(accession) — 중복 수집 방지 + 원문 역추적 ID. 뉴스 disclosure_ref가 이 값을 가리킴</td><td>🟢 (기존 processed_filings 역할 흡수)</td></tr>
+    <tr><td>form_type</td><td>TEXT</td><td class="c"></td><td>8-K / 10-Q / 10-K / 4</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr><td>filing_title</td><td>TEXT</td><td class="c"></td><td>공시 원문 제목</td><td>🟢</td></tr>
+    <tr><td>filed_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>SEC 제출 시각(acceptanceDateTime 우선) — <b>백테스트 day0 · 미래정보(look-ahead) 방지</b> · Critic ⑤신선도가 쓰는 “사건 발생 시각”</td><td>🟢</td></tr>
+    <tr><td>event_type</td><td>TEXT (ENUM)</td><td class="c"></td><td>사건 종류 — 허용 12종(<a href="#s05">허용값 표</a> 정본): <code>earnings</code>·<code>guidance_change</code>·<code>ma</code>·<code>capital_raise</code>·<code>buyback</code>·<code>management_change</code>·<code>insider_trade</code>·<code>product_deal</code>·<code>analyst_rating</code>·<code>regulation_legal</code>·<code>delisting_halt</code>(하드리스크)·<code>other</code></td><td><span class="b b-chg">🔄 07-11 TEXT ENUM 확정 (AI 제안 #12 — FK 폐기)</span></td></tr>
+    <tr><td>sentiment_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>이 공시 1건의 호재↔악재 강도 (집계 전 원자료 — 이하 4개 점수 동일)</td><td>🟢</td></tr>
+    <tr><td>importance</td><td>NUMERIC 0~1</td><td class="c"></td><td>이 공시 1건이 얼마나 큰일인가</td><td>🟢</td></tr>
+    <tr><td>risk_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>이 공시 1건의 하방 위험도</td><td>🟢</td></tr>
+    <tr><td>confidence</td><td>NUMERIC 0~1</td><td class="c"></td><td>LLM 분석 확신도 (Form 4는 코드 스코어링)</td><td>🟢</td></tr>
+    <tr><td>reason</td><td>TEXT</td><td class="c"></td><td>sentiment_score 점수 근거 한 줄</td><td>🟢</td></tr>
+    <tr><td>summary</td><td>TEXT</td><td class="c"></td><td>공시 내용 3~4줄 요약</td><td>🟢</td></tr>
+    <tr><td>keywords</td><td>TEXT[]</td><td class="c"></td><td>핵심 키워드 5개</td><td>🟢</td></tr>
+    <tr><td>permission</td><td>TEXT</td><td class="c"></td><td>매매권한 6단계(BLOCK_ALL~TRADE_ELIGIBLE) — is_hard_blocked의 원천</td><td><span class="b b-new">🆕</span> (창욱 내부값 정식화)</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>수집·분석해 행을 쓴 시각</td><td>🟢</td></tr>
+    <tr><td>return_1d</td><td>NUMERIC</td><td class="c"></td><td>백테스트 사후 기입 — filed_at 기준 +1거래일 수익률(%)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>return_3d</td><td>NUMERIC</td><td class="c"></td><td>〃 +3거래일 수익률(%)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>return_5d</td><td>NUMERIC</td><td class="c"></td><td>〃 +5거래일 수익률(%)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>outcome</td><td>TEXT</td><td class="c"></td><td>방향 적중 여부 — hit / miss (백테스트 사후 기입)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>백테스트 사후 기입 시각</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+  </table></div>
+
+  <h3>ERD — tb_disclosure_signal 🕐 집계 스냅샷 · 종목당 사이클 1행 <span class="b b-new">🆕 신규 추가됨</span> (기존 tb_disclosure 확정 18필드 계승 + 규칙 8 키 2필드 = 20)</h3>
+  <p class="small muted">매 1시간, 50종목 각각 “오늘 공시 전체”를 한 행으로 집계해 50행 append(덮어쓰기 ❌ 시계열 누적). 공시 없는 종목도 has_signal=false으로 행 생성 → 항상 50행/사이클 균일. 07은 종목별 <b>최신 행</b>을 읽는다.</p>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr class="hl-new"><td class="c">1</td><td><b>tds_id</b></td><td>BIGSERIAL</td><td class="c">🔑</td><td>대리 PK — 테이블 약어 + _id (규칙 8)</td><td><span class="b b-new">🆕 07-11 (AI 제안 #8)</span></td></tr>
+    <tr class="hl-new"><td class="c">2</td><td><b>cycle_ts</b></td><td>TIMESTAMPTZ</td><td class="c">🔒</td><td>이 행이 속한 사이클의 <b>계획된 슬롯 시각</b>(예: 정각 10:00:00) — ticker와 UNIQUE 쌍(🔒) · <code>ON CONFLICT DO NOTHING</code>으로 재실행 멱등 · 07은 종목별 cycle_ts 최신 행을 읽음</td><td><span class="b b-new">🆕 07-11</span></td></tr>
+    <tr><td class="c">3</td><td>ticker</td><td>TEXT</td><td class="c">🔒🔗</td><td>종목 — cycle_ts와 UNIQUE 쌍 · trade_date와 한 쌍으로 → tb_daily_pick</td><td>🟢</td></tr>
+    <tr class="hl-chg"><td class="c">4</td><td><b>created_at</b></td><td>TIMESTAMPTZ</td><td class="c"></td><td>이 행이 DB에 저장된 시각 (<b>구 collected_at</b>) — <b>순수 기록용, 어떤 키에도 안 들어감</b>(규칙 8)</td><td><span class="b b-chg">🔄 이름 통일 + 키에서 제외</span></td></tr>
+    <tr><td class="c">5</td><td>trade_date</td><td>DATE</td><td class="c">🔗</td><td>분석 기준 거래일 (구 as_of)</td><td><span class="b b-chg">🔄</span></td></tr>
+    <tr><td class="c">6</td><td>has_signal</td><td>BOOLEAN</td><td class="c"></td><td>오늘 볼 공시 있음(true)/없음(false) — false면 아래 전부 null. 07은 true인 행만 판단에 사용</td><td><span class="b b-chg">🔄 BOOLEAN화 (컨벤션 1)</span></td></tr>
+    <tr><td class="c">7</td><td>filing_title</td><td>TEXT</td><td class="c"></td><td>대표 공시 제목 (표시·추적용)</td><td>🟢</td></tr>
+    <tr class="hl-new"><td class="c">8</td><td>filing_no</td><td>TEXT</td><td class="c">🔗</td><td>대표 공시 accession → <b>tb_disclosure.filing_no</b> — 원본 역추적이 FK로 성립</td><td><span class="b b-new">🆕 FK 신설</span></td></tr>
+    <tr><td class="c">9</td><td>filed_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>대표 공시 제출 시각 — look-ahead 방지</td><td>🟢</td></tr>
+    <tr><td class="c">10</td><td>event_type</td><td>TEXT (ENUM)</td><td class="c"></td><td>⭐ 사건 종류 — Strategist 핵심 판단재료 · 허용 12종(<a href="#s05">허용값 표</a> 정본): <code>earnings</code>·<code>guidance_change</code>·<code>ma</code>·<code>capital_raise</code>·<code>buyback</code>·<code>management_change</code>·<code>insider_trade</code>·<code>product_deal</code>·<code>analyst_rating</code>·<code>regulation_legal</code>·<code>delisting_halt</code>(하드리스크)·<code>other</code></td><td><span class="b b-chg">🔄 07-11 TEXT ENUM 확정 (#12)</span></td></tr>
+    <tr><td class="c">11</td><td>importance</td><td>NUMERIC 0~1</td><td class="c"></td><td>⭐ 얼마나 큰일인가 (1=주가 흔들 대형)</td><td>🟢 · 07 문턱 ≥ 0.25</td></tr>
+    <tr><td class="c">12</td><td>risk_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>위험도 (호재/악재와 별개 축)</td><td>🟢</td></tr>
+    <tr><td class="c">13</td><td>sentiment</td><td>TEXT (ENUM)</td><td class="c"></td><td><code>positive</code> / <code>neutral</code> / <code>negative</code> — 점수에서 파생한 표시용 라벨</td><td>🟢</td></tr>
+    <tr><td class="c">14</td><td>sentiment_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>⭐ 호재↔악재 강도 (1=강호재 · 0.5=중립 · 0=강악재)</td><td>🟢 · 07 문턱 ≥ 0.70</td></tr>
+    <tr><td class="c">15</td><td>reason</td><td>TEXT</td><td class="c"></td><td>sentiment_score 한 줄 근거 (예: “실적 +22%, 가이던스 상향”)</td><td>🟢 단일 reason 확정 (07-11 · AI 제안 #3) — 점수별 근거는 원본(tb_disclosure)의 건별 reason으로 역추적</td></tr>
+    <tr><td class="c">16</td><td>is_hard_blocked</td><td>BOOLEAN</td><td class="c"></td><td>🛡️ 매수 즉시 차단 (파산·상폐·대규모 희석) — 구 hard_block</td><td><span class="b b-chg">🔄 is_ 리네임 (컨벤션 1)</span></td></tr>
+    <tr><td class="c">17</td><td>hard_block_reason</td><td>TEXT</td><td class="c"></td><td>🛡️ 차단 사유</td><td>🟢</td></tr>
+    <tr><td class="c">18</td><td>confidence</td><td>NUMERIC 0~1</td><td class="c"></td><td>LLM 분석 확신도</td><td>🟢</td></tr>
+    <tr><td class="c">19</td><td>summary</td><td>TEXT</td><td class="c"></td><td>3~4줄 요약 (사람이 읽는 컨텍스트)</td><td>🟢</td></tr>
+    <tr><td class="c">20</td><td>keywords</td><td>TEXT[]</td><td class="c"></td><td>핵심 키워드 5개</td><td>🟢</td></tr>
+    <tr class="hl-del"><td class="c">—</td><td>company_name · category · confirmed_score · fact_check · verdict · ref</td><td></td><td class="c"></td><td>삭제 확정 6필드 <span class="keep">(창욱 동의 2026-07-07)</span></td><td><span class="keep">🟢 JOIN 중복·정보량 0</span></td></tr>
+  </table></div>
+
+  <h3>event_type 허용값 12종 — 공시·뉴스 공유 <span class="b b-chg">🔄 07-11 변경 — 구 tb_event_type 마스터 테이블은 폐기</span></h3>
+  <p class="small muted"><b>참조 테이블(tb_event_type)은 만들지 않기로 확정</b>(2026-07-11 · AI 제안 #12 — 정창욱) — event_type도 side·bucket 등 다른 ENUM과 똑같이 <b>TEXT (ENUM)</b>으로 간다(규칙 2 · 예외 0개). 진실원천은 <b>ontology.py의 Pydantic Literal 하나</b>이고, 아래 12종 표가 그 문서 정본이다. 값 검증은 백엔드(수집 파서)가 1차 책임 — DB 차단(FK)은 없으므로 목록에 없는 값을 쓰면 안 된다는 것을 <b>이 표 기준으로</b> 코드 리뷰·픽스처가 지킨다. 1차는 12종 <b>내용 고정</b> — 값 추가는 ontology.py + 이 표 동시 수정으로만.</p>
+
+  <h4>허용값 12종 · 1차 내용 고정 (별칭 정규화: material_agreement→product_deal · repurchase→buyback · dividend→other · 미등록→other)</h4>
+  <p class="small muted">※ 원안(정창욱 표)의 <b>방향 경향·주 발생원 컬럼은 마스터에서 제외</b> — 방향은 사건마다 LLM이 sentiment_score로 판단하는 값이라 마스터에 “보통 호재”를 박아두면 이중 정보(예단)가 되고, 발생원은 수집 로직(8-K Item 맵·Form 4)이 이미 담고 있어서다. <span class="b b-chg">🔄 변경됨 (2026-07-11)</span></p>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>code</th><th>label_ko (한글 뜻)</th><th class="c">is_hard_risk</th></tr>
+    <tr><td class="c">1</td><td><code>earnings</code></td><td>실적 발표</td><td class="c">false</td></tr>
+    <tr><td class="c">2</td><td><code>guidance_change</code></td><td>가이던스 상/하향</td><td class="c">false</td></tr>
+    <tr><td class="c">3</td><td><code>ma</code></td><td>M&amp;A(인수·합병·피인수)</td><td class="c">false</td></tr>
+    <tr><td class="c">4</td><td><code>capital_raise</code></td><td>증자·신주·전환사채(희석)</td><td class="c">false</td></tr>
+    <tr><td class="c">5</td><td><code>buyback</code></td><td>자사주 매입·소각(주주환원)</td><td class="c">false</td></tr>
+    <tr><td class="c">6</td><td><code>management_change</code></td><td>임원·이사 변경</td><td class="c">false</td></tr>
+    <tr><td class="c">7</td><td><code>insider_trade</code></td><td>내부자 거래</td><td class="c">false</td></tr>
+    <tr><td class="c">8</td><td><code>product_deal</code></td><td>제품 출시·대형 계약</td><td class="c">false</td></tr>
+    <tr><td class="c">9</td><td><code>analyst_rating</code></td><td>애널리스트 등급 조정</td><td class="c">false</td></tr>
+    <tr><td class="c">10</td><td><code>regulation_legal</code></td><td>규제·소송·조사</td><td class="c">false</td></tr>
+    <tr class="hl-new"><td class="c">11</td><td><code>delisting_halt</code></td><td>상장폐지·거래정지</td><td class="c"><b>true</b> — 매수 즉시 차단 계열</td></tr>
+    <tr><td class="c">12</td><td><code>other</code></td><td>기타(미분류·배당 등)</td><td class="c">false</td></tr>
+  </table></div>
+
+  <h3>📦 07·08에게 전달하는 응답 JSON (pack_disclosure_signal)</h3>
+  <p class="small muted">저장(18필드)과 전달(10필드)은 별개 층 — 전달은 판단에 필요한 것만 압축한다. 필드명은 저장 컬럼과 동일(개명 없음).</p>
+<pre><code>// 예시 ① 8-K 인수 호재
+{
+  "has_signal": true,
+  "event_type": "ma",
+  "importance": 0.80,
+  "sentiment_score": 0.85,
+  "risk_score": 0.10,
+  "confidence": 0.90,
+  "reason": "An all-cash strategic buy at scale is clearly bullish.",
+  "is_hard_blocked": false,
+  "summary": "Microsoft agreed to acquire a cybersecurity firm for $2.1B in cash.",
+  "filing_no": "0001-24-000123"        // 🆕 원본 역추적 — Critic 검증용
+}
+
+// 예시 ② hard_block (상장폐지 통보 · Item 3.01)
+{
+  "has_signal": true,
+  "event_type": "delisting_halt",
+  "importance": 0.90, "sentiment_score": 0.05, "risk_score": 0.95,
+  "is_hard_blocked": true,
+  "hard_block_reason": "BLOCK_BUY: delisting notice (Item 3.01)",   // 🔄 summary 접두 삽입 대신 구조화 필드로
+  "summary": "Received delisting determination from the exchange."
+}
+
+// 예시 ③ 오늘 공시 없음 — "0점"이 아니라 "측정할 신호 없음"
+{ "has_signal": false, "is_hard_blocked": false }</code></pre>
+  <div class="warn"><b>🔄 전달 계약 정리 2건</b> — ① 창욱 문서 간에 “공시 전달 7필드 vs 10필드”가 엇갈렸다 → 위 <b>10필드(+filing_no)로 확정 제안</b>. ② hard_block_reason을 summary 문자열에 <code>[차단: …]</code>으로 끼워 넣던 방식은 코드 파싱에 취약 → <b>구조화 필드로 분리</b>. <span class="b b-chg">🔄 변경됨</span></div>
+</section>
+
+<!-- ══════════════════════ 06 ══════════════════════ -->
+<section class="card" id="s06">
+  <h2>06 · 뉴스 분석 — 50개 종목의 실시간 뉴스 <span class="b b-chg">🔄 구조 재개편</span></h2>
+  <div class="meta"><span>📥 입력 <b>tb_daily_pick 50 티커 + 구글 News RSS</b></span><span>📤 출력 <b>tb_news(원본) · tb_news_signal(집계)</b></span><span>🔁 <b>30분 간격</b> <span class="b b-chg">🔄 구 5분 — #14 채택</span></span><span>담당 <b>정창욱</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>① 수집</b><div class="d">구글 RSS "{ticker}+stock"<br>news_key 중복 제거</div></div><div class="ar">→</div>
+    <div class="st code"><b>② 사전필터</b><div class="d">출처등급 BLOCK·노이즈 drop<br>(LLM 비용 절감)</div></div><div class="ar">→</div>
+    <div class="st llm"><b>③ LLM 분석</b><div class="d">기사별 · Pydantic 고정 스키마</div></div><div class="ar">→</div>
+    <div class="st out"><b>④ tb_news</b><div class="d">기사 1건 = 1행<br>원본 원장</div></div><div class="ar">→</div>
+    <div class="st code"><b>⑤ 신뢰가중 집계</b><div class="d">대표 1건 + 가중평균<br>+ hard_block 스캔</div></div><div class="ar">→</div>
+    <div class="st out"><b>⑥ tb_news_signal</b><div class="d">사이클당 50행 append<br>→ 07·08이 읽음</div></div>
+  </div>
+
+  <div class="danger"><b>🔄 무엇이 왜 바뀌었나 — “tb_news는 전반적인 뉴스를 수집, 전달은 별도 테이블”</b><br>
+  기존 tb_news는 집계 결과만 저장해 원본 기사(4번째 이후)의 추적이 불가능했고, “수집”과 “전달”이 한 테이블에 섞여 있었다. 재개편: <b>tb_news = 관련 뉴스를 기사 단위로 전부 수집하는 원장</b> <span class="b b-chg">🔄 역할 변경</span>, <b>tb_news_signal = 종목당 사이클 1행으로 정리해 Strategist·Critic에 전달하는 스냅샷</b> <span class="b b-new">🆕 신규 추가됨</span>. 집계 로직·필드는 기존 확정 25필드를 그대로 계승하므로 <b>07·08의 읽기 코드는 테이블명만 바꾸면 된다</b>.</div>
+
+  <h3>ERD — tb_news 🕐 뉴스 원본 (기사 1건 = 1행) <span class="b b-chg">🔄 역할 변경</span></h3>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>id</td><td>BIGSERIAL</td><td class="c">🔑</td><td>행 고유번호 — signal의 rep_news_id가 가리킴</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>ticker</td><td>TEXT</td><td class="c">🔗</td><td>trade_date와 한 쌍으로 → tb_daily_pick</td><td>🟢</td></tr>
+    <tr><td>trade_date</td><td>DATE</td><td class="c">🔗</td><td>어느 날의 50을 위해 수집됐나</td><td>🟢</td></tr>
+    <tr><td>news_key</td><td>TEXT</td><td class="c">UNIQUE</td><td>링크 정규화 키 — 같은 기사 재수집 방지 (증분 수집의 기준)</td><td><span class="b b-new">🆕 정식화</span></td></tr>
+    <tr><td>title</td><td>TEXT</td><td class="c"></td><td>기사 제목</td><td>🟢</td></tr>
+    <tr><td>source</td><td>TEXT</td><td class="c"></td><td>언론사 도메인 (예: reuters.com)</td><td>🟢</td></tr>
+    <tr><td>url</td><td>TEXT</td><td class="c"></td><td>원문 링크</td><td>🟢</td></tr>
+    <tr><td>published_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>기사 발행 시각 — <b>백테스트 day0 · Critic ⑤신선도의 “사건 발생 시각”</b> (수집 시각 아님)</td><td>🟢</td></tr>
+    <tr><td>grade</td><td>TEXT</td><td class="c"></td><td>출처 등급 (도메인만 보고 코드가 사전 판정) — <b>ALLOW</b> 공식·1급 금융언론(sec.gov·reuters·bloomberg) / <b>GRAY</b> 등록된 2급 언론사만(benzinga·seekingalpha 등) / <b>BLOCK</b> 소셜·블로그·<b>미등록 전부</b>(LLM 전 drop)</td><td>🟢 확정 (07-11 · AI 제안 #4 채택) — 정상 매체가 막히면 화이트리스트(yaml) 등록으로 구제</td></tr>
+    <tr><td>is_dropped</td><td>BOOLEAN</td><td class="c"></td><td>사전필터에서 걸렀으면 true — <b>거른 기사도 행은 남긴다</b> (감사 추적)</td><td><span class="b b-new">🆕 신규 추가됨</span> · <span class="b b-chg">🔄 is_</span></td></tr>
+    <tr><td>drop_reason</td><td>TEXT·null</td><td class="c"></td><td>걸러낸 사유 (BLOCK 도메인 / 노이즈 키워드)</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr><td>event_type</td><td>TEXT (ENUM)</td><td class="c"></td><td>이 기사 1건의 사건 종류 (is_dropped=true이면 이하 분석 컬럼 전부 null) — 허용 12종(<a href="#s05">허용값 표</a> 정본): <code>earnings</code>·<code>guidance_change</code>·<code>ma</code>·<code>capital_raise</code>·<code>buyback</code>·<code>management_change</code>·<code>insider_trade</code>·<code>product_deal</code>·<code>analyst_rating</code>·<code>regulation_legal</code>·<code>delisting_halt</code>(하드리스크)·<code>other</code></td><td><span class="b b-chg">🔄 07-11 TEXT ENUM 확정 (#12)</span></td></tr>
+    <tr><td>sentiment_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>이 기사 1건의 호재↔악재 강도 (집계 전 원자료)</td><td>🟢</td></tr>
+    <tr><td>importance</td><td>NUMERIC 0~1</td><td class="c"></td><td>이 기사 1건이 얼마나 큰일인가</td><td>🟢</td></tr>
+    <tr><td>risk_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>이 기사 1건의 위험도</td><td>🟢</td></tr>
+    <tr><td>source_trust</td><td>NUMERIC 0~1</td><td class="c"></td><td>LLM이 내용까지 보고 매긴 출처 신뢰 (기사 단위)</td><td>🟢</td></tr>
+    <tr><td>confidence</td><td>NUMERIC 0~1</td><td class="c"></td><td>LLM 분석 확신도 (certainty_level: High .9 / Med .6 / Low .3)</td><td>🟢</td></tr>
+    <tr><td>is_confirmed</td><td>BOOLEAN</td><td class="c"></td><td>확정 사실(true) / 소문(false — 가중치 0.5) — <b>컬럼 삭제된 confirmed_score와 달리 기사 단위 내부 가중치 재료로만 사용</b></td><td><span class="b b-chg">🔄 BOOLEAN화</span></td></tr>
+    <tr><td>reason</td><td>TEXT</td><td class="c"></td><td>기사별 점수 근거 한 줄</td><td>🟢</td></tr>
+    <tr><td>summary</td><td>TEXT</td><td class="c"></td><td>기사별 요약</td><td>🟢</td></tr>
+    <tr><td>keywords</td><td>TEXT[]</td><td class="c"></td><td>기사별 키워드</td><td>🟢</td></tr>
+    <tr><td>permission</td><td>TEXT</td><td class="c"></td><td>매매권한 6단계 — is_hard_blocked의 원천</td><td><span class="b b-new">🆕 정식화</span></td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>수집·분석해 행을 쓴 시각</td><td>🟢</td></tr>
+    <tr><td>return_1d</td><td>NUMERIC</td><td class="c"></td><td>백테스트 사후 기입 — published_at 기준 +1거래일 수익률(%)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>return_3d</td><td>NUMERIC</td><td class="c"></td><td>〃 +3거래일 수익률(%)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>return_5d</td><td>NUMERIC</td><td class="c"></td><td>〃 +5거래일 수익률(%)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>outcome</td><td>TEXT</td><td class="c"></td><td>방향 적중 여부 — hit / miss (백테스트 사후 기입)</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr><td>updated_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>백테스트 사후 기입 시각</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+  </table></div>
+
+  <h3>ERD — tb_news_signal 🕐 집계 스냅샷 · 종목당 사이클 1행 <span class="b b-new">🆕 신규 추가됨</span> (기존 tb_news 확정 25필드 계승 + rep_news_id 신설 = 26컬럼 · 1행 = 1컬럼)</h3>
+  <p class="small muted">사이클(1차 30분)마다 그 종목의 “오늘 뉴스 전체”를 한 행으로 집계(기사별 여러 행 ❌) → 50행 append. 여러 기사는 신뢰가중으로 대표 1건 + 점수 집계(루머·펌프 방어). 그룹 = A메타 · B대표기사 · C신뢰가중집계 · D하드스캔 · E정렬.</p>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명 · 산출</th><th>비고</th></tr>
+    <tr><td class="c" colspan="6" style="background:#eff2f5"><b>A. 종목·시각 메타 — 코드가 세팅</b></td></tr>
+    <tr class="hl-new"><td class="c">1</td><td><b>tns_id</b></td><td>BIGSERIAL</td><td class="c">🔑</td><td>대리 PK — 테이블 약어 + _id (규칙 8)</td><td><span class="b b-new">🆕 07-11 (AI 제안 #8)</span></td></tr>
+    <tr class="hl-new"><td class="c">2</td><td><b>cycle_ts</b></td><td>TIMESTAMPTZ</td><td class="c">🔒</td><td>이 행이 속한 사이클의 <b>계획된 슬롯 시각</b>(예: 정각 09:30:00) — ticker와 UNIQUE 쌍(🔒) · <code>ON CONFLICT DO NOTHING</code>으로 재실행 멱등 · 07은 종목별 cycle_ts 최신 행을 읽음</td><td><span class="b b-new">🆕 07-11</span></td></tr>
+    <tr><td class="c">3</td><td>ticker</td><td>TEXT</td><td class="c">🔒🔗</td><td>종목 — cycle_ts와 UNIQUE 쌍 · trade_date와 한 쌍으로 → tb_daily_pick</td><td>🟢</td></tr>
+    <tr class="hl-chg"><td class="c">4</td><td><b>created_at</b></td><td>TIMESTAMPTZ</td><td class="c"></td><td>이 행이 DB에 저장된 시각 (<b>구 collected_at</b>) — <b>순수 기록용, 어떤 키에도 안 들어감</b>(규칙 8)</td><td><span class="b b-chg">🔄 이름 통일 + 키에서 제외</span></td></tr>
+    <tr><td class="c">5</td><td>trade_date</td><td>DATE</td><td class="c">🔗</td><td>ticker와 한 쌍으로 → tb_daily_pick</td><td>🟢</td></tr>
+    <tr><td class="c">6</td><td>has_signal</td><td>BOOLEAN</td><td class="c"></td><td>분석 기사 1건 이상이면 true · false면 아래 전부 null</td><td><span class="b b-chg">🔄 BOOLEAN화 (컨벤션 1)</span></td></tr>
+    <tr><td class="c" colspan="6" style="background:#eff2f5"><b>B. 대표 기사에서 복사 — rep = importance×신뢰무게 최상위 1건</b></td></tr>
+    <tr class="hl-new"><td class="c">7</td><td>rep_news_id</td><td>BIGINT</td><td class="c">🔗</td><td>대표 기사 → <b>tb_news.id</b> — 원본 역추적이 FK로 성립</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr><td class="c">8</td><td>news_title</td><td>TEXT</td><td class="c"></td><td>대표 기사 제목</td><td>🟢</td></tr>
+    <tr><td class="c">9</td><td>source</td><td>TEXT</td><td class="c"></td><td>대표 기사 언론사 (도메인, 예: reuters.com)</td><td>🟢</td></tr>
+    <tr><td class="c">10</td><td>published_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>대표 기사 발행 시각 — ≠ created_at(DB 저장 시각). 미래정보 방지 · Critic ⑤신선도의 기준 시각 (시각 계약 — AI 제안 #7 확정)</td><td>🟢</td></tr>
+    <tr><td class="c">11</td><td>ref</td><td>TEXT</td><td class="c"></td><td>대표 기사 원문 링크</td><td>🟢</td></tr>
+    <tr><td class="c">12</td><td>event_type</td><td>TEXT (ENUM)</td><td class="c"></td><td>⭐ 사건 종류 — 공시와 허용값 공유 · 허용 12종(<a href="#s05">허용값 표</a> 정본): <code>earnings</code>·<code>guidance_change</code>·<code>ma</code>·<code>capital_raise</code>·<code>buyback</code>·<code>management_change</code>·<code>insider_trade</code>·<code>product_deal</code>·<code>analyst_rating</code>·<code>regulation_legal</code>·<code>delisting_halt</code>(하드리스크)·<code>other</code></td><td><span class="b b-chg">🔄 07-11 TEXT ENUM 확정 (#12)</span></td></tr>
+    <tr><td class="c">13</td><td>disclosure_ref</td><td>TEXT</td><td class="c">🔗</td><td>이 사건에 대응하는 공식 공시가 있으면 그 filing_no, 없으면 null — <b>뉴스↔공시 교차확인</b> (Critic ①가짜합의의 [A] 강한 판정 근거)</td><td>🟢 신설 확정 · 스케줄러가 주입</td></tr>
+    <tr><td class="c">14</td><td>reason</td><td>TEXT</td><td class="c"></td><td>sentiment_score 점수에 대한 한 줄 근거</td><td>🟢</td></tr>
+    <tr><td class="c">15</td><td>summary</td><td>TEXT</td><td class="c"></td><td>3~4줄 요약 — 2건 이상이면 배치 종합 LLM, 1건이면 대표 기사 요약</td><td>🟢</td></tr>
+    <tr><td class="c">16</td><td>keywords</td><td>TEXT[]</td><td class="c"></td><td>핵심 키워드 5개</td><td>🟢</td></tr>
+    <tr><td class="c" colspan="6" style="background:#eff2f5"><b>C. 전체 기사 신뢰가중 집계 — 기사 무게 w = 확신도(H .9/M .6/L .3) × 확인계수(확정 1.0/소문 0.5) × 매체신뢰</b></td></tr>
+    <tr><td class="c">17</td><td>news_count</td><td>INT</td><td class="c"></td><td>오늘 분석한 기사 총 건수 (관심도·표본 크기)</td><td>🟢</td></tr>
+    <tr><td class="c">18</td><td>importance</td><td>NUMERIC 0~1</td><td class="c"></td><td>⭐ 얼마나 큰일 — 신뢰가중 평균</td><td>🟢</td></tr>
+    <tr><td class="c">19</td><td>peak_importance</td><td>NUMERIC 0~1</td><td class="c"></td><td>⭐ 신뢰검증 기사(확정 ∨ trust≥0.6 ∨ ALLOW) 중 강도 최댓값 — 평균에 희석되기 전 “가장 센 믿을 만한 한 방”</td><td>🟡 정의(최댓값 vs 대표기사) 협의 중 — 본 표는 코드 현행</td></tr>
+    <tr><td class="c">20</td><td>risk_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>위험도 — 신뢰가중 평균 (호재/악재와 별개 축)</td><td>🟢</td></tr>
+    <tr><td class="c">21</td><td>sentiment_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>⭐ 호재↔악재 — <b>강악재(≤−0.7) 1건이면 최솟값 채택(보수)</b>, 아니면 가중평균. 호재만 confidence로 감쇠</td><td>🟢 · 07 문턱 ≥ 0.70</td></tr>
+    <tr><td class="c">22</td><td>sentiment</td><td>TEXT (ENUM)</td><td class="c"></td><td><code>positive</code> / <code>neutral</code> / <code>negative</code> / <code>mixed</code> — 점수에서 파생 (라벨↔점수 항상 일치)</td><td>🟢</td></tr>
+    <tr><td class="c">23</td><td>source_trust</td><td>NUMERIC 0~1</td><td class="c"></td><td>⭐ 출처를 얼마나 믿나 — <b>LLM이 내용까지 보고</b> 판단(사후) · 루머·펌프 방어 핵심 · <b>삭제된 confirmed_score의 대체 관문</b></td><td>🟢 · 07 문턱 ≥ 0.55 <span class="b b-chg">🔄</span></td></tr>
+    <tr><td class="c">24</td><td>grade_score</td><td>NUMERIC 0~1</td><td class="c"></td><td>⭐ 출처를 <b>코드가 도메인만 보고</b> 매긴 등급(사전) — ALLOW 1.0 / GRAY 0.6 / BLOCK 0. trust와 별개 축 (봉투 vs 내용)</td><td>🟢 · 07 문턱 ≥ 0.55</td></tr>
+    <tr><td class="c">25</td><td>confidence</td><td>NUMERIC 0~1</td><td class="c"></td><td>기사 무게 단순평균 — 저신뢰 기사도 한 표로 끌어내려 “근거 얇음”을 정직하게 노출</td><td>🟢</td></tr>
+    <tr><td class="c" colspan="6" style="background:#eff2f5"><b>D. 코드 하드 스캔</b></td></tr>
+    <tr><td class="c">26</td><td>is_hard_blocked</td><td>BOOLEAN</td><td class="c"></td><td>🛡️ 어느 기사든 permission이 BLOCK류면 true — 매수 즉시 차단</td><td><span class="b b-chg">🔄 is_ 리네임 (컨벤션 1)</span></td></tr>
+    <tr><td class="c">27</td><td>hard_block_reason</td><td>TEXT·null</td><td class="c"></td><td>🛡️ 차단 사유 (예: “Chapter 11 파산신청”)</td><td>🟢</td></tr>
+    <tr><td class="c" colspan="6" style="background:#eff2f5"><b>E. 코드 정렬 상위 3</b></td></tr>
+    <tr><td class="c">28</td><td>top_evidence</td><td>TEXT[] 고정3</td><td class="c"></td><td>근거가 된 대표 헤드라인 정확히 3개(신뢰순, 부족분 null) — <code>"{source}: {title}"</code></td><td>🟢</td></tr>
+    <tr class="hl-del"><td class="c">—</td><td>news_confirmed · news_rumor · confirmed_score · fact_check · company_name · category · verdict</td><td></td><td class="c"></td><td>삭제 확정 7필드 <span class="keep">(2026-07-08 · 루머/팩트 이진 판별 무리 + JOIN 중복)</span></td><td><span class="keep">🟢</span></td></tr>
+  </table></div>
+
+  <h3>📦 07·08에게 전달하는 응답 JSON (pack_news_signal)</h3>
+<pre><code>// 예시 ① 확정 호재 3기사 (로이터·블룸버그 + 저신뢰 1)
+{
+  "has_signal": true,
+  "news_count": 3,
+  "event_type": "product_deal",
+  "importance": 0.63,
+  "peak_importance": 0.70,          // 최강 신뢰기사(로이터) 단독 0.70 — 평균보다 높음
+  "sentiment_score": 0.64,
+  "risk_score": 0.06,
+  "source_trust": 0.84,
+  "grade_score": 0.95,
+  "disclosure_ref": null,            // 🆕 전달에 포함 — Critic ①가짜합의 [A] 판정용
+  "reason": "Clearly positive but dampened by moderate certainty.",
+  "is_hard_blocked": false,
+  "summary": "NVIDIA signed a multi-year GPU supply agreement with a major cloud provider."
+}
+
+// 예시 ② 저신뢰 루머 4건 — peak == importance 는 "신뢰검증 기사 없음" 신호
+{
+  "has_signal": true, "news_count": 4, "event_type": "ma",
+  "importance": 0.35, "peak_importance": 0.35,
+  "sentiment_score": 0.55, "risk_score": 0.20,
+  "source_trust": 0.35, "grade_score": 0.60, "disclosure_ref": null,
+  "is_hard_blocked": false,
+  "summary": "Unconfirmed blog posts speculate about a possible acquisition; no official confirmation."
+}
+
+// 예시 ③ 뉴스 없음
+{ "has_signal": false, "is_hard_blocked": false }</code></pre>
+  <div class="warn"><b>🔄 전달 계약 정리 3건</b> — ① 창욱 문서의 전달 개명(importance→importance_score, source_trust→trust_score 등)은 <b>혼선 원인이라 폐기 — 저장 컬럼명 = 전달 필드명으로 통일</b> (article_count도 news_count 그대로). ② <b>disclosure_ref를 전달에 포함</b> — 기존엔 미전달이라 Critic의 가장 강한 판정([A])이 못 돌았다. <span class="b b-new">🆕</span> ③ hard_block_reason 구조화(공시와 동일). — 창욱 문서 4종 사이의 “7 vs 10필드 · 19 vs 20 vs 29컬럼” 불일치는 이 표가 단일 기준.</div>
+</section>
+<!-- ══════════════════════ 07 ══════════════════════ -->
+<section class="card" id="s07">
+  <h2>07 · 전략 종합 (Strategist) — 매수/보류를 판단한다</h2>
+  <div class="meta"><span>📥 입력 <b>신호 4종 + 실시간 시세 + 메모리</b></span><span>📤 출력 <b>tb_strategist_signals</b></span><span>🔁 <b>2h → 1h → 10분 단계 축소</b></span><span>담당 <b>이은미</b> (v3.8 · 2026-07-09 반영)</span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>① 신호 읽기</b><div class="d">공시·뉴스·기술·매크로<br>+ 메모리 5개 + ⚡시세</div></div><div class="ar">→</div>
+    <div class="st block"><b>② is_hard_blocked</b><div class="d">true면 즉시 보류<br>(GPT 안 감)</div></div><div class="ar">→</div>
+    <div class="st code"><b>③ 신호 카운트</b><div class="d">consensus 0~3<br>(매크로 제외)</div></div><div class="ar">→</div>
+    <div class="st code"><b>④ 보정</b><div class="d">확인 보너스 +<br>risk-off 감점</div></div><div class="ar">→</div>
+    <div class="st llm"><b>⑤ GPT-4o 판단</b><div class="d">side + conviction<br>(계산 아닌 판단만)</div></div><div class="ar">→</div>
+    <div class="st code"><b>⑥ 검증·전달</b><div class="d">conviction&lt;0.6 → 보류 강등<br>매수만 Critic으로</div></div>
+  </div>
+
+  <p><b>원칙 — 코드 게이트 + GPT 샌드위치</b>: “GPT는 숫자 계산을 하지 않는다. 코드가 계산한 요약을 보고 맥락 판단만 한다.” 코드가 강제하는 지점은 딱 2개 — is_hard_blocked(무조건 보류)과 min_conviction(0.6 미달 시 보류 강등). 매크로 감점과 “consensus 미달 시 보류 권장”은 강제가 아닌 감점·힌트다. 이 과정을 <b>50종목 전체에 매 사이클 반복</b>하며, 같은 종목도 사이클마다 새 행 append(덮어쓰기 ❌).</p>
+
+  <h3>📊 POLICY 문턱값 — 공격형 (전부 0~1 눈금 · v3에서 0~10 폐기)</h3>
+  <div class="twrap"><table>
+    <tr><th>신호</th><th>+1 카운트 조건</th><th>비고</th></tr>
+    <tr><td>공시 (tb_disclosure_signal)</td><td>sentiment_score ≥ 0.70 AND importance ≥ 0.25</td><td>🟢</td></tr>
+    <tr class="hl-chg"><td>뉴스 (tb_news_signal)</td><td>sentiment_score ≥ 0.70 AND grade_score ≥ 0.55 AND <b>source_trust ≥ 0.55</b></td><td><span class="b b-chg">🔄 변경됨</span> 삭제된 confirmed_score(≥0.50) 게이트를 source_trust로 대체 (v3.2 확정) — 단 <b>실제 코드는 아직 옛 필드 의존(P0)</b> 🔴</td></tr>
+    <tr><td>기술 (tb_technical)</td><td>trend == "up" AND ml_prob_up &gt; 0.60</td><td>🟡 1차는 ml_probs 빈값이라 기술 투표 불가 → consensus 최대 2 (Critic 협의 ② 참조)</td></tr>
+    <tr><td>매크로 (tb_macro)</td><td><b>투표 안 함</b> — risk-off일 때만 conviction 감점 (감점표: risk_score 0.5→−0.05 · 0.6→−0.10 · 0.7→−0.15 · 0.8→−0.20 · 0.9→−0.30 · 1.0→−0.40)</td><td>🟢 해소 — risk_score 0~1 통일(컨벤션 4)에 맞춰 감점표를 0~1 구간표로 재작성 <span class="b b-chg">🔄</span></td></tr>
+    <tr><td>종합</td><td>consensus ≥ 2/3 = 매수 후보 · 확인 보너스 = source_trust×0.03 (+disclosure_ref 있으면 +0.02) · min_conviction 0.6</td><td>🟢 문턱값은 백테스트 프리셋 A/B/C로 튜닝 예정</td></tr>
+  </table></div>
+
+  <div class="note"><b>🕐 “정보 2층 구조” — 왜 현재 시세는 DB에 없나</b><br>
+  ① <b>느린 층</b>(기술·공시·뉴스·매크로) = 하루~시간 단위로 계산해 DB에 저장 — “요즘 좋은 흐름인가”. ② <b>빠른 층</b>(현재가·당일고저·거래량·52주 고저) = 몇 초만 지나도 낡는 값이라 테이블에 넣는 순간 거짓말이 된다 → 판단 순간에 Alpaca로 <b>50개 배치 즉석 조회</b>하고, 그 값을 판단 기록(아래 ⚡ 컬럼)에 박제한다. 52주 고저를 주는 이유: 같은 호재라도 <b>진입 위치</b>(고점 추격 vs 저점 반등)에 따라 GPT가 conviction을 다르게 주도록.</div>
+
+  <h3>ERD — tb_strategist_signals <span class="b b-chg">🔄 cycle_id 폐기 · src_*_at FK 방식</span></h3>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>id</td><td>BIGSERIAL</td><td class="c">🔑</td><td>행 고유번호 = <b>signal_id</b> (Critic·주문·회고가 전부 이 번호로 잇는다)</td><td>🟢</td></tr>
+    <tr class="hl-new"><td>trade_date</td><td>DATE</td><td class="c">🔗</td><td>판단 기준일 — (trade_date, ticker)로 tb_daily_pick·tb_technical 복합 FK 성립 (기존 “반쪽 FK” 해소)</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr><td>ticker</td><td>VARCHAR</td><td class="c">🔗</td><td>종목 코드</td><td>🟢</td></tr>
+    <tr class="hl-new"><td>src_disclosure_at</td><td>TIMESTAMPTZ·null</td><td class="c">🔗</td><td>읽은 공시 스냅샷의 <b>cycle_ts</b> 복사 → (ticker, 값) = tb_disclosure_signal UNIQUE(ticker, cycle_ts) FK</td><td><span class="b b-new">🆕</span> cycle_id 대체 · <span class="b b-chg">🔄 규칙 8로 대상이 created_at→cycle_ts</span></td></tr>
+    <tr class="hl-new"><td>src_news_at</td><td>TIMESTAMPTZ·null</td><td class="c">🔗</td><td>읽은 뉴스 스냅샷의 <b>cycle_ts</b> 복사 → tb_news_signal UNIQUE(ticker, cycle_ts) FK</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr class="hl-new"><td>src_macro_at</td><td>TIMESTAMPTZ·null</td><td class="c">🔗</td><td>읽은 매크로 행의 as_of 복사 → tb_macro FK</td><td><span class="b b-new">🆕</span></td></tr>
+    <tr class="hl-del"><td>cycle_id</td><td>BIGINT</td><td class="c"></td><td><span class="keep">폐기 (v3.6) — 가리킬 표가 없었음. “최신 판단 고르기”는 (ticker, created_at DESC), “원본 추적”은 src_*_at이 대신한다</span></td><td><span class="keep"><span class="b b-chg">🔄 폐기</span></span></td></tr>
+    <tr><td>inv_type</td><td>TEXT (ENUM)</td><td class="c"></td><td>투자유형 — <code>aggressive</code> (1차 단일 · 2차 +conservative) · 구 "공격형"</td><td><span class="b b-chg">🔄 영어 ENUM (컨벤션 2)</span></td></tr>
+    <tr><td>side</td><td>TEXT (ENUM)</td><td class="c"></td><td>최종 결정 — <code>buy</code>(매수) / <code>hold</code>(보류) · 2차 +sell · 구 "매수/보류"</td><td><span class="b b-chg">🔄 영어 ENUM (컨벤션 2)</span></td></tr>
+    <tr><td>conviction</td><td>NUMERIC(4,3)</td><td class="c"></td><td>⭐ 확신 점수 0~1 (예: 0.835)</td><td>🟢</td></tr>
+    <tr><td>signal_consensus</td><td>SMALLINT</td><td class="c"></td><td>매수 방향 신호 개수 0~3 (공시·뉴스·기술 — 매크로 제외)</td><td>🟢</td></tr>
+    <tr><td>summary</td><td>TEXT</td><td class="c"></td><td>한 줄 요약 — Critic이 빠르게 파악하는 용도</td><td>🟢</td></tr>
+    <tr><td>bull_case</td><td>TEXT</td><td class="c"></td><td>매수 근거 상세 (Critic 설득 핵심)</td><td>🟢</td></tr>
+    <tr><td>key_risk</td><td>TEXT·null</td><td class="c"></td><td>인정한 핵심 위험 1개 — <b>buy면 필수 기재</b>(Critic 통과 조건) · hold면 null (null 여부는 buy/hold로 갈림, v3.8 규칙)</td><td>🟢</td></tr>
+    <tr><td>risk_rebuttal</td><td>TEXT·null</td><td class="c"></td><td>그 위험에 대한 반박·방어 — key_risk와 세트 (buy=채움 / hold=null)</td><td>🟢</td></tr>
+    <tr><td>counter_scenarios</td><td>JSONB·null</td><td class="c"></td><td>틀렸을 때 대응책 배열 (buy=채움 / hold=null)</td><td>🟢</td></tr>
+    <tr><td>evidence</td><td>JSONB</td><td class="c"></td><td>숫자 증거 묶음 — {source_trust, grade_score, news_count, is_hard_blocked, macro_regime, disclosure_ref}</td><td>🟢</td></tr>
+    <tr><td>sizing_hint</td><td>JSONB</td><td class="c"></td><td>PM 참고용 크기 제안 (최종 결정은 09) — <b>손절 필드는 제거</b>(09 권한)</td><td><span class="b b-chg">🔄</span> stop_loss 제거 협의</td></tr>
+    <tr><td>persona_notes</td><td>TEXT·null</td><td class="c"></td><td>거장 페르소나 (2차 · 지금 null)</td><td>🟢</td></tr>
+    <tr class="hl-new"><td>decision_close</td><td>NUMERIC</td><td class="c"></td><td>판단 시점 기준가(대개 current_price와 동일) — <b>보류 signal의 회고 P0</b>. Reviewer가 “보류했는데 올랐나”를 채점할 시작점</td><td><span class="b b-new">🆕 신규 추가됨</span> (Reviewer P0 요청 해소)</td></tr>
+    <tr><td colspan="5" style="background:#fff8c5">⚡ <b>실시간 스냅샷</b> — 판단 순간 Alpaca 배치 조회값 박제 (v2.3 확정)</td></tr>
+    <tr><td>current_price</td><td>NUMERIC</td><td class="c"></td><td>판단 순간 현재가 — Critic 데이터 품질 관문·고점추격 판정의 재료</td><td>🟢</td></tr>
+    <tr><td>day_high</td><td>NUMERIC</td><td class="c"></td><td>당일 고가 (실시간)</td><td>🟢</td></tr>
+    <tr><td>day_low</td><td>NUMERIC</td><td class="c"></td><td>당일 저가 (실시간)</td><td>🟢</td></tr>
+    <tr class="hl-new"><td><b>close_prev</b></td><td>NUMERIC</td><td class="c"></td><td>어제 종가 — tb_technical.close 복사. Critic 관문 “어제 대비 ±30% 상식 범위” 검사 재료 · payload snapshot 블록과 컬럼명 일치(규칙 5)</td><td><span class="b b-new">🆕 07-11 (AI 제안 #6 해결)</span> — 이로써 snapshot 4필드 전부 이 표에 박제됨</td></tr>
+    <tr><td>volume</td><td>BIGINT</td><td class="c"></td><td>당일 누적 거래량 (실시간)</td><td>🟢</td></tr>
+    <tr><td>turnover</td><td>NUMERIC</td><td class="c"></td><td>당일 거래대금 (실시간)</td><td>🟢</td></tr>
+    <tr><td>high_52w</td><td>NUMERIC</td><td class="c"></td><td>52주 최고가 — 진입 위치 맥락 (고점 추격 vs 저점 반등)</td><td>🟢</td></tr>
+    <tr><td>low_52w</td><td>NUMERIC</td><td class="c"></td><td>52주 최저가</td><td>🟢</td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>저장 시각 — (ticker, created_at DESC)가 “최신 판단” 선택 키</td><td>🟢</td></tr>
+  </table></div>
+
+  <h3>📦 08 Critic에게 넘기는 설득 payload (매수만 · 트리거 직접 호출)</h3>
+  <p class="small muted">원본 신호 4개 JSON은 안 넘긴다(토큰 낭비) — Critic이 의심되면 signal_id → src_*_at으로 원본 스냅샷을 직접 조회한다. sizing_hint도 제외(PM이 DB에서 Pull). 보류는 Critic에 안 가고 저장만(회고용).</p>
+<pre><code>{
+  "signal_id": 4021,                      // = tb_strategist_signals.id
+  "ticker": "NVDA",
+  "inv_type": "aggressive",
+  "side": "buy",
+  "conviction": 0.85,
+  "signal_consensus": 3,
+  "summary": "3개 신호 전원 매수 방향. 공시(인수)·뉴스(실적,출처신뢰↑)·기술(반등) 일치.",
+  "bull_case": "① 대형 인수 공식 발표(프리미엄 30%) ② 실적 서프라이즈 ③ 기술 반등 ④ 시장 risk-on, VIX 16 안정.",
+  "key_risk": "인수 프리미엄 30% 과다 지불 → 단기 조정 가능",
+  "risk_rebuttal": "importance 0.8로 시장이 이미 긍정 반영 중, is_hard_blocked=false, 기준(0.6) 충족(0.85)",
+  "counter_scenarios": ["인수 무산 시 → 손절 라인 -5%", "risk-off 전환 시 → 포지션 축소"],
+  "evidence": {
+    "disclosure_ref": "0001-24-000123",
+    "source_trust": 0.88, "grade_score": 0.95, "news_count": 3,
+    "is_hard_blocked": false, "macro_regime": "risk_on"
+  },
+  "snapshot": {                           // 🆕 Critic 관문·고점추격 판정에 필수 (협의 ⑤ 해소)
+    "current_price": 125.30, "day_high": 126.10, "day_low": 121.40,
+    "close_prev": 124.90
+  },
+  "persona_notes": null
+}</code></pre>
+
+  <h3>🧠 메모리 — 같은 실수 반복 방지</h3>
+  <p>판단 전, 같은 ticker의 최근 5개 lesson을 SELECT해 GPT 프롬프트 ④슬롯에 주입한다 (벡터DB 불필요 — 단순 SQL). 예: “지난달 NVDA 매수 −3% 물림 → 실적 기대 과열에 늦게 진입” → conviction 감점 요인.</p>
+  <p><b>메모리 출처 = <code>tb_review.lesson</code>으로 확정</b> (2026-07-11 · AI 제안 #2 채택) — 07은 <code>tb_review ⨝ tb_strategist_signals(ticker)</code>로 같은 종목 최근 5개 lesson을 읽는다. side·conviction·수익률 같은 부가 맥락은 JOIN으로 함께 딸려온다. <span class="b b-chg">🔄 수정됨</span> — 이은미 v3.8의 “tb_memory_entries에서 읽기” 설계는 이 문단으로 대체(테이블 폐지). 코드 무수정이 필요하면 같은 모양의 <code>v_memory_entries</code> 뷰로 호환 가능.</p>
+</section>
+
+<!-- ══════════════════════ 08 ══════════════════════ -->
+<section class="card" id="s08">
+  <h2>08 · 크리틱 검증 (Risk Critic) — 매수 제안에 적대적 반박</h2>
+  <div class="meta"><span>📥 입력 <b>매수 payload + 원본 신호 테이블</b></span><span>📤 출력 <b>tb_critic_verdict</b></span><span>🔁 <b>매수 제안마다</b></span><span>담당 <b>김미연</b> (구현 완료 · 테스트 78개 통과)</span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>관문 · 데이터 품질</b><div class="d">스냅샷 정합성 3규칙<br>깨지면 → hold</div></div><div class="ar">→</div>
+    <div class="st block"><b>Layer 0 · 하드룰</b><div class="d">명백한 부실 4규칙<br>즉시 기각 (LLM 안 부름)</div></div><div class="ar">→</div>
+    <div class="st llm"><b>Layer 1 · LLM 반박</b><div class="d">1층 ①②③⑤ 개별 공격<br>→ 2층 ④ 종합 판정</div></div><div class="ar">→</div>
+    <div class="st code"><b>Layer 2 · 게이트</b><div class="d">confidence ≥ 0.70<br>→ reject 확정</div></div><div class="ar">→</div>
+    <div class="st out"><b>tb_critic_verdict</b><div class="d">pass → 09 / reject → 11</div></div>
+  </div>
+
+  <p><b>“악마의 변호인”</b> — Strategist의 매수 제안을 일부러 적대적으로 반박해 과신·헛매매를 거른다. 판단(주관)은 LLM, 결정(규칙)은 코드. Strategist의 payload는 “은미의 <b>주장</b>”이므로 Critic은 반드시 <b>원본 테이블(tb_disclosure_signal·tb_news_signal·tb_technical·tb_macro)을 직접 재확인</b>한다. 1차는 단방향 1패스 — 기각이면 그 종목은 그냥 스킵(2차: 다회전 토론).</p>
+
+  <h3>관문 — 데이터 품질 (코드 · 투자판단 아님)</h3>
+  <div class="twrap"><table>
+    <tr><th class="c">순서</th><th>규칙</th><th>깨지면</th></tr>
+    <tr><td class="c">①</td><td>day_high ≥ day_low (고저 정합)</td><td rowspan="3"><b>hold (보류)</b> — 깨진 데이터로는 어떤 판단도 무의미. 모든 판단보다 먼저 실행</td></tr>
+    <tr><td class="c">②</td><td>day_low ≤ current_price ≤ day_high (현재가가 당일 범위 안)</td></tr>
+    <tr><td class="c">③</td><td>|current_price − 어제종가| ÷ 어제종가 ≤ 30% (상식 범위 — 임계 조정 가능 🟡)</td></tr>
+  </table></div>
+
+  <h3>Layer 0 — 코드 즉시 컷 (순서: 거래정지 → 시장 → 과열 → 근거)</h3>
+  <div class="twrap"><table>
+    <tr><th>규칙</th><th>조건</th><th>상태</th></tr>
+    <tr><td>halted</td><td>거래정지 여부 — is_hard_blocked는 상폐만 덮고, 은미 1단계가 이미 걸러 Critic엔 false만 옴</td><td>🔴 <b>실시간 소스 없음 → skip</b> — “주문 직전 재확인” 취지상 DB가 아니라 Alpaca 실시간 조회여야 (협의 ⑦)</td></tr>
+    <tr><td>macro_riskoff</td><td>tb_macro <b>최신 행</b> regime == "risk_off"</td><td>🟢 확정 — 은미의 “매크로 투표 안 함”과 충돌 아님(역할 분담)</td></tr>
+    <tr><td>late_entry</td><td>ret_5d ≥ 15% AND rsi ≥ 70 (공격형이라 AND — 하나만으론 컷 안 함)</td><td>🟢 확정 · ret_5d는 <b>퍼센트 단위(15.0)</b> — config RET_5D_IS_FRACTION=True는 오류 → False로 (해결 ⑨)</td></tr>
+    <tr><td>weak_evidence</td><td>consensus ≤ 1 AND 공시 없음 AND source_trust &lt; 0.4</td><td>🔴 죽은 규칙 의심 — consensus 2/3 필수면 ≤1이 도착 불가 + 1차엔 기술 투표 불가 (협의 ②)</td></tr>
+  </table></div>
+  <div class="note"><b>⚠️ skip은 pass가 아니다</b> — 데이터가 없어 못 돌린 규칙을 조용히 통과시키지 않고 <code>skipped_rules</code>에 남긴다. “어떤 방어선이 꺼져 있었나”가 판정과 함께 나와야 한다.</div>
+
+  <h3>Layer 1 — LLM 적대적 반박 5각도 (2층 구조)</h3>
+  <div class="twrap"><table>
+    <tr><th>각도</th><th>의심하는 것</th><th>판정 로직</th></tr>
+    <tr><td><b>1층 ①</b> fake_consensus<br>가짜 합의</td><td>consensus 3이라지만 같은 사건 하나에 여러 신호가 반응한 걸 여러 개로 센 것 아닌가</td><td>[A] 강한 판정: 뉴스 disclosure_ref가 공시 filing_no를 가리키면 → 그 뉴스는 공시 보고 쓴 것 = 독립 근거 아님. [B] 보조: event_type 동일 + 발생 시각 근접</td></tr>
+    <tr><td><b>1층 ②</b> late_entry<br>선반영·추격</td><td>호재가 이미 가격에 반영된 뒤인가</td><td>호재 발생 시점 → 이후 ret_5d/ret_20d 급등 + 신고가 근처 = 추격 의심. “그냥 올랐다”는 반박 불가 — 호재 유효 + 상승 중 = 건강한 모멘텀</td></tr>
+    <tr><td><b>1층 ③</b> unverified_catalyst<br>미검증 촉매</td><td>검증된 사실인가, 이름값 뒤 루머인가</td><td>2×2 판정: 🚨 <b>grade ≥ 0.80 인데 trust &lt; 0.40 = “봉투만 좋음”</b> → 가장 세게 반박 (“로이터가 보도했으니 팩트겠지”가 실무 최대 함정)</td></tr>
+    <tr><td><b>1층 ⑤</b> stale<br>신호 신선도</td><td>근거가 낡지 않았나</td><td>반드시 <b>published_at·filed_at(발생 시각)</b> 사용 — created_at(수집 시각)은 항상 “방금”으로 보여 오판. 기술 신호는 어제 값 — 오늘 급등했으면 낡음</td></tr>
+    <tr><td><b>2층 ④</b> calibration<br>확신 캘리브레이션</td><td>conviction이 근거 총량에 맞나</td><td>1층 결과만 받아 판정 — 강한 반박 여럿 + conviction ≥ 0.80 = 과신. <b>이중 처벌 금지를 타입으로 강제</b>: 2층 함수는 evidence 인자를 아예 안 받아 재감점이 물리적으로 불가능</td></tr>
+  </table></div>
+
+  <h3>Layer 2 — 게이트 (코드가 도장)</h3>
+  <p><code>confidence ≥ 0.70 → reject · 미만 → pass</code> — LLM이 초안을 내고 코드가 감사한다. 0.70인 이유: 공격형이라 문턱을 높게 — 반박이 어지간히 확실해야 기각, 애매하면 사준다(보수형이면 0.5 수준). 백테스트로 미세조정.</p>
+
+  <h3>중복방지 3겹 — 쿨다운 · 캐시 · 변화 트리거</h3>
+  <p>기각된 종목은 <b>5사이클 쿨다운</b>(재제안 억제) + <b>판정 캐시</b>(기각뿐 아니라 통과도 캐시 — 아니면 같은 상황을 매 사이클 LLM에 다시 묻는다) + 미세 변동은 버킷으로 뭉갬(가격 1% · rsi 5p · trust 0.1). LLM을 실제로 부른 판정만 <code>source=fresh</code>.</p>
+
+  <h3>ERD — tb_critic_verdict</h3>
+  <div class="twrap"><table>
+    <tr><th>컬럼</th><th>타입</th><th class="c">키</th><th>설명</th><th>비고</th></tr>
+    <tr><td>id</td><td>BIGSERIAL</td><td class="c">🔑</td><td>반박 결과 고유번호</td><td>🟢</td></tr>
+    <tr><td>signal_id</td><td>BIGINT</td><td class="c">🔗</td><td>→ tb_strategist_signals.id (반박 대상)</td><td>🟢 유일한 연결 키</td></tr>
+    <tr class="hl-del"><td>cycle_id</td><td>BIGINT</td><td class="c"></td><td><span class="keep">제거 — Strategist의 cycle_id 폐기에 따라 함께 제거 (이은미 합의 요청)</span></td><td><span class="keep"><span class="b b-chg">🔄 제거</span></span></td></tr>
+    <tr><td>ticker</td><td>VARCHAR</td><td class="c"></td><td>종목 코드 (조회 편의)</td><td>🟢</td></tr>
+    <tr><td>decision</td><td>TEXT (ENUM)</td><td class="c"></td><td>⭐ <code>pass</code>(통과) / <code>reject</code>(기각) / <b><code>hold</code></b>(관문에서 데이터가 깨졌을 때)</td><td>🟢</td></tr>
+    <tr><td>is_agreed</td><td>BOOLEAN·null</td><td class="c"></td><td>LLM이 시그널에 동의? — 코드 층에서 결정났으면 null · 구 agree</td><td><span class="b b-chg">🔄 is_ 리네임 (컨벤션 1)</span></td></tr>
+    <tr><td>category</td><td>TEXT (ENUM)</td><td class="c"></td><td>가장 세게 걸린 각도 — <code>fake_consensus</code>·<code>late_entry</code>·<code>unverified_catalyst</code>·<code>stale</code> / <code>halted</code>·<code>macro_riskoff</code>·<code>weak_evidence</code>·<code>data_quality</code></td><td>🟢</td></tr>
+    <tr><td>objection</td><td>TEXT</td><td class="c"></td><td>반박 근거 한 줄 (왜 기각인지)</td><td>🟢</td></tr>
+    <tr><td>confidence</td><td>NUMERIC(4,3)</td><td class="c"></td><td><b>반박</b> 확신도 0~1 (동의 확신도 아님) — 게이트가 0.70과 비교</td><td>🟢 · <span class="b b-chg">🔄 소수 3자리 (컨벤션 4)</span></td></tr>
+    <tr><td>decided_layer</td><td>TEXT (ENUM)</td><td class="c"></td><td>어느 계층이 결정 — <code>quality_gate</code> / <code>hard_rule</code> / <code>llm</code> / <code>gate</code></td><td>🟢</td></tr>
+    <tr class="hl-new"><td>source</td><td>TEXT (ENUM)</td><td class="c"></td><td><code>fresh</code> / <code>cache</code> / <code>cooldown</code> — LLM을 실제 부른 건 fresh뿐 (백테스트 호출 수 집계)</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr class="hl-new"><td>skipped_rules</td><td>JSONB</td><td class="c"></td><td>데이터가 없어 못 돌린 규칙들 — 꺼진 방어선 기록</td><td><span class="b b-new">🆕 신규 추가됨</span></td></tr>
+    <tr><td>created_at</td><td>TIMESTAMPTZ</td><td class="c"></td><td>저장 시각</td><td>🟢</td></tr>
+  </table></div>
+
+  <h3>📦 판정 결과 JSON 예시</h3>
+<pre><code>// 기각 — 가짜 합의 적발
+{
+  "signal_id": 4021, "ticker": "NVDA",
+  "decision": "reject", "is_agreed": false,
+  "category": "fake_consensus",
+  "objection": "공시·뉴스 모두 ma 사건, disclosure_ref로 연결 → 겉보기 3표지만 실질 독립 근거 2개",
+  "confidence": 0.82, "decided_layer": "llm",
+  "source": "fresh",
+  "skipped_rules": ["halted(실시간 거래정지 소스 없음)"]
+}
+
+// 통과 — 09 리스크·포트폴리오로
+{
+  "signal_id": 4022, "ticker": "MRNA",
+  "decision": "pass", "is_agreed": true,
+  "category": null, "objection": null,
+  "confidence": 0.35, "decided_layer": "gate",
+  "source": "fresh", "skipped_rules": []
+}</code></pre>
+</section>
+<!-- ══════════════════════ 09 ══════════════════════ -->
+<section class="card" id="s09">
+  <h2>09 · 리스크·포트폴리오 — 얼마 살까 · 살지 말지 (전부 코드)</h2>
+  <div class="meta"><span>📥 입력 <b>pass된 signal + 실시간 시세 + tb_account</b></span><span>📤 출력 <b>주문 계획 → tb_order</b></span><span>🔁 <b>매수 발생 시</b></span><span>담당 <b>김지현</b></span></div>
+
+  <div class="pipe">
+    <div class="st block"><b>① 이벤트 회피</b><div class="d">어닝·FOMC·CPI<br>1~2일 내 → 스킵</div></div><div class="ar">→</div>
+    <div class="st block"><b>② 중복 매수 방지</b><div class="d">보유 중·미체결 있으면 스킵<br>(종목당 1포지션)</div></div><div class="ar">→</div>
+    <div class="st code"><b>③ 잔고 확인</b><div class="d">tb_account 현금</div></div><div class="ar">→</div>
+    <div class="st code"><b>④ 비중 계산</b><div class="d">리스크 4% ÷ 손절폭<br>상한 25%</div></div><div class="ar">→</div>
+    <div class="st out"><b>⑤ 브래킷 세팅</b><div class="d">수량·손절·익절<br>→ tb_order</div></div>
+  </div>
+
+  <p><b>여기는 에이전트가 아니라 코드</b> — 결정론적 규칙·계산만. 이벤트 회피를 LLM이 아닌 코드가 하는 이유: “어닝 1일 전인가”는 날짜 <b>사실 확인</b>이라 코드가 정확하다(LLM은 착각·환각 위험). Critic <b>뒤</b>에 두는 것도 정석 — 안전장치 하드룰은 맨 마지막에, LLM이 실수로 통과시켜도 코드가 받친다(이중 안전망).</p>
+  <div class="note"><b>🧮 위험 기반 사이징</b> — <code>배정금액 = (equity × 4%) ÷ 손절폭 15% ≈ 26.7% → 상한 25%에 컷 → 수량 = floor(배정금액 ÷ 현재가)</code>. “한 번에 계좌의 4%만 잃겠다”에서 수량이 자동으로 딸려나온다 — 손절폭이 크면 적게, 좁으면 많이 산다. 숫자들은 업계 관용값(거래당 리스크 1~5% · 모멘텀주 손절 −15%)으로 시작해 11 회고로 튜닝.<br>
+  <b>손절 % 권한 = 09</b> — 이은미 sizing_hint의 −5%는 참고 제안일 뿐, 최종은 09가 정한다.</div>
+  <div class="twrap"><table>
+    <tr><th>투자유형</th><th>주식:현금</th><th>종목당 최대</th><th>분산</th><th>손절</th><th>거래당 리스크</th></tr>
+    <tr><td><b>공격형 ⭐1차</b></td><td>~100 : 0</td><td>25% (cap)</td><td>3~6종목 (목표 5)</td><td>−15% + 트레일링</td><td>4%/거래</td></tr>
+    <tr><td class="muted">안정형 (2차)</td><td class="muted">~40 : 60</td><td class="muted">5%</td><td class="muted">10+</td><td class="muted">−3~5%</td><td class="muted">1%/거래</td></tr>
+  </table></div>
+  <p><b>👥 5계좌 다양성 (1차)</b> — 페르소나가 null이라 같은 config면 5계좌 매매가 100% 동일해진다 → 계좌마다 aggressive.yaml의 <b>손절폭·비중·목표 종목수만</b> 다르게 준다. 같은 “NVDA 매수” 신호라도 −15% 계좌는 버티고 −8% 계좌는 먼저 손절돼 현금이 생기며 포트폴리오가 갈수록 벌어진다. Strategist는 1번만 돌아 비용이 안 는다.</p>
+</section>
+
+<!-- ══════════════════════ 10 ══════════════════════ -->
+<section class="card" id="s10">
+  <h2>10 · 주문·체결 (Alpaca) — 페이퍼 매매 실행 <span class="b b-fix">🟡 설계 예정</span></h2>
+  <div class="meta"><span>📥 입력 <b>주문 계획</b></span><span>📤 출력 <b>tb_account · tb_order · tb_fill</b></span><span>담당 <b>김지현</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>브래킷 제출</b><div class="d">진입+손절+익절 한 세트</div></div><div class="ar">→</div>
+    <div class="st code"><b>Alpaca 서버 감시</b><div class="d">체결·손절·익절 자동<br>(초 단위 폴링 불필요)</div></div><div class="ar">→</div>
+    <div class="st out"><b>체결 기록</b><div class="d">tb_fill · 잔고 갱신</div></div><div class="ar">→</div>
+    <div class="st code"><b>11 리뷰로</b><div class="d">fill.price = 매수 P0</div></div>
+  </div>
+
+  <div class="twrap"><table>
+    <tr><th>테이블</th><th>담는 것</th><th>키 · 시각</th><th>비고</th></tr>
+    <tr><td><code>tb_account</code></td><td>5인 각 계좌 잔고·보유 (시드 각 1억 상당)</td><td>🔑 id · created_at · <b>updated_at</b> <span class="b b-new">🆕</span> (잔고 갱신마다)</td><td>🟡 컬럼 확정 예정</td></tr>
+    <tr><td><code>tb_order</code></td><td>브래킷 주문 — 종목·수량·진입가·손절가·익절가·유형·상태</td><td>🔑 id · 🔗 signal_id·account_id · created_at · <b>updated_at</b> <span class="b b-new">🆕</span> (상태 변경마다)</td><td>🟡 · <b>⚠️ 유형·상태 ENUM 값 미확정</b> — 설계 시 허용값 필히 명시(규칙 2) 후 이 표시 제거</td></tr>
+    <tr><td><code>tb_fill</code></td><td>체결 기록 (체결가·수량·시각·매수/매도)</td><td>🔑 id · 🔗 order_id · filled_at · created_at</td><td>🟡 · <b>⚠️ 매수/매도 ENUM 값 미확정</b>(buy/sell 예상) — 설계 시 허용값 필히 명시(규칙 2) 후 이 표시 제거</td></tr>
+  </table></div>
+</section>
+
+<!-- ══════════════════════ 11 ══════════════════════ -->
+<section class="card" id="s11">
+  <h2>11 · 리뷰·회고 (Reviewer) — 복기 → 다음 판단으로</h2>
+  <div class="meta"><span>📥 입력 <b>최종 signal + T+1~5 종가</b></span><span>📤 출력 <b>tb_review_price_snapshots · tb_review</b></span><span>🔁 <b>매일 장마감 + T+5</b></span><span>담당 <b>문성혁</b></span></div>
+
+  <div class="pipe">
+    <div class="st code"><b>① 매일 스냅샷</b><div class="d">T+1~5 종가 upsert<br>(LLM 안 씀 · idempotent)</div></div><div class="ar">→</div>
+    <div class="st code"><b>② T+5 Scorer</b><div class="d">ret_1d/3d/5d · is_hit ·<br>max_drawdown (코드)</div></div><div class="ar">→</div>
+    <div class="st llm"><b>③ Reflector</b><div class="d">lesson 3~5문장 작성<br>(숫자 새로 안 만듦)</div></div><div class="ar">→</div>
+    <div class="st out"><b>tb_review</b><div class="d">signal당 1행</div></div><div class="ar">⤴</div>
+    <div class="st code"><b>피드백</b><div class="d">lesson → 07 메모리</div></div>
+  </div>
+
+  <p><b>📏 P0(수익률 기준가) = 판단별로 다름</b> — 매수는 실제 체결가 <code>tb_fill.price</code>, 보류는 체결이 없으니 판단 시점 기준가 <code>decision_close</code> <span class="b b-new">🆕</span>(07 스키마에 신설 — 기존 “decision_close 없음 🔴” 해소). <b>🎯 is_hit — 보류도 채점한다</b>: 매수(buy)는 ret_5d&gt;0이면 true, 보류(hold)는 ret_5d≤0이면 true(보류했는데 올랐으면 기회를 놓친 것 = false) — “너무 보수적이라 상승 놓치는 패턴”도 기록된다.</p>
+
+  <div class="twrap"><table>
+    <tr><th>테이블</th><th>컬럼</th><th>키 · 시각</th><th>비고</th></tr>
+    <tr><td><code>tb_review_price_snapshots</code> 🕐<br>(중간 · 매일 1행씩)</td><td>signal_id · day_offset(1~5) · price_date · close · source(<b>⚠️ ENUM 값 미확정</b> — 예: alpaca/yfinance, 확정 시 필히 명시)</td><td>🔑 (signal_id, day_offset) · 🔗 → signals · created_at · <b>updated_at</b> <span class="b b-new">🆕</span> (upsert)</td><td>🟢 — tb_technical은 그날 top50만 저장이라 판단 종목의 T+5 종가를 따로 추적</td></tr>
+    <tr><td><code>tb_review</code><br>(최종 · signal당 1행)</td><td>signal_id · ret_1d · ret_3d · ret_5d · <b>is_hit</b>(구 hit 🔄) · max_drawdown · lesson</td><td>🔑 signal_id · 🔗 → signals · created_at · <b>updated_at</b> <span class="b b-new">🆕</span></td><td>🟢 — 숫자 = Scorer(코드) · lesson만 LLM</td></tr>
+  </table></div>
+  <div class="good"><b>✅ 07↔11 메모리 연결 — <code>tb_review.lesson</code>으로 통일 확정 (2026-07-11)</b> — 11이 lesson을 쓰면 07이 tb_review를 JOIN으로 직접 읽는다. 별도 tb_memory_entries는 폐지 → 피드백 루프의 진실원천이 한 곳 (<a href="#ai">AI 제안 #2</a> 채택). 그리고 <b>Critic은 회고에서 안 본다(1차)</b> — 최종 판단 책임은 Strategist signal에 있어 이중 반영 방지. Critic 품질 평가는 후속 critic_review 별도 축.</div>
+</section>
+
+<!-- ══════════════════════ 릴레이 ══════════════════════ -->
+<section class="card" id="relay">
+  <h2>🔗 에이전트 간 데이터 릴레이 — 이음새 총정리</h2>
+  <p>07→08→09→10→11은 전부 <b>DB 테이블 + signal_id로 데이터를 넘기는 릴레이</b>다. 잇는 키와 뒷단이 읽는 컬럼이 안 맞으면 파이프라인이 끊긴다. cycle_id 폐기 후 연결 키는 아래와 같이 단순해졌다.</p>
+
+  <div class="mermaid">
+flowchart LR
+  IN["신호 4종 스냅샷<br/>+ ⚡실시간 시세"] -- "ticker + 최신 created_at" --> S7["07 Strategist"]
+  S7 -- "signal_id (매수 payload)" --> S8["08 Critic"]
+  S8 -- "signal_id (decision=pass)" --> S9["09 리스크·PM"]
+  S9 -- "order_id" --> S10["10 체결 (tb_fill)"]
+  S7 -- "보류 (저장만)" --> S11["11 Reviewer"]
+  S10 -- "fill.price = 매수 P0" --> S11
+  S11 -. "lesson → 메모리" .-> S7
+  </div>
+
+  <div class="twrap"><table>
+    <tr><th>이음새</th><th>잇는 키</th><th>뒷단이 읽는 것</th><th>상태</th></tr>
+    <tr><td>05·06 → 07·08</td><td>ticker + created_at (종목별 최신 행)</td><td>tb_disclosure_signal·tb_news_signal의 has_signal=true 행 — 전달 JSON은 <a href="#s05">05</a>·<a href="#s06">06</a> 참조</td><td>🟢 (테이블 분리 반영)</td></tr>
+    <tr><td>07 → 08</td><td><b>signal_id</b></td><td>매수 payload(설득 필드) + 의심 시 src_*_at으로 원본 직접 조회</td><td>🟢 payload 구조 합의만 남음 🟡</td></tr>
+    <tr><td>08 → 09</td><td>signal_id (decision=pass)</td><td>통과 signal + sizing_hint(DB Pull) + tb_account 잔고</td><td>🟡 09가 필요한 signal 컬럼 확인</td></tr>
+    <tr><td>09/10 → 체결</td><td>order_id</td><td>tb_order → tb_fill (체결가·수량)</td><td>🟢 브래킷 확정</td></tr>
+    <tr><td>→ 11 Reviewer</td><td>signal_id</td><td>최종 signal + fill.price(매수 P0) · decision_close(보류 P0 🆕) + T+1~5 종가</td><td>🟢 (decision_close 신설로 해소)</td></tr>
+    <tr><td>11 → 07 (피드백)</td><td>ticker (최근 5개 lesson)</td><td>tb_review.lesson — 같은 실수 반복 방지 · 기각 쿨다운 5사이클</td><td>🟢 tb_review.lesson으로 통일 (07-11 확정)</td></tr>
+  </table></div>
+</section>
+
+<!-- ══════════════════════ 협의 현황판 ══════════════════════ -->
+<section class="card" id="issues">
+  <h2>🚦 협의 현황판 — 해결됨 / 남은 것</h2>
+  <h3>✅ 이 통합으로 해소된 것 (기존 🔴)</h3>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>기존 문제</th><th>어떻게 풀렸나</th></tr>
+    <tr><td class="c">1</td><td>cycle_id 가리킬 표 없음 · ticker 반쪽 FK · verdict.cycle_id</td><td><b>cycle_id 폐기</b> — trade_date + src_*_at FK 방식으로 대체 (이은미 v3.6 · <a href="#s07">07</a>)</td></tr>
+    <tr><td class="c">2</td><td>decision_close 없음 (Reviewer 보류 P0)</td><td>tb_strategist_signals에 <b>decision_close 신설</b> 🆕 (<a href="#s07">07</a>·<a href="#s11">11</a>)</td></tr>
+    <tr><td class="c">3</td><td>confirmed_score 삭제 vs 이은미 게이트(≥0.50) 의존</td><td>뉴스 관문을 <b>source_trust ≥ 0.55</b>로 대체 확정 (v3.2) — 단 코드 반영은 P0 잔여</td></tr>
+    <tr><td class="c">4</td><td>원본 기사·공시 추적 불가 (집계행만 존재)</td><td><b>tb_news·tb_disclosure = 원본 원장</b>, 집계는 <b>tb_*_signal</b> 분리 🆕 (<a href="#s05">05</a>·<a href="#s06">06</a>)</td></tr>
+    <tr><td class="c">5</td><td>collected_at vs created_at 혼용</td><td><b>created_at으로 통일</b> (팀 약속) + 사건 발생 시각은 published_at·filed_at이 담당</td></tr>
+    <tr><td class="c">6</td><td>disclosure_ref가 전달 JSON에 없어 Critic [A] 판정 불가</td><td>전달 JSON에 포함 🆕 (<a href="#s06">06</a>)</td></tr>
+    <tr><td class="c">7</td><td>ret_5d 단위 (fraction vs %)</td><td>퍼센트(15.0) 확정 — Critic config False로 수정 (07-09 해결)</td></tr>
+    <tr><td class="c">8</td><td>trend 한글/영어 혼용</td><td>영어 ENUM(up·mixed·down·no_data) 확정 (PR #8) — 픽스처·게이트 잔여 수정만 남음</td></tr>
+    <tr class="hl-new"><td class="c">9</td><td>0/1 INT · 한글 ENUM · TIMESTAMP 혼재</td><td><b>공통 컨벤션 7규칙 + 원샷 리네임 확정 (2026-07-11)</b> — BOOLEAN·is_ 접두, side buy/hold, bucket 영어화, 전 테이블 TIMESTAMPTZ → <a href="#conv">컨벤션 섹션</a>의 매핑표가 정본</td></tr>
+    <tr class="hl-new"><td class="c">10</td><td>event_type 목록이 문서·코드에만 존재 (오타 방어 없음)</td><td><s><b>tb_event_type 참조 테이블 신설</b> — 4개 테이블이 FK 참조, 기동 시 정합 검증</s> → <b>🔄 07-11 재확정: 참조 테이블 폐기</b> — event_type도 TEXT (ENUM), 정본은 ontology.py + <a href="#s05">05 허용값 12종 표</a>, 검증은 백엔드(규칙 2) (AI 제안 <a href="#ai">#12</a>)</td></tr>
+    <tr class="hl-new"><td class="c">11</td><td>signal PK가 (ticker, created_at) — 같은 초 재실행 충돌·중복 행 위험</td><td><b>규칙 8 신설 (07-11)</b> — PK(tds_id/tns_id) + UNIQUE(ticker, cycle_ts) · created_at은 기록용 강등 · 일봉은 (날짜, ticker) 유지 (AI 제안 <a href="#ai">#8</a>)</td></tr>
+    <tr class="hl-new"><td class="c">12</td><td>시각 계약 부재 — 컴펌 #2가 “수집 시각 = 발생 시각”이라 Critic 신선도·선반영 오판</td><td><b>계약 확정 (07-11)</b> — 발생 시각 = published_at·filed_at / created_at = DB 저장 확인용 · <b>컴펌 #2 공식 폐기</b> (AI 제안 <a href="#ai">#7</a>)</td></tr>
+    <tr class="hl-new"><td class="c">13</td><td>Critic 관문 재료(snapshot)가 payload에만 있고 DB에 안 남음 — 판정 재현 불가</td><td><b>tb_strategist_signals에 박제 확정 (07-11)</b> — ⚡스냅샷 그룹 + close_prev 🆕 (AI 제안 <a href="#ai">#6</a> · 공시 원본/집계 분리 <a href="#ai">#1</a>도 같은 날 채택 확정)</td></tr>
+  </table></div>
+
+  <h3>🔴 남은 회의 안건 (담당자별)</h3>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>안건</th><th>내용</th><th>관련자</th></tr>
+    <tr><td class="c">1</td><td>Strategist 코드 P0</td><td>vote_news·확인 보너스 코드가 아직 삭제된 confirmed_score에 의존 — source_trust 기준으로 재작성 + 목데이터 테스트 재실행</td><td>이은미</td></tr>
+    <tr><td class="c">2</td><td>매크로 risk_score 스케일</td><td>✅ <b>해소 (07-11)</b> — <s>tb_macro는 0~100인데 이은미 감점표는 0~10 정수 키 — 즉시 통일 필요</s> → 모든 점수 0~1 통일(컨벤션 4)로 해결. 남은 일: 이은미 감점표를 0~1 구간표로 재작성(07 POLICY에 초안 있음)</td><td>이은미 ↔ 김지현</td></tr>
+    <tr><td class="c">3</td><td>weak_evidence 죽은 규칙</td><td>consensus 2/3 필수면 ≤1이 Critic에 도착 불가 + 1차엔 기술 투표 불가(ml_probs 빈값) → consensus==2로 수정 또는 폐기</td><td>김미연 ↔ 이은미</td></tr>
+    <tr><td class="c">4</td><td>halted 실시간 소스</td><td>거래정지 3종 중 상폐만 hard_block이 덮음 — Alpaca 실시간 조회(datasources/alpaca_client.py)로 “주문 직전 재확인” 구현</td><td>김미연 ↔ 김지현·정창욱</td></tr>
+    <tr><td class="c">5</td><td>Critic 문턱 조정</td><td>grade_score &lt; 0.6 컷은 조준점 벗어남(차단 기사는 이미 탈락) → 0.80 제안 · conviction 과신 기준 8.0 → 0.80 (0~1 눈금)</td><td>김미연</td></tr>
+    <tr><td class="c">6</td><td>late_entry ret_5d 임계</td><td>12%(초안) vs 15%(공격형·ATR 상한과 정합) — 백테스트 값인지 확인 후 확정</td><td>팀 회의</td></tr>
+    <tr><td class="c">7</td><td>peak_importance 정의</td><td>신뢰검증 강도 최댓값(코드 현행) vs 대표기사 중요도(명세 서술) 택1</td><td>정창욱 ↔ 이은미</td></tr>
+    <tr><td class="c">8</td><td>high_252_ratio 왜곡</td><td>60일 데이터 종목은 “52주 고가”가 “3개월 고가” — MIN_HISTORY 252로 올리면 상장 1년 미만 전부 탈락. 전략 결정 사항</td><td>팀 회의</td></tr>
+    <tr><td class="c">9</td><td>daily_pick.score 저장</td><td>코드가 저장 안 함 — 컬럼 삭제 vs 50개 전부 계산(정규화 선행) 택1</td><td>김지현</td></tr>
+    <tr><td class="c">10</td><td>Critic 잔여 접합</td><td>core/schemas.py RiskCriticVerdict 3필드 → 13컬럼 확장(팀장 PR) · Layer 1 OpenAI 실연결 · 진짜 DB 연결(CriticRepository)</td><td>김미연 ↔ 김지현</td></tr>
+    <tr class="hl-new"><td class="c">11</td><td>snapshot 허용 오차 (#6 잔여)</td><td>Strategist 조회~Critic 실행 지연 몇 분까지 그 snapshot을 신뢰할지 숫자 하나만 확정 (예: 5분 초과 시 hold)</td><td>이은미 ↔ 김미연</td></tr>
+    <tr class="hl-new"><td class="c">12</td><td>시각 계약 구현 체크 (#7 잔여)</td><td>정창욱: published_at·filed_at 항상 채움(없으면 null + Critic “판정 불가” skip 기록) · 김미연: “발행 3일 전 + 수집 방금” 픽스처로 ⑤신선도 테스트</td><td>정창욱 · 김미연</td></tr>
+  </table></div>
+</section>
+
+<!-- ══════════════════════ LLM 모델·요금 ══════════════════════ -->
+<section class="card" id="llm">
+  <h2>💰 AI 사용 모델·요금 — LLM 호출 지도 <span class="b b-new">🆕 신규 추가됨</span></h2>
+  <p>파이프라인에서 LLM을 부르는 곳은 <b>딱 6곳</b>이다. 원칙 3가지: ① <b>대량·구조화 분석(수집·반박·회고)은 mini급, “판단”(07)만 상위 모델</b> — 6곳 중 5곳이 mini면 총비용은 사실상 07이 결정한다. ② 수집 계열은 temperature=0(결정론), <b>모델명은 코드 하드코딩 금지 — config(yaml)로</b> 빼서 교체·다운시프트가 배포 없이 가능하게. ③ 아래 비용 추정표는 감 잡기용(2026-07 검색 단가 기준) — 단가는 수시로 바뀌므로 구현 확정 시점에 OpenAI pricing을 재확인하고, 운영 첫 주 usage 로그(실측 토큰)로 교체한다.</p>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>사용처</th><th>하는 일</th><th>추천 모델 (OpenAI)</th><th>1차 호출량 추정 /일<br class="small">(#14 채택 — 뉴스 30분 기준)</th><th>비용 성격 · 절감 장치</th></tr>
+    <tr><td class="c">1</td><td>06 뉴스 — 기사별 분석</td><td>기사 1건 분류·점수 (Pydantic 고정 스키마 · temp=0)</td><td><code>gpt-5.4-mini</code></td><td>새 기사만 ~100–300회</td><td>입력 짧음(제목+본문 일부). 절감: 사전필터 drop(BLOCK·노이즈는 LLM 안 감) · news_key 증분 · 주기 완화(#14)</td></tr>
+    <tr><td class="c">2</td><td>06 뉴스 — 배치 종합</td><td>종목당 기사 2건+일 때 summary·reason 생성</td><td><code>gpt-5.4-mini</code></td><td>~10–50회</td><td>새 기사가 있는 종목만 · 1건이면 대표 기사 값 재사용(호출 0)</td></tr>
+    <tr><td class="c">3</td><td>05 공시 — 본문 해석</td><td>8-K/10-Q 해석 (Form 4 = <b>LLM 0회</b> 100% 코드 · XBRL 숫자 계산도 코드)</td><td><code>gpt-5.4-mini</code></td><td>~5–30회</td><td>accession 증분 — 새 공시 없으면 0회</td></tr>
+    <tr><td class="c">4</td><td>07 Strategist — 판단</td><td>신호 4종 요약 → side·conviction (계산 아닌 판단)</td><td><code>gpt-4o</code> (팀 확정) · 개발/백테스트 중엔 <code>gpt-5.4-mini</code>로 다운시프트 권장</td><td>사이클당 ≤50 × 3–4사이클 ≈ <b>150–200회</b></td><td>⭐ <b>지배 비용처</b> — is_hard_blocked 즉시 보류는 GPT 안 감. 프롬프트에 원본 JSON 대신 코드 요약만 넣는 현행 설계가 곧 절감 장치</td></tr>
+    <tr><td class="c">5</td><td>08 Critic — Layer 1 반박</td><td>5각도 적대 반박 (2층 구조)</td><td><code>gpt-5.4-mini</code> (구현 기준 · core/llm.py analyst_agent)</td><td>매수 제안만(~12/사이클) × fresh만 ≈ 20–40회</td><td>관문·Layer 0에서 걸리면 LLM 안 감 + 캐시·쿨다운·버킷 뭉개기로 재호출 차단(설계 완료 · verdict.source로 호출 수 추적)</td></tr>
+    <tr><td class="c">6</td><td>11 Reviewer — Reflector</td><td>T+5 lesson 3~5문장 작성</td><td><code>gpt-5.4-mini</code></td><td>회고 도달 signal 수 ≈ 10–50회</td><td>숫자는 전부 Scorer(코드) — LLM은 문장만 쓴다</td></tr>
+  </table></div>
+  <h3>💵 대략 얼마 드나 — 비용 추정표 <span class="b b-new">🆕 07-11 추가</span></h3>
+  <p class="small muted">단가 (per 1M tokens · 2026-07 OpenAI pricing 검색값): <b>gpt-5.4-mini 입력 $0.75 / 출력 $4.50</b> · <b>gpt-4o 입력 $2.50 / 출력 $10.00</b>. 1회 토큰 수는 프롬프트 설계 기준 <b>가정치</b> — 운영 첫 주 usage 로그로 반드시 교체. Form 4는 LLM 0회라 $0.</p>
+  <div class="twrap"><table>
+    <tr><th class="c">#</th><th>사용처</th><th>모델</th><th>1회 토큰 가정<br class="small">(입력 / 출력)</th><th>1회 비용</th><th>하루 호출</th><th><b>하루 비용</b></th></tr>
+    <tr><td class="c">1</td><td>06 뉴스 — 기사별 분석</td><td>mini</td><td>800 / 150</td><td>≈ $0.0013</td><td>100–300</td><td>$0.13 – 0.38</td></tr>
+    <tr><td class="c">2</td><td>06 뉴스 — 배치 종합</td><td>mini</td><td>1,500 / 200</td><td>≈ $0.0020</td><td>10–50</td><td>$0.02 – 0.10</td></tr>
+    <tr><td class="c">3</td><td>05 공시 — 본문 해석</td><td>mini</td><td>3,000 / 300</td><td>≈ $0.0036</td><td>5–30</td><td>$0.02 – 0.11</td></tr>
+    <tr class="hl-chg"><td class="c">4</td><td>07 Strategist — 판단</td><td><b>gpt-4o</b></td><td>4,000 / 800</td><td>≈ $0.018</td><td>150–200</td><td><b>$2.70 – 3.60</b> ⭐ 전체의 8~9할</td></tr>
+    <tr><td class="c">5</td><td>08 Critic — Layer 1 반박</td><td>mini</td><td>2,500 / 600</td><td>≈ $0.0046</td><td>20–40</td><td>$0.09 – 0.18</td></tr>
+    <tr><td class="c">6</td><td>11 Reviewer — lesson</td><td>mini</td><td>1,500 / 200</td><td>≈ $0.0020</td><td>10–50</td><td>$0.02 – 0.10</td></tr>
+    <tr style="background:#f0f7f0"><td class="c"></td><td colspan="5"><b>운영 하루 합계 (07 = gpt-4o)</b></td><td><b>≈ $3.0 – 4.5 /일</b> → 월(21거래일) <b>≈ $60 – 95</b></td></tr>
+    <tr style="background:#f0f7f0"><td class="c"></td><td colspan="5"><b>개발·백테스트 기간 (07까지 mini 다운시프트)</b></td><td><b>≈ $1.3 – 2.2 /일</b> → 월 <b>≈ $25 – 45</b></td></tr>
+  </table></div>
+  <div class="note"><b>읽는 법</b> — 총비용은 사실상 <b>07 하나가 결정</b>한다(8~9할). 그래서 절감 순서도 07부터: is_hard_blocked 즉시 보류는 GPT 안 감 · 프롬프트에 원본 JSON 대신 코드 요약만 · 개발 중 mini 다운시프트. 백테스트처럼 호출이 폭증하는 작업은 반드시 mini + 판정 캐시로. 뉴스 기사별(#1)은 이미 사전필터 drop·증분 수집이 방어선이라 30분 주기(#14)에서 하루 1달러 미만.</div>
+</section>
+
+<!-- ══════════════════════ AI 추천 제안 ══════════════════════ -->
+<section class="card" id="ai">
+  <h2>🤖 AI 추천 제안 — 협의·수정이 필요한 항목 <span class="b b-p">검토 요청</span></h2>
+  <p>이번 통합에서 <b>임의로 확정하지 않고</b> 제안으로만 남긴 것들이다. 항목 하나 = 카드 한 장. <b>읽는 법</b>: 헤더에서 담당·상태를 확인하고 본문(제안 → 왜 → 대안)으로 내려가면 된다. <span class="b b-ok">✅ 초록 카드</span> = 해결·채택 — 원문은 취소선으로 보존하고 <b>맨 아래 초록 띠가 결론</b>이다. <span class="b b-fix">⏸ 노랑 헤더</span> = 보류. 나머지는 오픈(채택/기각을 회의에서 결정하면 되고, 기각돼도 본문 스키마에서 해당 표시 🆕만 걷어내면 된다).</p>
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">1</span><b>공시 대칭 분리</b><span class="sp"><span class="ai-who">👤 정창욱 · PM</span><span class="b b-ok">✅ 채택 확정 (07-11)</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s>뉴스처럼 공시도 <b>tb_disclosure(원본) / tb_disclosure_signal(집계)</b>로 분리 — 본 문서는 분리안으로 작성했다</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>사용자(PM) 지시는 tb_news 분리였으나, 공시도 동일 문제(하루 여러 건 집계에 묻힘·백테스트 불가)를 갖는다. 대칭 구조가 창욱 구현(disclosure_signals 내부 로그)과도 일치</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>공시는 기존 단일 테이블 유지 (원본 추적은 filing_no로 SEC 원문 직접 조회). ⚠️ 기각 시 본문 05 섹션·ERD가 분리안 기준이므로 함께 수정 필요</s></div></div>
+    <div class="ai-res">↳ ✅ <b>채택 확정 (2026-07-11 · 재논의 완료)</b> — 보류를 풀고 <b>원본/집계 2단 분리 확정.</b> 검토 과정에서 나온 “tb_news_signal에서 매핑하면 되지 않나”는 성립 안 함이 확인됨 — 근거·명분 3가지: <b>① 뉴스에 안 나오는 공시가 있다</b> — Form 4(내부자 매수)는 대부분 기사화되지 않아, tb_news_signal의 disclosure_ref(기사에 딸린 각주)로만 매핑하면 “기사화된 공시”만 보는 반쪽 신호가 됨. <b>② 공시는 07(Strategist)의 독립된 1표</b> — 뉴스와 별개로 importance·sentiment_score가 매수 문턱에 직접 들어가므로, 뉴스와 같은 모양의 “종목당 1행” 전달 테이블(tb_disclosure_signal)이 필요. <b>③ 집계만 두면 건별 근거가 소실</b> — 한 종목이 하루에 8-K+Form 4 여러 건 내면 한 행에 뭉개져, 확정된 #3(단일 reason)의 전제 “건별 reason은 원본에 남는다”가 공시에서 깨지고 백테스트 역추적 불가(SEC 원문엔 우리가 매긴 점수가 없다). 비용은 테이블 1개 — 수집 코드는 어차피 건별 파싱 후 집계라 INSERT 한 줄 차이. 본문은 이미 분리안 기준이라 추가 수정 없음.</div>
+  </div>
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">2</span><b>메모리 통일</b><span class="sp"><span class="ai-who">👤 이은미 ↔ 문성혁</span><span class="b b-ok">✅ 해결</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s>피드백 메모리를 <b>tb_review.lesson 단일화</b> — 07이 tb_review를 signal JOIN으로 직접 읽기 (tb_memory_entries 폐지)</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>테이블 하나가 줄고 “lesson의 진실원천”이 한 곳이 된다. 이은미 스키마(tb_memory_entries)의 side·conviction·outcome은 전부 signals·review JOIN으로 복원 가능</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>tb_memory_entries를 뷰(VIEW)로 만들어 이은미 코드 무수정 유지</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11)</b> — <b>tb_review.lesson으로 단일화 확정.</b> 07은 <code>tb_review ⨝ tb_strategist_signals(ticker)</code>로 같은 종목 최근 5개 lesson을 읽고, tb_memory_entries는 폐지(이은미 코드 무수정이 필요하면 <code>v_memory_entries</code> 뷰로 호환). 본문 <a href="#s07">07 메모리</a>·<a href="#s11">11</a>·릴레이 표에 반영 완료.</div>
+  </div>
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">3</span><b>reason 분해</b><span class="sp"><span class="ai-who">👤 정창욱 ↔ 이은미</span><span class="b b-ok">✅ 해결</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s>집계 테이블의 단일 <code>reason</code> 유지(공식 확정안) — 창욱 최신 문서의 점수별 분해(<code>*_score_reason</code> 5개, 29컬럼)는 <b>보류</b></s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>공식 18/25필드가 팀 합의본이고, 분해 reason의 소비자(GPT 프롬프트)는 단일 reason으로도 충분. 분해하면 07·08 파싱 코드가 전부 바뀐다</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>분해안 채택 시: 컬럼 20/29개로 확장 + 본 문서 05·06 표 갱신</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11)</b> — <b>집계 테이블은 단일 reason 확정.</b> 수집/전달 분리 재개편으로 <b>기사·공시 1건마다의 reason이 원본 테이블(tb_news·tb_disclosure)에 그대로 남으므로</b>, 점수별 분해 reason은 원본 역추적(rep_news_id·filing_no)으로 대체된다 — 별도 컬럼 불필요.</div>
+  </div>
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">4</span><b>출처등급 정책</b><span class="sp"><span class="ai-who">👤 정창욱</span><span class="b b-ok">✅ 해결</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s>GRAY/BLOCK 정의를 <b>col_dict 최신안으로 단일화</b> — GRAY = 등록된 2급 언론사만(benzinga 등), BLOCK = 소셜·블로그·<b>미등록 전부</b>(사전 drop)</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>창욱 문서 간 정면 충돌: 구버전은 “소셜 = GRAY 0.6으로 집계 포함”, 최신안은 “소셜 = BLOCK 0.0 사전 차단”. 루머 방어력이 실질적으로 달라지는 정책 차이라 반드시 하나로</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>구안 유지 시: 소셜발 신호가 집계에 0.6 가중으로 유입됨을 감수</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11)</b> — <b>최신안(소셜·블로그·미등록 = BLOCK 사전 차단) 채택.</b> 근거 3가지: ① Critic의 펌프 반박 각도가 소셜 데이터 부재로 폐기돼 있어 <b>소셜발 신호를 들여보내면 검증할 방어선이 없다</b> ② 뉴스는 매수 필수 2표 중 1표라 신호 오염 = 오매수 직결 ③ 차단해도 <code>is_dropped=true</code>로 행은 남아 기록이 보존된다. 정상 매체가 억울하게 막히면 화이트리스트(news_trust_policy.yaml) 등록으로 구제 — <b>차단 해제가 아니라 등록이 구제 경로.</b> 2차에서 소셜 소스를 수집하게 되면 그때 펌프 반박 각도와 함께 GRAY 완화를 재검토.</div>
+  </div>
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">5</span><b>스케일 전수 통일</b><span class="sp"><span class="ai-who">👤 이은미 · 김미연 · 김지현</span><span class="b b-ok">✅ 해결</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s><b>“에이전트 간 숫자는 전부 0~1, tb_macro.risk_score만 0~100”</b>을 명문화하고, 이은미 매크로 감점표를 0~100 구간표로 재작성 (예: 50→−0.05 … 100→−0.50)</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>conviction 0~10→0~1 전환 때와 같은 사고(눈금 불일치로 게이트 무력화)가 매크로 감점에서 재발 직전. Critic 과신 기준 8.0→0.80 수정과 같은 묶음</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>tb_macro를 0~1로 바꾸는 방법도 있으나 기존 04 구현·백테스트 값 재조정 비용이 더 큼</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11)</b> — 제안보다 한 걸음 더 가서 <b>예외 없이 모든 점수를 0~1 · NUMERIC(4,3) 소수 3자리로 통일</b> (tb_macro.risk_score도 0~1). 아직 개발 전이라 마이그레이션 비용이 0인 지금이 유일한 기회 — “예외 1개”보다 “예외 0개”가 규칙으로서 압도적으로 단순하다. regime 경계는 0.30/0.70, 매크로 감점표는 0~1 구간(예: 0.5→−0.05 … 1.0→−0.50)으로 재작성. 컨벤션 규칙 4·04·07·ERD에 반영 완료.</div>
+  </div>
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">6</span><b>Strategist payload — snapshot 블록</b><span class="sp"><span class="ai-who">👥 이은미 ↔ 김미연</span><span class="b b-ok">✅ 해결 (07-11 · 허용오차만 잔여)</span></span></div>
+    <div class="ai-row"><div class="ai-k">해결책<br>(합의 3)</div><div class="ai-v"><s>① payload에 <code>snapshot</code> 블록 <b>필수</b> 포함 — 필드 4개 확정: <code>current_price</code>(판단 순간 현재가) · <code>day_high</code>/<code>day_low</code>(당일 고저) · <code>close_prev</code>(어제 종가, tb_technical.close 복사). 본 문서 <a href="#s07">07 payload JSON</a>에 초안 반영됨 — 이 형태로 컨펌만 하면 됨.<br>
+      ② snapshot이 <b>없거나 null이면 Critic은 판정 불가 → decision=hold</b> + skipped_rules에 기록 (조용히 통과 금지).<br>
+      ③ <b>허용 오차 합의</b>: Strategist 조회 시각과 Critic 실행 시각 사이 지연이 몇 분까지면 그 스냅샷을 신뢰할지 (예: 5분 초과 시 hold).</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s><b>Critic의 첫 두 방어선이 실시간 값 없이는 아예 못 돈다.</b> (a) <b>데이터 품질 관문</b>은 “current_price가 day_low~day_high 안인가, 어제 종가 대비 ±30% 안인가”를 검사하는데 세 값 모두 DB 어디에도 없다(실시간이라 저장 안 함 — 정보 2층 구조). (b) <b>고점추격 판정</b>의 ‘오늘 장중 급등’ 조건도 current_price가 필요. 즉 payload에 스냅샷이 안 실리면 Critic은 <b>관문을 전부 skip 처리한 채</b> LLM 반박만 하게 되고, 깨진 데이터가 그대로 통과한다 (김미연 협의 ⑤).</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>Critic이 Alpaca를 직접 재조회 — ✗ 비추천: API 호출 2배 + Strategist가 본 값과 Critic이 본 값이 달라져 “은미 데이터가 깨졌나”를 검증한다는 관문의 취지 자체가 무너짐 (검증 대상과 검증 기준이 서로 다른 시점 값이 됨)</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11 확정)</b> — ① <b>payload snapshot 블록(current_price·day_high·day_low·close_prev) 필수 컨펌</b> ② <b>누락·null이면 decision=hold + skipped_rules 기록</b> 컨펌 ③ <b>저장 위치도 확정: 별도 테이블 없이 tb_strategist_signals에 컬럼으로</b> — snapshot은 “판단 행의 속성”(1:1)이라 테이블을 쪼갤 이유가 없고, 이미 <a href="#s07">07 스키마</a>의 ⚡실시간 스냅샷 그룹에 current_price·day_high·day_low가 있어 <b>close_prev 1개만 추가</b>로 끝(반영 완료). 덕분에 payload 필드명=컬럼명(규칙 5) 자동 충족, verdict가 signal_id로 판단 행을 가리키므로 “Critic이 본 입력”이 JOIN 한 번에 재현되고, hold 행은 null(#9 경량화와 일관). <b>잔여 1가지</b>: 허용 오차 숫자(Strategist 조회~Critic 실행 지연 몇 분까지 신뢰? 예: 5분 초과 시 hold)만 이은미↔김미연이 확정 — 협의 현황판에 이관.</div>
+  </div>
+
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">7</span><b>시각 컬럼 역할 분리</b><span class="sp"><span class="ai-who">👥 이은미 ↔ 김미연 ↔ 정창욱</span><span class="b b-ok">✅ 해결 (07-11 확정)</span></span></div>
+    <div class="ai-row"><div class="ai-k">해결책<br>(합의 4)</div><div class="ai-v"><s>① 계약 명문화: <b>“사건이 언제 일어났나” = published_at(뉴스)·filed_at(공시)</b> / <b>“행이 언제 생겼나” = created_at</b>. Critic ②선반영·⑤신선도는 <b>전자만</b> 사용, created_at으로 신선도 판정 금지.<br>
+      ② 공급 보장(정창욱): tb_news_signal.published_at·tb_disclosure_signal.filed_at을 <b>항상 채움</b> — 대표 기사에 발행시각이 없으면 null 대신 어떤 값을 넣을지(예: null 유지 + Critic은 “신선도 판정 불가”로 skip 기록) 확정.<br>
+      ③ 기존 합의 폐기(이은미): 컴펌 #2 “collected_at/trade_date를 호재 발생 시각으로 본다”를 공식 폐기하고 이 계약으로 대체.<br>
+      ④ 검증(김미연): 픽스처에 “발행 3일 전 + 수집 방금” 케이스를 넣어 ⑤가 ‘낡음’으로 잡는지 테스트.</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s><b>Critic의 반박 각도 2개가 시각 컬럼을 잘못 읽으면 통째로 무력화된다.</b> tb_news_signal은 사이클(30분)마다 append되므로 created_at(구 collected_at)은 <b>언제나 “방금”</b>이다. 이 값으로 판정하면 — ⑤신선도는 사흘 전 기사도 “싱싱함”으로, ②선반영은 이미 다 오른 호재도 “방금 터짐”으로 오판한다. 그런데 기존 팀 합의(컴펌 #2)가 하필 “수집 시각을 발생 시각으로 본다”여서, 계약을 바꾸지 않으면 구현이 그대로 이 함정에 빠진다 (김미연 협의 ①).</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>— (계약을 안 바꾸면 함정에 그대로 빠지므로 대안 없음. 반드시 계약 대체)</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11 확정)</b> — 계약 확정: <b>“사건이 언제 일어났나” = published_at(뉴스)·filed_at(공시) / created_at = “DB에 언제 저장됐나” 확인용일 뿐</b> — Critic ②선반영·⑤신선도를 포함해 <b>어떤 판정에도 created_at 사용 금지.</b> <b>컴펌 #2는 공식 폐기.</b> 규칙 8(#8)로 created_at이 키에서도 빠져 “기록용” 역할이 스키마 차원에서도 고정됐다. 구현 체크 2가지만 남음(계약은 확정, 코드 반영만): <b>정창욱</b> — published_at·filed_at 항상 채움, 발행시각 없으면 null 유지 + Critic은 “신선도 판정 불가” skip 기록 / <b>김미연</b> — “발행 3일 전 + 수집 방금” 픽스처로 ⑤신선도가 ‘낡음’을 잡는지 테스트 → 협의 현황판에 이관.</div>
+  </div>
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">8</span><b>동시각 충돌 방지 (재실행 안전) + PK 규칙</b><span class="sp"><span class="ai-who">👤 정창욱</span><span class="b b-ok">✅ 해결 (07-11 확정)</span></span></div>
+    <div class="ai-row"><div class="ai-k">추천안</div><div class="ai-v"><s><b>“시각을 PK로 쓰지 말고, 사이클을 명시적 키로 쓰자”가 정공법.</b> signal 테이블에 <code>cycle_ts</code>(그 사이클의 <b>계획된 실행 시각</b> — 예: 30분 슬롯이면 정확히 09:00:00·09:30:00 …)를 두고 <b>PK/유니크 = (ticker, cycle_ts)</b> + <code>ON CONFLICT (ticker, cycle_ts) DO NOTHING</code>. created_at은 “행이 실제 만들어진 벽시계”로 그냥 기록만(밀리초 포함). ▸ 이러면 스케줄러가 한 사이클을 두 번 돌려도(재시작·중복 트리거) 같은 (ticker, cycle_ts)라 두 번째는 조용히 무시 = <b>멱등</b>. <a href="#sched">스케줄 섹션</a>의 “멱등 append”가 이걸 가리킨다.</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>지금은 created_at이 초 단위 문자열이라 같은 초에 재실행되면 PK가 충돌한다. 반대로 밀리초만 붙이면(초안) 충돌은 안 나지만 <b>재실행 때마다 중복 행이 쌓인다</b> — “충돌 회피”와 “중복 방지”는 다른 문제고, 후자를 풀려면 “이 사이클의 정체”를 담는 키가 필요하다.</s></div></div>
+    <div class="ai-row"><div class="ai-k">❓ 사이클<br>번호란</div><div class="ai-v"><b>질문 답</b>: 여기서 말한 “사이클 번호(cycle_id)”는 <b>폐기된 옛 설계의 잔재</b>다 — 원래 이은미 v3 이전엔 “1일차-3번째 판단” 식으로 정수 일련번호를 붙여 신호끼리 이었는데, 가리킬 마스터 테이블이 없어 반쪽 FK가 되는 문제로 <b>이미 폐기</b>(협의 현황판 ✅#1)하고 <code>trade_date + src_*_at</code> 방식으로 갈아탔다. 그래서 <b>대안의 “사이클 번호를 PK에 포함”은 그 폐기된 정수 id의 부활이라 비추천</b>이고, 위 추천안의 <code>cycle_ts</code>는 정수 번호가 아니라 <b>“그 사이클의 계획 시각(타임스탬프)”</b>이라 마스터 테이블 없이도 자기완결적이다.</div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>밀리초만 붙여 충돌 회피(중복 행은 감수) / 사이클 정수 번호를 PK에 포함(cycle_id 부활이라 비추천)</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11 확정)</b> — 추천안에서 한 걸음 더 나가 <b>3단 확정 + <a href="#conv">컨벤션 규칙 8</a> 신설</b>: <b>① created_at은 전 테이블에서 PK 금지</b> — “DB에 언제 들어갔나” 확인용 기록으로 강등. <b>② signal 계열(사이클 append)은 대리키 PK + UNIQUE(ticker, cycle_ts)</b> — 대리키 이름은 <b>테이블 약어+_id</b>(tb_news_signal→<code>tns_id</code> · tb_disclosure_signal→<code>tds_id</code>). id는 신분증, cycle_ts 유니크가 멱등 장치 — <b>대리키만으론 재실행 중복을 못 막으므로 반드시 세트.</b> ③ <b>일봉 계열(tb_universe·tb_daily_pick·tb_technical)은 (날짜, ticker) 자연 복합 PK 유지</b> — “하루 1행” 규칙을 PK가 강제하는 방어 장치라, 대리키로 바꿔도 UNIQUE를 다시 걸어야 해 얻는 게 없음(ticker는 단독 PK만 금지 — 복합키 구성원·FK는 허용). 파급 반영 완료: 규칙 8 · 리네임 매핑표 · ERD · 테이블 총람 · 05/06 스키마 표(키 2필드 추가로 번호 +2) · 07의 src_*_at FK 대상이 created_at→<b>cycle_ts</b>로 교체. ※ tb_strategist_signals·tb_critic_verdict는 이미 id PK라 규칙 위반 없음 — 07 재실행 멱등이 필요해지면 같은 패턴(UNIQUE(ticker, cycle_ts))을 적용(이은미 확인 사항).</div>
+  </div>
+
+  <div class="ai-item">
+    <div class="ai-head"><span class="ai-no">9</span><b>보류 저장 경량화 · DB 성장 관리</b><span class="sp"><span class="ai-who">👤 김지현</span><span class="b b-fix">🟡 중간</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v">보류(hold) signal은 설득 필드(bull_case·bear_case 등) <b>null로 저장</b>(어차피 Critic까지 안 감) — 매 사이클 50행이 쌓이므로 signal·뉴스 테이블의 무한 성장을 관리할 장치가 필요</div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v">뉴스 5분 주기였다면 하루 종목당 ~288행 × 50종목 ≈ <b>14,400행/일</b>. #14로 30분 완화하면 1/6인 ~2,400행/일로 <b>1차 MVP 동안은 급하지 않다</b> — 하지만 성장 관리 전략이 어느 문서에도 없어 “나중에 터질 빚”으로 남아 있었다.</div></div>
+    <div class="ai-row"><div class="ai-k">대안<br>(상세)</div><div class="ai-v"><b>비용 낮은 것부터 3단계 — 비유하면 ① “버리는 날 정하기” → ② “서랍 나누기” → ③ “전용 창고 임대”:</b><br>
+      <b>①(1차 · 지금) 보존기간 정책만 정한다</b> — “원본(tb_news·tb_disclosure)은 90일, signal 스냅샷은 30일 지나면 삭제(또는 <code>tb_*_archive</code>로 이동)” 이 한 줄을 팀 규칙으로 정하고, 밤마다 기한 지난 행을 지우는 <b>야간 배치 하나</b>만 만든다(<a href="#sched">장외 공백 슬롯</a>에서 11 회고와 같이). 코드 몇 줄이면 끝 — <b>1차 MVP엔 이걸로 충분.</b><br>
+      <b>②(데이터가 커지면) 월별 파티셔닝</b> — 테이블을 “월별 서랍”으로 나눠 저장하는 Postgres 기본 기능(<code>PARTITION BY RANGE</code>). 오래된 달은 <b>서랍째 버리므로</b>(DROP) 삭제가 한순간이고, 조회도 최신 서랍만 뒤져서 빨라진다. 설치할 것 없음.<br>
+      <b>③(2차 실측 후) TimescaleDB</b> — 시계열 전용 확장(자동 압축·자동 집계). 성능은 최고지만 설치·운영 부담이 있는 “전용 창고 임대”라, <b>10분 주기로 좁히는 2차 시점(#14 최종단계)에 실측 행수를 보고 결정.</b> 지금 도입은 과설계.<br>
+      ▸ 순서 요약: <b>지금은 ① + 보류 행 설득필드 null 저장(즉시 적용 가능 — 쓰기·용량 절감)만. ②③은 실제로 커진 뒤.</b><br>
+      ▸ <b>검토 완료 (07-11)</b>: 1차엔 급하지 않음 확인 — 구현 시점·방식은 담당자(김지현) 재량.</div></div>
+  </div>
+
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">10</span><b>버킷 ENUM 영어화</b><span class="sp"><span class="ai-who">👤 김지현</span><span class="b b-ok">✅ 채택됨 (07-11 원샷)</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s>tb_daily_pick.bucket을 영어 소문자 ENUM으로 전환 (trend_leader·volume_surge·high_52w_breakout·pullback·squeeze_breakout·backfill)</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>trend·regime·sentiment 등 에이전트 간 ENUM은 전부 영어 소문자인데 bucket만 한글(공백 포함) — trend에서 겪은 문자열 불일치 버그의 잠복 지점</s></div></div>
+    <div class="ai-res">↳ ✅ <b>채택됨 (2026-07-11)</b> — <b>질문 답: 별도 조치였다(생성과 동시 아님).</b> #5(스케일)·컨벤션 확정과 <b>같은 “원샷 리네임” 묶음</b>으로 처리됐다. 이미 <a href="#conv">컨벤션 규칙 2 + 리네임 매핑표</a>에 반영돼 있고 본문(03)도 영어 bucket 기준. 그래서 여기선 취소선+초록으로 “확정 완료” 표시만 남긴다. ⚠️ 실제 코드 반영은 <a href="#conv">반쪽 마이그레이션 금지</a> 경고대로 스키마·픽스처·프롬프트 동시 PR로.</div>
+  </div>
+
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">11</span><b>Form 4 reason 템플릿</b><span class="sp"><span class="ai-who">👤 정창욱</span><span class="b b-ok">✅ 채택 (07-11)</span></span></div>
+    <div class="ai-row"><div class="ai-k">❓ Form 4<br>란</div><div class="ai-v"><b>질문 답</b>: <b>Form 4 = 미국 SEC(증권거래위) 공시 양식 중 “내부자 거래 보고서”</b>다. 임원·이사·10% 이상 대주주가 자기 회사 주식을 사고팔면 <b>거래 후 2영업일 내</b> 반드시 제출한다. 우리가 이걸 보는 이유: <b>“내부자가 자기 돈으로 자사주를 샀다”는 강력한 강세 신호</b>(회사 사정을 가장 잘 아는 사람의 베팅)라서. 필드가 <b>전부 숫자·코드</b>(누가·매수/매도·주수·금액·거래코드 P=공개매수)여서 <b>LLM 해석이 전혀 필요 없고 100% 코드로 스코어링</b>한다 — <a href="#llm">LLM 지도</a>에서 “Form 4 = LLM 0회”인 이유. <b>필요한가</b>: 예 — 공시 신호(05)의 핵심 축 중 하나. 다만 8-K/10-Q(서술형, LLM 해석 필요)와 달리 <b>가장 싸고 확실한 신호</b>라 우선순위가 높다.</div></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s>Form 4의 <code>reason</code>은 빈 문자열 대신 <b>코드가 템플릿 생성</b> (예: <code>"Officer buy $1.2M, open market (code P)"</code>) — 값들이 이미 다 있으니 문장으로 조립만</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>빈 문자열은 “근거 없음”과 “생성 실패”를 구분 못 하고, 우리 공통 계약인 “점수마다 근거 동봉”을 위반한다. 07·11이 나중에 “왜 이 종목이 샀지”를 되짚을 때 사람이 읽을 한 줄이 남는다.</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안<br>(상세)</div><div class="ai-v"><s>reason=null 허용으로 계약을 완화 — ✗ 비추천: “점수마다 근거” 계약이 딱 한 곳(Form 4)에서만 깨지면 소비자(07 프롬프트·11 회고)가 “null이면 무시”라는 예외 분기를 따로 둬야 해서 오히려 복잡해진다. <b>템플릿 몇 줄이 예외 분기보다 싸다.</b> 템플릿 문구 카탈로그(거래코드 P/S/A별 문장)는 정창욱이 05 구현 때 확정.</s></div></div>
+    <div class="ai-res">↳ ✅ <b>채택 (2026-07-11)</b> — <b>코드가 reason 템플릿 생성 확정</b> (구현: 정창욱 — 05 구현 때 거래코드 P/S/A별 문장 카탈로그 확정). <b>무엇이 달라지나</b>: 지금 설계대로면 Form 4 행의 reason이 빈 문자열이라 07 프롬프트·11 회고가 “근거가 없는 것”인지 “생성이 실패한 것”인지 구분 못 한다. 채택 후엔 이미 파싱해 둔 값(누가·매수/매도·금액·거래코드)을 문장으로 조립해 <code>"Officer buy $1.2M, open market (code P)"</code>(임원이 공개시장에서 자사주 120만 달러 매수) 같은 <b>사람이 읽는 한 줄</b>이 자동으로 남는다. LLM 호출은 여전히 0회(문자열 조립일 뿐)고, “점수마다 근거 동봉” 계약이 예외 없이 지켜져 소비자(07·11)의 null 예외 분기가 사라진다.</div>
+  </div>
+
+<div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">12</span><b>event_type 마스터 테이블</b><span class="sp"><span class="ai-who">👤 정창욱 · 김지현 (구현: 정창욱)</span><span class="b b-ok">✅ 해결 (07-11 — 대안 채택)</span></span></div>
+    <div class="ai-row"><div class="ai-k">쉽게<br>말하면</div><div class="ai-v"><s><b>“사건 종류 이름표(8-K·form4·earnings…)를 코드에만 두지 말고, DB에 ‘공식 목록 테이블’로 하나 만들어 두자”</b>는 것. 비유하면 — 지금은 사건 종류가 각 사람 수첩(코드·문서)에만 적혀 있어서, 누가 <code>"form_4"</code>라고 오타를 내도 DB가 순순히 받아준다. <code>tb_event_type</code> 테이블을 만들어 <b>허용된 12종만 등록</b>해두고 다른 테이블들이 이걸 FK로 참조하면, <b>목록에 없는 값은 DB가 저장 자체를 거부</b>(=오타 방역). 덤으로 “form4 = 한글로 ‘내부자 거래’, 하드리스크 여부 = true” 같은 <b>부가정보의 진실원천이 한 곳</b>이 된다.</s></div></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s><code>tb_event_type</code> 참조 테이블(<code>code</code> PK·<code>label_ko</code>·<code>is_hard_risk</code>·<code>description</code>·<code>created_at</code>) — 12종 seed는 <a href="#s05">05 섹션 표</a>에 고정. + <b>앱 기동 시 코드(ontology.py의 Pydantic Literal)와 DB 테이블이 일치하는지 자동 검증</b>, 어긋나면 기동 실패(둘이 몰래 갈라지는 것 방지). 본문 반영 완료.</s></div></div>
+    <div class="ai-row"><div class="ai-k">👉 구현<br>메모</div><div class="ai-v"><s><b>구현 주체가 사실상 나(PM)로 넘어온 상황</b> — 할 일은 3가지뿐이다: ① 마이그레이션에 <code>tb_event_type</code> 생성 + 12종 INSERT(seed) ② 4개 테이블(tb_news·tb_disclosure·각 signal)의 event_type 컬럼에 FK 걸기 ③ 앱 부팅 시 <code>set(DB codes) == set(ontology Literal)</code> 검사하는 짧은 정합 체크. <b>방향경향·발생원 같은 “예단” 컬럼은 일부러 뺐다</b>(SESSION 기준) — label_ko·is_hard_risk·description만.</s></div></div>
+    <div class="ai-row"><div class="ai-k">대안</div><div class="ai-v"><s>CHECK 제약만 걸고 ontology.py를 진실원천으로 유지 — 테이블·seed 마이그레이션은 불필요하지만 한글 라벨 등 메타는 코드에만 남아 “DB만 봐선 뜻을 모른다”</s></div></div>
+    <div class="ai-res">↳ ✅ <b>해결 (2026-07-11 · 정창욱 확정) — 제안 기각, 대안 채택(방침 변경).</b> tb_event_type 참조 테이블은 만들지 않는다 — <b>event_type도 side·bucket 등 다른 ENUM과 똑같이 TEXT (ENUM)</b>(규칙 2 · “예외 0개” 원칙). 진실원천은 <b>ontology.py Pydantic Literal 하나</b> + <a href="#s05">05 허용값 12종 표</a>(문서 정본). DB 차단(FK 오타 방역)은 포기하는 대신 백엔드 검증이 1차 방어 — 마이그레이션·seed·기동 정합 검증이 전부 불필요해진다. <b>+ 신규 문서 규칙(규칙 2에 명문화)</b>: ENUM 컬럼은 스키마 표 설명란에 <b>허용값 전체 필히 명시</b>, 미확정이면 ⚠️ 표시 후 확정 시 업데이트 — 현재 ⚠️ 3곳: tb_order 유형·상태 / tb_fill 매수·매도 / tb_review_price_snapshots.source. 파급 반영 완료: 규칙 2·6 · ERD · 테이블 총람(폐기 표시) · 05 허용값 표 전환 · 4개 테이블 event_type 행 TEXT (ENUM)화 + 12종 명시.</div>
+  </div>
+
+<div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">13</span><b>문서 정리 — 정본 승격 · 구버전 명시</b><span class="sp"><span class="ai-who">👤 PM(김지현) · 정창욱</span><span class="b b-ok">✅ 처리 (07-11)</span></span></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><s>본 통합 문서를 정본으로 승격하고, collector 폴더의 구버전 서술(19컬럼·전달 7필드·GRAY=소셜)은 “구버전” 배너를 달거나 아카이브</s></div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v"><s>창욱 문서 4종에 신·구 스키마가 섞여 있어, 어느 계약을 기준으로 파싱할지 문서만으로 확정 불가한 상태였음</s></div></div>
+    <div class="ai-res">↳ ✅ <b>처리 (2026-07-11)</b> — <b>질문 답: 처리해줬다.</b> ① 본 문서 상단 히어로에 <b>“⭐ 정본 승격 — 어긋나면 항상 이 문서가 이긴다”</b> 배지·문구 추가. ② collector_agent 4종 상단에 <b>“구버전 참고용” 경고 배너</b> 삽입(원문 보존, 배너만 부착). <b>⚠️ 단 명시해둠</b>: collector 문서는 <b>신·구 스키마가 뒤섞여 자기모순이 있으므로 절대적 신뢰 금지</b> — 세부는 반드시 본 정본으로 교차확인. (배경: 담당 업무를 대행해 통합 진행 중.) ▸ 미해결이던 “배너 부착”을 이번에 실제 수행해 해결로 전환.</div>
+  </div>
+
+  <div class="ai-item done">
+    <div class="ai-head"><span class="ai-no">14</span><b>수집 주기 완화 (1차 MVP)</b><span class="sp"><span class="ai-who">👤 정창욱 · 김지현(스케줄러)</span><span class="b b-ok">✅ 채택 (07-11)</span></span></div>
+    <div class="ai-row"><div class="ai-k">한 줄<br>요약</div><div class="ai-v"><b>“뉴스를 5분마다 모으던 걸 1차에선 30분마다로 늦추자”</b> — 그게 전부다. 왜 괜찮냐면, 최종 판단(07)이 2시간에 한 번만 도는데 뉴스를 5분마다 모아봐야 <b>판단 한 번당 24개 스냅샷 중 1개만 읽히고 23개는 아무도 안 본다.</b> 버려질 걸 만드느라 LLM 배치 호출·DB 행만 24배로 쌓는 셈. <b>수집 속도를 판단 속도에 맞춰 늦추는 것</b>(경험칙: 수집 ≈ 판단 ÷ 2~4).</div></div>
+    <div class="ai-row"><div class="ai-k">제안</div><div class="ai-v"><b>“수집 주기 ≈ 판단 주기 ÷ 2~4” 채택.</b> 1차(07=2시간): <b>뉴스 5분 → 30분</b>, 공시 1시간 유지. 07이 1시간으로 좁히면 뉴스 15분, 10분 단계에서 뉴스 5분 복원(단계 동조 — <a href="#sched">스케줄 로드맵</a> 표). 유지할 것 2가지: ① 증분 수집(새 기사·새 accession만 LLM — 비용의 핵심 방어선) ② has_signal=false 빈 행(감사 균일성).</div></div>
+    <div class="ai-row"><div class="ai-k">왜</div><div class="ai-v">기사별 LLM 분석은 증분이라 주기와 무관하지만, <b>배치 종합 LLM 호출·집계 연산·DB 성장은 주기에 정비례</b>. 30분으로 늦추면 DB 성장·배치 호출 모두 1/6. 소규모 확인용 프로젝트에 5분은 과설계.</div></div>
+    <div class="ai-res">↳ ✅ <b>채택 (2026-07-11)</b> — 뉴스 30분 확정. <b>본문 전 구간 반영</b>: 전체 흐름도(06=30분)·06 섹션 헤더·배치 안내·LLM 호출량 추정·신설 <a href="#sched">시간대·스케줄 설계</a> 섹션의 로드맵 표. 구현: 주기는 config(yaml) 값 하나로 — 비즈니스 메서드는 주기를 모르게(멱등) 만들고 스케줄러가 그 숫자로 호출만.</div>
+  </div>
+  <p class="small muted">본 문서는 Official_Document.html(2026-07-10 14:45)을 최우선 기준으로 collector 4종·strategist v3.8·critic PDF 2종을 통합해 2026-07-11 생성됨. 원본 문서들은 docs/ 하위 각 폴더에 보존.</p>
+</section>
+</div>
+<script>mermaid.initialize({startOnLoad:true,theme:'neutral',er:{fontSize:11}});</script>
+</body>
+</html>
