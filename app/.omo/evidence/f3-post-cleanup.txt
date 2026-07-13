@@ -1,0 +1,15 @@
+F3 post-cleanup verification
+PORT 18765 FREE
+PORT 18766 FREE
+PORT 18767 FREE
+PORT 18768 FREE
+PORT 15444 FREE
+PORT 18013 FREE
+F3 processes:
+sunghyuk         58126   0.9  0.0 435308448   2480   ??  Ss    7:01AM   0:00.03 /bin/zsh -c rg -n 'duplicate|concurr|idempot|retry|timeout' tests | sed -n '1,240p'; rm -f /tmp/f3-run1.json /tmp/f3-run2.json; {\012 echo 'F3 post-cleanup verification'\012 for p in 18765 18766 18767 18768 15444 18013; do if lsof -nP -iTCP:$p -sTCP:LISTEN >/dev/null; then echo "PORT $p OCCUPIED FAIL"; else echo "PORT $p FREE"; fi; done\012 echo 'F3 processes:'\012 ps aux | rg '[f]3-state-harness|[f]3-lighthouse|uvicorn quantinue.main:app.*18765' || true\012 echo 'F3 Docker objects:'\012 docker ps -a --filter name=quantinue_f3_qa --format '{{.Names}}'\012 docker volume ls --filter name=quantinue_f3_qa --format '{{.Name}}'\012 docker network ls --filter name=quantinue_f3_qa --format '{{.Name}}'\012 echo 'Existing localhost:5432 binding remains:'\012 docker ps --format '{{.Names}} {{.Ports}}' | rg '5432->5432' || true\012} | tee .omo/evidence/f3-post-cleanup.txt
+sunghyuk         58130   0.3  0.0 435304528   1664   ??  S     7:01AM   0:00.00 /bin/zsh -c rg -n 'duplicate|concurr|idempot|retry|timeout' tests | sed -n '1,240p'; rm -f /tmp/f3-run1.json /tmp/f3-run2.json; {\012 echo 'F3 post-cleanup verification'\012 for p in 18765 18766 18767 18768 15444 18013; do if lsof -nP -iTCP:$p -sTCP:LISTEN >/dev/null; then echo "PORT $p OCCUPIED FAIL"; else echo "PORT $p FREE"; fi; done\012 echo 'F3 processes:'\012 ps aux | rg '[f]3-state-harness|[f]3-lighthouse|uvicorn quantinue.main:app.*18765' || true\012 echo 'F3 Docker objects:'\012 docker ps -a --filter name=quantinue_f3_qa --format '{{.Names}}'\012 docker volume ls --filter name=quantinue_f3_qa --format '{{.Name}}'\012 docker network ls --filter name=quantinue_f3_qa --format '{{.Name}}'\012 echo 'Existing localhost:5432 binding remains:'\012 docker ps --format '{{.Names}} {{.Ports}}' | rg '5432->5432' || true\012} | tee .omo/evidence/f3-post-cleanup.txt
+sunghyuk         58145   0.0  0.0 435302144   1360   ??  R     7:01AM   0:00.00 rg [f]3-state-harness|[f]3-lighthouse|uvicorn quantinue.main:app.*18765
+F3 Docker objects:
+Existing localhost:5432 binding remains:
+pf-postgres 0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+demo-auto-trading-system-kr-postgres-1 0.0.0.0:55432->5432/tcp, [::]:55432->5432/tcp

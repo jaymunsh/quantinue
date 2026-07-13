@@ -1,0 +1,1 @@
+{"above": "REJECTED", "below": "REJECTED", "future": "ACCEPTED", "missing_snapshot_ref": "REJECTED", "naive": "REJECTED", "numeric_string": "ACCEPTED", "unknown_event": "REJECTED"}

@@ -1,0 +1,174 @@
+
+Running 2 tests using 1 worker
+
+[1A[2K(node:39153) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:39153) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/2] .omo/evidence/f3-state-browser.spec.js:6:3 › running 18766 store-backed UI 1440
+[1A[2K  1) .omo/evidence/f3-state-browser.spec.js:6:3 › running 18766 store-backed UI 1440 ───────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1/
+    Call log:
+    [2m  - navigating to "http://127.0.0.1/", waiting until "load"[22m
+
+
+       6 |   test(`${state} store-backed UI ${width}`, async ({ page }) => {
+       7 |     await page.setViewportSize({ width, height });
+    >  8 |     await page.goto(base);
+         |                ^
+       9 |     const runs = await (await page.request.get(`${base}/api/runs`)).json();
+      10 |     expect(runs[0].status).toBe(state);
+      11 |     await expect(page.locator(`.status-${state}`).first()).toContainText(state);
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-state-browser.spec.js:8:16
+
+
+[1A[2K(node:39199) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:39199) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[2/2] .omo/evidence/f3-state-browser.spec.js:6:3 › running 18766 store-backed UI 390
+[1A[2K  2) .omo/evidence/f3-state-browser.spec.js:6:3 › running 18766 store-backed UI 390 ────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1/
+    Call log:
+    [2m  - navigating to "http://127.0.0.1/", waiting until "load"[22m
+
+
+       6 |   test(`${state} store-backed UI ${width}`, async ({ page }) => {
+       7 |     await page.setViewportSize({ width, height });
+    >  8 |     await page.goto(base);
+         |                ^
+       9 |     const runs = await (await page.request.get(`${base}/api/runs`)).json();
+      10 |     expect(runs[0].status).toBe(state);
+      11 |     await expect(page.locator(`.status-${state}`).first()).toContainText(state);
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-state-browser.spec.js:8:16
+
+
+[1A[2K  2 failed
+    .omo/evidence/f3-state-browser.spec.js:6:3 › running 18766 store-backed UI 1440 ────────────────
+    .omo/evidence/f3-state-browser.spec.js:6:3 › running 18766 store-backed UI 390 ─────────────────
+
+Running 2 tests using 1 worker
+
+[1A[2K(node:39282) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:39282) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/2] .omo/evidence/f3-state-browser.spec.js:6:3 › retrying 18767 store-backed UI 1440
+[1A[2K  1) .omo/evidence/f3-state-browser.spec.js:6:3 › retrying 18767 store-backed UI 1440 ──────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1/
+    Call log:
+    [2m  - navigating to "http://127.0.0.1/", waiting until "load"[22m
+
+
+       6 |   test(`${state} store-backed UI ${width}`, async ({ page }) => {
+       7 |     await page.setViewportSize({ width, height });
+    >  8 |     await page.goto(base);
+         |                ^
+       9 |     const runs = await (await page.request.get(`${base}/api/runs`)).json();
+      10 |     expect(runs[0].status).toBe(state);
+      11 |     await expect(page.locator(`.status-${state}`).first()).toContainText(state);
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-state-browser.spec.js:8:16
+
+
+[1A[2K(node:39331) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:39331) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[2/2] .omo/evidence/f3-state-browser.spec.js:6:3 › retrying 18767 store-backed UI 390
+[1A[2K  2) .omo/evidence/f3-state-browser.spec.js:6:3 › retrying 18767 store-backed UI 390 ───────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1/
+    Call log:
+    [2m  - navigating to "http://127.0.0.1/", waiting until "load"[22m
+
+
+       6 |   test(`${state} store-backed UI ${width}`, async ({ page }) => {
+       7 |     await page.setViewportSize({ width, height });
+    >  8 |     await page.goto(base);
+         |                ^
+       9 |     const runs = await (await page.request.get(`${base}/api/runs`)).json();
+      10 |     expect(runs[0].status).toBe(state);
+      11 |     await expect(page.locator(`.status-${state}`).first()).toContainText(state);
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-state-browser.spec.js:8:16
+
+
+[1A[2K  2 failed
+    .omo/evidence/f3-state-browser.spec.js:6:3 › retrying 18767 store-backed UI 1440 ───────────────
+    .omo/evidence/f3-state-browser.spec.js:6:3 › retrying 18767 store-backed UI 390 ────────────────
+
+Running 2 tests using 1 worker
+
+[1A[2K(node:39413) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:39413) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/2] .omo/evidence/f3-state-browser.spec.js:6:3 › failed 18768 store-backed UI 1440
+[1A[2K  1) .omo/evidence/f3-state-browser.spec.js:6:3 › failed 18768 store-backed UI 1440 ────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1/
+    Call log:
+    [2m  - navigating to "http://127.0.0.1/", waiting until "load"[22m
+
+
+       6 |   test(`${state} store-backed UI ${width}`, async ({ page }) => {
+       7 |     await page.setViewportSize({ width, height });
+    >  8 |     await page.goto(base);
+         |                ^
+       9 |     const runs = await (await page.request.get(`${base}/api/runs`)).json();
+      10 |     expect(runs[0].status).toBe(state);
+      11 |     await expect(page.locator(`.status-${state}`).first()).toContainText(state);
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-state-browser.spec.js:8:16
+
+
+[1A[2K(node:39521) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:39521) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[2/2] .omo/evidence/f3-state-browser.spec.js:6:3 › failed 18768 store-backed UI 390
+[1A[2K  2) .omo/evidence/f3-state-browser.spec.js:6:3 › failed 18768 store-backed UI 390 ─────────────────
+
+    Error: page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1/
+    Call log:
+    [2m  - navigating to "http://127.0.0.1/", waiting until "load"[22m
+
+
+       6 |   test(`${state} store-backed UI ${width}`, async ({ page }) => {
+       7 |     await page.setViewportSize({ width, height });
+    >  8 |     await page.goto(base);
+         |                ^
+       9 |     const runs = await (await page.request.get(`${base}/api/runs`)).json();
+      10 |     expect(runs[0].status).toBe(state);
+      11 |     await expect(page.locator(`.status-${state}`).first()).toContainText(state);
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-state-browser.spec.js:8:16
+
+
+[1A[2K  2 failed
+    .omo/evidence/f3-state-browser.spec.js:6:3 › failed 18768 store-backed UI 1440 ─────────────────
+    .omo/evidence/f3-state-browser.spec.js:6:3 › failed 18768 store-backed UI 390 ──────────────────

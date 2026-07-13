@@ -1,0 +1,63 @@
+AdversarialVerify: confirmed (confidence: HIGH)
+Date: 2026-07-13 Asia/Seoul
+Scope: current combined domain tree; no product/docs edits.
+
+Quality gates
+- `uv run pytest -q`: PASS — 323 passed, 11 skipped in 3.23s. Eight skips require the disposable PG URL and all passed under the runner below; three real-key tests are intentionally opt-in because credentials were not supplied.
+- `uv run pytest -q --ignore=tests/real_key`: PASS — 323 passed, 8 skipped in 3.42s.
+- `./scripts/test_postgres_integration.sh -q`: PASS — 13 passed in 6.98s against a disposable postgres:17-alpine instance; runner cleanup completed.
+- `uv run basedpyright`: PASS — 0 errors, 0 warnings, 0 notes.
+- `uv run ruff format --check src tests && uv run ruff check src tests`: PASS — 132 files formatted; all checks passed.
+- official no-excuse checker on `src tests`: PASS — no violations in 132 files.
+- `./scripts/test_compose_contract.sh && ./scripts/scan_secrets.sh`: PASS — compose contract and secret scan.
+
+Adversarial domain scenarios
+- Focused 28-test run: PASS — public fake-HTTP-wire pipeline E2E; owned HTTP resource closure; HOLD and blocked-BUY no-order behavior; typed scheduler; timezone-aware rejection; Independence Day/weekend/DST T+5 scheduling; early pending and final idempotent review; concurrent same-plan single POST; memory/cross-role order caps; Alpaca fixed bracket and parent/leg ID normalization.
+- Disposable PG integration: PASS — lifecycle persists domain/source/signal/verdict/order/fill identities; reservation single-owner + ABA protection; process-recreation checkpoint resume; cross-process daily order-cap atomicity.
+- SQL catalog contract: PASS — all 19 public tables, raw/source-to-signal composite FKs, strategist/review/order FKs, idempotency/identity UNIQUE constraints, checks, and bracket parent/child columns match expectations.
+- Real browser responsive QA: `F3_BASE_URL=http://127.0.0.1:18765 npx playwright test .omo/evidence/f3-browser.spec.js --reporter=line`: PASS — 5/5 at 1440, 1024, 768, and 390 px plus keyboard focus/reduced-motion; no horizontal overflow.
+
+Docker and port safety
+- Before: existing `pf-postgres` owned `*:5432`; 5444 was free. Existing containers were not stopped, recreated, or modified.
+- Unique compose project DB: PASS — `health=healthy mapping=127.0.0.1:5444 tables=19`; project container/network/volume removed afterward.
+- Docker image build: PASS. Container health returned `{"status":"ok","broker_mode":"mock","llm_mode":"mock"}` repeatedly after application startup.
+- Startup probe note: requests made during the roughly 3-second Python import/startup interval can receive an empty reply before Uvicorn announces application startup. Compose healthcheck has a 10-second start period and therefore covers this expected startup window.
+- After: existing `*:5432` listener remains; 5444 is free; no `quantinue-domain-*` or disposable test-PG containers/volumes remain.
+
+Known exclusions / non-blockers
+- Actual OpenAI and Alpaca PAPER calls were not executed because no real keys or explicit opt-in were supplied; the three tests skipped with their documented opt-in reason.
+- Repository-wide `uv run ruff format --check .` reports only pre-existing evidence helper `.omo/evidence/f3-state-harness.py` as needing formatting. Product and test trees pass cleanly; verifier was explicitly forbidden to edit evidence/product artifacts other than this report.
+
+Final aggregate reverify — 2026-07-13 Asia/Seoul
+- Verdict: NEEDS-FIX (confidence: HIGH). Runtime and persistence behavior pass, but the required repo-wide `uv run basedpyright` gate fails with 3 errors.
+- `uv run pytest -q`: PASS — 336 passed, 11 skipped in 4.96s. Eight skips require the disposable PostgreSQL URL; three real-key tests remain intentionally opt-in.
+- `uv run ruff format --check .`: PASS — 133 files already formatted.
+- `uv run ruff check .`: PASS — all checks passed.
+- official Python no-excuse checker on `src tests`: PASS — no violations in 132 files.
+- `uv run basedpyright`: FAIL — 3 errors, 0 warnings, 0 notes. `tests/integration/schema_sql_expectations.py:73` leaves `FK` partially unknown because one empty set is untyped; that unknown propagates to the import and `.get` use in `tests/integration/test_schema_sql.py:6,24`.
+- `./scripts/test_postgres_integration.sh -q`: PASS — 13 passed in 9.07s against disposable PostgreSQL; cleanup completed.
+- Runner selection note: `scripts/test_postgres_integration.sh` always prefixes `tests/integration`, so appended file selections still ran all 13 tests. A dedicated disposable PostgreSQL instance on `127.0.0.1:55467` then ran the two key lifecycle files against the same database in normal and reversed file order: 2 passed in 2.65s and 2 passed in 2.37s.
+- Stage projection/review proof: live PostgreSQL lifecycle test passed exact stage-derived fixture values (`NVIDIA Corporation`, market cap `3210000000000`, close `128.40`, trend `up`, daily bucket/rank/score `trend_leader/1/0.82`, macro `neutral/0.420`), idempotent rerun identities, and production review POST followed by run GET exposing final `hit|miss` rather than the placeholder.
+- YAML/model proof: focused policy/lifecycle run passed 7 tests. Typed YAML thresholds are injected into roles 07–09, and an actual `QUANTINUE_OPENAI_MODEL=from-environment` Settings parse preserved `from-environment` while applying the YAML local-model default.
+- Port safety: before and after verification, existing `pf-postgres` remained mapped on `*:5432`; port 5444 remained free. No disposable `quantinue-test-pg-*` or `quantinue-reverify-pg-*` containers remained. Neither 5432 nor 5444 was used by the disposable tests.
+- Remediation required before a confirmed DoneClaim: give the schema expectation FK mapping (including empty sets) one explicit complete type, then rerun basedpyright and the aggregate gates.
+
+Post-remediation aggregate reverify — 2026-07-13 Asia/Seoul
+- Verdict: CONFIRMED (confidence: HIGH). The explicit FK type alias remediation closed the sole static-analysis blocker.
+- `uv run basedpyright`: PASS — 0 errors, 0 warnings, 0 notes.
+- `uv run pytest -q`: PASS — 336 passed, 11 expected skips in 5.10s.
+- `uv run ruff format --check .`: PASS — 133 files already formatted.
+- `uv run ruff check .`: PASS — all checks passed.
+- official Python no-excuse checker on `src tests`: PASS — no violations in 132 files.
+- This static/full-suite rerun supplements the immediately preceding successful disposable PostgreSQL, normal/reversed same-database lifecycle, exact stage projection, review POST-to-GET, YAML/environment override, and port-isolation verification; no later runtime changes invalidated that evidence.
+
+Canonical-FK aggregate reverify — 2026-07-13 Asia/Seoul
+- Verdict at this snapshot: NEEDS-FIX (confidence: HIGH). Canonical FK behavior itself is confirmed, but concurrent later tree changes reopened aggregate static/integration failures.
+- `uv run pytest -q`: PASS — 338 passed, 12 expected skips in 3.56s.
+- Canonical FK focused disposable PostgreSQL: PASS — orphan technical snapshot rejection plus normal/idempotent stage-03 daily-pick+technical persistence, 2 passed and 12 deselected in 2.29s.
+- Full disposable PostgreSQL aggregate: FAIL — 13 passed, 1 failed. `test_postgres_atomic_claim_and_process_recreation_resume` now observes the interrupted stage-02 attempt as `failed`, while its assertion still expects `running`; the failing assertion then prevents repository cleanup and produces unclosed asyncpg resource warnings.
+- `uv run basedpyright`: FAIL — 8 errors. Tests reference `AnalysisMetadata.provider`, `RoleEvidenceTrace.model_provider`, and `EvidenceView.model_provider`, but those attributes are absent from the current models.
+- `uv run ruff format --check .`: FAIL — `src/quantinue/db/postgres.py` and `src/quantinue/db/postgres_query.py` require formatting. `uv run ruff check .` still passes.
+- official Python no-excuse checker: FAIL — `src/quantinue/db/postgres.py` is 261 pure LOC, over the 250-line ceiling.
+- Disposable runner cleanup completed; the existing 5432 listener was not modified and 5444 remained unused/free.
+- Required before final confirmation: reconcile the stage interruption expectation with the intended durable lifecycle, restore the three removed provider-lineage fields or update their consumers consistently, format the two DB modules, split `postgres.py` below 250 pure LOC, then rerun all aggregate gates.

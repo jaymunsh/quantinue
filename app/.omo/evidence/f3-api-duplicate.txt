@@ -1,0 +1,28 @@
+F3 offline API duplicate/idempotency probe
+GET /health
+{"status":"ok","broker_mode":"mock","llm_mode":"mock"}
+POST /api/runs #1
+{
+  "run_id": "4e554453cc46463b8a116fed0b268251",
+  "status": "completed",
+  "stage_count": 11,
+  "evidence_count": 11,
+  "client_order_id": "q-a1-s2620418740",
+  "order_id": "mock-5ddae6a209ad"
+}
+POST /api/runs #2 same ticker/cycle minute
+{
+  "run_id": "4e554453cc46463b8a116fed0b268251",
+  "status": "completed",
+  "stage_count": 11,
+  "evidence_count": 11,
+  "client_order_id": "q-a1-s2620418740",
+  "order_id": "mock-5ddae6a209ad"
+}
+{
+  "same_run_id": true,
+  "same_client_order_id": true,
+  "same_order_id": true,
+  "all_11": true,
+  "all_evidence_11": true
+}

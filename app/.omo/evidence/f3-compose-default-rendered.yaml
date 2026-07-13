@@ -1,0 +1,74 @@
+name: app
+services:
+  db:
+    environment:
+      POSTGRES_DB: quantinue
+      POSTGRES_PASSWORD: quantinue
+      POSTGRES_USER: quantinue
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U quantinue -d quantinue
+      timeout: 3s
+      interval: 3s
+      retries: 10
+      start_period: 5s
+    image: postgres:17-alpine
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 5432
+        published: "5444"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: quantinue_pgdata
+        target: /var/lib/postgresql/data
+        volume: {}
+      - type: bind
+        source: /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/db/schema.sql
+        target: /docker-entrypoint-initdb.d/001-schema.sql
+        read_only: true
+        bind: {}
+  web:
+    build:
+      context: /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+    environment:
+      QUANTINUE_BROKER_MODE: mock
+      QUANTINUE_DATABASE_MODE: postgres
+      QUANTINUE_DATABASE_URL: postgresql+asyncpg://quantinue:quantinue@db:5432/quantinue
+      QUANTINUE_LLM_MODE: mock
+      QUANTINUE_TRADING_ENABLED: "false"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)
+      timeout: 3s
+      interval: 5s
+      retries: 12
+      start_period: 10s
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        host_ip: 127.0.0.1
+        target: 8000
+        published: "8011"
+        protocol: tcp
+    restart: unless-stopped
+networks:
+  default:
+    name: app_default
+volumes:
+  quantinue_pgdata:
+    name: app_quantinue_pgdata

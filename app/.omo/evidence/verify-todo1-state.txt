@@ -1,0 +1,6 @@
+--- dirty/stale-state fingerprint ---
+0f7545c28f65d562cec7f2243a5591b9f61d8c09abd1a801d9004767a1d43ab8  -
+evidence mtime=2026-07-13T04:49:16+0900
+ontology mtime=2026-07-13T04:46:54+0900
+schemas mtime=2026-07-13T04:46:54+0900
+schema sql mtime=2026-07-13T04:46:10+0900

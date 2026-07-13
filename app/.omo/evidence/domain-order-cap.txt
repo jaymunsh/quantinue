@@ -1,0 +1,16 @@
+ORDER CAP UNIT + REAL POSTGRES INTEGRATION
+....                                                                     [100%]
+4 passed in 1.62s
+RUFF
+All checks passed!
+BASEDPYRIGHT
+0 errors, 0 warnings, 0 notes
+NO EXCUSE
+no violations in 6 file(s)
+LOC
+     101 src/quantinue/db/contracts.py
+     127 src/quantinue/db/memory.py
+     249 src/quantinue/db/postgres.py
+     123 src/quantinue/db/postgres_query.py
+     111 src/quantinue/orchestration/factory.py
+      84 src/quantinue/roles/role_09_risk_portfolio/service.py

@@ -1,0 +1,110 @@
+=== schema load twice ===
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE INDEX
+=== table count ===
+19
+=== constraints by table/type ===
+order_submissions|f|2
+order_submissions|p|1
+order_submissions|u|1
+pipeline_checkpoints|f|1
+pipeline_checkpoints|p|1
+pipeline_checkpoints|u|1
+pipeline_runs|c|1
+pipeline_runs|p|1
+pipeline_runs|u|1
+pipeline_stage_attempts|c|2
+pipeline_stage_attempts|f|1
+pipeline_stage_attempts|p|1
+pipeline_stage_attempts|u|1
+tb_account|c|3
+tb_account|p|1
+tb_account|u|1
+tb_critic_verdict|c|4
+tb_critic_verdict|f|1
+tb_critic_verdict|p|1
+tb_critic_verdict|u|1
+tb_daily_pick|c|2
+tb_daily_pick|f|1
+tb_daily_pick|p|1
+tb_disclosure|c|5
+tb_disclosure|f|1
+tb_disclosure|p|1
+tb_disclosure|u|1
+tb_disclosure_signal|c|4
+tb_disclosure_signal|f|2
+tb_disclosure_signal|p|1
+tb_disclosure_signal|u|1
+tb_fill|c|3
+tb_fill|f|1
+tb_fill|p|1
+tb_fill|u|1
+tb_macro|c|2
+tb_macro|p|1
+tb_news|c|7
+tb_news|f|1
+tb_news|p|1
+tb_news|u|1
+tb_news_signal|c|8
+tb_news_signal|f|3
+tb_news_signal|p|1
+tb_news_signal|u|1
+tb_order|c|7
+tb_order|f|2
+tb_order|p|1
+tb_order|u|2
+tb_review|c|1
+tb_review|f|1
+tb_review|p|1
+tb_review_price_snapshots|c|3
+tb_review_price_snapshots|f|1
+tb_review_price_snapshots|p|1
+tb_strategist_signals|c|6
+tb_strategist_signals|f|4
+tb_strategist_signals|p|1
+tb_strategist_signals|u|1
+tb_technical|c|2
+tb_technical|f|1
+tb_technical|p|1
+tb_universe|c|1
+tb_universe|p|1
+=== no published host port ===
+cleanup confirmed

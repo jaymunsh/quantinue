@@ -1,0 +1,16 @@
+quantinue_review_qa_web_20260713 127.0.0.1:18012->8000/tcp
+quantinue_review_qa_db_20260713 127.0.0.1:55444->5432/tcp
+app-web-1 0.0.0.0:8011->8000/tcp, [::]:8011->8000/tcp
+app-db-1 5432/tcp
+infra-web-1 127.0.0.1:3001->3000/tcp
+infra-api-1 127.0.0.1:8000->8000/tcp
+infra-worker-1 
+infra-postgres-1 5432/tcp
+infra-redis-1 6379/tcp
+pf-postgres 0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+pf-opensearch 0.0.0.0:9200->9200/tcp, [::]:9200->9200/tcp
+demo-auto-trading-system-kr-postgres-1 0.0.0.0:55432->5432/tcp, [::]:55432->5432/tcp
+pf-kafka 0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp
+pf-redis 0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+pf-minio 0.0.0.0:9000-9001->9000-9001/tcp, [::]:9000-9001->9000-9001/tcp
+lawapp-qdrant 0.0.0.0:6333-6334->6333-6334/tcp, [::]:6333-6334->6333-6334/tcp

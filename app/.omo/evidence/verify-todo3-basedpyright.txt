@@ -1,0 +1,12 @@
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/broker/provider.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/broker/provider.py:105:21 - error: Argument of type "dict[str, SecretStr]" cannot be assigned to parameter "headers" of type "HeaderTypes | None" in function "__init__"
+    Type "dict[str, SecretStr]" is not assignable to type "HeaderTypes | None"
+      "dict[str, SecretStr]" is not assignable to "Headers"
+      "dict[str, SecretStr]" is not assignable to "Mapping[str, str]"
+        Type parameter "_VT_co@Mapping" is covariant, but "SecretStr" is not a subtype of "str"
+          "SecretStr" is not assignable to "str"
+      "dict[str, SecretStr]" is not assignable to "Mapping[bytes, bytes]"
+        Type parameter "_KT@Mapping" is invariant, but "str" is not the same as "bytes"
+        Type parameter "_VT_co@Mapping" is covariant, but "SecretStr" is not a subtype of "bytes"
+    ... (reportArgumentType)
+1 error, 0 warnings, 0 notes

@@ -1,0 +1,11 @@
+{
+  "scenario": "Persisted timed_out attempt through the live FastAPI control room",
+  "server": "127.0.0.1:18081 (ephemeral; not Docker/PostgreSQL)",
+  "api": {"GET /api/runs/timed-out-visual-qa": 200, "stage_status": "failed", "attempt_status": "timed_out"},
+  "screens": [
+    {"name": "timed-out-mobile", "viewport": "390x844", "horizontal_overflow": false, "cjk_copy_visible": true, "safety_pill_visible": true, "timed_out_attempt_visible": true, "failed_stage_badge": true, "ROLE_TIMEOUT_visible": true, "raw_secret_absent": true},
+    {"name": "timed-out-tablet", "viewport": "768x1000", "horizontal_overflow": false, "cjk_copy_visible": true, "safety_pill_visible": true, "timed_out_attempt_visible": true, "failed_stage_badge": true, "ROLE_TIMEOUT_visible": true, "raw_secret_absent": true},
+    {"name": "timed-out-desktop", "viewport": "1280x1000", "horizontal_overflow": false, "cjk_copy_visible": true, "safety_pill_visible": true, "timed_out_attempt_visible": true, "failed_stage_badge": true, "ROLE_TIMEOUT_visible": true, "raw_secret_absent": true}
+  ],
+  "timed_out_route_regression": "uv run pytest tests/test_web.py::test_timed_out_attempt_projects_as_safe_failed_stage -q -> 1 passed"
+}

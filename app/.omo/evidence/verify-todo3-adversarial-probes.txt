@@ -1,0 +1,29 @@
+run enum/graph 7 7 True
+stage enum/graph 8 8 True
+run exhaustive pairs 10 39
+stage exhaustive pairs 13 51
+http (400, 1, [], 'HttpFailureError')
+http (401, 1, [], 'HttpFailureError')
+http (403, 1, [], 'HttpFailureError')
+http (404, 1, [], 'HttpFailureError')
+http (408, 3, [0.01, 0.02], 'RetryExhaustedError')
+http (409, 1, [], 'HttpFailureError')
+http (422, 1, [], 'HttpFailureError')
+http (425, 3, [0.01, 0.02], 'RetryExhaustedError')
+http (429, 3, [0.01, 0.02], 'RetryExhaustedError')
+http (499, 1, [], 'HttpFailureError')
+http (500, 3, [0.01, 0.02], 'RetryExhaustedError')
+http (503, 3, [0.01, 0.02], 'RetryExhaustedError')
+http (599, 3, [0.01, 0.02], 'RetryExhaustedError')
+http (700, 3, [0.01, 0.02], 'RetryExhaustedError')
+http (0, 1, [], 'HttpFailureError')
+http (-1, 1, [], 'HttpFailureError')
+mixed-run checkpoint accepted ResumePlan(next_stage='03', completed_stages=('01', '02'))
+empty ticker run key fa1874771372977e8c956019c6ed533c0a863bf7bacc55d3ba80256c18f8d486
+hash NaN d5b592c05dc25b5032553f1b27f4139be95e881f73db33b02b05ab20c3f9981e
+hash Infinity d0067cad9a63e0813759a2bb841051ca73570c0da2e08e840a8eb45db6a7a010
+hash -Infinity c64ddf11bcd45660f0cf66dd0c22d2b4570ef3d3fc6527a9a6f6c722aefa3c39
+hash 1 6b86b273ff34fce19d6b804eff5a3f5747ada4eaa22f1d49c01e52ddb7875b4b
+hash 1.0 d0ff5974b6aa52cf562bea5921840c032a860a91a3512f7fe8f768f6bbe005f6
+hash -0.0 c26617c7ccbcaa6631b45d851b8cf56e21d2ca624bdb1193afdbd4b560702cec
+hash 0 5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9

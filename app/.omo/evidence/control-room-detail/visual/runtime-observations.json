@@ -1,0 +1,97 @@
+{
+  "server": "127.0.0.1:8015",
+  "results": [
+    {
+      "width": 1440,
+      "route": "/",
+      "state": "completed fixture run; details collapsed",
+      "detailCount": 4,
+      "scroll": {
+        "scrollWidth": 1440,
+        "clientWidth": 1440,
+        "bodyScrollWidth": 1440,
+        "overflow": false
+      },
+      "linkInfo": {
+        "href": "https://example.invalid/fixture-news",
+        "target": "_blank",
+        "rel": "noopener noreferrer"
+      },
+      "focus": {
+        "tag": "SUMMARY",
+        "text": "수집 요약 보기"
+      }
+    },
+    {
+      "width": 1024,
+      "route": "/",
+      "state": "completed fixture run; details collapsed",
+      "detailCount": 4,
+      "scroll": {
+        "scrollWidth": 1024,
+        "clientWidth": 1024,
+        "bodyScrollWidth": 1024,
+        "overflow": false
+      },
+      "linkInfo": {
+        "href": "https://example.invalid/fixture-news",
+        "target": "_blank",
+        "rel": "noopener noreferrer"
+      },
+      "focus": {
+        "tag": "SUMMARY",
+        "text": "수집 요약 보기"
+      }
+    },
+    {
+      "width": 768,
+      "route": "/",
+      "state": "completed fixture run; details collapsed",
+      "detailCount": 4,
+      "scroll": {
+        "scrollWidth": 768,
+        "clientWidth": 768,
+        "bodyScrollWidth": 768,
+        "overflow": false
+      },
+      "linkInfo": {
+        "href": "https://example.invalid/fixture-news",
+        "target": "_blank",
+        "rel": "noopener noreferrer"
+      },
+      "focus": {
+        "tag": "SUMMARY",
+        "text": "수집 요약 보기"
+      }
+    },
+    {
+      "width": 390,
+      "route": "/",
+      "state": "completed fixture run; details collapsed",
+      "detailCount": 4,
+      "scroll": {
+        "scrollWidth": 390,
+        "clientWidth": 390,
+        "bodyScrollWidth": 390,
+        "overflow": false
+      },
+      "linkInfo": {
+        "href": "https://example.invalid/fixture-news",
+        "target": "_blank",
+        "rel": "noopener noreferrer"
+      },
+      "focus": {
+        "tag": "SUMMARY",
+        "text": "수집 요약 보기"
+      }
+    },
+    {
+      "width": 1440,
+      "route": "/",
+      "state": "completed fixture run; first native details expanded",
+      "opened": true
+    }
+  ],
+  "errors": [],
+  "capturedAt": "2026-07-13T04:15:08.129Z"
+}

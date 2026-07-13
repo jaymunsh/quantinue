@@ -1,0 +1,22 @@
+[
+  {
+    "width": 1440,
+    "height": 1000,
+    "screenshot": ".omo/evidence/final-f3/live-timed-out-1440x1000.png",
+    "horizontalOverflow": false,
+    "failedStages": 1,
+    "rawPayloadVisible": false,
+    "timedOutVisible": true,
+    "failureCodeVisible": true
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "screenshot": ".omo/evidence/final-f3/live-timed-out-390x844.png",
+    "horizontalOverflow": false,
+    "failedStages": 1,
+    "rawPayloadVisible": false,
+    "timedOutVisible": true,
+    "failureCodeVisible": true
+  }
+]

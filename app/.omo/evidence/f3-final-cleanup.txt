@@ -1,0 +1,19 @@
+ Container quantinue_f3_final-web-1 Stopping 
+ Container quantinue_f3_final-web-1 Stopped 
+ Container quantinue_f3_final-web-1 Removing 
+ Container quantinue_f3_final-web-1 Removed 
+ Container quantinue_f3_final-db-1 Stopping 
+ Container quantinue_f3_final-db-1 Stopped 
+ Container quantinue_f3_final-db-1 Removing 
+ Container quantinue_f3_final-db-1 Removed 
+ Volume quantinue_f3_final_quantinue_pgdata Removing 
+ Network quantinue_f3_final_default Removing 
+ Volume quantinue_f3_final_quantinue_pgdata Removed 
+ Network quantinue_f3_final_default Removed 
+Untagged: quantinue_f3_final-web:latest
+Deleted: sha256:e24e18b625d91eed356a7f7179bd8d4701e4ed58c13e1ce82e9037ca1ac0577b
+containers
+volumes
+networks
+15445 FREE
+18014 FREE

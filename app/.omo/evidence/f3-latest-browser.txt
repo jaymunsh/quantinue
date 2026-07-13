@@ -1,0 +1,17 @@
+
+Running 5 tests using 1 worker
+
+[1A[2K(node:38206) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:38206) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1440
+[1A[2K[2/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1024
+[1A[2K[3/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 768
+[1A[2K[4/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 390
+[1A[2K[5/5] .omo/evidence/f3-browser.spec.js:18:1 › keyboard and reduced motion
+[1A[2K  5 passed (1.6s)

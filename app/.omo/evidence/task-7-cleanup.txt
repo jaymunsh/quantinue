@@ -1,0 +1,15 @@
+ Container quantinue_mvp_qa_wave3ops-web-1 Stopping 
+ Container quantinue_mvp_qa_wave3ops-web-1 Stopped 
+ Container quantinue_mvp_qa_wave3ops-web-1 Removing 
+ Container quantinue_mvp_qa_wave3ops-web-1 Removed 
+ Container quantinue_mvp_qa_wave3ops-db-1 Stopping 
+ Container quantinue_mvp_qa_wave3ops-db-1 Stopped 
+ Container quantinue_mvp_qa_wave3ops-db-1 Removing 
+ Container quantinue_mvp_qa_wave3ops-db-1 Removed 
+ Volume quantinue_mvp_qa_wave3ops_quantinue_pgdata Removing 
+ Network quantinue_mvp_qa_wave3ops_default Removing 
+ Volume quantinue_mvp_qa_wave3ops_quantinue_pgdata Removed 
+ Network quantinue_mvp_qa_wave3ops_default Removed 
+remaining project containers:
+remaining project volumes:
+remaining project networks:

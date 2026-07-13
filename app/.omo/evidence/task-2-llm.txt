@@ -1,0 +1,46 @@
+Todo 2 configuration, prompts, and LLM provider evidence (2026-07-13)
+
+TDD red proofs
+- Initial scoped run after import-safe scaffold: 9 failed, 3 passed for credential redaction,
+  local URL validation, settings bounds, prompt resources, and result metadata.
+- Verifier-fix scoped run before its production changes: 9 failed, 9 passed. The failures
+  specifically demonstrated acceptance of four unsafe Alpaca endpoints, acceptance of an empty
+  selected-local key, acceptance of blank selected model names, and absence of an injectable
+  build path for OpenAI/local HTTP wire tests.
+
+Automated verification
+- `uv run pytest tests/unit/test_config.py tests/unit/test_llm_prompts.py
+  tests/unit/test_llm_provider.py` -> 25 passed.
+- Scoped `ruff check` -> All checks passed.
+- Scoped `basedpyright` -> 0 errors, 0 warnings, 0 notes.
+- `uv run pytest -q` -> 97 passed.
+- Fresh wheel archive inspection -> exactly five role prompt markdown resources present.
+
+Contract and manual-surface observations
+- Settings rejected Alpaca live, unrelated HTTPS, insecure paper HTTP, and file URLs; only the
+  exact `https://paper-api.alpaca.markets` endpoint was accepted.
+- Selected OpenAI/local modes rejected empty credentials. Secret values remained redacted.
+- Selected OpenAI/local model names rejected blank or whitespace-only input.
+- Deterministic, OpenAI, and local adapters created through `build_llm_analyzer` returned the
+  same validated result shape and metadata fields: model, prompt version, policy version, and
+  SHA-256 input hash.
+- OpenAI and local calls used an HTTP-level OpenAI-compatible fake. The fake parsed the actual
+  `/v1/chat/completions` request, returned tool/schema output, and verified malicious caller text
+  remained inside the JSON `external_data` field.
+
+Adversarial probes
+- malformed_config: unsafe Alpaca URLs, empty selected credentials, blank models, zero timeout,
+  negative retries, and a non-HTTP local URL all produced Pydantic validation failures.
+- prompt_injection: a forged system-role string was observed only as quoted external JSON data;
+  structured output validation still controlled the accepted response.
+- stale_artifact: the wheel check began from a newly created output directory and counted all
+  five required resources.
+- misleading_success: pass status was checked through command exit codes plus behavioral schema,
+  request-body, validation, metadata, and archive-content assertions.
+- flaky_test: wire tests used an in-process transport with no external network, sleeps, random
+  values, or wall-clock assertions.
+- cancel_resume and repeated_interruptions: not applicable to this non-resumable adapter boundary.
+
+Cleanup receipt
+- `/tmp/quantinue-wheel-check` and `/tmp/quantinue-build.log` removed after archive inspection.
+- All async HTTP clients exited their context managers; no listener or child process was created.

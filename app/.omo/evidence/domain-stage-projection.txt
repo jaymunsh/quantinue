@@ -1,0 +1,40 @@
+Domain stage projection remediation evidence — 2026-07-13
+
+Implemented
+- PipelineContext carries validated role01 universe, role02 technical, role03 daily-pick,
+  and role04 macro outputs until each stage lifecycle callback persists it.
+- PostgreSQL writes the universe at 01, the daily-pick parent plus selected technical child
+  atomically at 03, and macro at 04. Conflict updates make reruns idempotent.
+- Stage 08 no longer synthesizes/backfills universe or daily-pick parents.
+- The canonical technical-to-daily-pick FK is retained. An orphan technical insert is proven
+  to fail, while role03 writes its parent before the role02 child in the same transaction.
+- T+5 finalization atomically upserts tb_review and replaces pipeline_runs.payload.review.
+  Production POST /api/reviews/{signal_id}/process followed by GET /api/runs/{run_id}
+  returns hit/miss rather than the pending placeholder.
+- Recursive typed checkpoint JSON retains role02 output so a resumed run can perform the
+  atomic role03 parent/child write without weakening the schema contract.
+
+Verification
+- Focused unit/integration: 39 passed.
+- Disposable PostgreSQL, same database, normal file order: 3 passed.
+- Disposable PostgreSQL, same database, reversed file order: 3 passed.
+- PostgreSQL assertions are key-specific by ticker/cycle/signal joins, not global row counts.
+- Ruff focused scope: passed.
+- basedpyright focused scope: 0 errors, 0 warnings.
+- Modified core/db Python source sizes: 227, 20, 233, 101, 177 pure lines.
+- Official Python no-excuse checker: no violations in 10 owned files.
+- Repository-wide Ruff format check: 133 files already formatted.
+- Repository-wide Ruff check: passed.
+- Stage02 checkpoint round-trip regression: passed; the exact TechnicalAnalysisOutput is
+  restored for the later atomic stage03 write.
+- Fresh independent AdversarialVerify after canonical FK remediation: CONFIRMED,
+  confidence 0.93, no blockers (40 focused checks, targeted Ruff/type clean).
+- Independent verifier confirmed typed projections, stage08 removal, review projection, and
+  43 related tests / basedpyright clean. A subsequent adversarial contract review required
+  restoring the technical-to-daily-pick FK; the atomic role03 write and orphan rejection test
+  now preserve that canonical constraint. pipeline_runs remains operational rather than a
+  domain FK parent, as documented in IMPLEMENTATION_ASSUMPTIONS.md.
+
+Safety
+- Disposable database used host port 55433 only and was removed by EXIT trap.
+- localhost:5432 and project port 5444 were not touched.

@@ -1,0 +1,55 @@
+Resilience final-review blocker evidence — 2026-07-13 Asia/Seoul
+
+Baseline
+- Command: uv run pytest -q tests/unit/test_retry.py tests/unit/test_persistence_orchestration.py tests/unit/test_pipeline_evidence_trace.py tests/unit/test_persistence_factory.py
+- Result: 22 passed in 0.92s
+
+Red
+- Command: uv run pytest -q tests/unit/test_pipeline_policy.py tests/unit/test_pipeline_resilience.py
+- Result: collection failed with ModuleNotFoundError: quantinue.orchestration.policy (2 errors).
+- Runtime hypothesis toggle: before integration, PipelineOrchestrator directly invoked role.execute once and config/pipeline.yaml had no runtime consumer. Adding the typed loader plus policy-driven role boundary changed the same tests from collection/runtime failure to green.
+
+Green / regression
+- Command: uv run pytest -q tests/unit/test_pipeline_policy.py tests/unit/test_pipeline_resilience.py tests/unit/test_persistence_orchestration.py tests/unit/test_retry.py tests/unit/test_persistence_factory.py tests/unit/test_pipeline_evidence_trace.py tests/integration/test_schema_sql.py
+- Result: 34 passed in 2.37s
+- Command: uv run ruff check src tests/unit/test_pipeline_policy.py tests/unit/test_pipeline_resilience.py tests/unit/test_persistence_orchestration.py
+- Result: All checks passed.
+- Command: uv run basedpyright src tests/unit/test_pipeline_policy.py tests/unit/test_pipeline_resilience.py
+- Result: 0 errors, 0 warnings, 0 notes.
+- Command: check-no-excuse-rules.py over every touched production Python file
+- Result: no violations in 7 files.
+
+Manual QA — actual in-memory pipeline
+- Invocation: uv run python - (one transient role, canonical YAML policy, injected no-sleep backoff)
+- Observable: {'status': 'completed', 'stages': 1, 'attempts': [('retrying', 'TRANSIENT_FAILURE', 'temporary provider failure'), ('completed', None, None)]}
+- Raw provider detail was not present in the persisted attempt.
+
+PostgreSQL boundary
+- Store implementation and schema semantic tests cover retrying/timed_out values and resumable transient-code lookup.
+- Real-PG resilience execution was not run here: the existing app-db-1 has no host binding on 127.0.0.1:5444 and contains no pipeline_stage_attempts relation. It was deliberately not recreated or modified, preserving the user's container-safety constraint. Port 5444 probe returned closed; localhost:5432 was not accessed.
+
+Adversarial observations
+- cancel/resume: existing abrupt cancellation test remains green; BaseException cancellation is not swallowed and shielded abandon releases the claim while preserving completed context.
+- stale state: failed transient terminal snapshot is removed only under explicit resume_failed policy; validation/hard terminal runs remain returned without another role call.
+- misleading success: success requires completed run plus persisted completed final attempt; timeout is persisted as timed_out/ROLE_TIMEOUT and re-raised.
+- raw provider text: unknown RuntimeError is persisted as UNEXPECTED_ROLE_FAILURE/unexpected role failure and the original exception is re-raised to the caller.
+- flaky timing: unit retry tests inject NoSleep; timeout uses a native AnyIO cancel scope and a 1ms deterministic hanging operation.
+- dirty worktree: shared repository was already an untracked app tree and concurrently edited by other workers; no destructive git operation was used.
+- cleanup: no files, ports, processes, containers, or environment overrides were created by manual QA.
+
+Architecture review
+- pipeline.py owns sequential resilient role execution; policy.py owns typed YAML parsing; postgres_query.py owns typed read/query helpers.
+- YAML and persisted failures are parsed/constructed into Pydantic or frozen typed values at boundaries.
+- Open provider exception hierarchy is intentionally not exhaustively closed; classifier match sites carry MATCH_OK, while unknown errors are persisted redacted and re-raised.
+- No Any, type-ignore, cast, asyncio import, swallowed exception, or new function over three parameters was introduced.
+
+Final transport/dead-API review
+- Red: `pytest -k 'transport_failure or auth_and_nontransient'` produced 3 failures for httpx2 ConnectError, ReadError, and RemoteProtocolError; each escaped on its first call instead of retrying.
+- Green: shipping PipelineOrchestrator now normalizes all httpx2.TransportError subclasses to redacted TRANSPORT_FAILURE, persists retrying, and completes on the bounded retry. Exhausted transport failure also resumes under explicit policy; HTTP 400/401 and authentication failures remain one-attempt terminal.
+- Removed dead TimeoutPolicy, execute_with_timeout, and execute_with_retry production APIs. RetryPolicy, bounded backoff, Sleeper injection, and the HTTP status classifier remain and are consumed by the shipping orchestrator.
+- Command: focused resilience/persistence/retry suite — 31 passed in 0.29s.
+- Command: full pytest — 336 passed, 11 skipped in 3.48s.
+- Command: `ruff check .` — All checks passed.
+- Command: official no-excuse checker for pipeline.py and retry.py — no violations.
+- Command: basedpyright for pipeline.py and retry.py — 0 errors, 0 warnings.
+- `ruff format --check .` currently identifies only concurrently owned `src/quantinue/db/domain.py`; all 132 other files are formatted. This task did not overwrite that active domain worker file.

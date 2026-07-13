@@ -1,0 +1,24 @@
+Domain runtime policy remediation — 2026-07-13
+
+Implemented
+- config/pipeline.yaml is the canonical typed owner of decision thresholds, stop/take-profit ratios, role cadence, and mock/OpenAI/local model defaults.
+- Removed duplicate mvp.news_interval_minutes and mvp.strategist_interval_minutes; schedule is the sole MVP cadence source.
+- PipelinePolicy parses all values and applies YAML model defaults only when Settings did not receive an explicit constructor/env override.
+- Factory injects minimum_confidence and strategist_buy_score into role 07, minimum_confidence and critic_approval_score into role 08, and maximum_risk_score plus bracket ratios into role 09.
+- Role 09 propagates macro risk and deterministically skips with risk_limit above the configured ceiling.
+- Daily order cap, data mode, provider lifecycle, retry/timeout/checkpoint behavior, and legacy direct-constructor defaults remain intact.
+
+TDD red proof
+- Initial focused run: 4 failed, 66 passed.
+- Failures named missing PipelinePolicy ratios/model resolver, missing strategy threshold argument, and missing role-09 risk score.
+
+Independent scoped verification
+- ruff format --check (13 owned Python/test files): passed.
+- ruff check (13 owned Python/test files): passed.
+- basedpyright (owned runtime modules and roles 07-09): 0 errors, 0 warnings, 0 notes.
+- pytest focused policy/config/provider/roles/cap suite: 99 passed in 2.14s.
+- Modified production modules: 76-164 nonblank/non-comment LOC each, all below 250.
+
+Full-repository observation
+- A prior full unit run reached 321 passed with one failure in concurrently edited role_01_universe_screener (SecuritySnapshot.company_name mismatch), outside this remediation.
+- A later full ruff/basedpyright attempt also reported concurrent unrelated edits in orchestration/pipeline.py, review tests, integration import order, and role 01. Scoped owned-file gates remain green.

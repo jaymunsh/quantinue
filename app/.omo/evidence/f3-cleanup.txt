@@ -1,0 +1,16 @@
+F3 cleanup
+ Container quantinue_f3_qa-web-1 Stopping 
+ Container quantinue_f3_qa-web-1 Stopped 
+ Container quantinue_f3_qa-web-1 Removing 
+ Container quantinue_f3_qa-web-1 Removed 
+ Container quantinue_f3_qa-db-1 Stopping 
+ Container quantinue_f3_qa-db-1 Stopped 
+ Container quantinue_f3_qa-db-1 Removing 
+ Container quantinue_f3_qa-db-1 Removed 
+ Volume quantinue_f3_qa_quantinue_pgdata Removing 
+ Network quantinue_f3_qa_default Removing 
+ Volume quantinue_f3_qa_quantinue_pgdata Removed 
+ Network quantinue_f3_qa_default Removed 
+Untagged: quantinue_f3_qa-web:latest
+Deleted: sha256:fa1e4d3fce2859a58bb46162139023aa0074ac9e36f51220f8759fe2d7613041
+remaining F3 docker resources:

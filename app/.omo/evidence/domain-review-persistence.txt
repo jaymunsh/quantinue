@@ -1,0 +1,44 @@
+Domain review persistence implementation evidence
+
+Implemented:
+- Typed canonical write records for strategist signals, critic verdicts, accounts,
+  pre-reserved order reconciliation, and fills.
+- PostgreSQL repository uses canonical schema FKs and returns database-generated IDs.
+- tb_order reconciliation updates by idempotency_key; it never inserts a second order.
+- Hold, critic-rejected, and zero-quantity paths complete role 11 with outcome=no_trade.
+- ReviewProcessor captures only due T+1..T+5 trading-session closes and finalizes after T+5.
+- Explicit POST /api/reviews/{signal_id}/process router seam supports scheduler/manual triggers.
+
+Verification:
+- ruff check: passed for all changed Python files.
+- pytest focused: 17 passed (processor, no-trade, role11 calendar/scorer, pipeline).
+- no-excuse rules: rerun after MUTABLE_OK fixture annotations.
+
+Known integration note:
+- PostgresDomainRepository is a composable adapter; factory/config wiring remains intentionally
+  untouched per lane ownership. The order-cap lane must persist signal/account before its atomic
+  tb_order reservation and call reconcile_order afterward.
+- Reflected SQLAlchemy rows are parsed through strict Pydantic boundary projections; scoped
+  basedpyright completes with 0 errors and 0 warnings.
+- Disposable random-port PostgreSQL integration completed with 13 tests passed in 6.26 seconds;
+  the pre-existing app-db-1 and host ports 5432/5444 were not mutated.
+- PostgresRunStore implements DomainLifecycle. Stage 08 persists FK parents, signal, account,
+  and verdict before role 09; stages 09/10 reuse real IDs and reconcile the reserved order/fill.
+- Roles 05/06 now attach immutable consumed-source records to PipelineContext for both public and
+  fixture sources. PostgreSQL atomically upserts tb_disclosure, tb_news, tb_disclosure_signal,
+  and tb_news_signal with filing_no and rep_news_id foreign-key lineage.
+- A same-cycle rerun leaves exactly one row in each raw/signal source table; disposable PostgreSQL
+  integration passed 13 tests in 6.92 seconds with raw/source count 4 and unchanged run_id.
+
+Final remediation and independent verification:
+- The configured PostgreSQL app mounts POST /api/reviews/{signal_id}/process and owns review
+  repository plus market-data resource initialization/cleanup for the application lifespan.
+- Buy review bases use the quantity-weighted canonical tb_fill price; hold bases use the
+  strategist decision close. Deterministic fixture closes support offline T+1..T+5 advancement.
+- Roles 05/06 preserve immutable consumed-source records in public and fixture modes. One
+  transaction upserts tb_disclosure and tb_news plus packed signals whose filing_no and
+  rep_news_id foreign keys reference those raw rows; identical-cycle reruns remain singletons.
+- Independent disposable PostgreSQL rerun: 13 passed; focused source-record verification:
+  68 passed. Ruff, basedpyright, no-excuse, and split-module LOC gates passed.
+- AdversarialVerify: confirmed (confidence 0.97). Cleanup removed the random-port test container;
+  pre-existing app-db-1 and host ports 5432/5444 were unchanged.

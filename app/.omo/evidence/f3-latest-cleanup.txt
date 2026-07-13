@@ -1,0 +1,17 @@
+ Container quantinue_f3_latest-web-1 Stopping 
+ Container quantinue_f3_latest-web-1 Stopped 
+ Container quantinue_f3_latest-web-1 Removing 
+ Container quantinue_f3_latest-web-1 Removed 
+ Container quantinue_f3_latest-db-1 Stopping 
+ Container quantinue_f3_latest-db-1 Stopped 
+ Container quantinue_f3_latest-db-1 Removing 
+ Container quantinue_f3_latest-db-1 Removed 
+ Volume quantinue_f3_latest_quantinue_pgdata Removing 
+ Network quantinue_f3_latest_default Removing 
+ Volume quantinue_f3_latest_quantinue_pgdata Removed 
+ Network quantinue_f3_latest_default Removed 
+Untagged: quantinue_f3_latest-web:latest
+Deleted: sha256:3f233ba18230f2bb3c64685c99d88ee642e60f91813cc94fa4cfd53d8786419c
+project containers:
+project volumes:
+project networks:

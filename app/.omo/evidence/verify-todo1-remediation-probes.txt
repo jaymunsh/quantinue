@@ -1,0 +1,26 @@
+{"confidence_string": "REJECTED", "future": "REJECTED", "order_model_ids": {"account_id": "<class 'str'>", "broker_order_id": "str | None", "judgment_id": "<class 'str'>", "order_id": "<class 'str'>", "run_id": "<class 'str'>"}, "review_model_ids": {"judgment_id": "<class 'str'>", "review_id": "<class 'str'>", "run_id": "<class 'str'>"}, "review_sources": ["fixture", "market_data"]}
+--- SQL identifier columns ---
+CREATE TABLE IF NOT EXISTS tb_order (
+  id BIGSERIAL PRIMARY KEY, signal_id BIGINT NOT NULL REFERENCES tb_strategist_signals(id),
+  account_id BIGINT NOT NULL REFERENCES tb_account(id), ticker TEXT NOT NULL, quantity INT NOT NULL CHECK (quantity > 0),
+  entry_price NUMERIC NOT NULL CHECK (entry_price > 0), stop_price NUMERIC NOT NULL CHECK (stop_price > 0),
+  take_profit_price NUMERIC NOT NULL CHECK (take_profit_price > 0), order_type TEXT NOT NULL DEFAULT 'bracket' CHECK (order_type IN ('bracket')),
+  status TEXT NOT NULL CHECK (status IN ('planned','submitted','filled','failed','canceled')),
+  idempotency_key TEXT NOT NULL UNIQUE, broker_order_id TEXT UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), CHECK (stop_price < entry_price AND entry_price < take_profit_price)
+);
+CREATE TABLE IF NOT EXISTS tb_fill (
+  id BIGSERIAL PRIMARY KEY, order_id BIGINT NOT NULL REFERENCES tb_order(id), side TEXT NOT NULL CHECK (side IN ('buy','sell')),
+  quantity INT NOT NULL CHECK (quantity > 0), price NUMERIC NOT NULL CHECK (price > 0), filled_at TIMESTAMPTZ NOT NULL,
+  broker_fill_id TEXT UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS tb_review_price_snapshots (
+  signal_id BIGINT NOT NULL REFERENCES tb_strategist_signals(id), day_offset SMALLINT NOT NULL CHECK (day_offset BETWEEN 1 AND 5),
+  price_date DATE NOT NULL, close NUMERIC NOT NULL CHECK (close > 0), source TEXT NOT NULL CHECK (source IN ('fixture','market_data')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now(), PRIMARY KEY (signal_id, day_offset)
+);
+CREATE TABLE IF NOT EXISTS tb_review (
+  signal_id BIGINT PRIMARY KEY REFERENCES tb_strategist_signals(id), ret_1d NUMERIC NOT NULL, ret_3d NUMERIC NOT NULL,
+  ret_5d NUMERIC NOT NULL, is_hit BOOLEAN NOT NULL, max_drawdown NUMERIC NOT NULL CHECK (max_drawdown <= 0),
+  lesson TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+--- containers after tests ---

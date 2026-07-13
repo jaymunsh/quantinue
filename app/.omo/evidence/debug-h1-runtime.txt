@@ -1,0 +1,78 @@
+....                                                                     [100%]
+4 passed in 0.25s
+2026-07-13 08:13:55 [info     ] pipeline.run.started           run_id=6464330b5e7e414a94c527db9981f37f ticker=ZH11
+2026-07-13 08:13:55 [info     ] pipeline.run.completed         run_id=6464330b5e7e414a94c527db9981f37f stage_count=1 ticker=ZH11
+SUCCESS ConnectError run_status= completed calls= 2 attempts= [(1, 'retrying', 'TRANSPORT_FAILURE', 'provider transport failed', True), (2, 'completed', None, None, True)] running_count= 0 raw_present= False
+2026-07-13 08:13:55 [info     ] pipeline.run.started           run_id=9851f5645fae47a8b5f1bf62b9d3e1b9 ticker=ZH12
+2026-07-13 08:13:55 [info     ] pipeline.run.completed         run_id=9851f5645fae47a8b5f1bf62b9d3e1b9 stage_count=1 ticker=ZH12
+SUCCESS ReadError run_status= completed calls= 2 attempts= [(1, 'retrying', 'TRANSPORT_FAILURE', 'provider transport failed', True), (2, 'completed', None, None, True)] running_count= 0 raw_present= False
+2026-07-13 08:13:55 [info     ] pipeline.run.started           run_id=b084d95bb8834f82be7bb3f74a9b2f3e ticker=ZH13
+2026-07-13 08:13:55 [info     ] pipeline.run.completed         run_id=b084d95bb8834f82be7bb3f74a9b2f3e stage_count=1 ticker=ZH13
+SUCCESS RemoteProtocolError run_status= completed calls= 2 attempts= [(1, 'retrying', 'TRANSPORT_FAILURE', 'provider transport failed', True), (2, 'completed', None, None, True)] running_count= 0 raw_present= False
+2026-07-13 08:13:55 [info     ] pipeline.run.started           run_id=b3bb29ba987348f597e3d9a437725c03 ticker=ZH1X
+EXHAUST raised= ConnectError raw_in_raised= True
+EXHAUST persisted_status= failed run_id= b3bb29ba987348f597e3d9a437725c03 attempts= [(1, 'failed', 'TRANSPORT_FAILURE', 'provider transport failed', True)] running_count= 0 raw_present= False
+2026-07-13 08:13:55 [info     ] pipeline.run.started           run_id=b3bb29ba987348f597e3d9a437725c03 ticker=ZH1X
+2026-07-13 08:13:55 [info     ] pipeline.run.completed         run_id=b3bb29ba987348f597e3d9a437725c03 stage_count=1 ticker=ZH1X
+RESUME run_status= completed same_run_id= True calls= 2 attempts= [(1, 'failed', 'TRANSPORT_FAILURE', 'provider transport failed', True), (2, 'completed', None, None, True)] running_count= 0 stages= ['01'] evidence= ['01']
+2026-07-13 08:14:41 [info     ] pipeline.run.started           run_id=fb9c8c065d3346a8b208d1df82b52d6f ticker=ZH1P1
+2026-07-13 08:14:41 [info     ] pipeline.run.completed         run_id=fb9c8c065d3346a8b208d1df82b52d6f stage_count=1 ticker=ZH1P1
+PG_SUCCESS ConnectError run_status= completed calls= 2 attempts= [(1, 'retrying', 'TRANSPORT_FAILURE', 'provider transport failed', True), (2, 'completed', None, None, True)] running_count= 0 raw_present= False
+2026-07-13 08:14:42 [info     ] pipeline.run.started           run_id=b2a623a725874946b71410e7e81303c3 ticker=ZH1P2
+2026-07-13 08:14:42 [info     ] pipeline.run.completed         run_id=b2a623a725874946b71410e7e81303c3 stage_count=1 ticker=ZH1P2
+PG_SUCCESS ReadError run_status= completed calls= 2 attempts= [(1, 'retrying', 'TRANSPORT_FAILURE', 'provider transport failed', True), (2, 'completed', None, None, True)] running_count= 0 raw_present= False
+2026-07-13 08:14:42 [info     ] pipeline.run.started           run_id=68216ce11a764d5bba2f8b8c023e9b4a ticker=ZH1P3
+2026-07-13 08:14:42 [info     ] pipeline.run.completed         run_id=68216ce11a764d5bba2f8b8c023e9b4a stage_count=1 ticker=ZH1P3
+PG_SUCCESS RemoteProtocolError run_status= completed calls= 2 attempts= [(1, 'retrying', 'TRANSPORT_FAILURE', 'provider transport failed', True), (2, 'completed', None, None, True)] running_count= 0 raw_present= False
+2026-07-13 08:14:42 [info     ] pipeline.run.started           run_id=532e196a0fc34043bd1050b8e5f0a7e1 ticker=ZH1PX
+PG_EXHAUST raised= ConnectError raw_in_raised= True
+PG_EXHAUST persisted_status= failed run_id= 532e196a0fc34043bd1050b8e5f0a7e1 attempts= [(1, 'failed', 'TRANSPORT_FAILURE', 'provider transport failed', True)] running_count= 0 raw_present= False
+Traceback (most recent call last):
+  File "<stdin>", line 41, in <module>
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/anyio/_core/_eventloop.py", line 83, in run
+    return async_backend.run(func, args, {}, backend_options)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2436, in run
+    return runner.run(wrapper())
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_3/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.11/3.11.15_3/Frameworks/Python.framework/Versions/3.11/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/anyio/_backends/_asyncio.py", line 2419, in wrapper
+    return await func(*args)
+           ^^^^^^^^^^^^^^^^^
+  File "<stdin>", line 38, in main
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/orchestration/pipeline.py", line 112, in run
+    claim = await self._store.claim(key, request, resume_failed=self._policy.resume_failed)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/db/postgres.py", line 114, in claim
+    context = CONTEXT_ADAPTER.validate_json(to_json(row["payload"]))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/pydantic/type_adapter.py", line 492, in validate_json
+    return self.validator.validate_json(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+pydantic_core._pydantic_core.ValidationError: 1 validation error for PipelineContext
+request
+  Field required [type=missing, input_value={'side': None, 'order': N...e, 'evidence_trace': []}, input_type=dict]
+    For further information visit https://errors.pydantic.dev/2.13/v/missing
+Exception terminating connection <AdaptedConnection <asyncpg.connection.Connection object at 0x10bb7af20>>
+Traceback (most recent call last):
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 373, in _close_connection
+    self._dialect.do_terminate(connection)
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/sqlalchemy/dialects/postgresql/asyncpg.py", line 1131, in do_terminate
+    dbapi_connection.terminate()
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/sqlalchemy/connectors/asyncio.py", line 398, in terminate
+    if in_greenlet():
+       ^^^^^^^^^^^^^
+  File "/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.venv/lib/python3.11/site-packages/sqlalchemy/util/_concurrency_py3k.py", line 105, in in_greenlet
+    current = getcurrent()
+              ^^^^^^^^^^^^
+RuntimeError: greenlet is being finalized
+The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x10bb7af20>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+sys:1: SAWarning: The garbage collector is trying to clean up non-checked-in connection <AdaptedConnection <asyncpg.connection.Connection object at 0x10bb7af20>>, which will be terminated.  Please ensure that SQLAlchemy pooled connections are returned to the pool explicitly, either by calling ``close()`` or by using appropriate context managers to manage their lifecycle.
+TOGGLE_BAD payload_type=PipelineRun valid_context=False error_type= ValidationError first_error= ('request',) missing
+TOGGLE_GOOD payload_type=PipelineContext valid_context=True same_run_id= True ticker= ZH1TOGGLE
+CLEANUP containers=CLEANUP listeners=

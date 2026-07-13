@@ -1,0 +1,224 @@
+ Image quantinue_f3_final-web Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 568B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 335B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [1/6] FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim@sha256:4f5d923c9dcea037f57bda425dd209f3ec643da2f0b74227f68d09dab0b3bb36
+#5 resolve ghcr.io/astral-sh/uv:python3.11-bookworm-slim@sha256:4f5d923c9dcea037f57bda425dd209f3ec643da2f0b74227f68d09dab0b3bb36 done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 323.39kB 0.0s done
+#6 DONE 0.0s
+
+#7 [2/6] WORKDIR /workspace
+#7 CACHED
+
+#8 [3/6] COPY pyproject.toml uv.lock README.md ./
+#8 DONE 0.0s
+
+#9 [4/6] COPY src ./src
+#9 DONE 0.0s
+
+#10 [5/6] COPY config ./config
+#10 DONE 0.0s
+
+#11 [6/6] RUN uv sync --frozen --no-dev
+#11 0.265 Using CPython 3.11.14 interpreter at: /usr/local/bin/python3
+#11 0.265 Creating virtual environment at: .venv
+#11 0.307    Building quantinue @ file:///workspace
+#11 2.559 Downloading openai (1.6MiB)
+#11 2.563 Downloading pydantic-core (1.9MiB)
+#11 2.563 Downloading beartype (1.3MiB)
+#11 2.566 Downloading cryptography (4.5MiB)
+#11 2.568 Downloading pygments (1.2MiB)
+#11 2.573 Downloading brotli (1.5MiB)
+#11 2.574 Downloading asyncpg (2.8MiB)
+#11 2.574 Downloading zstandard (4.8MiB)
+#11 2.575 Downloading sqlalchemy (3.2MiB)
+#11 2.577 Downloading tiktoken (1.1MiB)
+#11 2.577 Downloading uvloop (3.6MiB)
+#11 4.404       Built quantinue @ file:///workspace
+#11 5.027  Downloaded tiktoken
+#11 5.246  Downloaded pygments
+#11 5.264  Downloaded beartype
+#11 5.435  Downloaded brotli
+#11 5.521  Downloaded openai
+#11 5.655  Downloaded pydantic-core
+#11 6.090  Downloaded asyncpg
+#11 6.198  Downloaded sqlalchemy
+#11 6.292  Downloaded uvloop
+#11 6.487  Downloaded cryptography
+#11 6.495  Downloaded zstandard
+#11 6.496 Prepared 120 packages in 6.21s
+#11 6.560 Installed 120 packages in 64ms
+#11 6.560  + aiofile==3.11.1
+#11 6.560  + annotated-doc==0.0.4
+#11 6.560  + annotated-types==0.7.0
+#11 6.560  + anthropic==0.116.0
+#11 6.560  + anyio==4.14.1
+#11 6.560  + argcomplete==3.7.0
+#11 6.560  + asyncpg==0.31.0
+#11 6.560  + attrs==26.1.0
+#11 6.560  + authlib==1.7.2
+#11 6.560  + backports-tarfile==1.2.0
+#11 6.560  + beartype==0.22.9
+#11 6.560  + brotli==1.2.0
+#11 6.560  + cachetools==7.1.4
+#11 6.560  + caio==0.9.25
+#11 6.560  + certifi==2026.6.17
+#11 6.560  + cffi==2.1.0
+#11 6.560  + charset-normalizer==3.4.9
+#11 6.560  + click==8.4.2
+#11 6.560  + cryptography==49.0.0
+#11 6.561  + distro==1.9.0
+#11 6.561  + dnspython==2.8.0
+#11 6.561  + docstring-parser==0.18.0
+#11 6.561  + email-validator==2.3.0
+#11 6.561  + exceptiongroup==1.3.1
+#11 6.561  + executing==2.2.1
+#11 6.561  + fastapi==0.139.0
+#11 6.561  + fastmcp-slim==3.4.4
+#11 6.561  + genai-prices==0.0.71
+#11 6.561  + google-auth==2.55.2
+#11 6.561  + google-genai==2.11.0
+#11 6.561  + googleapis-common-protos==1.75.0
+#11 6.561  + greenlet==3.5.3
+#11 6.561  + griffelib==2.1.0
+#11 6.561  + h11==0.16.0
+#11 6.561  + h2==4.3.0
+#11 6.561  + hpack==4.2.0
+#11 6.561  + httpcore==1.0.9
+#11 6.561  + httpcore2==2.5.0
+#11 6.561  + httptools==0.8.0
+#11 6.561  + httpx==0.28.1
+#11 6.561  + httpx-sse==0.4.3
+#11 6.561  + httpx2==2.5.0
+#11 6.561  + hyperframe==6.1.0
+#11 6.561  + idna==3.18
+#11 6.561  + importlib-metadata==9.0.0
+#11 6.561  + jaraco-classes==3.4.0
+#11 6.561  + jaraco-context==6.1.2
+#11 6.561  + jaraco-functools==4.5.0
+#11 6.561  + jeepney==0.9.0
+#11 6.561  + jinja2==3.1.6
+#11 6.561  + jiter==0.16.0
+#11 6.561  + joserfc==1.7.3
+#11 6.561  + jsonschema==4.26.0
+#11 6.561  + jsonschema-specifications==2025.9.1
+#11 6.561  + keyring==25.7.0
+#11 6.561  + logfire==4.37.0
+#11 6.561  + logfire-api==4.37.0
+#11 6.561  + markdown-it-py==4.2.0
+#11 6.561  + markupsafe==3.0.3
+#11 6.561  + mcp==1.28.1
+#11 6.561  + mdurl==0.1.2
+#11 6.561  + more-itertools==11.1.0
+#11 6.561  + openai==2.45.0
+#11 6.561  + opentelemetry-api==1.42.1
+#11 6.561  + opentelemetry-exporter-otlp-proto-common==1.42.1
+#11 6.561  + opentelemetry-exporter-otlp-proto-http==1.42.1
+#11 6.561  + opentelemetry-instrumentation==0.63b1
+#11 6.561  + opentelemetry-instrumentation-httpx==0.63b1
+#11 6.561  + opentelemetry-proto==1.42.1
+#11 6.561  + opentelemetry-sdk==1.42.1
+#11 6.561  + opentelemetry-semantic-conventions==0.63b1
+#11 6.561  + opentelemetry-util-http==0.63b1
+#11 6.561  + packaging==26.2
+#11 6.561  + platformdirs==4.10.0
+#11 6.561  + prompt-toolkit==3.0.52
+#11 6.561  + protobuf==6.33.6
+#11 6.561  + py-key-value-aio==0.4.5
+#11 6.562  + pyasn1==0.6.4
+#11 6.562  + pyasn1-modules==0.4.2
+#11 6.562  + pycparser==3.0
+#11 6.562  + pydantic==2.13.4
+#11 6.562  + pydantic-ai==2.9.0
+#11 6.562  + pydantic-ai-slim==2.9.0
+#11 6.562  + pydantic-core==2.46.4
+#11 6.562  + pydantic-evals==2.9.0
+#11 6.562  + pydantic-graph==2.9.0
+#11 6.562  + pydantic-settings==2.14.2
+#11 6.562  + pygments==2.20.0
+#11 6.562  + pyjwt==2.13.0
+#11 6.562  + pyperclip==1.11.0
+#11 6.562  + python-dotenv==1.2.2
+#11 6.562  + python-multipart==0.0.32
+#11 6.562  + pyyaml==6.0.3
+#11 6.562  + quantinue==0.1.0 (from file:///workspace)
+#11 6.562  + referencing==0.37.0
+#11 6.562  + regex==2026.7.10
+#11 6.562  + requests==2.34.2
+#11 6.562  + rich==15.0.0
+#11 6.562  + rpds-py==2026.6.3
+#11 6.562  + secretstorage==3.5.0
+#11 6.562  + sniffio==1.3.1
+#11 6.562  + sqlalchemy==2.0.51
+#11 6.562  + sse-starlette==3.4.5
+#11 6.562  + starlette==1.3.1
+#11 6.562  + structlog==26.1.0
+#11 6.562  + tenacity==9.1.4
+#11 6.562  + tiktoken==0.13.0
+#11 6.562  + tqdm==4.68.4
+#11 6.562  + truststore==0.10.4
+#11 6.562  + typing-extensions==4.16.0
+#11 6.562  + typing-inspection==0.4.2
+#11 6.562  + urllib3==2.7.0
+#11 6.562  + uvicorn==0.51.0
+#11 6.562  + uvloop==0.22.1
+#11 6.562  + watchfiles==1.2.0
+#11 6.562  + wcwidth==0.8.2
+#11 6.566  + websockets==16.1
+#11 6.566  + wrapt==2.2.2
+#11 6.566  + zipp==4.1.0
+#11 6.566  + zstandard==0.25.0
+#11 DONE 6.8s
+
+#12 exporting to image
+#12 exporting layers
+#12 exporting layers 4.7s done
+#12 exporting manifest sha256:fbf0b0d859a0fc9bdc876899bca307c4c42a25601b77c15b484a4d2b3b4a372c
+#12 exporting manifest sha256:fbf0b0d859a0fc9bdc876899bca307c4c42a25601b77c15b484a4d2b3b4a372c done
+#12 exporting config sha256:666842371c161574efae7811c8b6b56048f3c1b58d7978912dcaf3615313afcd done
+#12 exporting attestation manifest sha256:ecd9e32c593b4a51773d142f8790d110597892eb585ff4e7857d84727120b1b7 done
+#12 exporting manifest list sha256:e24e18b625d91eed356a7f7179bd8d4701e4ed58c13e1ce82e9037ca1ac0577b done
+#12 naming to docker.io/library/quantinue_f3_final-web:latest done
+#12 unpacking to docker.io/library/quantinue_f3_final-web:latest
+#12 unpacking to docker.io/library/quantinue_f3_final-web:latest 1.8s done
+#12 DONE 6.6s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image quantinue_f3_final-web Built 
+ Container quantinue_f3_final-db-1 Running 
+ Container quantinue_f3_final-web-1 Creating 
+ Container quantinue_f3_final-web-1 Created 
+ Container quantinue_f3_final-db-1 Waiting 
+ Container quantinue_f3_final-db-1 Healthy 
+ Container quantinue_f3_final-web-1 Starting 
+ Container quantinue_f3_final-web-1 Started 
+ Container quantinue_f3_final-db-1 Waiting 
+ Container quantinue_f3_final-web-1 Waiting 
+ Container quantinue_f3_final-db-1 Healthy 
+ Container quantinue_f3_final-web-1 Healthy 
+{"status":"ok","broker_mode":"mock","llm_mode":"mock"}
+{
+  "status": "completed",
+  "stages": 11,
+  "evidence": 11,
+  "review": "pending_t_plus_5"
+}
+NAME                       IMAGE                    COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+quantinue_f3_final-db-1    postgres:17-alpine       "docker-entrypoint.s…"   db        46 seconds ago   Up 46 seconds (healthy)   127.0.0.1:15445->5432/tcp
+quantinue_f3_final-web-1   quantinue_f3_final-web   "uv run --no-sync uv…"   web       6 seconds ago    Up 5 seconds (healthy)    127.0.0.1:18014->8000/tcp

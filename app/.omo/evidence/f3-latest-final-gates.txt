@@ -1,0 +1,34 @@
+f3-state-harness.py REMOVED
+133 files already formatted
+warning: Invalid `# noqa` directive on src/quantinue/orchestration/pipeline.py:164: expected a comma-separated list of codes (e.g., `# noqa: F401, F841`).
+warning: Invalid `# noqa` directive on src/quantinue/orchestration/pipeline.py:221: expected a comma-separated list of codes (e.g., `# noqa: F401, F841`).
+warning: Invalid `# noqa` directive on src/quantinue/orchestration/pipeline.py:246: expected a comma-separated list of codes (e.g., `# noqa: F401, F841`).
+TRY003 Avoid specifying long messages outside the exception class
+   --> tests/unit/test_pipeline_resilience.py:133:19
+    |
+131 |         if self.calls == 1:
+132 |             request = httpx2.Request("GET", "https://provider.invalid")
+133 |             raise self._error_type("private wire detail", request=request)
+    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+134 |         return context.add_stage(self.component, self.name, "recovered")
+    |
+
+EM101 Exception must not use a string literal, assign to variable first
+   --> tests/unit/test_pipeline_resilience.py:133:36
+    |
+131 |         if self.calls == 1:
+132 |             request = httpx2.Request("GET", "https://provider.invalid")
+133 |             raise self._error_type("private wire detail", request=request)
+    |                                    ^^^^^^^^^^^^^^^^^^^^^
+134 |         return context.add_stage(self.component, self.name, "recovered")
+    |
+help: Assign to variable; remove string literal
+
+Found 2 errors.
+No fixes available (1 hidden fix can be enabled with the `--unsafe-fixes` option).
+18765 FREE
+18766 FREE
+18767 FREE
+18768 FREE
+15444 FREE
+18013 FREE

@@ -1,0 +1,68 @@
+[
+  {
+    "preset": "mobile",
+    "run": 1,
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "subAudits": []
+  },
+  {
+    "preset": "mobile",
+    "run": 2,
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "subAudits": []
+  },
+  {
+    "preset": "mobile",
+    "run": 3,
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "subAudits": []
+  },
+  {
+    "preset": "desktop",
+    "run": 1,
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "subAudits": []
+  },
+  {
+    "preset": "desktop",
+    "run": 2,
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "subAudits": []
+  },
+  {
+    "preset": "desktop",
+    "run": 3,
+    "scores": {
+      "performance": 100,
+      "accessibility": 100,
+      "best-practices": 100,
+      "seo": 100
+    },
+    "subAudits": []
+  }
+]

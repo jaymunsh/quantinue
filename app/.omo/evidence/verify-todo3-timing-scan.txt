@@ -1,0 +1,11 @@
+src/quantinue/orchestration/retry.py:37:    async def sleep(self, delay_seconds: float) -> None:
+src/quantinue/orchestration/retry.py:119:            await sleeper.sleep(policy.delay_after(attempt))
+src/quantinue/orchestration/checkpoint.py:25:        """Reject malformed checkpoint identity and time."""
+src/quantinue/orchestration/lifecycle.py:21:def utc_now() -> datetime:
+src/quantinue/orchestration/lifecycle.py:23:    return datetime.now(UTC)
+src/quantinue/orchestration/lifecycle.py:90:    transitioned_at: datetime = field(default_factory=utc_now)
+src/quantinue/orchestration/lifecycle.py:91:    clock: Clock = field(default=utc_now, repr=False, compare=False)
+src/quantinue/orchestration/lifecycle.py:106:    transitioned_at: datetime = field(default_factory=utc_now)
+src/quantinue/orchestration/lifecycle.py:107:    clock: Clock = field(default=utc_now, repr=False, compare=False)
+tests/unit/test_retry.py:26:    async def sleep(self, delay_seconds: float) -> None:
+tests/unit/test_retry.py:55:async def test_transient_failure_succeeds_on_bounded_retry_without_real_sleep() -> None:

@@ -1,0 +1,93 @@
+Task 4 — Role 11 T+5 reviewer evidence
+Date: 2026-07-13 Asia/Seoul
+
+RED proof
+---------
+Command:
+  uv run pytest tests/unit/test_role_11_reviewer.py -q
+
+Observed before remediation:
+  ImportError: cannot import name 'ReviewNotReadyError'
+  1 error during collection, exit=2
+
+This proved the strengthened tests preceded the implementation of injected
+readiness, lineage/timestamp contracts, and computed-only numeric output.
+
+GREEN proof
+-----------
+Commands and results:
+  uv run ruff check src/quantinue/roles/role_11_reviewer tests/unit/test_role_11_reviewer.py
+  All checks passed.
+
+  uv run basedpyright src/quantinue/roles/role_11_reviewer tests/unit/test_role_11_reviewer.py
+  0 errors, 0 warnings, 0 notes
+
+  uv run pytest tests/unit/test_role_11_reviewer.py -q
+  11 passed in 0.06s
+
+  uv run pytest tests/test_pipeline.py tests/unit/test_role_11_reviewer.py -q
+  13 passed in 1.00s
+
+  uv run .../check-no-excuse-rules.py src/quantinue/roles/role_11_reviewer tests/unit/test_role_11_reviewer.py
+  no violations in 5 file(s)
+
+Manual offline calendar QA
+--------------------------
+No network, API key, database, or wall clock was used.
+
+  holiday_weekend_t5=2026-07-09
+    Start 2026-07-01; skips observed Independence Day and weekend.
+
+  dst_spanning_t5=2026-11-06
+  dst_spanning_close_utc=2026-11-06T21:00:00+00:00
+    Start 2026-10-30; crosses the US DST transition and weekend.
+
+  summer_close_utc=2026-07-13T20:00:00+00:00
+  winter_close_utc=2026-12-14T21:00:00+00:00
+    Confirms America/New_York session close conversion changes with DST.
+
+Malformed/stale/direct-output probes
+------------------------------------
+Automated tests prove:
+  - a snapshot with observed_at after captured_at is rejected;
+  - a wrong price_date for its day_offset is rejected through the injected
+    TradingCalendar protocol;
+  - scoring at 19:59 UTC before a 20:00 UTC T+5 close raises
+    ReviewNotReadyError;
+  - caller-supplied ret_5d is rejected as an extra input;
+  - ret_1d/ret_3d/ret_5d/is_hit/max_drawdown are computed from immutable input;
+  - buy uses filled_price and hold uses decision_close;
+  - output carries run_id, signal_id, evidence_ids, and reviewed_at lineage.
+
+Cleanup audit
+-------------
+  - No network access or credentials used.
+  - No sleeps, temporary scripts, debug prints, or generated fixtures retained.
+  - Existing zero-argument Reviewer() and async execute() behavior preserved.
+  - No core/canonical contract files edited by this task.
+
+Second remediation — explicit parameter matrix
+----------------------------------------------
+Matrix exercised in tests/unit/test_role_11_parameter_matrix.py:
+  valid          accepted; output lineage remains computable
+  missing        missing run_id rejected
+  stale          price observed at/before decision rejected
+  future         price observed after capture rejected
+  cross-run      snapshot run_id different from signal rejected
+  contradiction  hold containing a fill rejected
+  missing-parent snapshot without a signal evidence parent rejected
+
+N/A is data, not an omitted nullable dimension: a hold must contain exactly one
+NotApplicable(dimension="filled_price", reason=<non-empty explanation>). The
+valid matrix asserts both the dimension and its preserved reason. A buy cannot
+mark its required fill N/A.
+
+Fresh final gates:
+  ruff: All checks passed
+  basedpyright: 0 errors, 0 warnings, 0 notes
+  pytest role11 matrix + role11 behavior + pipeline: 20 passed in 1.12s
+  official check-no-excuse-rules.py: no violations in 6 file(s)
+
+All Pydantic boundary failures now use PydanticCustomError with stable error
+codes. Calendar/service failures are typed dataclass exceptions. No generic
+ValueError string is raised in role 11.

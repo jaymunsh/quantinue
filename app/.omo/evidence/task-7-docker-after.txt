@@ -1,0 +1,14 @@
+f77c13dec064	app-web-1	0.0.0.0:8011->8000/tcp, [::]:8011->8000/tcp
+e1979ec0ffbe	app-db-1	5432/tcp
+4847c779f1a4	infra-web-1	127.0.0.1:3001->3000/tcp
+48608a700da7	infra-api-1	127.0.0.1:8000->8000/tcp
+ddabf212fad4	infra-worker-1	
+f7aee75d3940	infra-postgres-1	5432/tcp
+80a8871b4194	infra-redis-1	6379/tcp
+07a2c89aa052	pf-postgres	0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+8232fcfa2ee6	pf-opensearch	0.0.0.0:9200->9200/tcp, [::]:9200->9200/tcp
+002765ed0c5f	demo-auto-trading-system-kr-postgres-1	0.0.0.0:55432->5432/tcp, [::]:55432->5432/tcp
+f41e7a7b23b0	pf-kafka	0.0.0.0:9092->9092/tcp, [::]:9092->9092/tcp
+64c77edf138d	pf-redis	0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+ee2e40020bb2	pf-minio	0.0.0.0:9000-9001->9000-9001/tcp, [::]:9000-9001->9000-9001/tcp
+e18b7e2eb0de	lawapp-qdrant	0.0.0.0:6333-6334->6333-6334/tcp, [::]:6333-6334->6333-6334/tcp

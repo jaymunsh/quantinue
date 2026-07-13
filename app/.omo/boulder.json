@@ -1,0 +1,30 @@
+{
+  "schema_version": 2,
+  "active_work_id": "quantinue-live-progress",
+  "works": {
+    "quantinue-mvp-implementation": {
+      "work_id": "quantinue-mvp-implementation",
+      "active_plan": ".omo/plans/quantinue-mvp-implementation.md",
+      "plan_name": "quantinue-mvp-implementation",
+      "session_ids": ["codex:root"],
+      "status": "complete",
+      "worktree_path": null
+    },
+    "quantinue-control-room-detail": {
+      "work_id": "quantinue-control-room-detail",
+      "active_plan": ".omo/plans/quantinue-control-room-detail.md",
+      "plan_name": "quantinue-control-room-detail",
+      "session_ids": ["codex:root"],
+      "status": "complete",
+      "worktree_path": null
+    },
+    "quantinue-live-progress": {
+      "work_id": "quantinue-live-progress",
+      "active_plan": ".omo/plans/quantinue-live-progress.md",
+      "plan_name": "quantinue-live-progress",
+      "session_ids": ["codex:root"],
+      "status": "active",
+      "worktree_path": null
+    }
+  }
+}

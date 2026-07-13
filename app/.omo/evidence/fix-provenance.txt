@@ -1,0 +1,348 @@
+PROVENANCE FOCUSED TESTS
+...............                                                          [100%]
+15 passed in 1.19s
+RUFF
+PLR0913 Too many arguments in function definition (6 > 5)
+  --> src/quantinue/db/contracts.py:75:15
+   |
+73 |         ...
+74 |
+75 |     async def fail_attempt(
+   |               ^^^^^^^^^^^^
+76 |         self,
+77 |         key: str,
+   |
+help: Consider adding `@typing.override` if changing the function signature would violate the Liskov Substitution Principle
+
+PLR0913 Too many arguments in function definition (6 > 5)
+  --> src/quantinue/db/memory.py:77:15
+   |
+75 |         self._contexts[key] = context
+76 |
+77 |     async def fail_attempt(
+   |               ^^^^^^^^^^^^
+78 |         self,
+79 |         key: str,
+   |
+help: Consider adding `@typing.override` if changing the function signature would violate the Liskov Substitution Principle
+
+PLR0913 Too many arguments in function definition (6 > 5)
+   --> src/quantinue/db/postgres.py:185:15
+    |
+183 |             )
+184 |
+185 |     async def fail_attempt(
+    |               ^^^^^^^^^^^^
+186 |         self,
+187 |         key: str,
+    |
+help: Consider adding `@typing.override` if changing the function signature would violate the Liskov Substitution Principle
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> src/quantinue/orchestration/factory.py:3:1
+   |
+ 1 |   """Dependency composition for the default 01 to 11 pipeline."""
+ 2 |
+ 3 | / from pathlib import Path
+ 4 | |
+ 5 | | from typing import assert_never
+ 6 | |
+ 7 | | from quantinue.broker.provider import AlpacaBroker, Broker, MockBroker, build_broker
+ 8 | | from quantinue.core.config import BrokerMode, DatabaseMode, Settings
+ 9 | | from quantinue.db.postgres import PostgresRunStore
+10 | | from quantinue.db.store import InMemoryRunStore, RunStore
+11 | | from quantinue.llm.provider import DeterministicAnalyzer, LlmAnalyzer, build_llm_analyzer
+12 | | from quantinue.orchestration.pipeline import PipelineOrchestrator, PipelineRole
+13 | | from quantinue.orchestration.policy import load_pipeline_policy
+14 | | from quantinue.roles.role_01_universe_screener.service import UniverseScreener
+15 | | from quantinue.roles.role_02_technical_analysis.service import TechnicalAnalysis
+16 | | from quantinue.roles.role_03_daily_screener.service import DailyScreener
+17 | | from quantinue.roles.role_04_macro_analysis.service import MacroAnalysis
+18 | | from quantinue.roles.role_05_disclosure_analysis.service import DisclosureAnalysis
+19 | | from quantinue.roles.role_06_news_analysis.service import NewsAnalysis
+20 | | from quantinue.roles.role_07_strategist.service import Strategist
+21 | | from quantinue.roles.role_08_critic.service import Critic
+22 | | from quantinue.roles.role_09_risk_portfolio.service import RiskPortfolio
+23 | | from quantinue.roles.role_10_order_execution.service import OrderExecution
+24 | | from quantinue.roles.role_11_reviewer.service import Reviewer
+   | |_____________________________________________________________^
+   |
+help: Organize imports
+
+TRY301 Abstract `raise` to an inner function
+   --> src/quantinue/orchestration/pipeline.py:137:21
+    |
+135 |                     result = await role.execute(context)
+136 |                 if deadline.cancel_called:
+137 |                     raise TimeoutError
+    |                     ^^^^^^^^^^^^^^^^^^
+138 |             except Exception as error:  # noqa: BLE001, BROAD_EXCEPT_OK
+139 |                 retryable, status, code, message = _classify_failure(error)
+    |
+
+RUF100 [*] Unused `noqa` directive (unused: `BLE001`)
+   --> src/quantinue/orchestration/pipeline.py:138:41
+    |
+136 |                 if deadline.cancel_called:
+137 |                     raise TimeoutError
+138 |             except Exception as error:  # noqa: BLE001, BROAD_EXCEPT_OK
+    |                                         ^^^^^^^^^^^^^^
+139 |                 retryable, status, code, message = _classify_failure(error)
+140 |                 has_budget = attempt_no < retry.max_attempts
+    |
+help: Remove unused `noqa` directive
+
+C901 `_classify_failure` is too complex (11 > 10)
+   --> src/quantinue/orchestration/pipeline.py:178:5
+    |
+178 | def _classify_failure(error: Exception) -> tuple[bool, str, str, str]:
+    |     ^^^^^^^^^^^^^^^^^
+179 |     """Normalize role/provider failures to redacted stable persistence fields."""
+180 |     match error:
+    |
+
+PLR0911 Too many return statements (11 > 6)
+   --> src/quantinue/orchestration/pipeline.py:178:5
+    |
+178 | def _classify_failure(error: Exception) -> tuple[bool, str, str, str]:
+    |     ^^^^^^^^^^^^^^^^^
+179 |     """Normalize role/provider failures to redacted stable persistence fields."""
+180 |     match error:
+    |
+
+TC003 Move standard library import `pathlib.Path` into a type-checking block
+ --> src/quantinue/orchestration/policy.py:6:21
+  |
+5 | import json
+6 | from pathlib import Path
+  |                     ^^^^
+7 |
+8 | import yaml
+  |
+help: Move into type-checking block
+
+SIM300 [*] Yoda condition detected
+   --> tests/integration/schema_sql_contract.py:465:12
+    |
+463 |     postgres_catalog: Catalog,
+464 | ) -> None:
+465 |     assert ORDER_LEG_COLUMNS <= postgres_catalog.order_columns
+    |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+invalid-syntax: Expected class, function definition or async function definition after decorator
+   --> tests/unit/test_broker_provider.py:252:1
+    |
+251 | @pytest.mark.anyio
+    |                   ^
+    |
+
+I001 [*] Import block is un-sorted or un-formatted
+  --> tests/unit/test_broker_reservations.py:3:1
+   |
+ 1 |   """Concurrency and lifecycle tests for broker order reservations."""
+ 2 |
+ 3 | / from __future__ import annotations
+ 4 | |
+ 5 | | from typing import TYPE_CHECKING, assert_never
+ 6 | |
+ 7 | | import anyio
+ 8 | | import httpx2
+ 9 | | import pytest
+10 | | from anyio.lowlevel import checkpoint
+11 | |
+12 | | from quantinue.broker.provider import AlpacaBroker, InMemoryOrderReservations, MockBroker
+13 | | from quantinue.broker.reservations import (
+14 | |     ClaimKind,
+15 | |     CompletedClaim,
+16 | |     InFlightClaim,
+17 | |     OwnerClaim,
+18 | |     ReservationClaim,
+19 | |     ReservationOwnerToken,
+20 | | )
+21 | | from tests.unit.test_broker_provider import broker_with, plan, settings
+   | |_______________________________________________________________________^
+22 |
+23 |   if TYPE_CHECKING:
+   |
+help: Organize imports
+
+E501 Line too long (152 > 100)
+  --> tests/unit/test_broker_reservations.py:46:101
+   |
+44 | …
+45 | …
+46 | …client_order_id": "q-a1-s4022", "status": "accepted", "qty": "2", "filled_avg_price": None})
+   |                                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+47 | …
+48 | …ransport(response))
+   |
+
+E501 Line too long (128 > 100)
+  --> tests/unit/test_broker_reservations.py:91:101
+   |
+89 | @pytest.mark.parametrize(
+90 |     ("provider_status", "normalized_status"),
+91 |     [("submitted", "submitted"), ("new", "accepted"), ("filled", "filled"), ("canceled", "canceled"), ("rejected", "rejected")],
+   |                                                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+92 | )
+93 | async def test_supported_order_lifecycle_is_observable(provider_status: str, normalized_status: str) -> None:
+   |
+
+E501 Line too long (109 > 100)
+  --> tests/unit/test_broker_reservations.py:93:101
+   |
+91 |     [("submitted", "submitted"), ("new", "accepted"), ("filled", "filled"), ("canceled", "canceled"), ("rejected", "rejected")],
+92 | )
+93 | async def test_supported_order_lifecycle_is_observable(provider_status: str, normalized_status: str) -> None:
+   |                                                                                                     ^^^^^^^^^
+94 |     def handler(_request: httpx2.Request) -> httpx2.Response:
+95 |         return httpx2.Response(200, json={"id": "order-1", "client_order_id": "q-a1-s4022", "status": provider_status, "qty": "2", "fi…
+   |
+
+E501 Line too long (199 > 100)
+  --> tests/unit/test_broker_reservations.py:95:101
+   |
+93 | …ized_status: str) -> None:
+94 | …
+95 | …-s4022", "status": provider_status, "qty": "2", "filled_avg_price": "100" if provider_status == "filled" else None})
+   |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+96 | …
+97 | …
+   |
+
+FBT001 Boolean-typed positional argument in function definition
+  --> tests/unit/test_config.py:69:57
+   |
+68 | @pytest.mark.parametrize("trading_enabled", [False, True])
+69 | def test_selected_alpaca_mode_requires_both_credentials(trading_enabled: bool) -> None:
+   |                                                         ^^^^^^^^^^^^^^^
+70 |     with pytest.raises(ValidationError, match="alpaca_api_key"):
+71 |         _ = Settings.model_validate(
+   |
+
+EM101 Exception must not use a string literal, assign to variable first
+  --> tests/unit/test_pipeline_resilience.py:50:41
+   |
+48 |         self.calls += 1
+49 |         if self.calls < 3:
+50 |             raise TransientFailureError("fixture", "unavailable")
+   |                                         ^^^^^^^^^
+51 |         return context.add_stage(self.component, self.name, "ok")
+   |
+help: Assign to variable; remove string literal
+
+EM101 Exception must not use a string literal, assign to variable first
+  --> tests/unit/test_pipeline_resilience.py:73:38
+   |
+71 |         del context
+72 |         self.calls += 1
+73 |         raise ValidationFailureError("input", "invalid")
+   |                                      ^^^^^^^
+   |
+help: Assign to variable; remove string literal
+
+EM101 Exception must not use a string literal, assign to variable first
+  --> tests/unit/test_pipeline_resilience.py:94:41
+   |
+92 |         self.calls += 1
+93 |         if self.calls == 1:
+94 |             raise TransientFailureError("fixture", "one outage")
+   |                                         ^^^^^^^^^
+95 |         return context.add_stage("02", self.name, "second")
+   |
+help: Assign to variable; remove string literal
+
+TRY003 Avoid specifying long messages outside the exception class
+   --> tests/unit/test_pipeline_resilience.py:104:15
+    |
+102 |     async def execute(self, context: PipelineContext) -> PipelineContext:
+103 |         del context
+104 |         raise RuntimeError("secret provider payload sk-live-123")
+    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+
+EM101 Exception must not use a string literal, assign to variable first
+   --> tests/unit/test_pipeline_resilience.py:104:28
+    |
+102 |     async def execute(self, context: PipelineContext) -> PipelineContext:
+103 |         del context
+104 |         raise RuntimeError("secret provider payload sk-live-123")
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+help: Assign to variable; remove string literal
+
+Found 22 errors.
+[*] 4 fixable with the `--fix` option (5 hidden fixes can be enabled with the `--unsafe-fixes` option).
+BASEDPYRIGHT
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/db/memory.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/db/memory.py:43:13 - warning: Result of call expression is of type "PipelineRun | None" and is not used; assign to variable "_" if this is intentional (reportUnusedCallResult)
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/db/postgres.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/db/postgres.py:77:24 - error: Argument type is Any
+    Argument corresponds to parameter "whereclause" in function "where" (reportAny)
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/orchestration/pipeline.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/orchestration/pipeline.py:150:51 - error: "result" is possibly unbound (reportPossiblyUnboundVariable)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/orchestration/pipeline.py:151:20 - error: "result" is possibly unbound (reportPossiblyUnboundVariable)
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/orchestration/policy.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/orchestration/policy.py:47:9 - error: Type of "payload" is Any (reportAny)
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/integration/schema_sql_contract.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/integration/schema_sql_contract.py:388:21 - error: Implicit string concatenation not allowed (reportImplicitStringConcatenation)
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/real_key/test_alpaca_real_key.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/real_key/test_alpaca_real_key.py:44:5 - warning: Result of call expression is of type "Response" and is not used; assign to variable "_" if this is intentional (reportUnusedCallResult)
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_broker_provider.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_broker_provider.py:7:8 - error: Import "anyio" is not accessed (reportUnusedImport)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_broker_provider.py:10:28 - error: Import "checkpoint" is not accessed (reportUnusedImport)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_broker_provider.py:15:5 - error: Import "ClaimKind" is not accessed (reportUnusedImport)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_broker_provider.py:33:42 - error: Import "OrderResult" is not accessed (reportUnusedImport)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_broker_provider.py:252:1 - error: Expected function or class declaration after decorator
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_pipeline_resilience.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_pipeline_resilience.py:21:15 - error: Method "sleep" is not marked as override but is overriding a method in class "Sleeper" (reportImplicitOverride)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_pipeline_resilience.py:122:9 - warning: Result of call expression is of type "PipelineRun" and is not used; assign to variable "_" if this is intentional (reportUnusedCallResult)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_pipeline_resilience.py:138:9 - warning: Result of call expression is of type "PipelineRun" and is not used; assign to variable "_" if this is intentional (reportUnusedCallResult)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_pipeline_resilience.py:150:9 - warning: Result of call expression is of type "PipelineRun" and is not used; assign to variable "_" if this is intentional (reportUnusedCallResult)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_pipeline_resilience.py:166:9 - warning: Result of call expression is of type "PipelineRun" and is not used; assign to variable "_" if this is intentional (reportUnusedCallResult)
+11 errors, 6 warnings, 0 notes
+LOC MODIFIED PYTHON
+src/quantinue/core/contracts.py      188
+src/quantinue/core/schemas.py      147
+src/quantinue/api/schemas.py       81
+src/quantinue/main.py      194
+src/quantinue/roles/role_01_universe_screener        0
+src/quantinue/roles/role_02_technical_analysis        0
+src/quantinue/roles/role_03_daily_screener        0
+src/quantinue/roles/role_04_macro_analysis        0
+src/quantinue/roles/role_05_disclosure_analysis        0
+src/quantinue/roles/role_06_news_analysis        0
+src/quantinue/roles/role_07_strategist        0
+src/quantinue/roles/role_08_critic        0
+src/quantinue/roles/role_09_risk_portfolio        0
+src/quantinue/roles/role_10_order_execution        0
+src/quantinue/roles/role_11_reviewer        0
+tests/unit/test_pipeline_evidence_trace.py       85
+tests/test_web.py      179
+SCOPED RUFF
+F401 [*] `pydantic.field_validator` imported but unused
+  --> src/quantinue/core/schemas.py:14:5
+   |
+12 |     JsonValue,
+13 |     StringConstraints,
+14 |     field_validator,
+   |     ^^^^^^^^^^^^^^^
+15 |     model_validator,
+16 | )
+   |
+help: Remove unused import: `pydantic.field_validator`
+
+Found 1 error.
+[*] 1 fixable with the `--fix` option.
+SCOPED BASEDPYRIGHT
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/core/schemas.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/core/schemas.py:14:5 - error: Import "field_validator" is not accessed (reportUnusedImport)
+1 error, 0 warnings, 0 notes
+FINAL SCOPED RUFF
+All checks passed!
+FINAL SCOPED BASEDPYRIGHT
+0 errors, 0 warnings, 0 notes
+FINAL FOCUSED
+...............                                                          [100%]
+15 passed in 1.22s

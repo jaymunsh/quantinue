@@ -1,0 +1,41 @@
+Quantinue final security/input/schema boundary evidence
+Date: 2026-07-13 Asia/Seoul
+
+Implemented:
+- Strict ticker boundary after strip: ^[A-Z0-9.-]{1,12}$; lowercase, whitespace,
+  NUL, paths, HTML, CJK, slash and underscore rejected.
+- Memory HTTP API and opt-in real PostgreSQL HTTP API assert 422 before pipeline work.
+- Settings rejects selected Alpaca without both nonblank SecretStr credentials, rejects
+  trading_enabled outside Alpaca mode, and accepts only the exact HTTPS paper URL.
+- Configurable QUANTINUE_DAILY_NEW_ORDER_CAP with deterministic role-09 cap gate.
+- tb_order UNIQUE(account_id, signal_id).
+- Broker/domain/DDL represent bracket parent, stop-child and take-profit-child IDs.
+- Parent .gitignore protects app/.env, app/.env.*, local secret/QA/result artifacts while
+  explicitly retaining app/.env.example.
+- Repo-runnable scripts/scan_secrets.sh uses gitleaks when installed and a deterministic
+  provider-token/private-key regex fallback otherwise; .gitleaks.toml contains no secrets.
+- No event_type database CHECK was introduced.
+
+Verification:
+- uv run pytest -q ticker/config/risk/common-schema/broker selection
+  Result: 70 passed; PostgreSQL startup readiness initially exposed a too-tight catalog poll.
+- uv run pytest -q tests/integration/test_schema_sql.py (after bounded readiness fix)
+  Result: 4 passed in 1.36s against a fresh no-host-port PostgreSQL container.
+- uv run basedpyright selected modified Python files
+  Result: 0 errors, 0 warnings, 0 notes.
+- uv run ruff format --check selected modified files
+  Result: 14 files already formatted.
+- uv run ruff check selected modified files
+  Result: All checks passed.
+- ./scripts/scan_secrets.sh
+  Result: No provider-token or private-key patterns detected.
+- git check-ignore -v app/.env app/.env.local app/.qa/secret.json
+  app/test-results/local.json
+  Result: all matched explicit parent .gitignore rules.
+- git check-ignore -q app/.env.example
+  Result: rc=1 (not ignored), as required.
+
+Concurrent-suite note:
+- A separate worker was actively rewriting the orchestration failure signature during this task.
+  The task owner was notified to finish stable-code-only persisted failure sanitization at that
+  orchestrator boundary and rerun the complete suite.

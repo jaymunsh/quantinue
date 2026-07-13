@@ -1,0 +1,27 @@
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/broker/provider.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/src/quantinue/broker/provider.py:105:21 - error: Argument of type "dict[str, SecretStr]" cannot be assigned to parameter "headers" of type "HeaderTypes | None" in function "__init__"
+    Type "dict[str, SecretStr]" is not assignable to type "HeaderTypes | None"
+      "dict[str, SecretStr]" is not assignable to "Headers"
+      "dict[str, SecretStr]" is not assignable to "Mapping[str, str]"
+        Type parameter "_VT_co@Mapping" is covariant, but "SecretStr" is not a subtype of "str"
+          "SecretStr" is not assignable to "str"
+      "dict[str, SecretStr]" is not assignable to "Mapping[bytes, bytes]"
+        Type parameter "_KT@Mapping" is invariant, but "str" is not the same as "bytes"
+        Type parameter "_VT_co@Mapping" is covariant, but "SecretStr" is not a subtype of "bytes"
+    ... (reportArgumentType)
+/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:173:9 - error: Type of "analyzer" is unknown (reportUnknownVariableType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:173:72 - error: No parameter named "openai_client" (reportCallIssue)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:174:9 - error: Type of "result" is unknown (reportUnknownVariableType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:174:24 - error: Type of "analyze" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:176:12 - error: Type of "model_dump" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:176:12 - error: Type of "keys" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:177:12 - error: Type of "metadata" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:177:12 - error: Type of "model" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:178:12 - error: Type of "metadata" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:178:12 - error: Type of "input_hash" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:179:12 - error: Type of "metadata" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:179:12 - error: Type of "prompt_version" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:180:12 - error: Type of "metadata" is unknown (reportUnknownMemberType)
+  /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/tests/unit/test_llm_provider.py:180:12 - error: Type of "policy_version" is unknown (reportUnknownMemberType)
+15 errors, 0 warnings, 0 notes

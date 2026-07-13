@@ -1,0 +1,76 @@
+Task 4 market-data adapters — offline/wire QA receipt
+Date: 2026-07-13 Asia/Seoul
+
+RED proof (before implementation)
+Command:
+  uv run pytest tests/unit/test_market_data.py -q
+Observed:
+  ModuleNotFoundError: No module named 'quantinue.market_data'
+  collection stopped with 1 error
+
+GREEN scoped verification
+Commands:
+  uv run pytest tests/unit/test_market_data.py -q
+  uv run ruff check src/quantinue/market_data tests/unit/test_market_data.py
+  uv run basedpyright src/quantinue/market_data tests/unit/test_market_data.py
+  uv run /Users/sunghyuk/.codex/plugins/cache/sisyphuslabs/omo/4.17.0/skills/programming/scripts/python/check-no-excuse-rules.py src/quantinue/market_data tests/unit/test_market_data.py
+Observed:
+  6 passed in 0.07s
+  All checks passed!
+  0 errors, 0 warnings, 0 notes
+  no violations in 6 file(s)
+
+Manual offline QA
+The test test_fixture_returns_stable_no_key_snapshot constructs FixtureMarketData twice
+without opening a socket. It confirms stable NVDA content and execution/source lineage.
+The test test_public_defaults_require_no_secret_query_parameters confirms the public
+Stooq/FRED endpoints contain neither api_key nor apikey query parameters.
+
+Wire-fake QA (no live acceptance)
+The test test_http_adapters_parse_public_feeds_at_wire_boundary routes all five public
+adapters through httpx2.MockTransport and checks normalized NASDAQ, candle, macro, SEC,
+and RSS output plus captured_at lineage. No external DNS or network is used.
+
+Adversarial malformed payload
+The test test_malformed_wire_payload_is_rejected_at_boundary sends a NASDAQ row missing
+its required symbol. Pydantic raises ValidationError at the adapter boundary; malformed
+data cannot enter the pipeline.
+
+HTTP policy receipt
+test_owned_http_factory_exposes_required_transport_policy locks HTTP/2=true, retries=3,
+pool limits 200/40 with 30s keepalive, split timeouts 5/30/10/10, and TCP_NODELAY=1.
+build_http_client applies this immutable policy to AsyncHTTPTransport and AsyncClient.
+
+Cleanup receipt
+Both successful multi-feed and malformed-payload context tests assert client.is_closed
+after HttpMarketData.__aexit__. public_http_client also owns its client with async with.
+
+Pure LOC receipt
+  39  src/quantinue/market_data/__init__.py
+  83  src/quantinue/market_data/fixture.py
+  51  src/quantinue/market_data/http_client.py
+  250 src/quantinue/market_data/http_source.py
+  68  src/quantinue/market_data/models.py
+  150 tests/unit/test_market_data.py
+No file exceeds the 250 pure-LOC ceiling. http_source.py is at the ceiling and must be
+split before any future production lines are added.
+
+Full-suite note
+The contemporaneous full run reported 137 passed and 7 failures in concurrently edited,
+out-of-scope orchestration/broker/role code (InMemoryRunStore.save, disclosure fixture
+time, and a missing ValidationError test import). No failure referenced market_data.
+
+Fresh strict-gate rerun (parent-requested remediation)
+Commands:
+  uv run /Users/sunghyuk/.codex/plugins/cache/sisyphuslabs/omo/4.17.0/skills/programming/scripts/python/check-no-excuse-rules.py src/quantinue/market_data tests/unit/test_market_data.py
+  rg -n "raise ValueError|ValueError\\(" src/quantinue/market_data tests/unit/test_market_data.py
+  uv run pytest tests/unit/test_market_data.py -q
+  uv run ruff check src/quantinue/market_data tests/unit/test_market_data.py
+  uv run basedpyright src/quantinue/market_data tests/unit/test_market_data.py
+Observed:
+  no violations in 6 file(s)
+  ValueError search returned no matches
+  6 passed in 0.07s
+  All checks passed!
+  0 errors, 0 warnings, 0 notes
+No source or test changes were required for this rerun.

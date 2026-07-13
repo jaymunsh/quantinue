@@ -1,0 +1,41 @@
+DoneClaim: typed data selection, schedule seam, and public market-data composition
+
+Implemented
+- DataMode is a closed fixture|public StrEnum parsed by Settings; fixture remains the offline default.
+- config/pipeline.yaml has an explicit fixture selection and typed 04/05/06/07 cadence plan.
+- DueRoleScheduler is a pure command seam: it reports due roles and starts no daemon.
+- build_market_data selects FixtureMarketData or HttpMarketData through one MarketData protocol.
+- roles 01, 02, 04, 05, and 06 receive the selected MarketData adapter from factory composition.
+- role evidence preserves source references, source observation times, confidence, and run identity.
+- public mode has a full 01->11 E2E using httpx2.MockTransport; no live network is used.
+- .env.example documents offline fixture and no-key public modes without secrets.
+
+TDD evidence
+- Red: focused collection initially failed because DataMode and DueRoleScheduler did not exist.
+- Green: 120 focused tests passed in 1.03s.
+- Public wire E2E verifies 11 stages, public NASDAQ source URL, and consistent run IDs.
+
+Quality gates
+- Full unit suite after final route and substitutability remediation: 309 passed in 1.68s.
+- Scoped Ruff: All checks passed.
+- Scoped basedpyright: 0 errors, 0 warnings, 0 notes.
+- Programming no-excuse audit: no violations in 19 files.
+- Production pure LOC: all touched files are within the 250-line ceiling.
+
+Verifier remediation
+- PipelinePolicy direct constructors receive a typed default MVP SchedulePlan.
+- PipelineDocument parses the top-level IANA timezone into ZoneInfo.
+- DueRoleScheduler normalizes aware instants to that zone and rejects naive command/last-run times.
+- Offline fixture roles retain cycle-relative timestamps and their established deterministic lineage.
+- Public wire E2E asserts every 01/02/04/05/06 source ref, observed/captured time,
+  confidence, and run identity.
+- Configured HttpMarketData is an orchestrator-owned resource and FastAPI shutdown closes it.
+- README and implementation assumptions explicitly state that the MVP starts no scheduler daemon.
+- build_roles accepts every MarketData implementation without concrete-type discrimination; the configured
+  factory exhaustively selects offline legacy behavior or the public provider from typed DataMode.
+
+Safety
+- Fixture mode remains deterministic and requires no API key or network.
+- Public E2E uses a fake transport and performs zero live HTTP requests.
+- Scheduler seam performs no background execution, process creation, or sleeping.
+- No Docker, database port, container, volume, or localhost:5432 operation was performed.

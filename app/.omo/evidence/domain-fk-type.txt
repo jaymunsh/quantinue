@@ -1,0 +1,27 @@
+Domain FK typing remediation
+Date: 2026-07-13
+
+Change:
+- Added ForeignKey TypeAlias = tuple[tuple[str, ...], str, tuple[str, ...]].
+- Annotated FK as dict[str, set[ForeignKey]], so the deliberately empty
+  tb_technical FK set cannot introduce Unknown into the inferred union.
+- Schema assertions and expected values are unchanged.
+
+Verification:
+- uv run basedpyright
+  0 errors, 0 warnings, 0 notes
+- uv run pytest tests/integration/test_schema_sql.py -q
+  4 passed in 1.57s
+- uv run ruff check tests/integration/schema_sql_expectations.py tests/integration/test_schema_sql.py
+  All checks passed!
+- uv run .../check-no-excuse-rules.py tests/integration/schema_sql_expectations.py tests/integration/test_schema_sql.py
+  no violations in 2 file(s)
+
+Post-write review:
+- The file owns schema expectations only (single responsibility).
+- No boundary parsing, variant discrimination, escape hatch, defensive layer,
+  helper, parameter, destructive verification, negative naming, or logging
+  behavior was introduced.
+- Pure LOC is 210, in the warning band; this two-line typing fix does not add
+  another responsibility. Consider splitting expectation groups before a
+  future substantive expansion.

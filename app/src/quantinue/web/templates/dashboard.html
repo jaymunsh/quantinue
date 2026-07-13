@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Quantinue 01-11 페이퍼 트레이딩 파이프라인 실행 상태">
+  <title>Quantinue Control Room</title>
+  <link rel="icon" href="data:,">
+  <style>{{ dashboard_css | safe }}</style>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="topbar">
+    <div>
+      <p class="product-label">QUANTINUE</p>
+      <h1>파이프라인 운영실</h1>
+    </div>
+    <div class="mode-list" aria-label="현재 안전 모드">
+      <span>LLM {{ settings.llm_mode.value }}</span>
+      <span>Broker {{ settings.broker_mode.value }}</span>
+      <span>Trading {% if settings.trading_enabled %}enabled{% else %}locked{% endif %}</span>
+    </div>
+  </header>
+
+  <main id="main" class="layout">
+    <section class="command-panel" aria-labelledby="run-title">
+      <div>
+        <p class="section-label">1차 목표</p>
+        <h2 id="run-title">한 종목으로 01부터 11까지 완주</h2>
+        <p>기본값은 NVDA 픽스처와 모의 체결입니다. <span class="safety-promise">계정 없이 전체 계약을 검증합니다.</span></p>
+      </div>
+      <form action="/runs" method="post">
+        <label for="ticker">티커</label>
+        <div class="run-controls">
+          <input id="ticker" name="ticker" value="NVDA" maxlength="12" autocomplete="off" required>
+          {% if control_room_access_required %}<input id="control_room_token" name="control_room_token" type="password" autocomplete="off" aria-label="운영실 접근 토큰" required>{% endif %}
+          <button type="submit">파이프라인 실행</button>
+        </div>
+        {% if form_error %}<p role="alert">티커 형식을 확인하세요</p>{% endif %}
+      </form>
+    </section>
+
+    <section class="summary-grid" aria-label="최근 실행 요약" aria-live="polite">
+      <article class="summary-primary">
+        <span>진행</span>
+        <strong>{{ completed_stages }} / 11</strong>
+        <p>{% if latest %}{{ latest.status.value }} · 체크포인트 {{ latest.progress }}개{% else %}아직 실행 기록이 없습니다{% endif %}</p>
+      </article>
+      <article>
+        <span>최근 종목</span>
+        <strong>{% if latest %}{{ latest.ticker }}{% else %}-{% endif %}</strong>
+        <p>{% if latest %}{{ latest.cycle_ts.strftime('%Y-%m-%d %H:%M UTC') }}{% else %}실행 후 표시됩니다{% endif %}</p>
+      </article>
+      <article>
+        <span>판단</span>
+        <strong>{% if latest and latest.side %}{{ latest.side | upper }}{% else %}-{% endif %}</strong>
+        <p>{% if latest and latest.conviction is not none %}확신도 {{ '%.3f' | format(latest.conviction) }}{% else %}전략 판단 대기{% endif %}</p>
+      </article>
+      <article>
+        <span>주문</span>
+        <strong>{% if latest and latest.order %}{{ latest.order.reconciliation_status | upper }}{% else %}-{% endif %}</strong>
+        <p>{% if latest and latest.order %}{{ latest.order.quantity }}주, {{ '%.2f' | format(latest.order.filled_avg_price) }}{% else %}모의 주문 대기{% endif %}</p>
+      </article>
+    </section>
+
+    {% if latest and latest.status.value in ["running", "retrying"] %}
+    <section id="live-pipeline" class="live-progress-panel" data-live-run-id="{{ latest.run_id }}" aria-labelledby="live-progress-title">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="section-label">실시간 실행</p>
+          <h2 id="live-progress-title">지금 진행 중인 작업</h2>
+        </div>
+        <span class="status-badge status-{{ latest.status.value }}" data-live-status>{{ latest.status.value }}</span>
+      </div>
+      <dl class="live-progress-grid">
+        <div><dt>실행</dt><dd><strong data-live-ticker>{{ latest.ticker }}</strong> <code data-live-run>{{ latest.run_id }}</code></dd></div>
+        <div><dt>완료</dt><dd data-live-progress>{{ latest.progress }} / 11</dd></div>
+        <div><dt>현재</dt><dd data-live-current>{% if latest.current_stage %}{{ latest.current_stage.component }} {{ latest.current_stage.name }} · {{ latest.current_stage.status.value }}{% else %}상태 확인 중{% endif %}</dd></div>
+        <div><dt>다음</dt><dd data-live-next>{% if latest.next_stage %}{{ latest.next_stage.component }} {{ latest.next_stage.name }}{% else %}마지막 단계 확인 중{% endif %}</dd></div>
+        <div data-live-error-row{% if not latest.current_stage or latest.current_stage.status.value == "running" %} hidden{% endif %}><dt>오류 코드</dt><dd><code data-live-error>{% if latest.current_stage %}{% for stage in latest.stages if stage.component == latest.current_stage.component %}{{ stage.failure_code or '-' }}{% endfor %}{% endif %}</code></dd></div>
+      </dl>
+      <p class="live-announcement" data-live-announcement role="status" aria-live="polite">{{ latest.ticker }} 실행이 {% if latest.current_stage %}{{ latest.current_stage.component }} {{ latest.current_stage.name }}{% else %}다음 역할{% endif %} 단계에 있습니다.</p>
+      <p class="redaction-note">진행 상태는 1.5초마다 안전하게 갱신됩니다. 원문 오류, 프롬프트, 비밀값은 표시하지 않습니다.</p>
+    </section>
+    <script>
+      (() => {
+        const panel = document.getElementById("live-pipeline");
+        if (!panel) return;
+        const runId = panel.dataset.liveRunId;
+        const terminal = new Set(["completed", "failed", "blocked", "cancelled"]);
+        const statusLabels = { running: "실행 중", retrying: "재시도 중", failed: "실패", blocked: "차단됨", completed: "완료", cancelled: "취소됨" };
+        const text = (selector, value) => {
+          const element = panel.querySelector(selector);
+          if (element) element.textContent = value;
+        };
+        const stageLabel = (stage, includeStatus) => {
+          if (!stage) return "마지막 단계 확인 중";
+          const status = includeStatus ? ` · ${stage.status}` : "";
+          return `${stage.component} ${stage.name}${status}`;
+        };
+        let delay = 1500;
+        let inFlight = false;
+        let intervalId = 0;
+        const schedule = () => {
+          window.clearInterval(intervalId);
+          intervalId = window.setInterval(poll, delay);
+        };
+        const update = (run) => {
+          const current = run.current_stage;
+          const matchingStage = current && Array.isArray(run.stages)
+            ? run.stages.find((stage) => stage.component === current.component)
+            : undefined;
+          const failureCode = matchingStage && matchingStage.failure_code;
+          const status = run.status;
+          text("[data-live-ticker]", run.ticker);
+          text("[data-live-run]", run.run_id);
+          text("[data-live-progress]", `${run.progress} / 11`);
+          text("[data-live-current]", stageLabel(current, true));
+          text("[data-live-next]", stageLabel(run.next_stage, false));
+          text("[data-live-status]", statusLabels[status] || status);
+          const badge = panel.querySelector("[data-live-status]");
+          if (badge) badge.className = `status-badge status-${status}`;
+          const errorRow = panel.querySelector("[data-live-error-row]");
+          if (errorRow) errorRow.hidden = !failureCode;
+          text("[data-live-error]", failureCode || "-");
+          const stage = current ? `${current.component} ${current.name}` : "마지막 단계";
+          text("[data-live-announcement]", `${run.ticker} ${statusLabels[status] || status}: ${stage}, 완료 ${run.progress} / 11`);
+          if (terminal.has(status)) {
+            window.clearInterval(intervalId);
+            window.location.reload();
+            return true;
+          }
+          return false;
+        };
+        const poll = async () => {
+          if (inFlight) return;
+          inFlight = true;
+          try {
+            const response = await fetch("/api/runs", { headers: { Accept: "application/json" } });
+            if (!response.ok) throw new Error("safe status response unavailable");
+            const runs = await response.json();
+            const run = Array.isArray(runs) ? runs.find((item) => item.run_id === runId) : undefined;
+            if (run) {
+              delay = 1500;
+              if (!update(run)) schedule();
+            }
+          } catch {
+            delay = Math.min(delay * 2, 6000);
+            text("[data-live-announcement]", "상태 업데이트를 다시 시도합니다.");
+            schedule();
+          } finally {
+            inFlight = false;
+          }
+        };
+        schedule();
+      })();
+    </script>
+    {% endif %}
+
+    {% if latest %}
+    {% include "dashboard_brief.html" %}
+    {% endif %}
+
+    <section class="pipeline-panel" aria-labelledby="pipeline-title">
+      <div class="section-heading">
+        <div>
+          <p class="section-label">실행 경로</p>
+          <h2 id="pipeline-title">역할별 결과</h2>
+        </div>
+        <p>각 역할은 같은 계약 아래 독립적으로 교체됩니다.</p>
+      </div>
+      {% if latest %}
+      <ol class="stage-list" aria-label="01부터 11까지 역할 실행 상태">
+        {% for stage in latest.stages %}
+        <li class="stage-record stage-{{ stage.status.value }}">
+          <span class="stage-number">{{ stage.component }}</span>
+          <div class="stage-content">
+            <strong>{{ stage.name }}</strong>
+            <p>{{ stage.summary }}</p>
+            <dl class="stage-meta">
+              <div><dt>시도</dt><dd>{{ stage.attempts | length }}회</dd></div>
+              <div><dt>소요</dt><dd>{% if stage.duration_ms is not none %}{{ stage.duration_ms }} ms{% else %}진행 중{% endif %}</dd></div>
+              <div><dt>체크포인트</dt><dd>{% if stage.checkpointed %}저장됨{% else %}대기{% endif %}</dd></div>
+              {% if stage.failure_code %}<div><dt>실패 코드</dt><dd><code>{{ stage.failure_code }}</code></dd></div>{% endif %}
+            </dl>
+            {% if stage.attempts %}
+            <ol class="attempt-list" aria-label="{{ stage.component }} 역할 실행 시도">
+              {% for attempt in stage.attempts %}
+              <li><span>#{{ attempt.attempt_no }}</span><span>{{ attempt.status }}</span><time datetime="{{ attempt.started_at.isoformat() }}">{{ attempt.started_at.strftime('%H:%M:%S') }}</time>{% if attempt.duration_ms is not none %}<span>{{ attempt.duration_ms }} ms</span>{% endif %}</li>
+              {% endfor %}
+            </ol>
+            {% endif %}
+          </div>
+          <span class="status-badge status-{{ stage.status.value }}">{{ stage.status.value }}</span>
+        </li>
+        {% endfor %}
+      </ol>
+      {% else %}
+      <div class="empty-state">
+        <h3>첫 실행을 기다리고 있습니다</h3>
+        <p>위의 실행 버튼을 누르면 11개 역할의 결과가 순서대로 기록됩니다.</p>
+      </div>
+      {% endif %}
+    </section>
+
+    {% if latest %}
+    <section class="audit-grid" aria-label="실행 감사 정보">
+      <article class="audit-panel evidence-panel" aria-labelledby="evidence-title">
+        <div class="section-heading compact-heading">
+          <div><p class="section-label">추적 가능성</p><h2 id="evidence-title">근거 계보</h2></div>
+          <p>{{ latest.evidence | length }}개 근거 · 출처, 시각, 신뢰도, 부모 ID</p>
+        </div>
+        {% if latest.evidence %}
+        <ol class="evidence-list">
+          {% for evidence in latest.evidence %}
+          <li>
+            <div class="evidence-heading"><span class="stage-number">{{ evidence.component }}</span><code>{{ evidence.evidence_id }}</code><strong>{{ '%.1f' | format(evidence.confidence * 100) }}%</strong></div>
+            <dl class="audit-meta">
+              <div><dt>출처</dt><dd>{{ evidence.source }}</dd></div>
+              <div><dt>참조</dt><dd><code>{{ evidence.source_ref }}</code></dd></div>
+              <div><dt>관측</dt><dd><time datetime="{{ evidence.observed_at.isoformat() }}">{{ evidence.observed_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</time></dd></div>
+              <div><dt>수집</dt><dd><time datetime="{{ evidence.captured_at.isoformat() }}">{{ evidence.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</time></dd></div>
+              {% if evidence.model_name %}<div><dt>모델</dt><dd><code>{{ evidence.model_name }}</code></dd></div>{% endif %}
+              {% if evidence.model_provider %}<div><dt>제공자</dt><dd><code>{{ evidence.model_provider.value }}</code></dd></div>{% endif %}
+              {% if evidence.prompt_version %}<div><dt>프롬프트</dt><dd><code>{{ evidence.prompt_version }}</code></dd></div>{% endif %}
+              {% if evidence.policy_version %}<div><dt>정책</dt><dd><code>{{ evidence.policy_version }}</code></dd></div>{% endif %}
+              {% if evidence.input_hash %}<div><dt>입력 해시</dt><dd><code>{{ evidence.input_hash }}</code></dd></div>{% endif %}
+              <div class="lineage"><dt>부모 근거</dt><dd>{% if evidence.parent_evidence_ids %}{% for parent in evidence.parent_evidence_ids %}<code>{{ parent }}</code>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}최상위 근거{% endif %}</dd></div>
+            </dl>
+          </li>
+          {% endfor %}
+        </ol>
+        {% else %}<p class="muted">연결된 근거가 없습니다.</p>{% endif %}
+      </article>
+
+      <article class="audit-panel" aria-labelledby="safety-title">
+        <p class="section-label">실행 안전</p><h2 id="safety-title">주문·리뷰</h2>
+        <dl class="safety-list">
+          <div><dt>실행 ID</dt><dd><code>{{ latest.run_id }}</code></dd></div>
+          <div><dt>체크포인트</dt><dd>{{ latest.progress }} / 11</dd></div>
+          <div><dt>중복 방지 ID</dt><dd>{% if latest.order %}<code>{{ latest.order.client_order_id }}</code>{% else %}주문 없음{% endif %}</dd></div>
+          <div><dt>주문 조정</dt><dd>{% if latest.order %}{{ latest.order.reconciliation_status }} · {{ latest.order.quantity }}주{% else %}대기{% endif %}</dd></div>
+          <div><dt>T+5 리뷰</dt><dd>{% if latest.review %}<strong>{{ latest.review.outcome }}</strong><span>{{ latest.review.summary }}</span>{% else %}리뷰 대기{% endif %}</dd></div>
+        </dl>
+        <p class="redaction-note">실패 정보는 안전한 코드만 표시하며 원문 오류, 프롬프트, 비밀값은 렌더링하지 않습니다.</p>
+      </article>
+    </section>
+    {% endif %}
+
+    <section class="history-panel" aria-labelledby="history-title">
+      <h2 id="history-title">최근 실행</h2>
+      {% if runs %}
+      <div class="table-wrap" aria-label="최근 실행 기록">
+        <table>
+          <caption>최근 파이프라인 실행 기록</caption>
+          <thead><tr><th scope="col">종목</th><th scope="col">사이클</th><th scope="col">상태</th><th scope="col">판단</th><th scope="col">체결</th></tr></thead>
+          <tbody>
+            {% for run in runs %}
+            <tr><td data-label="종목"><strong>{{ run.ticker }}</strong></td><td data-label="사이클">{{ run.cycle_ts.strftime('%Y-%m-%d %H:%M') }}</td><td data-label="상태"><span class="status-badge status-{{ run.status.value }}">{{ run.status.value }}</span></td><td data-label="판단">{{ run.side or '-' }}</td><td data-label="체결">{% if run.order %}{{ run.order.reconciliation_status }}{% else %}-{% endif %}</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="muted">저장된 실행이 없습니다.</p>
+      {% endif %}
+    </section>
+  </main>
+</body>
+</html>

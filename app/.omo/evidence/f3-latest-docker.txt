@@ -1,0 +1,74 @@
+ Image quantinue_f3_latest-web Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 570B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 335B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for ghcr.io/astral-sh/uv:python3.11-bookworm-slim
+#3 DONE 0.0s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [1/6] FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim@sha256:4f5d923c9dcea037f57bda425dd209f3ec643da2f0b74227f68d09dab0b3bb36
+#5 resolve ghcr.io/astral-sh/uv:python3.11-bookworm-slim@sha256:4f5d923c9dcea037f57bda425dd209f3ec643da2f0b74227f68d09dab0b3bb36 done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 16.13kB done
+#6 DONE 0.0s
+
+#7 [2/6] WORKDIR /workspace
+#7 CACHED
+
+#8 [4/6] COPY src ./src
+#8 CACHED
+
+#9 [3/6] COPY pyproject.toml uv.lock README.md ./
+#9 CACHED
+
+#10 [5/6] COPY config ./config
+#10 CACHED
+
+#11 [6/6] RUN uv sync --frozen --no-dev
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:8c26f6ad47d9a10327ef2a3cd83644dd9f70ea76b5587db8d7b9f5b166b24485 done
+#12 exporting config sha256:a053a3bf1012b7c2e95818ff6a1c27b6a0fd19a129924579594d601aeea5d951 done
+#12 exporting attestation manifest sha256:f5ba574c857a1570a28b766bf69369f3071077fdd44ba98c05708b2ce0a29685 done
+#12 exporting manifest list sha256:3f233ba18230f2bb3c64685c99d88ee642e60f91813cc94fa4cfd53d8786419c done
+#12 naming to docker.io/library/quantinue_f3_latest-web:latest done
+#12 unpacking to docker.io/library/quantinue_f3_latest-web:latest
+#12 unpacking to docker.io/library/quantinue_f3_latest-web:latest 1.5s done
+#12 DONE 1.6s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image quantinue_f3_latest-web Built 
+ Container quantinue_f3_latest-db-1 Running 
+ Container quantinue_f3_latest-web-1 Creating 
+ Container quantinue_f3_latest-web-1 Created 
+ Container quantinue_f3_latest-db-1 Waiting 
+ Container quantinue_f3_latest-db-1 Healthy 
+ Container quantinue_f3_latest-web-1 Starting 
+ Container quantinue_f3_latest-web-1 Started 
+ Container quantinue_f3_latest-db-1 Waiting 
+ Container quantinue_f3_latest-web-1 Waiting 
+ Container quantinue_f3_latest-db-1 Healthy 
+ Container quantinue_f3_latest-web-1 Healthy 
+{"status":"ok","broker_mode":"mock","llm_mode":"mock"}
+{
+  "status": "completed",
+  "stages": 11,
+  "evidence": 11,
+  "review": "pending_t_plus_5"
+}
+NAME                        IMAGE                     COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+quantinue_f3_latest-db-1    postgres:17-alpine        "docker-entrypoint.s…"   db        32 seconds ago   Up 32 seconds (healthy)   127.0.0.1:15444->5432/tcp
+quantinue_f3_latest-web-1   quantinue_f3_latest-web   "uv run --no-sync uv…"   web       6 seconds ago    Up 5 seconds (healthy)    127.0.0.1:18013->8000/tcp

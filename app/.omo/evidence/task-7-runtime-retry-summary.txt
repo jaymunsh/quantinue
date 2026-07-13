@@ -1,0 +1,14 @@
+Docker POST regression rerun
+Project: quantinue_mvp_qa_wave3ops_retry
+Web override: 127.0.0.1:18011 (evidence-only; default remains 8011)
+Database: 127.0.0.1:5444 -> db:5432
+
+POST /api/runs observable:
+- HTTP status: 201
+- run status: completed
+- stages: 11, all completed
+- evidence_trace records: 11
+- order: present, status filled, quantity 19
+- review: present, outcome pending_t_plus_5
+
+Full redacted response and parsed fields: task-7-runtime-retry.txt

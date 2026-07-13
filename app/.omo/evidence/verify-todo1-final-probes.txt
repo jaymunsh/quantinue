@@ -1,0 +1,5 @@
+=== independent exact-count + identity probe (corrected harness) ===
+{'tables': 19, 'pk': 19, 'unique': 14, 'fk': 23, 'checks': 61}
+{'judgment_ids': ['signal_id'], 'order_ids': ['account_id', 'broker_order_id', 'order_id', 'signal_id'], 'review_ids': ['signal_id'], 'order_id_types': {'order_id': 'quantinue.core.schemas.OrderId', 'signal_id': 'quantinue.core.schemas.SignalId', 'account_id': 'quantinue.core.schemas.AccountId'}, 'review_signal_type': 'quantinue.core.schemas.SignalId'}
+=== task containers ===
+none

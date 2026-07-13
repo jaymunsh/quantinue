@@ -1,0 +1,48 @@
+Test quality and real-provider gate verification — 2026-07-13 Asia/Seoul
+
+Targeted ruff:
+  All checks passed!
+
+Targeted pytest:
+  17 passed, 3 skipped in 0.49s
+  Each real_key test skipped by default with reason:
+  "real provider test disabled; set QUANTINUE_RUN_REAL_KEY_TESTS=1 to opt in"
+
+Targeted basedpyright:
+  0 errors, 0 warnings, 0 notes
+
+PostgreSQL integration runner:
+  ./scripts/test_postgres_integration.sh -q
+  10 passed in 4.19s
+  Unique container, loopback port selected only from 55400-55499, cleanup trap.
+
+Shell syntax:
+  bash -n scripts/test_postgres_integration.sh (pass)
+
+Pure LOC after split:
+  tests/unit/test_broker_provider.py: 186
+  tests/unit/test_broker_reservations.py: 128
+  tests/integration/test_schema_sql.py: 15
+
+Safety properties:
+  OpenAI and Alpaca live probes are separate files and opt-in only.
+  Alpaca credential preflight is read-only.
+  Alpaca order additionally requires QUANTINUE_RUN_ALPACA_ORDER_TEST=1 and
+  QUANTINUE_TEST_DATABASE_URL, injects PostgresOrderReservations, uses PAPER URL,
+  quantity one, unique client_order_id, and attempts cleanup in finally.
+  Runner never binds or contacts localhost:5432 or app port 5444.
+
+Independent no-excuse remediation rerun:
+  Official Python checker over tests/: no violations in 36 file(s)
+  Ruff over tests/: All checks passed!
+  Basedpyright over tests/: 0 errors, 0 warnings, 0 notes
+  Relevant pytest: 34 passed in 1.50s
+
+Schema split pure LOC by responsibility:
+  tests/integration/schema_sql_expectations.py: 208 (declarative expectations)
+  tests/integration/schema_sql_contract.py: 200 (Docker/catalog fixture)
+  tests/integration/test_schema_sql.py: 54 (assertions)
+
+Additional type-rule remediation:
+  Broker ReservationClaim match ends in assert_never.
+  RecordingSleeper is an explicitly mutable slotted recorder, not a mutable dataclass.

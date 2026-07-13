@@ -1,0 +1,11 @@
+compose ps
+NAME                                   IMAGE                                COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+quantinue_mvp_qa_wave3ops18011-db-1    postgres:17-alpine                   "docker-entrypoint.s…"   db        23 seconds ago   Up 23 seconds (healthy)   127.0.0.1:5444->5432/tcp
+quantinue_mvp_qa_wave3ops18011-web-1   quantinue_mvp_qa_wave3ops18011-web   "uv run --no-sync uv…"   web       23 seconds ago   Up 17 seconds (healthy)   127.0.0.1:18011->8000/tcp
+health
+{"status":"ok","broker_mode":"mock","llm_mode":"mock"}
+api run
+curl: (22) The requested URL returned error: 500
+
+schema tables
+pipeline_runs||tb_order

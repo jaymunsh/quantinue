@@ -1,0 +1,8 @@
+mixed-run: REJECTED invalid checkpoint sequence: checkpoint run key does not match requested run run-A
+nonfinite: REJECTED NaN
+nonfinite: REJECTED Infinity
+nonfinite: REJECTED -Infinity
+nonfinite: REJECTED {"deep":{"items":[1,{"value":NaN}]}}
+nonfinite: REJECTED {"deep":[Infinity]}
+nonfinite: REJECTED {"x":{"y":-Infinity}}
+http700: NON_RETRY 1 []

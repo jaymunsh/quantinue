@@ -1,0 +1,14 @@
+{
+  "route": "/runs",
+  "input": "MSFT",
+  "redirected": true,
+  "latest": "MSFT",
+  "historyRows": 2,
+  "stageCount": 11,
+  "focusStyle": {
+    "outline": "rgba(9, 105, 218, 0.25) solid 3px",
+    "outlineOffset": "2px"
+  },
+  "consoleErrors": [],
+  "capturedAt": "2026-07-13T04:15:34.328Z"
+}

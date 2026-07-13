@@ -1,0 +1,192 @@
+
+Running 5 tests using 1 worker
+
+[1A[2K(node:76123) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:76123) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[1/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1440
+[1A[2K  1) .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1440 ────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('.stage-record')
+    Expected: [32m11[39m
+    Received: [31m0[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for locator('.stage-record')[22m
+    [2m    9 × locator resolved to 0 elements[22m
+    [2m      - unexpected value "0"[22m
+
+
+       7 |     await page.setViewportSize({ width, height });
+       8 |     await page.goto(base);
+    >  9 |     await expect(page.locator('.stage-record')).toHaveCount(11);
+         |                                                 ^
+      10 |     await expect(page.locator('.evidence-list > li')).toHaveCount(11);
+      11 |     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      12 |     const apiRuns = await (await page.request.get(`${base}/api/runs`)).json();
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-browser.spec.js:9:49
+
+    Error Context: test-results/.omo-evidence-f3-browser-offline-completed-pipeline-1440/error-context.md
+
+
+[1A[2K(node:76295) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:76295) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[2/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1024
+[1A[2K  2) .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1024 ────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('.stage-record')
+    Expected: [32m11[39m
+    Received: [31m0[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for locator('.stage-record')[22m
+    [2m    9 × locator resolved to 0 elements[22m
+    [2m      - unexpected value "0"[22m
+
+
+       7 |     await page.setViewportSize({ width, height });
+       8 |     await page.goto(base);
+    >  9 |     await expect(page.locator('.stage-record')).toHaveCount(11);
+         |                                                 ^
+      10 |     await expect(page.locator('.evidence-list > li')).toHaveCount(11);
+      11 |     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      12 |     const apiRuns = await (await page.request.get(`${base}/api/runs`)).json();
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-browser.spec.js:9:49
+
+    Error Context: test-results/.omo-evidence-f3-browser-offline-completed-pipeline-1024/error-context.md
+
+
+[1A[2K(node:76444) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:76444) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[3/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 768
+[1A[2K  3) .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 768 ─────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('.stage-record')
+    Expected: [32m11[39m
+    Received: [31m0[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for locator('.stage-record')[22m
+    [2m    9 × locator resolved to 0 elements[22m
+    [2m      - unexpected value "0"[22m
+
+
+       7 |     await page.setViewportSize({ width, height });
+       8 |     await page.goto(base);
+    >  9 |     await expect(page.locator('.stage-record')).toHaveCount(11);
+         |                                                 ^
+      10 |     await expect(page.locator('.evidence-list > li')).toHaveCount(11);
+      11 |     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      12 |     const apiRuns = await (await page.request.get(`${base}/api/runs`)).json();
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-browser.spec.js:9:49
+
+    Error Context: test-results/.omo-evidence-f3-browser-offline-completed-pipeline-768/error-context.md
+
+
+[1A[2K(node:76579) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:76579) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[4/5] .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 390
+[1A[2K  4) .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 390 ─────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoHaveCount[2m([22m[32mexpected[39m[2m)[22m failed
+
+    Locator:  locator('.stage-record')
+    Expected: [32m11[39m
+    Received: [31m0[39m
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toHaveCount" with timeout 5000ms[22m
+    [2m  - waiting for locator('.stage-record')[22m
+    [2m    9 × locator resolved to 0 elements[22m
+    [2m      - unexpected value "0"[22m
+
+
+       7 |     await page.setViewportSize({ width, height });
+       8 |     await page.goto(base);
+    >  9 |     await expect(page.locator('.stage-record')).toHaveCount(11);
+         |                                                 ^
+      10 |     await expect(page.locator('.evidence-list > li')).toHaveCount(11);
+      11 |     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      12 |     const apiRuns = await (await page.request.get(`${base}/api/runs`)).json();
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-browser.spec.js:9:49
+
+    Error Context: test-results/.omo-evidence-f3-browser-offline-completed-pipeline-390/error-context.md
+
+
+[1A[2K(node:76751) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K(node:76751) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+
+[1A[2K[5/5] .omo/evidence/f3-browser.spec.js:18:1 › keyboard and reduced motion
+[1A[2K  5) .omo/evidence/f3-browser.spec.js:18:1 › keyboard and reduced motion ───────────────────────────
+
+    Error: [2mexpect([22m[31mlocator[39m[2m).[22mtoBeFocused[2m()[22m failed
+
+    Locator:  locator('.skip-link')
+    Expected: focused
+    Received: <element(s) not found>
+    Timeout:  5000ms
+
+    Call log:
+    [2m  - Expect "toBeFocused" with timeout 5000ms[22m
+    [2m  - waiting for locator('.skip-link')[22m
+
+
+      19 |   await page.goto(base);
+      20 |   await page.keyboard.press('Tab');
+    > 21 |   await expect(page.locator('.skip-link')).toBeFocused();
+         |                                            ^
+      22 |   await page.keyboard.press('Enter');
+      23 |   await page.keyboard.press('Tab');
+      24 |   await expect(page.locator('#ticker')).toBeFocused();
+        at /Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/f3-browser.spec.js:21:44
+
+    Error Context: test-results/.omo-evidence-f3-browser-keyboard-and-reduced-motion/error-context.md
+
+
+[1A[2K  5 failed
+    .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1440 ─────────────────────────
+    .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 1024 ─────────────────────────
+    .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 768 ──────────────────────────
+    .omo/evidence/f3-browser.spec.js:6:3 › offline completed pipeline 390 ──────────────────────────
+    .omo/evidence/f3-browser.spec.js:18:1 › keyboard and reduced motion ────────────────────────────

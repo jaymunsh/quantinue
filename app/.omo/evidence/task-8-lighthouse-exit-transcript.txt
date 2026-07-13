@@ -1,0 +1,16 @@
+COMMAND
+mv .omo/evidence/task-8-lighthouse.json /tmp/task-8-lighthouse.previous.json
+npm run --silent qa:lighthouse > /tmp/task8-lighthouse.out 2>&1 & pid=$!
+# bounded poll, then wait $pid
+
+OUTPUT
+PID=36531
+RC=0 elapsed=37s
+SUMMARY
+{"artifact":"/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app/.omo/evidence/task-8-lighthouse.json","runs":6,"allCategories100":true}
+AFTER
+{"exists":true,"runs":6,"all100":true,"allSubAuditsEmpty":true}
+
+POST-COMMAND CLEANUP
+No `.omo/evidence/task-8-lighthouse.json.*.tmp` artifact exists.
+`ps -axo pid=,args= | awk '/remote-debugging-port=933[3-8]/ && $0 !~ /awk/ {print}'` returned no process.

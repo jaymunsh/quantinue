@@ -1,0 +1,79 @@
+Todo 1 canonical contracts — final exact-gate evidence (2026-07-13 Asia/Seoul)
+
+RED PROOF
+- Initial red: canonical module absent (collection error before production creation).
+- Availability/strict red: 2 failed, 9 passed before captured_at guard and closed-source fix.
+- Identity red: 2 failed, 7 passed after tests switched to DDL identities; old models still required judgment_id/run_id and lacked signal_id.
+
+FINAL COMMANDS
+- pytest scoped ontology/schema/catalog: 14 passed in 1.39s.
+- ruff scoped files: All checks passed.
+- basedpyright scoped files: 0 errors, 0 warnings, 0 notes.
+
+MODEL ↔ DDL IDENTITY SET
+- Judgment.signal_id: branded positive integer SignalId ↔ tb_strategist_signals.id BIGSERIAL.
+- Order.order_id/signal_id/account_id: branded positive OrderId/SignalId/AccountId ↔
+  tb_order.id/signal_id/account_id BIGINT identities.
+- Review.signal_id: branded positive SignalId ↔ tb_review.signal_id BIGINT PK/FK.
+- Removed mismatches: Order.run_id/judgment_id; Review.review_id/run_id/judgment_id/reviewed_at.
+- Order includes order_type='bracket'; operational run linkage remains only in operational tables.
+
+EXACT POSTGRES CATALOG SET
+Real postgres:16-alpine; UUID container; schema mounted read-only; no host port; psql
+ON_ERROR_STOP. Public tables asserted equal (not subset) to exactly:
+order_submissions,pipeline_checkpoints,pipeline_runs,pipeline_stage_attempts,tb_account,
+tb_critic_verdict,tb_daily_pick,tb_disclosure,tb_disclosure_signal,tb_fill,tb_macro,
+tb_news,tb_news_signal,tb_order,tb_review,tb_review_price_snapshots,
+tb_strategist_signals,tb_technical,tb_universe.
+
+Exact pg_constraint totals asserted through complete per-table maps:
+- PRIMARY KEY: 19 total, exactly one declared column tuple per table.
+- UNIQUE: 14 total. Per-table counts:
+  disclosure 1; disclosure_signal 1; news 1; news_signal 1; strategist 1; critic 1;
+  account 1; order 2; fill 1; pipeline_runs 1; stage_attempts 1; checkpoints 1;
+  order_submissions 1; every other table 0.
+- FOREIGN KEY: 23 total. Per-table counts:
+  daily_pick 1; technical 1; disclosure 1; disclosure_signal 2; news 1;
+  news_signal 3; strategist 4; critic 1; order 2; fill 1; review_snapshots 1;
+  review 1; stage_attempts 1; checkpoints 1; order_submissions 2; all others 0.
+- CHECK: 63 total. Per-table counts:
+  universe 1; daily_pick 2; technical 2; macro 2; disclosure 5;
+  disclosure_signal 4; news 7; news_signal 8; strategist 6; critic 4; account 3;
+  order 7; fill 3; review_snapshots 3; review 1; pipeline_runs 1;
+  stage_attempts 2; order_submissions 2; checkpoints 0.
+
+The exact sets live as PK, UNIQUE, FK, and CHECKS constants in
+tests/integration/test_schema_sql.py. Tests compare equality for every one of 19 tables,
+including empty sets, so both extra and missing constraints fail. Every CHECK key is its exact
+source-column tuple, and every one of the 63 definitions is matched against its complete semantic
+fragments (bounds or all closed values). This includes broker_order_id/broker_fill_id unique keys,
+all source-lineage FKs, every 0..1 score, bracket ordering, review source, and lifecycle sets.
+
+BOUNDARY / CLEANUP
+- Evidence enforces aware observed_at <= captured_at deterministically; no wall clock read.
+- strict=True rejects confidence='0.5'; out-of-range confidence also rejects.
+- Unknown event alias, naive datetime, and inverted bracket reject.
+- Docker fixture finally removes only its UUID container; --rm leaves no task resource.
+- localhost:5432 was never connected to or published.
+- UI/accessibility/network/load/async QA: N/A for immutable models and DDL-only scope.
+
+TODO 6 PRE-SUBMIT RESERVATION FOLLOW-UP
+- Red: exact catalog test failed 2 tests because the old UNIQUE(idempotency_key) and missing
+  order_submissions CHECK constraints did not satisfy the new claim contract.
+- Green: scoped suite now has 16 passing tests, including exact column/nullability catalog proof.
+- order_submissions exact identity/lease contract: client_order_id UNIQUE; state closed to
+  claimed|submitted|completed|failed; owner_token, claimed_at, stale_after required;
+  stale_after > claimed_at; run_id/order_id nullable FKs; broker_order_id/result_payload/last_error
+  nullable; created_at/updated_at required. This permits claim before domain/run rows exist and
+  supports token-guarded ownership plus deterministic stale takeover.
+- OrderSubmission strict boundary model mirrors those persisted fields. The persistence worker was
+  notified directly of the final column contract. No runtime adapter was edited in this task.
+
+RESILIENCE STATUS FOLLOW-UP
+- Red: real PostgreSQL catalog semantic test failed because pipeline_stage_attempts.status lacked
+  the expected retrying value (1 failed, 3 passed).
+- Green contract: pending|running|retrying|completed|failed|timed_out in both DDL CHECK and
+  ontology.StageAttemptState; full scoped suite 22 passed.
+- Concurrent security additions on tb_order (UNIQUE account/signal and parent/child bracket leg
+  columns) were inspected, retained, and remain covered by the split exact catalog contract.
+- The resilience worker received the landed closed status set. No runtime resilience code changed.

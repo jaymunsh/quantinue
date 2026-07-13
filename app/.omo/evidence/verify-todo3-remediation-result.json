@@ -1,0 +1,47 @@
+{
+  "task": "Todo 3 remediation reverification",
+  "verdict": "CONFIRMED",
+  "confidence": 0.99,
+  "scope": "Todo 3 lifecycle/retry/checkpoint implementation and tests",
+  "prior_blockers": [
+    {
+      "probe": "mixed checkpoint run IDs against an explicitly requested run key",
+      "result": "CLOSED",
+      "observable": "resume_from('run-A', ...) raised CheckpointSequenceError when ordinal 1 belonged to run-B"
+    },
+    {
+      "probe": "NaN, +Infinity, and -Infinity hashing, including recursive nested values",
+      "result": "CLOSED",
+      "observable": "all six top-level/nested inputs raised NonFiniteInputError"
+    },
+    {
+      "probe": "HTTP status 700 retry classification",
+      "result": "CLOSED",
+      "observable": "one operation call, zero injected delays, original HttpFailureError propagated"
+    }
+  ],
+  "gates": [
+    {"name": "scoped pytest", "result": "PASS", "observable": "54 passed in 0.07s"},
+    {"name": "pipeline regression", "result": "PASS", "observable": "2 passed in 1.02s"},
+    {"name": "ruff format", "result": "PASS", "observable": "8 files already formatted"},
+    {"name": "ruff check", "result": "PASS", "observable": "All checks passed"},
+    {"name": "scoped basedpyright", "result": "PASS", "observable": "0 errors, 0 warnings, 0 notes"},
+    {"name": "no-excuse audit", "result": "PASS", "observable": "no violations in 5 files"}
+  ],
+  "repository_wide_caveat": {
+    "result": "OUT_OF_SCOPE RED",
+    "observable": "Full basedpyright reports 15 errors in concurrently changing broker/provider.py and test_llm_provider.py; none are in Todo 3 files.",
+    "evidence": ".omo/evidence/verify-todo3-remediation-basedpyright-full.txt"
+  },
+  "evidence": [
+    ".omo/evidence/verify-todo3-remediation-probes.txt",
+    ".omo/evidence/verify-todo3-remediation-scoped-tests.txt",
+    ".omo/evidence/verify-todo3-remediation-pipeline.txt",
+    ".omo/evidence/verify-todo3-remediation-ruff-format.txt",
+    ".omo/evidence/verify-todo3-remediation-ruff-check.txt",
+    ".omo/evidence/verify-todo3-remediation-basedpyright-scoped.txt",
+    ".omo/evidence/verify-todo3-remediation-no-excuse.txt",
+    ".omo/evidence/verify-todo3-remediation-basedpyright-full.txt",
+    ".omo/evidence/verify-todo3-remediation-dirty-worktree.txt"
+  ]
+}

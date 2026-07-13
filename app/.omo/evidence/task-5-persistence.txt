@@ -1,0 +1,51 @@
+Todo 5 persistence evidence — 2026-07-13 Asia/Seoul
+
+Baseline characterization (unchanged production):
+- uv run pytest tests/test_pipeline.py tests/unit/test_checkpoint.py tests/unit/test_lifecycle.py -q
+- PASS: 43 passed in 1.16s
+
+Failing-first proof before implementation:
+- uv run pytest tests/unit/test_persistence_orchestration.py -q
+- RED: 3 failed: duplicate concurrent execution called role twice; interrupted stage repeated completed stage 01; failed run was absent.
+
+Final automated verification:
+- Disposable postgres:17-alpine, unique container quantinue-task5-schema-31186, unpublished random host port 55002 (never 5432/5444).
+- QUANTINUE_TEST_DATABASE_URL=<redacted>@127.0.0.1:55002/quantinue_test uv run pytest tests/integration/test_persistence_postgres.py tests/unit/test_persistence_orchestration.py tests/test_pipeline.py tests/unit/test_checkpoint.py tests/unit/test_lifecycle.py -q
+- PASS: 48 passed in 1.82s.
+- Real PostgreSQL assertions: exactly one concurrent run owner; restart resumes after checkpoint; stage 01 is not repeated; running interrupted attempt remains observable; TimeoutError failure is durable; two independent order-reservation adapters elect one owner; completed result is cached; stale takeover issues a new opaque token; old ABA token cannot complete or release.
+- uv run ruff check <scoped paths>: PASS.
+- uv run ruff format --check <scoped paths>: PASS.
+- uv run basedpyright <scoped paths>: 0 errors, 0 warnings.
+- check-no-excuse-rules.py <scoped paths>: no violations in 12 files.
+- Maximum touched production pure LOC: postgres.py 249; order_reservations.py 147; pipeline.py 116.
+
+Mandatory remediation verification:
+- Failing-first cancellation proof: cancelling a task group around a sleeping role left the unshielded in-memory claim active, and bounded immediate resume timed out.
+- Shielded, five-second-bounded AnyIO abandon cleanup makes the same-key resume complete immediately.
+- A capturing broker protocol fake proves configured PostgreSQL + Alpaca composition receives the exact PostgresRunStore-owned PostgresOrderReservations instance.
+- PostgresRunStore initialize/close owns the reservation adapter lifecycle, preventing its engine from leaking.
+- The reflected run-id query moved to postgres_query.py; postgres.py is 248 pure LOC.
+- Final remediation suite: 48 passed in 1.06s; ruff passed; basedpyright 0 errors/0 warnings; no-excuse no violations in 14 files.
+
+Manual process recreation / resume:
+- OS process 1 claimed PGPROC2, executed component 01, atomically persisted its attempt/checkpoint/context, abandoned the advisory-lock claim, and disposed its engine.
+- Observable: PROCESS1 checkpoint=1 run_id=e6fe62446ebc41028ad99987aa8eb7ed
+- Fresh OS process 2 created a new PostgresRunStore and PipelineOrchestrator for the same request.
+- Observable: PROCESS2 status=completed stages=2 stage01_attempts=1
+- PASS: durable context survived process recreation and the successful checkpoint was not repeated.
+
+Adversarial probes:
+- cancel/resume and repeated interruption: running attempt preserved; next attempt number increments; completed prefix not repeated.
+- stale state: canonical checkpoint context is decoded through current strict PipelineContext; stale order owner receives a new token.
+- dirty workspace: only owned db/orchestration/test/evidence paths edited; concurrent role/schema changes were preserved and evidence_trace JSONB datetime decode was regression-tested.
+- long commands: all verification commands completed under 5 seconds; no hung processes.
+- flaky concurrency: concurrent fake and real-PG tests rerun; unique order IDs prevent retained disposable-DB state from changing outcomes.
+- misleading output: assertions query persisted attempts/results, not log text.
+- failure/timeout: TimeoutError code/message and failed run remain queryable.
+
+Cleanup receipt:
+- quantinue-task5-19040 stopped (first disposable DB; --rm).
+- quantinue-task5-final-25026 stopped (schema-refresh disposable DB; --rm).
+- quantinue-task5-schema-31186 stopped and removed after the final gate.
+- `docker ps -a --filter name=quantinue-task5` returned no rows after explicit cleanup.
+- No command addressed localhost:5432, existing named containers, or existing volumes.

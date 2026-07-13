@@ -1,0 +1,93 @@
+DoneClaim: roles 01-04 immutable contracts and deterministic fixture services
+Date: 2026-07-13 Asia/Seoul
+
+Scope delivered
+- Explicit immutable Pydantic input/output contracts for roles 01, 02, 03, and 04.
+- Design-aligned universe, technical, daily-pick, and macro fields and gates.
+- Deterministic API-key-free fixture services preserving async execute(PipelineContext).
+- Evidence hard blockers on every role: missing, stale >5 minutes, future,
+  cross-run, contradictory duplicate ID, and missing lineage parent.
+- Role 03 score is explicitly constrained to score >= 0.
+
+RED proof
+Command:
+  uv run pytest tests/unit/test_roles_01_04_contracts.py -q
+Observed before implementation:
+  ModuleNotFoundError: No module named
+  'quantinue.roles.role_01_universe_screener.contracts'
+This was the expected missing-contract failure, before production contract files existed.
+
+GREEN gates
+Command:
+  uv run pytest tests/unit/test_roles_01_04_contracts.py -q
+Result:
+  34 passed in 0.07s
+
+Command:
+  uv run ruff check src/quantinue/roles/role_01_universe_screener src/quantinue/roles/role_02_technical_analysis src/quantinue/roles/role_03_daily_screener src/quantinue/roles/role_04_macro_analysis tests/unit/test_roles_01_04_contracts.py
+Result:
+  All checks passed!
+
+Command:
+  uv run basedpyright src/quantinue/roles/role_01_universe_screener src/quantinue/roles/role_02_technical_analysis src/quantinue/roles/role_03_daily_screener src/quantinue/roles/role_04_macro_analysis tests/unit/test_roles_01_04_contracts.py
+Result:
+  0 errors, 0 warnings, 0 notes
+
+No-excuse scan
+Command:
+  rg -n "Any|type: ignore|noqa|except Exception|TODO|FIXME|NotImplemented|pass$" src/quantinue/roles/role_0{1,2,3,4}_* tests/unit/test_roles_01_04_contracts.py || true
+Result: no matches.
+
+LOC gate
+- role 01 contracts/service: 58/54 pure LOC
+- role 02 contracts/service: 50/58 pure LOC
+- role 03 contracts/service: 35/55 pure LOC
+- role 04 contracts/service: 40/57 pure LOC
+- scoped test module: 150 pure LOC
+All files are below the 250 pure LOC ceiling.
+
+Manual offline QA
+Ran a local anyio scenario with PipelineRequest(ticker="nvda") through roles 01-04.
+Observed:
+  {'ticker': 'NVDA', 'stages': ['01', '02', '03', '04'],
+   'daily_pick': True, 'regime': <Regime.NEUTRAL: 'neutral'>}
+No API key, network, database, container, or localhost:5432 access was used.
+The QA used stdin-only Python and created no temporary artifact, so cleanup is N/A.
+
+Known external gate condition
+An earlier attempt to collect tests/test_pipeline.py was blocked by the concurrently
+missing quantinue.db.postgres module, outside roles 01-04 scope. Scoped gates above
+are complete and clean.
+
+Second remediation: normalized score and structured validation errors
+- Role 03 DailyPick.score is now strictly 0..1.
+- All owned custom model-validation failures use PydanticCustomError with stable
+  error codes; there are no generic ValueError/TypeError/RuntimeError raises.
+
+Fresh RED proof for upper score boundary
+Command after adding the 999 rejection test, against the prior score >= 0 contract:
+  uv run pytest tests/unit/test_roles_01_04_contracts.py -q -k 'score_outside'
+Result:
+  1 failed, 1 passed; score=999.0 DID NOT RAISE ValidationError.
+After adding le=1, the same cases pass.
+
+Fresh final gates
+  uv run pytest tests/unit/test_roles_01_04_contracts.py -q
+  35 passed in 0.07s
+
+  uv run ruff check <owned role directories> tests/unit/test_roles_01_04_contracts.py
+  All checks passed!
+
+  uv run basedpyright <owned role directories> tests/unit/test_roles_01_04_contracts.py
+  0 errors, 0 warnings, 0 notes
+
+Official programming-skill no-excuse gate:
+  uv run python /Users/sunghyuk/.codex/plugins/cache/sisyphuslabs/omo/4.17.0/skills/programming/scripts/python/check-no-excuse-rules.py <owned role directories> tests/unit/test_roles_01_04_contracts.py
+  no violations in 13 file(s)
+
+Generic error scan:
+  rg -n 'raise (ValueError|TypeError|RuntimeError)' <owned files> || true
+  no matches
+
+Fresh maximum pure LOC: tests/unit/test_roles_01_04_contracts.py at 154;
+maximum production pure LOC: role 01 contracts.py at 64. All remain below 250.

@@ -1,0 +1,51 @@
+Task 7 isolated Docker/env/config/operations evidence
+Date: 2026-07-13 Asia/Seoul
+
+TDD
+- Baseline: `docker compose config` passed before changes.
+- Red: `sh scripts/test_compose_contract.sh` exited 1 because 5444 loopback and schema init were absent.
+- Green: same command prints `compose contract: PASS` after compose changes.
+
+Automated checks
+- `docker compose config`: PASS.
+- `uv run pytest tests/unit/test_config.py -q`: 13 passed.
+- `uv run ruff check scripts tests/unit/test_config.py`: PASS.
+- secret signature scan across env/docs/config/compose/Dockerfile: PASS.
+
+Runtime QA
+- Unique project: quantinue_mvp_qa_wave3ops18011.
+- Default web port 8011 was already owned by an unrelated process. It was not touched.
+- Default compose attempt failed clearly at the occupied 8011 bind; evidence: task-7-port-conflict.txt.
+- Temporary evidence-only override published web as 127.0.0.1:18011; default compose remains 8011.
+- DB became healthy at 127.0.0.1:5444 and web became healthy at 127.0.0.1:18011.
+- GET /health returned HTTP 200 with mock broker and mock LLM.
+- Fresh schema initialization created pipeline_runs and tb_order. Runtime smoke evidence is in task-7-runtime-smoke.txt.
+- The first POST exposed a role 05 filed_at/cycle_ts regression and was reported to the role owner.
+- After that regression was fixed, the isolated Docker rerun returned HTTP 201, status completed,
+  11 completed stages, 11 evidence-trace records, a filled mock order, and a T+5 pending review.
+  Evidence: task-7-runtime-retry.txt and task-7-runtime-retry-summary.txt.
+
+Occupied 5444 adversarial probe
+- A temporary loopback-only HTTP server occupied 127.0.0.1:5444.
+- Unique project quantinue_mvp_qa_wave3ops_collision failed with exit 1 and explicit `bind: address already in use`.
+- It did not fall back to 5432 or another address. Evidence: task-7-5444-collision.txt.
+
+Safety and cleanup
+- No connection to, data inspection of, or mutation of localhost:5432 occurred.
+- Before/after read-only container snapshots: task-7-docker-before.txt and task-7-docker-after.txt.
+- Only task-owned unique projects were removed, including their disposable QA volumes/networks.
+- Cleanup receipts: task-7-cleanup.txt, task-7-runtime-cleanup.txt, task-7-collision-cleanup.txt.
+- Image cleanup and final absence assertion: task-7-image-cleanup.txt.
+- Successful POST rerun cleanup and absence assertion: task-7-retry-cleanup.txt.
+- All task-owned images, containers, volumes, and networks were absent after cleanup.
+
+UltraQA classes
+- malformed input: N/A; no new user-input parser was added.
+- prompt injection: N/A; no untrusted LLM text surface was added.
+- cancel/resume: PASS; interrupted the temporary port-holder with Ctrl-C and cleaned task resources.
+- stale state: PASS; used fresh uniquely named Compose projects and volumes.
+- dirty worktree: PASS; edits stayed in assigned files and unrelated files/resources were not reverted.
+- hung/long commands: PASS; builds used bounded polling and compose health timeouts.
+- flaky tests: PASS; config test is deterministic rendered-output inspection without sleeps.
+- misleading success output: PASS; checked actual published ports, health response, schema objects, and nonzero collision exit.
+- repeated interruptions: PASS; failed default port start and occupied-5444 start both left no task resources after explicit cleanup.

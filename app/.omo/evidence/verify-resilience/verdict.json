@@ -1,0 +1,56 @@
+{
+  "verdict": "confirmed",
+  "scope": "Independent adversarial verification of PostgreSQL checkpoint resume and stale-attempt repair; no product source or test was modified.",
+  "executed_at_utc": "2026-07-12T23:31:08Z",
+  "commands": [
+    {
+      "command": "sh scripts/test_postgres_integration.sh -q -k 'postgres_atomic_claim_and_process_recreation_resume or postgres_failed_run_resumes_from_checkpoint_not_terminal_payload'",
+      "exit_code": 0,
+      "output": "2 passed, 14 deselected in 3.15s"
+    },
+    {
+      "command": "uv run pytest -q tests/unit/test_persistence_orchestration.py tests/unit/test_pipeline_resilience.py tests/unit/test_retry.py tests/integration/test_postgres_resume.py",
+      "exit_code": 0,
+      "output": "32 passed, 1 skipped in 0.31s (the integration module was intentionally skipped because this direct command has no disposable DB URL)"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "output": "clean"
+    }
+  ],
+  "runtime_probes": {
+    "terminal_payload_vs_checkpoint": {
+      "result": "confirmed",
+      "evidence": "The real-PostgreSQL regression passed. It writes a terminal PipelineRun payload after stage 02 times out, then resumes with stage 01 skipped, last_price preserved from the checkpoint, and attempts [01/1 completed, 02/1 timed_out, 02/2 completed]."
+    },
+    "stale_running_attempt_exactly_once": {
+      "result": "confirmed",
+      "evidence": "The real-PostgreSQL process-recreation regression passed with [01/1 completed, 02/1 failed, 02/2 completed]. src/quantinue/db/postgres_query.py updates only status='running'; after finalization the same historical attempt cannot match a later resume. Repeated interruption therefore finalizes only the currently running attempt per claim."
+    },
+    "cancel_resume": {
+      "result": "confirmed",
+      "evidence": "PipelineOrchestrator.run shields store.abandon in finally. The integration case raises KeyboardInterrupt, closes the first store, recreates it, then resumes from the durable checkpoint."
+    },
+    "misleading_success_output": {
+      "result": "confirmed",
+      "evidence": "The runner exit code was captured separately after pytest (RUNNER_EXIT=0), rather than inferring success from dot output."
+    },
+    "dirty_worktree": {
+      "result": "preserved",
+      "evidence": "Pre-existing parent-repository status was ' M ../.gitignore' and '?? ./'. Verification wrote only this evidence artifact and made no product edit. git diff --check passed."
+    }
+  },
+  "isolation": {
+    "result": "confirmed",
+    "evidence": "The inspected runner allocates a free loopback port only in 55400-55499 and a unique quantinue-test-pg name, exports that URL only to pytest, and removes its own container with trap. Before/after observation showed existing 5432 containers preserved and no product 5444 mapping. A pre-existing quantinue-test-pg container from another concurrent worker was observed before this run and was not touched."
+  },
+  "static_path": {
+    "resume_context": "src/quantinue/db/postgres_query.py:42-59 selects the latest pipeline_checkpoints payload and validates it as PipelineContext; it never parses pipeline_runs.payload during resumed claim.",
+    "claim_transition": "src/quantinue/db/postgres.py:116-130 finalizes stale running attempts, restores checkpoint context, and only then marks the run running.",
+    "terminal_projection": "src/quantinue/db/postgres.py:230-248 intentionally stores PipelineRun in pipeline_runs.payload only after finish_run; terminal readers parse that projection separately."
+  },
+  "limitations": [
+    "The focused integration test covers one interruption dynamically. Repeated interruption was adversarially checked from the status-qualified UPDATE invariant rather than adding a temporary product test, to keep this verification read-only."
+  ]
+}

@@ -1,0 +1,5 @@
+NAME                              IMAGE                           COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+quantinue_mvp_qa_wave3ops-db-1    postgres:17-alpine              "docker-entrypoint.s…"   db        23 seconds ago   Up 22 seconds (healthy)   127.0.0.1:5444->5432/tcp
+quantinue_mvp_qa_wave3ops-web-1   quantinue_mvp_qa_wave3ops-web   "uv run --no-sync uv…"   web       23 seconds ago   Created                   
+COMMAND     PID     USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+com.docke 32392 sunghyuk  143u  IPv6 0x332e160f4e140aa4      0t0  TCP *:8011 (LISTEN)

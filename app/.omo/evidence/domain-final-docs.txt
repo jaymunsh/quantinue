@@ -1,0 +1,39 @@
+Quantinue final domain remediation — documentation evidence
+Date: 2026-07-13 (Asia/Seoul)
+
+Scope
+- Documentation-only changes: README.md, IMPLEMENTATION_ASSUMPTIONS.md,
+  docs/DESIGN_IMPLEMENTATION_MAP.md.
+- No application, test, schema, configuration, or provider code edited by this task.
+
+Truthful mappings recorded
+- Stages 01/02/03/04 persist universe/technical/daily-pick/macro at their own
+  validated completion boundaries.
+- Component 08 persists the canonical representation of the validated role-07
+  strategist result and links the independent critic verdict. It does not synthesize
+  placeholder or backfilled universe/daily-pick parents; it uses rows persisted by
+  stages 01 and 03.
+- POST /api/reviews/{signal_id}/process performs idempotent T+1..T+5 processing;
+  the persisted final review is then projected by GET /api/runs/{run_id} and the
+  refreshed dashboard.
+- config/pipeline.yaml mvp.schedule is the sole runtime cadence source. Thresholds
+  and stop/take-profit ratios are YAML-owned. YAML model names are defaults overridden
+  only by explicitly supplied adapter-specific QUANTINUE_*_MODEL settings. The daily
+  order cap has its documented QUANTINUE_DAILY_NEW_ORDER_CAP operational override.
+- QUANTINUE_DATABASE_URL belongs to the app (host 127.0.0.1:5444; Compose db:5432).
+  QUANTINUE_TEST_DATABASE_URL must explicitly identify a disposable test database;
+  tests do not infer localhost:5432.
+
+Verification
+- Root documentation link ../docs/quantinue-integrated-design.html: PASS
+- Mapping-document link ../../docs/quantinue-integrated-design.html: PASS
+- Referenced implementation/test paths checked: PASS (no missing paths)
+- git diff --check for all three edited Markdown files: PASS
+- Stale-claim search covered stage-08 placeholder/backfill, cadence ownership,
+  database keys/ports, and T+5 POST/detail/dashboard behavior.
+
+Safety
+- No Docker command was run.
+- No database connection was opened.
+- No host port, container, volume, credential, or existing user file outside the
+  three requested docs and this evidence receipt was modified.

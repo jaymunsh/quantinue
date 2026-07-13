@@ -1,0 +1,7 @@
+=== pytest ===
+..............                                                           [100%]
+14 passed in 1.36s
+=== ruff ===
+All checks passed!
+=== basedpyright ===
+0 errors, 0 warnings, 0 notes

@@ -1,0 +1,16 @@
+DoneClaim: README.md, IMPLEMENTATION_ASSUMPTIONS.md, and docs/DESIGN_IMPLEMENTATION_MAP.md now describe the completed domain integration and its true operational exclusions.
+
+Scope verified:
+- DataMode fixture/public and no-key public adapters for roles 01/02/04/05/06.
+- Typed config/pipeline.yaml schedule plus due-role command seam; no in-process daemon, timer, or worker.
+- Canonical raw disclosure/news, analysis signals, strategist signal, critic verdict, paper account, order, fill, review snapshots, and final review persistence.
+- Atomic account/trade-date order cap, stable idempotency, no-trade review path, T+5 trigger endpoint with injected clock, and Alpaca parent/stop/take-profit leg IDs.
+- Host PostgreSQL isolation at 127.0.0.1:5444 and Docker-internal db:5432; no claim that host 5432 was touched.
+- Default tests do not exercise real public-network, OpenAI, or Alpaca credentials; Alpaca remains paper-only.
+
+Verification:
+  STALE_CLAIMS=0
+  LINK_TARGETS=PASS
+  DOC_TRUTH_CHECK=PASS
+
+No code files were edited in this lane.

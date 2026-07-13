@@ -1,0 +1,92 @@
+{
+  "task": "Todo 3 lifecycle/retry/checkpoint DoneClaim",
+  "verdict": "REJECT",
+  "confidence": 0.97,
+  "summary": "The scoped test and quality claims reproduce, but resume_from accepts checkpoints belonging to different runs, so an interrupted run can treat another run's stages as completed. The checkpoint/repeated-interruption acceptance claim is therefore not established.",
+  "reproduced": [
+    {
+      "claim": "48 scoped lifecycle/retry/checkpoint tests",
+      "result": "PASS",
+      "evidence": ".omo/evidence/verify-todo3-scoped-tests.txt"
+    },
+    {
+      "claim": "2 existing pipeline regression tests",
+      "result": "PASS",
+      "evidence": ".omo/evidence/verify-todo3-pipeline.txt"
+    },
+    {
+      "claim": "ruff format/check on scoped implementation and tests",
+      "result": "PASS",
+      "evidence": [
+        ".omo/evidence/verify-todo3-ruff-format.txt",
+        ".omo/evidence/verify-todo3-ruff-check.txt"
+      ]
+    },
+    {
+      "claim": "basedpyright on Todo 3 scope",
+      "result": "PASS: 0 errors, 0 warnings",
+      "evidence": ".omo/evidence/verify-todo3-basedpyright-scoped.txt"
+    },
+    {
+      "claim": "programming no-excuse audit on five production files",
+      "result": "PASS: no violations",
+      "evidence": ".omo/evidence/verify-todo3-no-excuse.txt"
+    }
+  ],
+  "findings": [
+    {
+      "severity": "HIGH",
+      "title": "Resume accepts a checkpoint prefix assembled from different runs",
+      "location": "src/quantinue/orchestration/checkpoint.py:35",
+      "repro": "Construct ordinal 0 as Checkpoint(run_key='run-A', stage='01', ...) and ordinal 1 as Checkpoint(run_key='run-B', stage='02', ...), then call resume_from(('01','02','03'), checkpoints). It returns ResumePlan(next_stage='03', completed_stages=('01','02')) instead of CheckpointSequenceError.",
+      "impact": "Stale or incorrectly queried persisted state can skip work in the wrong run, defeating safe checkpoint resume and repeated-interruption guarantees.",
+      "evidence": ".omo/evidence/verify-todo3-adversarial-probes.txt"
+    },
+    {
+      "severity": "MEDIUM",
+      "title": "Input hashing accepts non-standard JSON numeric constants",
+      "location": "src/quantinue/orchestration/lifecycle.py:151",
+      "repro": "deterministic_input_hash('NaN'), deterministic_input_hash('Infinity'), and deterministic_input_hash('-Infinity') all return hashes.",
+      "impact": "The function claims canonical JSON hashing but accepts and re-emits values outside interoperable RFC JSON, allowing boundary behavior to vary across producers/parsers.",
+      "evidence": ".omo/evidence/verify-todo3-adversarial-probes.txt"
+    },
+    {
+      "severity": "LOW",
+      "title": "Malformed HTTP status values can enter retry classification",
+      "location": "src/quantinue/orchestration/retry.py:91",
+      "repro": "HttpFailureError(status_code=700) is retried three times and ends as RetryExhaustedError because every status >=500 is treated as transient.",
+      "impact": "An invalid adapter value consumes the retry budget instead of failing validation; valid validation/auth/hard-risk and non-transient 4xx exclusions behave correctly.",
+      "evidence": ".omo/evidence/verify-todo3-adversarial-probes.txt"
+    },
+    {
+      "severity": "INFO",
+      "title": "Repository-wide basedpyright gate is currently red outside Todo 3 scope",
+      "location": "src/quantinue/broker/provider.py:105",
+      "repro": "uv run basedpyright reports dict[str, SecretStr] incompatible with the HTTP client's headers parameter.",
+      "impact": "Todo 3 scoped typing passes, but the evidence's unqualified basedpyright success statement is stale under the current dirty worktree.",
+      "evidence": ".omo/evidence/verify-todo3-basedpyright.txt"
+    }
+  ],
+  "adversarial_checks": {
+    "transition_graphs": "All enum variants are graph keys; exhaustive runtime probe observed exactly 10 allowed/39 rejected run pairs and 13 allowed/51 rejected stage pairs.",
+    "retry_classifier": "Validation, authentication, hard-risk, and valid non-transient 4xx make one attempt; 408/425/429 and 5xx use bounded injected delays; no real retry sleeps are used in tests.",
+    "clock": "Lifecycle transition clock is injected; wall clock remains only as the production default.",
+    "checkpoint": "Ordinal/stage contiguity is checked, but checkpoint run identity is not.",
+    "dirty_worktree": "Parent repository reports app/ as untracked, so historical diffs cannot establish changed-file provenance; no product files were edited by this verifier.",
+    "flaky_timing": "48-test run completed in 0.08s; timeout test uses AnyIO deadline and retry delays use a recorder.",
+    "misleading_output": "Scoped gates pass; repository-wide basedpyright does not."
+  },
+  "evidence_files": [
+    ".omo/evidence/verify-todo3-scoped-tests.txt",
+    ".omo/evidence/verify-todo3-pipeline.txt",
+    ".omo/evidence/verify-todo3-ruff-format.txt",
+    ".omo/evidence/verify-todo3-ruff-check.txt",
+    ".omo/evidence/verify-todo3-basedpyright.txt",
+    ".omo/evidence/verify-todo3-basedpyright-scoped.txt",
+    ".omo/evidence/verify-todo3-no-excuse.txt",
+    ".omo/evidence/verify-todo3-adversarial-probes.txt",
+    ".omo/evidence/verify-todo3-dirty-worktree.txt",
+    ".omo/evidence/verify-todo3-loc.txt",
+    ".omo/evidence/verify-todo3-timing-scan.txt"
+  ]
+}

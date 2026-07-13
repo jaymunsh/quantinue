@@ -1,0 +1,104 @@
+Task 4 — Roles 01–08 and 11, public no-key adapters, T+5 calendar
+Date: 2026-07-13
+
+Baseline characterization
+- Before production edits: `uv run pytest tests/test_pipeline.py -q` => 2 passed.
+- Observable locked: offline NVDA executes 01→11 and the same cycle is idempotent.
+
+TDD red evidence
+- Role contract tests initially failed because role-specific `contracts.py` modules did not exist.
+- Market-data tests initially failed because `quantinue.market_data` did not exist.
+- T+5 tests initially failed because reviewer contracts/calendar/scorer did not exist.
+
+Implemented
+- Strict frozen Pydantic input/output contracts for roles 01–08 and 11.
+- Deterministic no-key fixtures remain the default and existing factory/service imports remain compatible.
+- Evidence/source/source_ref/observed_at/captured_at/confidence/execution-id lineage.
+- Boundary rejection for malformed, future, stale (>5 minutes), cross-run, missing-parent, and contradictory evidence.
+- Disclosure/news untrusted text remains data; hard blockers produce hold/reject and no positive downstream signal.
+- Optional public HTTP adapters: NASDAQ screener, Stooq candles, FRED macro CSV, SEC submissions, RSS title/snippet.
+- Optimized owned httpx2 client with HTTP/2, tuned timeouts/pool, transport retries, TCP_NODELAY, and async cleanup.
+- Injected-clock US trading calendar with weekends, observed holidays, Good Friday, Juneteenth, and DST-aware closes.
+- T+1..T+5 validation; buy review base is fill price, hold review base is decision close.
+
+Automated verification
+- `uv run pytest tests/unit/test_roles_01_04_contracts.py tests/unit/test_roles_05_08_contracts.py tests/unit/test_market_data.py tests/unit/test_role_11_reviewer.py tests/test_pipeline.py -q`
+  Result: 29 passed in 1.07s.
+- Scoped `uv run ruff check ...`
+  Result: All checks passed.
+- Scoped `uv run basedpyright ...`
+  Result: 0 errors, 0 warnings, 0 notes.
+
+Remediation verification after independent rejection
+- Added a per-role 01-08 boundary matrix for valid, missing, >5 minute stale, future,
+  cross-run, contradictory, and missing-parent evidence; no matrix dimension was silently skipped.
+- Added role03 non-negative score, actionable role05 complete-field requirements, role06
+  hard-block reason/non-positive constraint, role07 buy gate proof, and role08 pass layer/evidence proof.
+- Added `PipelineRun`/`PipelineContext.evidence_trace` compatibility defaults; the real offline
+  pipeline emits 11 ordered run-linked role traces and legacy JSON remains readable.
+- Role11 now injects a TradingCalendar protocol and derives all review numerics from immutable
+  input. DST-spanning T+5 changes the NY close from 20:00Z to 21:00Z as expected.
+- Wire tests inspect the owned HTTP policy (HTTP/2, retry=3, 200/40/30 pool,
+  5/30/10/10 timeout, TCP_NODELAY) and prove close on success and malformed response.
+- Aggregate remediation command over role, adapter, trace, and pipeline tests:
+  Result: 77 passed in 0.97s.
+- Aggregate scoped Ruff: All checks passed.
+- Aggregate scoped Basedpyright: 0 errors, 0 warnings, 0 notes.
+
+Second independent-verifier remediation
+- Role03 now rejects score=999 with a strict 0..1 contract.
+- Role07 rejects a six-minute-stale StrategyInput at Pydantic boundary construction.
+- Roles05-08 and role11 now have explicit valid/missing/stale/future/cross-run/
+  contradiction/missing-parent matrix cases; represented N/A cases carry asserted reasons.
+- Role evidence traces now include deterministic `evidence_id` and `parent_evidence_ids`;
+  source_ref points to the produced ID and every later stage consumes prior produced IDs.
+- All generic validation errors in owned role contracts use stable typed/Pydantic errors.
+- Fresh aggregate tests including the separate role11 matrix: 97 passed in 1.16s.
+- Fresh aggregate Ruff: All checks passed.
+- Fresh aggregate Basedpyright: 0 errors, 0 warnings, 0 notes.
+- Official programming checker over 39 owned source/test files: no violations.
+
+Final role05-08 behavioral-matrix closure
+- Removed descriptive N/A rows. Four real parametrized role tables now construct or execute
+  each 05/06/07/08 boundary for valid, missing, >5 minute stale, future, contradictory,
+  cross-run, and missing-parent inputs and assert the typed result/error/rejection.
+- Role05/06 concretely reject stale event evidence and contradictory positive hard blocks.
+- Fresh complete Todo4 aggregate: 115 passed in 0.98s.
+- Fresh role05-08 Ruff: All checks passed.
+- Fresh role05-08 Basedpyright: 0 errors, 0 warnings, 0 notes.
+- Official no-excuse checker on the final role05-08 scope: no violations in 13 files.
+
+Final formatting closure
+- `uv run ruff format tests/unit/test_pipeline_evidence_trace.py`: 1 file reformatted.
+- Full Todo4 `ruff format --check`: 40 files already formatted.
+- Fresh aggregate pytest: 115 passed in 1.02s.
+- Fresh Ruff check: All checks passed.
+- Fresh Basedpyright: 0 errors, 0 warnings, 0 notes.
+- Fresh official no-excuse: no violations in 40 files.
+
+Docker current-cycle runtime regression
+- Confirmed H1/H2: role05/06 fixture cycle overrides retained fixed 2026 event timestamps;
+  H3 (PipelineRequest cycle normalization) was refuted by observed exact values.
+- Red: 2024 cycle rejected fixed event as future; 2030 cycle rejected it as stale.
+- Green: fixture services derive filed_at/published_at from request cycle_ts minus one minute.
+- Regression executes both sources at 2024 and 2030 cycles and asserts event <= cycle and age <=5m.
+- Roles + pipeline + web: 56 passed in 1.05s.
+- Ruff format/check, Ruff check, Basedpyright, official no-excuse: all passed/zero.
+
+Manual/offline QA
+- Executed typed offline 01→11 flow through the real orchestrator: completed 11 stages, filled mock order, pending T+5 review.
+- Malformed input: strict/extra-forbid and cross-field contract tests reject invalid OHLC, scores, ranks, timestamps, and snapshot offsets.
+- Prompt injection: hostile disclosure/news instruction remains serialized external data; no instruction execution path.
+- Stale lineage: six-minute upstream snapshot yields hold; future/cross-run/missing-parent evidence is rejected.
+- Contradiction: duplicate evidence IDs with different claims and fake disclosure/news consensus yield reject.
+- Flaky clock: all time decisions use injected values; no sleeps or wall-clock assertions.
+- Misleading output: pass is asserted on typed outputs and exceptions, not log text.
+
+Resource cleanup
+- HTTP acceptance uses in-process wire fakes; clients are closed by async context managers.
+- No live network, listener, process, container, port, or temporary directory was left behind.
+- Existing localhost:5432 was neither contacted nor modified.
+
+Code review
+- All changed production files are below 250 pure LOC; `market_data/http_source.py` is 238 LOC warning-band and must be split before further expansion.
+- Dirty workspace was preserved; no unrelated file was removed or reverted.

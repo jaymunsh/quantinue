@@ -3,3 +3,16 @@
 # 수동 백업 사본 — git이 이력을 보존하므로 커밋하지 않음 (파일 자체는 로컬 유지)
 docs/Quantinue_통합설계서_v2_2*.html
 docs/*_backup_*.html
+
+# Quantinue application secrets and generated local QA artifacts.
+app/.env
+app/.env.*
+!app/.env.example
+app/.secrets/
+app/.qa/
+app/test-results/
+app/playwright-report/
+app/.pytest_cache/
+app/.ruff_cache/
+app/.coverage*
+app/htmlcov/

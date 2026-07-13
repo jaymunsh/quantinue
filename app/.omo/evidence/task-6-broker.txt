@@ -1,0 +1,59 @@
+Task 6 broker / roles 09-10 evidence — 2026-07-13 Asia/Seoul
+
+Manual QA surface: HTTP-level Alpaca wire fake (`httpx2.MockTransport`), driven through the
+real `AlpacaBroker.submit()` public boundary. No real credentials or network were used.
+
+Command:
+uv run pytest -vv tests/unit/test_broker_provider.py -k \
+  'success_posts_fixed_bracket or timeout_after_acceptance or concurrent_same_plan or \
+   disabled_trading_and_live_url or repeated_interruption'
+
+Observable results:
+- success: one POST /v2/orders, accepted result, secret absent from result representation
+- timeout-after-acceptance: POST timeout followed by GET /v2/orders:by_client_order_id
+- disabled/live URL: TradingDisabledError and zero transport calls
+- concurrent same plan: two callers received the same result and exactly one POST occurred
+- repeated interruptions: two canceled owners released reservation; a later retry succeeded
+- result: 5 passed, 12 deselected in 0.10s
+
+Additional gates:
+- scoped broker/risk/order suite: 24 passed in 0.12s
+- pipeline compatibility: 2 passed in 1.03s
+- scoped ruff: All checks passed
+- scoped basedpyright: 0 errors, 0 warnings, 0 notes
+- no-excuse checker: no violations in 12 files
+
+Adversarial probes:
+- malformed response: rejected as typed ValidationFailureError
+- stale reservation: reclaimed deterministically
+- 401: typed AuthenticationFailureError, exactly one request
+- timeout before acceptance: one POST + one lookup; retryable error, no blind second POST
+- zero quantity: rejected at the boundary; zero calls
+- hung call/repeated interruption: bounded cancellation, shielded reservation cleanup
+- flaky concurrency: event/lock synchronization, no sleep-based production polling
+- dirty workspace: edits limited to assigned broker/role09/role10/tests/evidence scope
+- misleading output: assertions verify request counts, paths, and returned lifecycle values
+
+Cleanup receipt:
+- MockTransport owns no sockets, processes, ports, containers, or temporary files.
+- No API keys were read; test-only SecretStr values are non-secret and not printed.
+
+Remediation verification:
+- reservation ownership now uses an opaque per-generation ReservationOwnerToken
+- stale ABA probe: new owner completed; delayed old release and complete both returned false;
+  cached result remained the new owner's result
+- concurrent/stale/interruption focused wire run: 4 passed in 0.10s
+- one-cent entry was rejected because a strict positive cent-tick stop cannot be formed
+- RiskPortfolioOutput independently rejects stop >= entry or entry >= take-profit
+- remediated scoped suite plus pipeline compatibility: 29 passed in 1.07s
+- remediated ruff/basedpyright/no-excuse gates: clean
+
+Role 09/10 contract matrix extension:
+- both contracts accept one valid evidence chain and reject empty evidence
+- both reject evidence older than five minutes, future captures, foreign run IDs,
+  contradictory duplicate IDs, and unavailable lineage parents
+- no N/A matrix dimensions: all six are meaningful before risk sizing and order submission
+- pipeline RoleEvidenceTrace entries 08 -> 09 are converted into explicit Evidence IDs and
+  parent links before roles 09 and 10; outputs expose the validated evidence IDs
+- matrix + broker + risk/order + pipeline compatibility: 44 passed
+- scoped ruff/basedpyright/no-excuse gates: clean across 13 files

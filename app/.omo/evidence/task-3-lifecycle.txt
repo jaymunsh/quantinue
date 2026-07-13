@@ -1,0 +1,38 @@
+Task 3 lifecycle/retry/checkpoint evidence — 2026-07-13
+
+Failing-first proof
+- Command: uv run pytest tests/unit/test_lifecycle.py tests/unit/test_retry.py tests/unit/test_checkpoint.py
+- Observable: collection failed in all three modules because the new typed contracts did not exist.
+
+Manual QA surface
+- Command: uv run pytest -q 'tests/unit/test_retry.py::test_transient_failure_succeeds_on_bounded_retry_without_real_sleep[asyncio]' 'tests/unit/test_retry.py::test_non_transient_failures_make_one_attempt[asyncio-error0]' tests/unit/test_lifecycle.py::test_transition_uses_injected_clock_without_wall_time_flakiness tests/unit/test_checkpoint.py::test_repeated_interruption_does_not_repeat_completed_stage
+- Observable: 4 passed. A transient provider failure succeeded on attempt 3 with injected delays [0.25, 0.5]; validation failed after exactly one call; injected clock fixed transition time; repeated resume returned stage 02 without repeating completed stage 01.
+
+Automated verification
+- Scoped pytest: 48 passed.
+- Existing pipeline compatibility: 2 passed.
+- Ruff format/check: passed.
+- basedpyright: 0 errors, 0 warnings.
+- programming no-excuse audit: no violations in 5 production files.
+- Production pure LOC: contracts 124, errors 87, lifecycle 123, retry 97, checkpoint 42; all below 200.
+
+Independent gate remediation
+- Failing-first command covered mixed run keys, NaN/Infinity at root and nested positions, and HTTP 700. Observable before fix: 6 failed, 12 passed.
+- Resume now takes the requested run key and rejects any checkpoint from another execution before advancing the canonical stage prefix.
+- Canonical JSON serialization uses allow_nan=false after typed parsing, rejecting non-finite numbers recursively with NonFiniteInputError.
+- HTTP retry is limited to 408/425/429 and the valid 500..599 range; invalid 700 is returned after one attempt.
+- Final scoped pytest after remediation: 54 passed. Pipeline regression: 2 passed. Ruff, basedpyright and no-excuse checks passed.
+
+Adversarial probes
+- malformed input: forbidden lifecycle transitions and non-contiguous/duplicate/unknown checkpoints raise typed errors.
+- cancel/resume: cancelled states are terminal; completed checkpoint prefix resumes at its next stage.
+- repeated interruptions: the same checkpoint snapshot produces the same resume boundary.
+- stale state: checkpoint ordinal and configured stage must agree; corrupt snapshots are rejected.
+- dirty worktree: scoped status was inspected; unrelated concurrent/untracked user and worker files were not modified or removed.
+- flaky time: clocks and sleepers are injected; unit tests contain no wall-clock sleeps.
+- misleading success output: success claim is backed by exact pytest, lint, typecheck and compatibility output.
+- hung commands: per-attempt timeout uses AnyIO fail_after and is exercised at a 1ms bounded deadline.
+- prompt injection: not applicable; these modules consume closed typed state, not external text prompts.
+
+Cleanup
+- No server, container, port, process, browser session, or temporary directory was created.

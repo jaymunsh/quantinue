@@ -1,0 +1,31 @@
+DoneClaim: Alpaca bracket parent, stop-loss, and take-profit provider IDs are normalized into OrderResult and locked by a wire-level regression test.
+
+Scope
+- Inspected src/quantinue/broker/alpaca.py.
+- Added a characterization/regression test in tests/unit/test_broker_provider.py.
+- Production implementation was already correct; no production edit was required.
+- Canonical repository files were not touched.
+
+Behavior proved
+- Alpaca parent `id` populates both `OrderResult.order_id` and `parent_order_id`.
+- A nested `stop` leg populates `stop_leg_order_id`.
+- A nested `limit` leg populates `take_profit_leg_order_id`.
+- Classification uses leg type and does not depend on response leg position.
+
+Verification
+- `uv run pytest tests/unit/test_broker_provider.py -q`: 10 passed in 0.10s.
+- `uv run ruff check src/quantinue/broker/alpaca.py tests/unit/test_broker_provider.py`: passed.
+- `uv run basedpyright src/quantinue/broker/alpaca.py tests/unit/test_broker_provider.py`: 0 errors, 0 warnings, 0 notes.
+- `uv run .../check-no-excuse-rules.py src/quantinue/broker/alpaca.py tests/unit/test_broker_provider.py`: no violations.
+
+Post-write review
+- Single responsibility: test file owns broker-boundary behavior; adapter owns Alpaca normalization.
+- Boundary purity: provider JSON is parsed once through frozen Pydantic response models.
+- Variant handling: no new variant discrimination was introduced.
+- Escape hatches and defensive layers: none introduced.
+- Regression lock: removing the existing ID normalization makes the new test fail.
+- Size: alpaca.py 228 pure LOC (warning band); test_broker_provider.py 211 pure LOC (warning band). Further additions should split these files by responsibility.
+
+Repository handoff
+- Preserve the existing `_AlpacaOrderResponse.legs` parsing and `_normalize` mapping in src/quantinue/broker/alpaca.py when integrating sibling work.
+- Preserve `test_alpaca_bracket_response_normalizes_parent_and_leg_order_ids` in tests/unit/test_broker_provider.py.

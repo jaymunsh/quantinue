@@ -1,0 +1,13 @@
+ Network quantinue_mvp_qa_wave3ops_collision_default Creating 
+ Network quantinue_mvp_qa_wave3ops_collision_default Created 
+ Volume quantinue_mvp_qa_wave3ops_collision_quantinue_pgdata Creating 
+ Volume quantinue_mvp_qa_wave3ops_collision_quantinue_pgdata Created 
+ Container quantinue_mvp_qa_wave3ops_collision-db-1 Creating 
+ Container quantinue_mvp_qa_wave3ops_collision-db-1 Created 
+Attaching to db-1
+ Container quantinue_mvp_qa_wave3ops_collision-db-1 Starting 
+Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:5444 -> 127.0.0.1:0: listen tcp4 127.0.0.1:5444: bind: address already in use
+Attaching to db-1
+ Container quantinue_mvp_qa_wave3ops_collision-db-1 Starting 
+Error response from daemon: ports are not available: exposing port TCP 127.0.0.1:5444 -> 127.0.0.1:0: listen tcp4 127.0.0.1:5444: bind: address already in use
+exit_status=1
