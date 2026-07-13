@@ -34,7 +34,7 @@
   - Add a small same-origin script only while a nonterminal run exists; update only safe status DOM, stop at terminal state, preserve no-JS baseline and reduced-motion/focus/live-region design contract.
   - TDD: rendered states and browser interaction at mobile/desktop.
 
-- [ ] 4. Verify lifecycle, runtime, and visual behavior.
+- [x] 4. Verify lifecycle, runtime, and visual behavior.
   - Run static/full tests, disposable PostgreSQL, Compose contract, and fresh Chromium at 1440/1024/768/390 for slow-role running, retrying, terminal, and no-JS fallback states.
 
 ## Final verification wave

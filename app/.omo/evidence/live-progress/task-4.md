@@ -75,6 +75,28 @@ Every required viewport had `scrollWidth <= clientWidth`; the live panel was vis
 while running, showed the current/next canonical roles, and retained the safe
 announcement text.  The browser test also asserted no console/page errors.
 
+An initial independent visual review caught a real terminal coherence defect: the
+client updated only the live badge, leaving the server-rendered summary and stage
+ledger stale.  A browser red test then proved the terminal panel remained present.
+The terminal branch now clears its interval and reloads the same-origin dashboard.
+The green rerun proved the live panel disappears and the re-rendered summary and
+stage record both show `completed`.  Fresh `task-4-1440-terminal.png` and
+`task-4-390-no-js.png` were directly inspected after that rerun; the no-JavaScript
+baseline is legible and the terminal page has no contradictory running content.
+
+The final gate commands were rerun after this repair and all retained the results
+listed above.
+
+## Independent visual review
+
+- Design-system/function integrity: **PASS (high confidence)**.  The reviewer
+  confirmed the active current/next labels, responsive bounds, same-origin terminal
+  reload, and coherent terminal summary/stage state.
+- CJK/responsive review: **PASS (high confidence)**.  All active widths and the
+  no-JavaScript 390px baseline were legible with no clipping or horizontal overflow.
+  Direct original-resolution inspection confirmed an earlier black-preview report
+  was a viewer artifact, not a rendered-page defect.
+
 ## Cleanup
 
 - Stopped all temporary `8149` Uvicorn instances; the memory stores were discarded.
