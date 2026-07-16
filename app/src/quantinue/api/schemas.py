@@ -1,11 +1,13 @@
 """FastAPI request, response, and redacted control-room schemas."""
 
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from quantinue.core.contracts import RunId, RunStatus, StageStatus
 from quantinue.core.ontology import ModelProvider
+from quantinue.market_data.models import NewsMatchStatus
 
 
 class RunCreate(BaseModel):
@@ -126,8 +128,8 @@ class SourceReferenceView(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    label: str = Field(max_length=512)
-    href: str | None = Field(default=None, max_length=512)
+    label: str = Field(max_length=4_096)
+    href: str | None = Field(default=None, max_length=4_096)
 
 
 class CollectionDetailView(BaseModel):
@@ -164,8 +166,118 @@ class CriticDetailView(BaseModel):
     layer: str = Field(max_length=64)
 
 
+class NewsSelectionItemView(BaseModel):
+    """Safe ticker-news selection row."""
+
+    model_config = ConfigDict(frozen=True)
+
+    status: NewsMatchStatus
+    is_representative: bool
+    score: int = Field(ge=0)
+    reasons: tuple[str, ...]
+    relevance_evaluated: bool
+    representative_label: str
+    representative_explanation: str
+    title: str
+    published_at: str
+    reference: SourceReferenceView
+
+
+class NewsSelectionView(BaseModel):
+    """Exact Role 06 selection counts and rows."""
+
+    model_config = ConfigDict(frozen=True)
+
+    fetched_count: int = Field(ge=0)
+    relevant_count: int = Field(ge=0)
+    excluded_count: int = Field(ge=0)
+    representative_count: int = Field(ge=0, le=1)
+    items: tuple[NewsSelectionItemView, ...]
+
+
+class RoleDetailView(BaseModel):
+    """One bounded 01--11 result block for administrator inspection."""
+
+    model_config = ConfigDict(frozen=True)
+
+    component: str = Field(max_length=64)
+    title: str = Field(max_length=200)
+    description: str = Field(max_length=600)
+    status: str = Field(max_length=64)
+    summary: str = Field(max_length=1_000)
+    facts: tuple[tuple[str, str], ...] = Field(max_length=24)
+    items: tuple[str, ...]
+    news_selection: NewsSelectionView | None = None
+
+
+class PortfolioAccountView(BaseModel):
+    """Local simulated account totals."""
+
+    model_config = ConfigDict(frozen=True)
+
+    opening_cash: Decimal
+    current_cash: Decimal
+    equity: Decimal
+    buying_power: Decimal
+    currency: str
+
+
+class PortfolioPositionView(BaseModel):
+    """Marked local simulated holding."""
+
+    model_config = ConfigDict(frozen=True)
+
+    ticker: str
+    quantity: int = Field(gt=0)
+    average_cost: Decimal
+    mark_price: Decimal
+    mark_source: str
+    mark_as_of: datetime
+    market_value: Decimal
+    unrealized_pnl: Decimal
+    allocation: Decimal
+
+
+class SimulatedOrderView(BaseModel):
+    """Local simulated order row."""
+
+    model_config = ConfigDict(frozen=True)
+
+    order_id: str
+    ticker: str
+    quantity: int = Field(gt=0)
+    reference_price: Decimal
+    status: str
+    created_at: datetime
+
+
+class SimulatedFillView(BaseModel):
+    """Local simulated fill row."""
+
+    model_config = ConfigDict(frozen=True)
+
+    fill_id: str
+    order_id: str
+    ticker: str
+    quantity: int = Field(gt=0)
+    price: Decimal
+    filled_at: datetime
+
+
+class SimulatedPortfolioView(BaseModel):
+    """Local buy-only portfolio projection."""
+
+    model_config = ConfigDict(frozen=True)
+
+    account: PortfolioAccountView
+    positions: tuple[PortfolioPositionView, ...]
+    orders: tuple[SimulatedOrderView, ...]
+    fills: tuple[SimulatedFillView, ...]
+    realized_pnl_label: str
+
+
 class TerminalRunDetailView(BaseModel):
-    """Redacted collection-to-critic detail for one terminal pipeline run."""
+    """Redacted structured detail for one terminal pipeline run."""
 
     model_config = ConfigDict(frozen=True)
 
@@ -173,6 +285,7 @@ class TerminalRunDetailView(BaseModel):
     news: CollectionDetailView
     strategy: StrategyDetailView
     critic: CriticDetailView
+    roles: tuple[RoleDetailView, ...] = Field(max_length=11)
 
 
 class ControlRoomRun(BaseModel):

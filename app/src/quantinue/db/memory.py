@@ -4,31 +4,63 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import date, datetime
+from decimal import Decimal
+from typing import Final
 
 import anyio
+from typing_extensions import override
 
-from quantinue.core.contracts import PipelineContext, PipelineRequest, PipelineRun, RunId
+from quantinue.core.contracts import (
+    PipelineContext,
+    PipelineRequest,
+    PipelineRun,
+    RunId,
+    RunStatus,
+)
 from quantinue.db.active_snapshot import ActivePipelineSnapshot, active_pipeline_snapshot
 from quantinue.db.contracts import (
+    AppOrderExposureReservationOutcome,
+    AppOrderExposureReservationResult,
+    AppOrderExposureStatus,
+    AppOrderExposureSummary,
     AttemptFailure,
     DailyOrderReservation,
     PersistedAttempt,
     RunClaim,
 )
+from quantinue.db.memory_completed_buy import MemoryCompletedBuyMixin
+from quantinue.db.memory_exposure import (
+    TERMINAL_APP_ORDER_STATUSES,
+    AppOrderExposure,
+    app_order_exposure_summary,
+)
+from quantinue.db.simulated_portfolio import (
+    MarkSource,
+    PortfolioMark,
+    SimulatedFill,
+    SimulatedOrder,
+    SimulatedPortfolioSnapshot,
+    ensure_fill_is_affordable,
+    project_buy_only_portfolio,
+)
+
+_DEFAULT_OPENING_CASH: Final = Decimal("1000000.00")
 
 
-class InMemoryRunStore:
+class InMemoryRunStore(MemoryCompletedBuyMixin):
     """Mutable process-local fake with atomic claim and checkpoint semantics."""
 
-    def __init__(self) -> None:
+    def __init__(self, opening_cash: Decimal = _DEFAULT_OPENING_CASH) -> None:
         """Create empty atomic fake state."""
+        super().__init__()
         self._runs: dict[str, PipelineRun] = {}
         self._contexts: dict[str, PipelineContext] = {}
         self._attempts: dict[str, list[PersistedAttempt]] = {}
         self._active: dict[str, anyio.Event] = {}
         self._resumable: set[str] = set()
-        self._lock = anyio.Lock()
         self._daily_orders: dict[tuple[int, date], set[str]] = {}
+        self._simulated_orders: dict[str, SimulatedOrder] = {}
+        self._opening_cash = opening_cash
 
     async def initialize(self) -> None:
         """No initialization is required."""
@@ -160,15 +192,124 @@ class InMemoryRunStore:
             active_pipeline_snapshot(context, attempts) for context, attempts in ordered[:limit]
         )
 
-    async def reserve_daily_new_order(self, request: DailyOrderReservation) -> bool:
-        """Atomically reserve a stable order identity within an account/day cap."""
+    async def simulated_portfolio(self, opening_cash: Decimal) -> SimulatedPortfolioSnapshot:
+        """Return the process-local simulated portfolio."""
         async with self._lock:
+            orders = tuple(self._simulated_orders.values())
+            fills = tuple(self._simulated_fills.values())
+            marks = tuple(
+                PortfolioMark(
+                    ticker=context.request.ticker,
+                    price=Decimal(str(context.last_price)),
+                    source=MarkSource.COMPLETED_RUN,
+                    as_of=context.request.cycle_ts,
+                )
+                for key, context in self._contexts.items()
+                if (run := self._runs.get(key)) is not None
+                and run.status is RunStatus.COMPLETED
+                and context.last_price is not None
+            )
+        return project_buy_only_portfolio(opening_cash, orders, fills, marks)
+
+    @override
+    async def record_simulated_order(
+        self,
+        order: SimulatedOrder,
+        fill: SimulatedFill | None,
+    ) -> None:
+        """Atomically retain one local order and its optional unique fill."""
+        async with self._lock:
+            if fill is not None and fill.fill_id not in self._simulated_fills:
+                ensure_fill_is_affordable(
+                    self._opening_cash, tuple(self._simulated_fills.values()), fill
+                )
+            _ = self._simulated_orders.setdefault(order.order_id, order)
+            if fill is not None:
+                _ = self._simulated_fills.setdefault(fill.fill_id, fill)
+
+    async def reserve_daily_new_order(
+        self, request: DailyOrderReservation
+    ) -> AppOrderExposureReservationResult:
+        """Reserve one canonical identity under the daily and app-exposure caps."""
+        async with self._lock:
+            existing = self._app_order_exposures.get(request.idempotency_key)
+            if existing is not None:
+                if existing.request != request:
+                    return AppOrderExposureReservationResult(
+                        outcome=AppOrderExposureReservationOutcome.REJECTED,
+                        summary=app_order_exposure_summary(
+                            self._app_order_exposures.values(),
+                            request.account_id,
+                            request.max_app_order_exposure_usd,
+                        ),
+                    )
+                return AppOrderExposureReservationResult(
+                    outcome=AppOrderExposureReservationOutcome.REPLAYED,
+                    summary=app_order_exposure_summary(
+                        self._app_order_exposures.values(),
+                        existing.request.account_id,
+                        request.max_app_order_exposure_usd,
+                    ),
+                )
             identities = self._daily_orders.setdefault(
                 (request.account_id, request.trade_date), set()
             )
-            if request.idempotency_key in identities:
-                return True
             if len(identities) >= request.cap:
-                return False
+                return AppOrderExposureReservationResult(
+                    outcome=AppOrderExposureReservationOutcome.REJECTED,
+                    summary=app_order_exposure_summary(
+                        self._app_order_exposures.values(),
+                        request.account_id,
+                        request.max_app_order_exposure_usd,
+                    ),
+                )
+            summary = app_order_exposure_summary(
+                self._app_order_exposures.values(),
+                request.account_id,
+                request.max_app_order_exposure_usd,
+            )
+            if summary.planned_or_reserved + request.reference_notional > summary.cap:
+                return AppOrderExposureReservationResult(
+                    outcome=AppOrderExposureReservationOutcome.REJECTED,
+                    summary=summary,
+                )
             identities.add(request.idempotency_key)
-            return True
+            self._app_order_exposures[request.idempotency_key] = AppOrderExposure(
+                request=request,
+                status=AppOrderExposureStatus.PLANNED,
+            )
+            return AppOrderExposureReservationResult(
+                outcome=AppOrderExposureReservationOutcome.ACQUIRED,
+                summary=app_order_exposure_summary(
+                    self._app_order_exposures.values(),
+                    request.account_id,
+                    request.max_app_order_exposure_usd,
+                ),
+            )
+
+    async def app_order_exposure_summary(
+        self, account_id: int, cap: Decimal
+    ) -> AppOrderExposureSummary:
+        """Return app-owned eligible reference exposure for one account."""
+        async with self._lock:
+            return app_order_exposure_summary(self._app_order_exposures.values(), account_id, cap)
+
+    async def reconcile_app_order_exposure(
+        self, idempotency_key: str, status: AppOrderExposureStatus
+    ) -> AppOrderExposureSummary | None:
+        """Replace one canonical order's lifecycle state without adding exposure."""
+        async with self._lock:
+            existing = self._app_order_exposures.get(idempotency_key)
+            if existing is None:
+                return None
+            updated = (
+                existing
+                if existing.status in TERMINAL_APP_ORDER_STATUSES
+                else replace(existing, status=status)
+            )
+            self._app_order_exposures[idempotency_key] = updated
+            return app_order_exposure_summary(
+                self._app_order_exposures.values(),
+                updated.request.account_id,
+                updated.request.max_app_order_exposure_usd,
+            )

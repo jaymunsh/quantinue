@@ -6,13 +6,17 @@ from enum import StrEnum, unique
 from hashlib import sha256
 from typing import Protocol, assert_never
 
-from openai import AsyncOpenAI
+import httpx
+from openai import APIConnectionError, APITimeoutError, AsyncOpenAI
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.exceptions import ModelAPIError
+from pydantic_ai.models.openai import OpenAIChatModel, OpenAIChatModelSettings
+from pydantic_ai.profiles.openai import OpenAIModelProfile
 from pydantic_ai.providers.openai import OpenAIProvider
 
 from quantinue.core.config import LlmMode, Settings
+from quantinue.core.errors import TransientFailureError
 from quantinue.core.ontology import ModelProvider
 from quantinue.llm.prompts import SystemPrompt, load_system_prompt
 
@@ -146,7 +150,15 @@ class PydanticAiAnalyzer:
             instructions=system_prompt.content,
             retries=self._retries,
         )
-        result = await agent.run(ModelInput(external_data=prompt).model_dump_json())
+        try:
+            result = await agent.run(ModelInput(external_data=prompt).model_dump_json())
+        except ModelAPIError as error:
+            if _has_transient_transport_cause(error):
+                raise TransientFailureError(
+                    provider=self._provider.value,
+                    reason="model transport unavailable",
+                ) from error
+            raise
         return AnalysisResult(
             score=result.output.score,
             label=result.output.label,
@@ -161,6 +173,24 @@ class ModelInput(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     external_data: str
+
+
+def _has_transient_transport_cause(error: ModelAPIError) -> bool:
+    current: BaseException | None = error.__cause__
+    while current is not None:
+        if isinstance(
+            current,
+            (
+                APITimeoutError,
+                APIConnectionError,
+                httpx.TimeoutException,
+                httpx.TransportError,
+                TimeoutError,
+            ),
+        ):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
 
 
 def build_llm_analyzer(settings: Settings, openai_client: AsyncOpenAI | None = None) -> LlmAnalyzer:
@@ -185,6 +215,21 @@ def build_llm_analyzer(settings: Settings, openai_client: AsyncOpenAI | None = N
                 timeout=settings.llm_timeout_seconds,
                 max_retries=0,
             )
+            model_settings = OpenAIChatModelSettings(
+                max_tokens=256,
+                temperature=0,
+                parallel_tool_calls=False,
+                openai_reasoning_effort="none",
+            )
+            model = OpenAIChatModel(
+                model_name,
+                provider=OpenAIProvider(openai_client=client),
+                profile=OpenAIModelProfile(
+                    openai_chat_supports_max_completion_tokens=False,
+                ),
+                settings=model_settings,
+            )
+            return PydanticAiAnalyzer(model, model_name, 0, provider)
         case unreachable:
             assert_never(unreachable)
     return PydanticAiAnalyzer(

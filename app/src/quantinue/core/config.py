@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from decimal import Decimal
 from enum import StrEnum, unique
 from typing import Annotated
 
@@ -51,6 +52,22 @@ class DataMode(StrEnum):
 
 
 NonBlankString = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+AppOrderExposureUsd = Annotated[
+    Decimal,
+    Field(
+        gt=Decimal(0),
+        max_digits=12,
+        decimal_places=2,
+    ),
+]
+SimulatedAccountOpeningCashUsd = Annotated[
+    Decimal,
+    Field(
+        gt=Decimal(0),
+        max_digits=14,
+        decimal_places=2,
+    ),
+]
 
 
 class Settings(BaseSettings):
@@ -84,7 +101,9 @@ class Settings(BaseSettings):
     alpaca_base_url: AnyHttpUrl = AnyHttpUrl("https://paper-api.alpaca.markets")
     trading_enabled: bool = False
     control_room_token: SecretStr = SecretStr("")
-    daily_new_order_cap: int = Field(default=5, ge=1, le=100)
+    simulated_account_opening_cash_usd: SimulatedAccountOpeningCashUsd = Decimal("1000000.00")
+    max_app_order_exposure_usd: AppOrderExposureUsd = Decimal("1000.00")
+    daily_new_order_cap: int = Field(default=1, ge=1, le=100)
     default_ticker: str = Field(default="NVDA", min_length=1, max_length=12)
 
     @field_validator("alpaca_base_url")

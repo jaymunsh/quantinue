@@ -17,7 +17,7 @@ from pydantic import ValidationError
 
 from quantinue.api.access import ControlRoomAccess
 from quantinue.api.live_runtime import LiveRunRuntime
-from quantinue.api.presentation import control_room_run
+from quantinue.api.presentation import control_room_run, simulated_portfolio_view
 from quantinue.api.review_runtime import ReviewRuntime
 from quantinue.api.reviews import build_review_router
 from quantinue.api.run_detail import build_run_detail_router
@@ -26,6 +26,7 @@ from quantinue.api.schemas import (
     ControlRoomRun,
     HealthResponse,
     RunCreate,
+    SimulatedPortfolioView,
 )
 from quantinue.core.config import DatabaseMode, Settings
 from quantinue.core.contracts import PipelineRequest, PipelineRun, RunStatus
@@ -150,6 +151,24 @@ def create_app(  # noqa: C901, PLR0915
     @app.get("/", response_class=HTMLResponse)
     async def dashboard(request: Request, error: str | None = None) -> HTMLResponse:
         views = await recent_control_room_runs()
+        durable_runs = await selected_store.list_recent()
+        durable_account_id = next(
+            (run.account_id for run in durable_runs if run.account_id is not None),
+            None,
+        )
+        exposure_summary = (
+            await selected_store.app_order_exposure_summary(
+                account_id=durable_account_id,
+                cap=selected_settings.max_app_order_exposure_usd,
+            )
+            if durable_account_id is not None
+            else None
+        )
+        portfolio = simulated_portfolio_view(
+            await selected_store.simulated_portfolio(
+                selected_settings.simulated_account_opening_cash_usd
+            )
+        )
         completed_stages = views[0].progress if views else 0
         return templates.TemplateResponse(
             request=request,
@@ -158,6 +177,8 @@ def create_app(  # noqa: C901, PLR0915
                 "runs": views,
                 "latest": views[0] if views else None,
                 "completed_stages": completed_stages,
+                "exposure_summary": exposure_summary,
+                "portfolio": portfolio,
                 "dashboard_css": DASHBOARD_CSS,
                 "settings": selected_settings,
                 "control_room_access_required": access is not None,
@@ -220,6 +241,13 @@ def create_app(  # noqa: C901, PLR0915
     @app.get("/api/runs", response_model=list[ControlRoomRun])
     async def list_runs() -> list[ControlRoomRun]:
         return list(await recent_control_room_runs())
+
+    @app.get("/api/portfolio", response_model=SimulatedPortfolioView)
+    async def portfolio_observability() -> SimulatedPortfolioView:
+        snapshot = await selected_store.simulated_portfolio(
+            selected_settings.simulated_account_opening_cash_usd
+        )
+        return simulated_portfolio_view(snapshot)
 
     @app.get("/api/runs/{run_id}", response_model=ControlRoomRun)
     async def run_observability(run_id: str) -> ControlRoomRun:

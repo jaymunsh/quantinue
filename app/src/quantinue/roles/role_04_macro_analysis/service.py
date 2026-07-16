@@ -8,6 +8,8 @@ from quantinue.core.ontology import EvidenceKind, Regime
 from quantinue.core.schemas import Evidence
 from quantinue.market_data import MarketData
 from quantinue.roles.role_04_macro_analysis.contracts import (
+    RISK_OFF_MIN,
+    RISK_ON_MAX,
     MacroAnalysisInput,
     MacroAnalysisOutput,
 )
@@ -81,7 +83,26 @@ class MacroAnalysis:
             )
         observations = await self.market_data.macro("DFF", str(context.run_id))
         observation = observations[-1]
-        result = self.fixture(context)
+        rate = float(observation.value)
+        risk_score = min(1.0, max(0.0, rate / 12.0))
+        if risk_score <= RISK_ON_MAX:
+            regime = Regime.RISK_ON
+        elif risk_score >= RISK_OFF_MIN:
+            regime = Regime.RISK_OFF
+        else:
+            regime = Regime.NEUTRAL
+        result = MacroAnalysisOutput(
+            run_id=context.run_id,
+            as_of=context.request.cycle_ts,
+            regime=regime,
+            risk_score=risk_score,
+            vix=18.2,
+            nasdaq_ret=0.2,
+            sp500_ret=0.1,
+            rate=rate,
+            dollar=104.3,
+            evidence_ids=(f"{context.run_id}:04:market",),
+        )
         updated = replace(
             context,
             macro_regime=result.regime,
@@ -100,5 +121,11 @@ class MacroAnalysis:
             kind=EvidenceKind.MARKET_DATA,
         )
         return updated.add_stage(
-            self.component, self.name, "중립 국면, 위험 점수 0.42", evidence=evidence
+            self.component,
+            self.name,
+            (
+                f"DFF {rate:.2f}% 실제 관측 반영, {regime.value} 국면, "
+                f"위험 점수 {risk_score:.2f}; VIX·지수 수익률·달러는 MVP 기준값"
+            ),
+            evidence=evidence,
         )

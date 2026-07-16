@@ -23,11 +23,15 @@ services:
     environment:
       QUANTINUE_DATABASE_MODE: postgres
       QUANTINUE_DATABASE_URL: postgresql+asyncpg://quantinue:quantinue@db:5432/quantinue
-      QUANTINUE_LLM_MODE: mock
+      QUANTINUE_LLM_MODE: local
+      QUANTINUE_LOCAL_LLM_BASE_URL: http://host.docker.internal:11434/v1
+      QUANTINUE_LOCAL_LLM_API_KEY: local-not-secret
+      QUANTINUE_LOCAL_LLM_MODEL: qwen3.6:35b-a3b-nvfp4
+      QUANTINUE_LLM_TIMEOUT_SECONDS: "300"
       QUANTINUE_BROKER_MODE: mock
       QUANTINUE_TRADING_ENABLED: "false"
     ports:
-      - "127.0.0.1:8011:8000"
+      - "0.0.0.0:8011:8000"
     depends_on:
       db:
         condition: service_healthy

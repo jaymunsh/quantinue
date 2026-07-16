@@ -1,5 +1,7 @@
 """Configuration boundary tests."""
 
+from decimal import Decimal
+
 import pytest
 from pydantic import SecretStr, ValidationError
 from pydantic_settings import SettingsConfigDict
@@ -123,6 +125,43 @@ def test_selected_alpaca_mode_accepts_nonempty_secret_credentials() -> None:
 def test_daily_new_order_cap_must_be_positive() -> None:
     with pytest.raises(ValidationError):
         _ = Settings.model_validate({"daily_new_order_cap": 0})
+
+
+def test_first_cycle_order_controls_default_to_one_thousand_usd_and_one_attempt() -> None:
+    # Given / When
+    settings = IsolatedSettings()
+
+    # Then
+    assert settings.max_app_order_exposure_usd == Decimal("1000.00")
+    assert settings.daily_new_order_cap == 1
+
+
+def test_simulated_opening_cash_is_one_million_and_independent_of_exposure_cap() -> None:
+    # Given / When
+    settings = IsolatedSettings(
+        simulated_account_opening_cash_usd=Decimal("1000000.00"),
+        max_app_order_exposure_usd=Decimal("1000.00"),
+    )
+
+    # Then
+    assert settings.simulated_account_opening_cash_usd == Decimal("1000000.00")
+    assert settings.max_app_order_exposure_usd == Decimal("1000.00")
+
+
+@pytest.mark.parametrize("opening_cash", ["0", "-0.01", "1000000.001"])
+def test_simulated_opening_cash_requires_a_positive_usd_cent_amount(
+    opening_cash: str,
+) -> None:
+    # Given / When / Then
+    with pytest.raises(ValidationError):
+        _ = IsolatedSettings.model_validate({"simulated_account_opening_cash_usd": opening_cash})
+
+
+@pytest.mark.parametrize("exposure", ["0", "-0.01", "1000.001"])
+def test_app_order_exposure_requires_a_positive_usd_cent_amount(exposure: str) -> None:
+    # Given / When / Then
+    with pytest.raises(ValidationError):
+        _ = IsolatedSettings.model_validate({"max_app_order_exposure_usd": exposure})
 
 
 def test_selected_local_mode_rejects_empty_key() -> None:

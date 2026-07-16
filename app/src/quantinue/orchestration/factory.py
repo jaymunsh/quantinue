@@ -16,6 +16,7 @@ from quantinue.market_data import (
     MarketData,
     MarketDataEndpoints,
     build_http_client,
+    fetch_fred_csv,
 )
 from quantinue.orchestration.pipeline import PipelineOrchestrator, PipelineRole
 from quantinue.orchestration.policy import (
@@ -54,7 +55,11 @@ def build_public_market_data(
     transport: httpx2.AsyncBaseTransport | None = None,
 ) -> HttpMarketData:
     """Build the application-owned no-key HTTP adapter."""
-    return HttpMarketData(build_http_client(transport=transport), MarketDataEndpoints.defaults())
+    return HttpMarketData(
+        build_http_client(transport=transport),
+        MarketDataEndpoints.defaults(),
+        fred_fetcher=None if transport is not None else fetch_fred_csv,
+    )
 
 
 def build_roles(
@@ -84,13 +89,14 @@ def build_roles(
             policy.thresholds.critic_approval_score,
         ),
         RiskPortfolio(
-            selected_store,
-            policy.daily_new_order_cap,
-            policy.thresholds.maximum_risk_score,
-            policy.stop_loss_ratio,
-            policy.take_profit_ratio,
+            store=selected_store,
+            daily_new_order_cap=policy.daily_new_order_cap,
+            max_app_order_exposure_usd=policy.max_app_order_exposure_usd,
+            maximum_risk_score=policy.thresholds.maximum_risk_score,
+            stop_loss_ratio=policy.stop_loss_ratio,
+            take_profit_ratio=policy.take_profit_ratio,
         ),
-        OrderExecution(broker),
+        OrderExecution(broker, selected_store),
         Reviewer(),
     )
 
@@ -117,10 +123,12 @@ def build_configured_orchestrator(
     """Build adapters from validated environment settings."""
     match settings.database_mode:
         case DatabaseMode.MEMORY:
-            store: RunStore = InMemoryRunStore()
+            store: RunStore = InMemoryRunStore(settings.simulated_account_opening_cash_usd)
             broker = build_broker(settings)
         case DatabaseMode.POSTGRES:
-            postgres_store = PostgresRunStore(str(settings.database_url))
+            postgres_store = PostgresRunStore(
+                str(settings.database_url), settings.simulated_account_opening_cash_usd
+            )
             store = postgres_store
             match settings.broker_mode:
                 case BrokerMode.MOCK:
@@ -146,7 +154,12 @@ def build_configured_orchestrator(
             assert_never(unreachable_data_mode)
     policy = load_pipeline_policy(
         Path(__file__).parents[3] / "config" / "pipeline.yaml"
-    ).model_copy(update={"daily_new_order_cap": settings.daily_new_order_cap})
+    ).model_copy(
+        update={
+            "daily_new_order_cap": settings.daily_new_order_cap,
+            "max_app_order_exposure_usd": settings.max_app_order_exposure_usd,
+        }
+    )
     resolved_settings = policy.apply_model_defaults(settings)
     orchestrator = PipelineOrchestrator(
         build_roles(

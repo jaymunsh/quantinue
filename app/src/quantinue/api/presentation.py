@@ -14,18 +14,81 @@ from quantinue.api.schemas import (
     ControlRoomRun,
     CriticDetailView,
     EvidenceView,
+    NewsSelectionItemView,
+    NewsSelectionView,
     OrderView,
+    PortfolioAccountView,
+    PortfolioPositionView,
     ReviewView,
+    RoleDetailView,
+    SimulatedFillView,
+    SimulatedOrderView,
+    SimulatedPortfolioView,
     SourceReferenceView,
     StageView,
     StrategyDetailView,
     TerminalRunDetailView,
 )
 from quantinue.core.contracts import PipelineRun, StageStatus
-from quantinue.core.terminal_detail import CollectionFact, TerminalRunDetail
+from quantinue.core.terminal_detail import CollectionFact, NewsSelectionDetail, TerminalRunDetail
 from quantinue.db.contracts import PersistedAttempt
+from quantinue.db.simulated_portfolio import SimulatedPortfolioSnapshot
+from quantinue.market_data.models import NewsMatchStatus
 
 ASCII_CONTROL_LIMIT: Final = 32
+RESERVED_FIXTURE_SUFFIX: Final = ".invalid"
+LEGACY_EXPLANATION_PREFIX: Final = "기존 실행은 관련성 선별 점수를 기록하지 않았으며,"
+LEGACY_EXPLANATION_SUFFIX: Final = "실제 모델 분석에 사용된 소스를 대표 항목으로 표시합니다."
+LEGACY_REPRESENTATIVE_EXPLANATION: Final = (
+    f"{LEGACY_EXPLANATION_PREFIX} {LEGACY_EXPLANATION_SUFFIX}"
+)
+ROLE_DESCRIPTIONS: Final[dict[str, str]] = {
+    "01": (
+        "NASDAQ 기업의 종목명·시가총액·가격·거래량을 확인해 1차 MVP 분석 유니버스 "
+        "50개를 안정적으로 선정·보존하고, 요청 종목이 포함되는지 검증합니다."
+    ),
+    "02": (
+        "1차 유니버스 50개 중 최대 20개 종목의 실제 일봉 가격과 거래량으로 "
+        "추세·모멘텀·변동성 지표를 계산합니다. "
+        "이동평균, RSI, MACD, 상대강도, ATR과 수익률을 다음 단계의 정량 근거로 전달합니다."
+    ),
+    "03": (
+        "최대 20개 기술 분석 결과를 결정론적으로 순위화해 오늘 검토할 후보 10개를 추립니다. "
+        "요청 종목은 실제 주문까지 이어지는 단일 심층 분석 대상으로 명확히 표시합니다."
+    ),
+    "04": (
+        "금리·주가지수·변동성·달러 등 거시 지표를 종합해 시장 국면과 위험 점수를 "
+        "판정합니다. 위험 회피 국면은 이후 전략과 주문의 하드 게이트로 사용됩니다."
+    ),
+    "05": (
+        "SEC 최신 공시의 양식·제출 시각·문서를 수집하고 LLM으로 중요도, 감성, 위험과 "
+        "차단 사유를 분석합니다. 원문 출처와 모델·프롬프트 계보를 함께 남깁니다."
+    ),
+    "06": (
+        "최신 뉴스와 RSS 제목·요약을 수집해 사건 유형, 중요도, 감성, 위험도와 출처 "
+        "신뢰도를 분석합니다. 공시 분석과 연결해 중복되거나 상충하는 신호를 확인합니다."
+    ),
+    "07": (
+        "기술·거시·공시·뉴스 근거를 종합해 매수·보유 제안과 확신도를 만듭니다. "
+        "모델 판단과 별개로 코드 정책 게이트를 적용하고 차단 요인을 명시합니다."
+    ),
+    "08": (
+        "전략가의 판단을 독립적으로 반박·검증합니다. 하드 규칙, 근거 충돌, 신뢰도 "
+        "부족과 위험 신호를 확인해 승인 또는 거절 판정을 내립니다."
+    ),
+    "09": (
+        "비평가 승인과 계좌 규칙을 적용합니다. 주문 여부를 판정하고 "
+        "수량·진입가·손절가·익절가를 정합니다."
+    ),
+    "10": (
+        "주문안을 설정된 브로커 계약으로 처리합니다. 로컬 모드에서는 외부 전송 없이 "
+        "체결 결과와 주문번호를 만듭니다."
+    ),
+    "11": (
+        "판단 결과를 사후 검토 대상으로 등록합니다. T+1~T+5 가격을 추적해 "
+        "수익·낙폭을 평가하고 교훈을 기록합니다."
+    ),
+}
 
 
 def attempt_view(attempt: PersistedAttempt) -> AttemptView:
@@ -56,10 +119,14 @@ def source_reference_view(reference: str) -> SourceReferenceView:
     is_web = parsed.scheme.lower() in {"http", "https"}
     has_credentials = parsed.username is not None or parsed.password is not None
     has_host = parsed.hostname is not None
-    if is_web and has_host and not has_credentials:
-        label = reference
-        href = reference
-    elif is_web and has_host and has_credentials:
+    is_reserved_fixture = parsed.hostname is not None and parsed.hostname.casefold().endswith(
+        RESERVED_FIXTURE_SUFFIX
+    )
+    if is_web and has_host and not has_credentials and not is_reserved_fixture:
+        safe_port = f":{parsed.port}" if parsed.port is not None else ""
+        label = urlunsplit((parsed.scheme, f"{parsed.hostname}{safe_port}", parsed.path, "", ""))
+        href = label
+    elif is_web and has_host:
         safe_port = f":{parsed.port}" if parsed.port is not None else ""
         label = urlunsplit((parsed.scheme, f"{parsed.hostname}{safe_port}", parsed.path, "", ""))
         href = None
@@ -75,6 +142,18 @@ def source_reference_view(reference: str) -> SourceReferenceView:
     return SourceReferenceView(label=label, href=href)
 
 
+def evidence_reference_label(reference: str) -> str:
+    """Return a trace-safe reference label without transport credentials or fragments."""
+    safe_reference = source_reference_view(reference).label
+    try:
+        parsed = urlsplit(safe_reference)
+        _ = parsed.port
+    except ValueError:
+        return "invalid reference"
+    safe_netloc = parsed.netloc.rsplit("@", maxsplit=1)[-1]
+    return urlunsplit((parsed.scheme, safe_netloc, parsed.path, "", ""))
+
+
 def _collection_detail_view(fact: CollectionFact) -> CollectionDetailView:
     """Project one already-bounded collection fact into its API representation."""
     return CollectionDetailView(
@@ -83,6 +162,94 @@ def _collection_detail_view(fact: CollectionFact) -> CollectionDetailView:
         source=fact.source,
         reference=source_reference_view(fact.reference),
         score=fact.score,
+    )
+
+
+def _news_selection_view(detail: NewsSelectionDetail) -> NewsSelectionView:
+    projected_items: list[NewsSelectionItemView] = []
+    for item in detail.items:
+        is_legacy_representative = item.is_representative and item.score == 0 and not item.reasons
+        projected_items.append(
+            NewsSelectionItemView(
+                status=item.status,
+                is_representative=item.is_representative,
+                score=item.score,
+                reasons=tuple(str(reason) for reason in item.reasons),
+                relevance_evaluated=item.relevance_evaluated and not is_legacy_representative,
+                representative_label=(
+                    item.representative_label
+                    or ("분석에 사용된 대표 소스" if is_legacy_representative else "")
+                ),
+                representative_explanation=(
+                    item.representative_explanation
+                    or (LEGACY_REPRESENTATIVE_EXPLANATION if is_legacy_representative else "")
+                ),
+                title=item.title,
+                published_at=item.published_at,
+                reference=source_reference_view(item.reference),
+            )
+        )
+    projected = tuple(projected_items)
+    representative_count = sum(item.is_representative for item in projected)
+    relevant_count = sum(
+        item.status in {NewsMatchStatus.SELECTED, NewsMatchStatus.RELEVANT} for item in projected
+    )
+    return NewsSelectionView(
+        fetched_count=len(projected),
+        relevant_count=relevant_count,
+        excluded_count=sum(item.status is NewsMatchStatus.EXCLUDED for item in projected),
+        representative_count=representative_count,
+        items=projected,
+    )
+
+
+def simulated_portfolio_view(snapshot: SimulatedPortfolioSnapshot) -> SimulatedPortfolioView:
+    """Project the local buy-only ledger without implying an Alpaca account balance."""
+    return SimulatedPortfolioView(
+        account=PortfolioAccountView(
+            opening_cash=snapshot.account.opening_cash,
+            current_cash=snapshot.account.current_cash,
+            equity=snapshot.account.equity,
+            buying_power=snapshot.account.buying_power,
+            currency=snapshot.account.currency,
+        ),
+        positions=tuple(
+            PortfolioPositionView(
+                ticker=position.ticker,
+                quantity=position.quantity,
+                average_cost=position.average_cost,
+                mark_price=position.mark.price,
+                mark_source=position.mark.source.value,
+                mark_as_of=position.mark.as_of,
+                market_value=position.market_value,
+                unrealized_pnl=position.unrealized_pnl,
+                allocation=position.allocation,
+            )
+            for position in snapshot.positions
+        ),
+        orders=tuple(
+            SimulatedOrderView(
+                order_id=order.order_id,
+                ticker=order.ticker,
+                quantity=order.quantity,
+                reference_price=order.reference_price,
+                status=order.status.value,
+                created_at=order.created_at,
+            )
+            for order in snapshot.orders
+        ),
+        fills=tuple(
+            SimulatedFillView(
+                fill_id=fill.fill_id,
+                order_id=fill.order_id,
+                ticker=fill.ticker,
+                quantity=fill.quantity,
+                price=fill.price,
+                filled_at=fill.filled_at,
+            )
+            for fill in snapshot.fills
+        ),
+        realized_pnl_label="해당 없음 · 1차 매수 전용",
     )
 
 
@@ -102,6 +269,23 @@ def terminal_run_detail_view(detail: TerminalRunDetail) -> TerminalRunDetailView
             verdict=detail.critic.verdict,
             rationale=detail.critic.rationale,
             layer=detail.critic.layer,
+        ),
+        roles=tuple(
+            RoleDetailView(
+                component=role.component,
+                title=role.title,
+                description=ROLE_DESCRIPTIONS[role.component],
+                status=role.status,
+                summary=role.summary,
+                facts=role.facts,
+                items=role.items,
+                news_selection=(
+                    _news_selection_view(role.news_selection)
+                    if role.component == "06" and role.news_selection is not None
+                    else None
+                ),
+            )
+            for role in detail.roles
         ),
     )
 
@@ -142,7 +326,7 @@ def control_room_run(run: PipelineRun, attempts: tuple[PersistedAttempt, ...]) -
             evidence_id=item.evidence_id,
             component=item.component,
             source=item.source,
-            source_ref=item.source_ref,
+            source_ref=evidence_reference_label(item.source_ref),
             observed_at=item.observed_at,
             captured_at=item.captured_at,
             confidence=item.confidence,
@@ -172,6 +356,16 @@ def control_room_run(run: PipelineRun, attempts: tuple[PersistedAttempt, ...]) -
         else None
     )
     current_stage, next_stage = live_stage_views(run, attempts)
+    stage_statuses = {stage.component: stage.status.value for stage in stage_views}
+    detail_view = terminal_run_detail_view(run.detail)
+    detail_view = detail_view.model_copy(
+        update={
+            "roles": tuple(
+                role.model_copy(update={"status": stage_statuses.get(role.component, role.status)})
+                for role in detail_view.roles
+            )
+        }
+    )
     return ControlRoomRun(
         run_id=run.run_id,
         ticker=run.ticker,
@@ -184,7 +378,7 @@ def control_room_run(run: PipelineRun, attempts: tuple[PersistedAttempt, ...]) -
         evidence=evidence,
         conviction=run.conviction,
         side=run.side,
-        detail=terminal_run_detail_view(run.detail),
+        detail=detail_view,
         order=order,
         review=review,
     )

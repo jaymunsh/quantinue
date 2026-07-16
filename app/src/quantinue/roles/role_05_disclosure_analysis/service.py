@@ -93,8 +93,28 @@ class DisclosureAnalysis:
                 policy_version=metadata.policy_version,
                 input_hash=metadata.input_hash,
             )
+            source_records = tuple(
+                DisclosureSourceRecord(
+                    filing_no=item.accession_number,
+                    title=item.primary_document,
+                    form_type=item.form,
+                    filed_at=item.filed_at,
+                    event_type="other",
+                    source_ref=item.provenance.source_ref,
+                    summary=f"{item.form} {item.primary_document}",
+                    source=item.provenance.source,
+                    captured_at=context.request.cycle_ts,
+                    confidence=item.provenance.confidence,
+                )
+                for item in filings
+            )
+            source_records = (source_record, *source_records[1:])
             return replace(
-                context, disclosure_score=result.score, disclosure_source=source_record
+                context,
+                disclosure_score=result.score,
+                disclosure_source=source_record,
+                disclosure_sources=source_records,
+                disclosure_analysis=result,
             ).add_stage(
                 self.component,
                 self.name,
@@ -130,7 +150,13 @@ class DisclosureAnalysis:
             policy_version=result.metadata.policy_version,
             input_hash=result.metadata.input_hash,
         )
-        updated = replace(context, disclosure_score=score, disclosure_source=source_record)
+        updated = replace(
+            context,
+            disclosure_score=score,
+            disclosure_source=source_record,
+            disclosure_sources=(source_record,),
+            disclosure_output=signal,
+        )
         metadata = result.metadata
         evidence = Evidence(
             evidence_id=f"{context.run_id}:05:disclosure",

@@ -10,6 +10,7 @@ from quantinue.market_data.models import (
     Provenance,
     SecSubmission,
     SecuritySnapshot,
+    TickerNewsQuery,
 )
 
 _AT = datetime(2026, 7, 10, 20, tzinfo=UTC)
@@ -93,3 +94,8 @@ class FixtureMarketData:
                 provenance=_provenance("rss", execution_id),
             ),
         )
+
+    async def ticker_news(self, query: TickerNewsQuery, execution_id: str) -> tuple[NewsItem, ...]:
+        """Return the offline item through the ticker-aware contract."""
+        del query
+        return await self.rss(execution_id)

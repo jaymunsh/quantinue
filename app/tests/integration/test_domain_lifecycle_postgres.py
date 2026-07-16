@@ -11,6 +11,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from quantinue.api.schemas import TerminalRunDetailView
 from quantinue.broker.mock import MockBroker
 from quantinue.core.config import DatabaseMode, Settings
 from quantinue.core.contracts import PipelineRequest
@@ -221,34 +222,7 @@ async def test_pipeline_persists_real_domain_ids_and_reconciles_reserved_order()
     assert review_signal.base_price != 90
     assert processed.json()["status"] == "completed"
     assert detail.json()["review"]["outcome"] in {"hit", "miss"}
-    assert terminal_detail.json() == {
-        "disclosure": {
-            "title": "Deterministic fixture filing",
-            "summary": "Quarterly results exceeded expectations.",
-            "source": "sec-edgar",
-            "reference": {"label": "sec://filing/fixture-filing", "href": None},
-            "score": 0.78,
-        },
-        "news": {
-            "title": "Deterministic fixture news",
-            "summary": "AI accelerator orders expanded.",
-            "source": "reuters.com",
-            "reference": {
-                "label": "https://example.invalid/fixture-news",
-                "href": "https://example.invalid/fixture-news",
-            },
-            "score": 0.74,
-        },
-        "strategy": {
-            "proposal": "buy",
-            "rationale": "기술·공시·뉴스 합의",
-            "gate": "passed",
-            "blockers": [],
-            "conviction": 0.775,
-        },
-        "critic": {
-            "verdict": "pass",
-            "rationale": "강한 반증과 하드 블로커 없음",
-            "layer": "gate",
-        },
-    }
+    assert tuple(
+        role.component
+        for role in TerminalRunDetailView.model_validate_json(terminal_detail.content).roles
+    ) == tuple(f"{component:02d}" for component in range(1, 12))

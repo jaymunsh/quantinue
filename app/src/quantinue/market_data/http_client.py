@@ -22,14 +22,16 @@ class HttpClientPolicy:
     write_timeout: float = 10.0
     pool_timeout: float = 10.0
     tcp_nodelay: int = 1
+    user_agent: str = "quantinue/0.1"
 
 
 HTTP_CLIENT_POLICY = HttpClientPolicy()
 
 
-def build_http_client(*, transport: httpx2.AsyncBaseTransport | None = None) -> httpx2.AsyncClient:
-    """Create a tuned client; a supplied transport supports deterministic wire fakes."""
-    policy = HTTP_CLIENT_POLICY
+def _build_http_client(
+    policy: HttpClientPolicy,
+    transport: httpx2.AsyncBaseTransport | None,
+) -> httpx2.AsyncClient:
     limits = httpx2.Limits(
         max_connections=policy.max_connections,
         max_keepalive_connections=policy.max_keepalive_connections,
@@ -51,8 +53,13 @@ def build_http_client(*, transport: httpx2.AsyncBaseTransport | None = None) -> 
         transport=selected,
         timeout=timeout,
         follow_redirects=True,
-        headers={"Accept-Encoding": "br, zstd, gzip", "User-Agent": "quantinue/0.1"},
+        headers={"Accept-Encoding": "br, zstd, gzip", "User-Agent": policy.user_agent},
     )
+
+
+def build_http_client(*, transport: httpx2.AsyncBaseTransport | None = None) -> httpx2.AsyncClient:
+    """Create a tuned client; a supplied transport supports deterministic wire fakes."""
+    return _build_http_client(HTTP_CLIENT_POLICY, transport)
 
 
 @asynccontextmanager

@@ -5,15 +5,17 @@ from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
 from typing_extensions import override
 
-from quantinue.api.presentation import source_reference_view
+from quantinue.api.presentation import control_room_run, source_reference_view
 from quantinue.api.schemas import ControlRoomRun, TerminalRunDetailView
 from quantinue.core.contracts import PipelineRun, RunId, RunStatus
 from quantinue.core.terminal_detail import (
     CollectionFact,
     CriticDetail,
+    RoleDetail,
     StrategyDetail,
     TerminalRunDetail,
 )
+from quantinue.db.contracts import PersistedAttempt
 from quantinue.db.memory import InMemoryRunStore
 from quantinue.main import create_app
 
@@ -28,11 +30,38 @@ class DetailRunStore(InMemoryRunStore):
         return (self._run,)[:limit]
 
 
+def test_role_detail_status_tracks_latest_runtime_attempt() -> None:
+    now = datetime(2026, 7, 13, tzinfo=UTC)
+    run = PipelineRun(
+        run_id=RunId("detail-runtime-status"),
+        ticker="NVDA",
+        cycle_ts=now,
+        status=RunStatus.FAILED,
+        stages=(),
+        detail=TerminalRunDetail(roles=(RoleDetail(component="05", title="공시 분석"),)),
+    )
+    view = control_room_run(
+        run,
+        (
+            PersistedAttempt(
+                component="05",
+                attempt_no=1,
+                status="failed",
+                started_at=now,
+                error_code="PROVIDER_FAILURE",
+            ),
+        ),
+    )
+
+    assert view.detail.roles[0].status == "failed"
+
+
 @pytest.mark.parametrize(
     ("reference", "label"),
     [
         ("sec://filing/0001", "sec://filing/0001"),
         ("fixture://news/NVDA", "fixture://news/NVDA"),
+        ("https://example.invalid/fixture-news", "https://example.invalid/fixture-news"),
         ("javascript:alert(1)", "non-web reference"),
         ("data:text/plain,provider-payload", "non-web reference"),
         ("https://user:password@example.com/private", "https://example.com/private"),
@@ -96,15 +125,25 @@ def test_terminal_detail_api_projects_only_safe_clickable_references() -> None:
     # Then
     assert response.status_code == 200
     payload = TerminalRunDetailView.model_validate_json(response.content)
-    assert payload.disclosure.reference.href == (
-        "https://www.sec.gov/ixviewer/doc/action?filing=10q"
-    )
+    assert payload.disclosure.reference.href == "https://www.sec.gov/ixviewer/doc/action"
     assert payload.news.reference.label == "fixture://news/NVDA"
     assert payload.news.reference.href is None
     assert payload.strategy.conviction == 0.82
     assert observability.status_code == 200
     full_view = ControlRoomRun.model_validate_json(observability.content)
     assert full_view.detail == payload
+
+
+def test_source_reference_view_keeps_valid_public_url_clickable() -> None:
+    # Given
+    reference = "https://www.sec.gov/Archives/edgar/data/1045810/report.htm?token=ignored"
+
+    # When
+    view = source_reference_view(reference)
+
+    # Then
+    assert view.label == "https://www.sec.gov/Archives/edgar/data/1045810/report.htm"
+    assert view.href == view.label
 
 
 def test_terminal_detail_api_never_turns_hostile_or_credential_url_into_link() -> None:

@@ -1,19 +1,23 @@
 """PostgreSQL repository for canonical trading and delayed-review rows."""
 
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import MetaData, Table, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from quantinue.core.contracts import DisclosureSourceRecord, NewsSourceRecord
+from quantinue.db.contracts import AppOrderExposureStatus
 from quantinue.db.domain_records import (
     AccountWrite,
+    CompletedBuyWrite,
     CriticVerdictWrite,
-    FillWrite,
     OrderReconciliation,
     StrategistSignalWrite,
 )
 from quantinue.db.domain_sources import save_source_records
+from quantinue.db.postgres_accounting import initialize_account, record_completed_buy
 from quantinue.roles.role_01_universe_screener.contracts import UniverseScreenerOutput
 from quantinue.roles.role_02_technical_analysis.contracts import TechnicalAnalysisOutput
 from quantinue.roles.role_03_daily_screener.contracts import DailyScreenerOutput
@@ -79,7 +83,7 @@ class PostgresDomainRepository:
         technical_table = self._table("tb_technical")
         async with self._engine.begin() as connection:
             for pick in picks.picks:
-                fields = pick.model_dump(exclude={"evidence_ids"})
+                fields = pick.model_dump(exclude={"evidence_ids", "is_requested_focus"})
                 statement = (
                     insert(pick_table)
                     .values(**fields)
@@ -90,7 +94,7 @@ class PostgresDomainRepository:
             for snapshot in technical.snapshots:
                 if (snapshot.trade_date, snapshot.ticker) not in selected:
                     continue
-                fields = snapshot.model_dump(exclude={"evidence_ids"})
+                fields = snapshot.model_dump(exclude={"evidence_ids", "is_requested_focus"})
                 statement = (
                     insert(technical_table)
                     .values(**fields)
@@ -195,65 +199,68 @@ class PostgresDomainRepository:
             ).value
 
     async def save_account(self, value: AccountWrite) -> int:
-        """Upsert one paper account snapshot."""
-        table = self._table("tb_account")
-        fields = {
-            "currency": value.currency,
-            "cash": value.cash,
-            "equity": value.equity,
-            "buying_power": value.buying_power,
-            "is_paper": True,
-        }
-        statement = (
-            insert(table)
-            .values(broker_account_id=value.broker_account_id, **fields)
-            .on_conflict_do_update(index_elements=["broker_account_id"], set_=fields)
-            .returning(table.c.id)
+        """Initialize one local account once without resetting durable balances."""
+        return await initialize_account(self._engine, self._table("tb_account"), value)
+
+    async def initialize_local_account(self, opening_cash: Decimal) -> int:
+        """Initialize the fixed app-owned local account identity once."""
+        account = AccountWrite(
+            "quantinue-local-simulated", opening_cash, opening_cash, opening_cash
         )
-        async with self._engine.begin() as connection:
-            return _IdentifierRow.model_validate(
-                {"value": (await connection.execute(statement)).scalar_one()}
-            ).value
+        return await self.save_account(account)
+
+    async def record_completed_buy(self, value: CompletedBuyWrite) -> int:
+        """Insert one unique local buy fill and debit its account atomically."""
+        return await record_completed_buy(
+            self._engine,
+            self._table("tb_order"),
+            self._table("tb_fill"),
+            self._table("tb_account"),
+            value,
+        )
 
     async def reconcile_order(self, value: OrderReconciliation) -> int:
         """Update the pre-reserved order by stable idempotency key."""
         table = self._table("tb_order")
-        statement = (
-            table.update()
-            .where(table.c.idempotency_key == value.idempotency_key)
-            .values(
-                status=value.status,
-                broker_order_id=value.broker_order_id,
-                parent_order_id=value.parent_order_id,
-                stop_leg_order_id=value.stop_leg_order_id,
-                take_profit_leg_order_id=value.take_profit_leg_order_id,
-            )
-            .returning(table.c.id)
-        )
         async with self._engine.begin() as connection:
-            return _IdentifierRow.model_validate(
-                {"value": (await connection.execute(statement)).scalar_one()}
-            ).value
-
-    async def save_fill(self, value: FillWrite) -> int:
-        """Insert or reuse a broker fill."""
-        table = self._table("tb_fill")
-        statement = (
-            insert(table)
-            .values(
-                order_id=value.order_id,
-                side=value.side,
-                quantity=value.quantity,
-                price=value.price,
-                filled_at=value.filled_at,
-                broker_fill_id=value.broker_fill_id,
+            row = (
+                (
+                    await connection.execute(
+                        select(table.c.id, table.c.status)
+                        .where(table.c.idempotency_key == value.idempotency_key)
+                        .with_for_update()
+                    )
+                )
+                .mappings()
+                .one()
             )
-            .on_conflict_do_update(index_elements=["broker_fill_id"], set_={"price": value.price})
-            .returning(table.c.id)
-        )
-        async with self._engine.begin() as connection:
+            order_id = _IdentifierRow.model_validate({"value": row["id"]}).value
+            target_status = AppOrderExposureStatus(value.status)
+            if (
+                row["status"]
+                in {
+                    AppOrderExposureStatus.FILLED.value,
+                    AppOrderExposureStatus.FAILED.value,
+                    AppOrderExposureStatus.CANCELED.value,
+                }
+                and row["status"] != target_status.value
+            ):
+                return order_id
             return _IdentifierRow.model_validate(
-                {"value": (await connection.execute(statement)).scalar_one()}
+                {
+                    "value": await connection.scalar(
+                        table.update()
+                        .where(table.c.id == order_id)
+                        .values(
+                            status=target_status.value,
+                            broker_order_id=value.broker_order_id,
+                            parent_order_id=value.parent_order_id,
+                            stop_leg_order_id=value.stop_leg_order_id,
+                            take_profit_leg_order_id=value.take_profit_leg_order_id,
+                        )
+                        .returning(table.c.id)
+                    )
+                }
             ).value
 
     def _table(self, name: str) -> Table:

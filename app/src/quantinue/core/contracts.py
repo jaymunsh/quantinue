@@ -15,6 +15,8 @@ from quantinue.core.ontology import ModelProvider
 from quantinue.core.schemas import Evidence
 from quantinue.core.terminal_detail import TerminalRunDetail
 from quantinue.core.terminal_run_types import OrderResult, ReviewResult
+from quantinue.llm.provider import AnalysisResult  # noqa: TC001
+from quantinue.market_data.models import NewsMatchReason, NewsMatchStatus
 from quantinue.roles.role_01_universe_screener.contracts import (  # noqa: TC001
     UniverseScreenerOutput,
 )
@@ -27,6 +29,8 @@ from quantinue.roles.role_03_daily_screener.contracts import (  # noqa: TC001
 from quantinue.roles.role_04_macro_analysis.contracts import (  # noqa: TC001
     MacroAnalysisOutput,
 )
+from quantinue.roles.role_05_disclosure_analysis.contracts import DisclosureSignal  # noqa: TC001
+from quantinue.roles.role_06_news_analysis.contracts import NewsSignal  # noqa: TC001
 from quantinue.roles.role_07_strategist.contracts import StrategyOutput  # noqa: TC001
 from quantinue.roles.role_08_critic.contracts import CriticVerdict  # noqa: TC001
 
@@ -77,6 +81,10 @@ class NewsSourceRecord:
     prompt_version: str | None = None
     policy_version: str | None = None
     input_hash: str | None = None
+    selection_status: NewsMatchStatus = NewsMatchStatus.FETCHED
+    relevance_score: int = 0
+    relevance_reasons: tuple[NewsMatchReason, ...] = ()
+    canonical_identity: str = ""
 
 
 @unique
@@ -184,6 +192,7 @@ class PipelineRun(BaseModel):
     evidence_trace: tuple[RoleEvidenceTrace, ...] = ()
     conviction: float | None = None
     side: str | None = None
+    account_id: int | None = Field(default=None, gt=0)
     detail: TerminalRunDetail = Field(default_factory=TerminalRunDetail)
     order: OrderResult | None = None
     review: ReviewResult | None = None
@@ -211,11 +220,20 @@ class PipelineContext:
     news_score: float | None = None
     disclosure_source: DisclosureSourceRecord | None = None
     news_source: NewsSourceRecord | None = None
+    disclosure_sources: tuple[DisclosureSourceRecord, ...] = ()
+    news_sources: tuple[NewsSourceRecord, ...] = ()
+    disclosure_output: DisclosureSignal | None = None
+    news_output: NewsSignal | None = None
+    disclosure_analysis: AnalysisResult | None = None
+    news_analysis: AnalysisResult | None = None
     conviction: float | None = None
     side: str | None = None
     strategy_output: StrategyOutput | None = None
     critic_approved: bool = False
     critic_verdict: CriticVerdict | None = None
+    risk_decision: str | None = None
+    risk_skipped_reason: str | None = None
+    risk_entry_price: float | None = None
     signal_id: int | None = None
     account_id: int | None = None
     quantity: int | None = None
@@ -279,6 +297,7 @@ class PipelineContext:
             evidence_trace=self.evidence_trace,
             conviction=self.conviction,
             side=self.side,
+            account_id=self.account_id,
             detail=terminal_detail_from_context(self),
             order=self.order,
             review=self.review,

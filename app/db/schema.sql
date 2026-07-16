@@ -148,6 +148,16 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
   payload JSONB NOT NULL DEFAULT '{}', started_at TIMESTAMPTZ, finished_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS status TEXT;
+ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS started_at TIMESTAMPTZ;
+ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS finished_at TIMESTAMPTZ;
+ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE pipeline_runs ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();
+ALTER TABLE pipeline_runs ALTER COLUMN payload TYPE JSONB USING payload::JSONB;
+UPDATE pipeline_runs
+SET status = COALESCE(payload->>'status', 'completed')
+WHERE status IS NULL;
+ALTER TABLE pipeline_runs ALTER COLUMN status SET NOT NULL;
 CREATE TABLE IF NOT EXISTS pipeline_stage_attempts (
   attempt_id BIGSERIAL PRIMARY KEY, run_id TEXT NOT NULL REFERENCES pipeline_runs(run_id), component TEXT NOT NULL,
   attempt_no INT NOT NULL CHECK (attempt_no > 0), status TEXT NOT NULL CHECK (status IN ('pending','running','retrying','completed','failed','timed_out')),

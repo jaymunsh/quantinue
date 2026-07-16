@@ -8,7 +8,7 @@ mvp:
   stop_loss_ratio: 0.15
   take_profit_ratio: 0.20
   evidence_max_age_seconds: 300
-  role_timeout_seconds: 30
+  role_timeout_seconds: 120
   role_max_retries: 2
   retry_base_delay_seconds: 0.25
   resume_failed: true

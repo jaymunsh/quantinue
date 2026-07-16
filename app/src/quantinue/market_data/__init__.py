@@ -10,7 +10,7 @@ from quantinue.market_data.http_client import (
 from quantinue.market_data.http_source import (
     HttpMarketData,
     MarketDataEndpoints,
-    MarketDataFetchError,
+    fetch_fred_csv,
 )
 from quantinue.market_data.models import (
     Candle,
@@ -20,6 +20,7 @@ from quantinue.market_data.models import (
     Provenance,
     SecSubmission,
     SecuritySnapshot,
+    TickerNewsQuery,
 )
 
 __all__ = [
@@ -31,11 +32,12 @@ __all__ = [
     "MacroObservation",
     "MarketData",
     "MarketDataEndpoints",
-    "MarketDataFetchError",
     "NewsItem",
     "Provenance",
     "SecSubmission",
     "SecuritySnapshot",
+    "TickerNewsQuery",
     "build_http_client",
+    "fetch_fred_csv",
     "public_http_client",
 ]

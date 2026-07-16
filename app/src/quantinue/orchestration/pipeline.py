@@ -212,6 +212,7 @@ class PipelineOrchestrator:
             evidence_trace=context.evidence_trace,
             conviction=context.conviction,
             side=context.side,
+            account_id=context.account_id,
             detail=terminal_detail_from_context(context),
             order=context.order,
             review=context.review,

@@ -25,8 +25,10 @@ def build_run_store(settings: Settings) -> RunStore:
     """Select a persistence adapter exhaustively from configuration."""
     match settings.database_mode:
         case DatabaseMode.MEMORY:
-            return InMemoryRunStore()
+            return InMemoryRunStore(settings.simulated_account_opening_cash_usd)
         case DatabaseMode.POSTGRES:
-            return PostgresRunStore(str(settings.database_url))
+            return PostgresRunStore(
+                str(settings.database_url), settings.simulated_account_opening_cash_usd
+            )
         case unreachable:
             assert_never(unreachable)

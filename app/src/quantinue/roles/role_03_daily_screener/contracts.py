@@ -29,6 +29,7 @@ class DailyPick(ContractModel):
     rank: int = Field(ge=1, le=50)
     sector: str = Field(min_length=1)
     score: float = Field(ge=0, le=1)
+    is_requested_focus: bool = False
     evidence_ids: tuple[str, ...] = Field(min_length=1)
 
 

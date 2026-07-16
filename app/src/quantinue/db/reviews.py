@@ -10,6 +10,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from quantinue.core.contracts import PipelineRun, ReviewResult
+from quantinue.core.terminal_detail import RoleDetail
 from quantinue.roles.role_11_reviewer.processor import DueReviewSignal, ReviewSnapshotWrite
 
 _TABLES = (
@@ -212,11 +213,33 @@ class PostgresReviewRepository:
             )
             if payload is not None:
                 run = PipelineRun.model_validate_json(to_json(payload))
+                detail = run.detail.model_copy(
+                    update={
+                        "roles": tuple(
+                            RoleDetail(
+                                component=role.component,
+                                title=role.title,
+                                status="completed" if role.component == "11" else role.status,
+                                summary=review.summary if role.component == "11" else role.summary,
+                                facts=(
+                                    ("결과", review.outcome),
+                                    ("리뷰", review.summary),
+                                )
+                                if role.component == "11"
+                                else role.facts,
+                                items=role.items,
+                            )
+                            for role in run.detail.roles
+                        )
+                    }
+                )
                 _ = await connection.execute(
                     runs.update()
                     .where(runs.c.run_id == signal.run_id)
                     .values(
-                        payload=run.model_copy(update={"review": review}).model_dump(mode="json")
+                        payload=run.model_copy(
+                            update={"review": review, "detail": detail}
+                        ).model_dump(mode="json")
                     )
                 )
 

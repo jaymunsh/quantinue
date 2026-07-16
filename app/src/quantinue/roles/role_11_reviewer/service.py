@@ -75,7 +75,7 @@ class Reviewer:
     async def execute(self, context: PipelineContext) -> PipelineContext:
         """Create a pending review linked to the normalized fill."""
         if context.side == "hold" or not context.critic_approved or not context.quantity:
-            reason = "보류·거절 또는 0주 판단: 주문 없이 정상 완료"
+            reason = "주문 없음 · 정상 완료"
             review = ReviewResult(outcome="no_trade", summary=reason)
             updated = replace(context, review=review)
             evidence = Evidence(

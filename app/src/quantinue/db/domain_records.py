@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 
+from typing_extensions import override
+
 
 @dataclass(frozen=True, slots=True)
 class StrategistSignalWrite:
@@ -70,3 +72,30 @@ class FillWrite:
     price: Decimal
     filled_at: datetime
     broker_fill_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class CompletedBuyWrite:
+    """One app-owned filled buy applied atomically to the local account."""
+
+    idempotency_key: str
+    broker_order_id: str
+    broker_fill_id: str
+    quantity: int
+    price: Decimal
+    filled_at: datetime
+
+
+class InsufficientSimulatedCashError(ValueError):
+    """A local fill whose notional exceeds durable available cash."""
+
+    def __init__(self, available: Decimal, required: Decimal) -> None:
+        """Retain typed amounts while exposing only a stable error message."""
+        self.available = available
+        self.required = required
+        super().__init__("insufficient simulated cash")
+
+    @override
+    def __str__(self) -> str:
+        """Return a stable non-sensitive boundary message."""
+        return "insufficient simulated cash"

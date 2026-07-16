@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from decimal import Decimal
 from typing import TYPE_CHECKING, Literal, assert_never
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -13,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic_core import PydanticCustomError
 from typing_extensions import override
 
-from quantinue.core.config import DataMode, Settings
+from quantinue.core.config import AppOrderExposureUsd, DataMode, Settings
 
 UTC_ZONE = ZoneInfo("UTC")
 
@@ -98,7 +99,8 @@ class PipelinePolicy(BaseModel):
     data_mode: DataMode = DataMode.FIXTURE
     stop_loss_ratio: float = Field(default=0.15, gt=0, lt=1)
     take_profit_ratio: float = Field(default=0.20, gt=0, le=10)
-    daily_new_order_cap: int = Field(default=5, ge=1, le=100)
+    max_app_order_exposure_usd: AppOrderExposureUsd = Decimal("1000.00")
+    daily_new_order_cap: int = Field(default=1, ge=1, le=100)
     thresholds: ThresholdPolicy
     models: ModelPolicy = Field(default_factory=default_model_policy)
     schedule: SchedulePlan = Field(default_factory=default_schedule_plan)

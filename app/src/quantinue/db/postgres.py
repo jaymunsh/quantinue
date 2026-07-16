@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 from datetime import datetime
+from decimal import Decimal
+from typing import Final
 
 import anyio
 from pydantic_core import to_json
@@ -19,6 +21,7 @@ from quantinue.db.domain import PostgresDomainRepository
 from quantinue.db.order_reservations import PostgresOrderReservations
 from quantinue.db.postgres_lifecycle import PostgresDomainLifecycleMixin
 from quantinue.db.postgres_lock import try_lock, unlock
+from quantinue.db.postgres_portfolio import LOCAL_SIMULATED_ACCOUNT_ID
 from quantinue.db.postgres_query import (
     close_stale_attempts,
     failed_run_is_resumable,
@@ -29,12 +32,18 @@ from quantinue.db.postgres_run_reads import PostgresRunReadMixin
 from quantinue.db.postgres_tables import RUN_STORE_TABLES
 
 _METADATA = MetaData()
+_DEFAULT_OPENING_CASH: Final = Decimal("1000000.00")
 
 
-class PostgresRunStore(PostgresRunReadMixin, PostgresDomainLifecycleMixin):
+class PostgresRunStore(PostgresDomainLifecycleMixin, PostgresRunReadMixin):
     """Durable repository with session advisory locks as crash-safe claims."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self,
+        database_url: str,
+        opening_cash: Decimal = _DEFAULT_OPENING_CASH,
+        account_identity: str = LOCAL_SIMULATED_ACCOUNT_ID,
+    ) -> None:
         """Create a tuned async engine without opening a connection."""
         self._engine: AsyncEngine = create_async_engine(
             database_url,
@@ -45,7 +54,7 @@ class PostgresRunStore(PostgresRunReadMixin, PostgresDomainLifecycleMixin):
         self._claims: dict[str, AsyncConnection] = {}
         self.order_reservations = PostgresOrderReservations(database_url)
         self.domain = PostgresDomainRepository(database_url)
-        PostgresDomainLifecycleMixin.__init__(self, self.domain)
+        PostgresDomainLifecycleMixin.__init__(self, self.domain, account_identity, opening_cash)
 
     async def initialize(self) -> None:
         """Reflect canonical tables created by schema bootstrap."""
@@ -53,6 +62,7 @@ class PostgresRunStore(PostgresRunReadMixin, PostgresDomainLifecycleMixin):
             await connection.run_sync(_METADATA.reflect, only=RUN_STORE_TABLES)
         await self.order_reservations.initialize()
         await self.domain.initialize()
+        _ = await self.domain.save_account(self._account)
 
     async def close(self) -> None:
         """Release live claims and dispose the pool."""

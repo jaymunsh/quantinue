@@ -20,7 +20,7 @@ from quantinue.roles.role_09_risk_portfolio.service import RiskPortfolio
 def test_pipeline_yaml_drives_runtime_resilience_policy() -> None:
     policy = load_pipeline_policy(Path("config/pipeline.yaml"))
 
-    assert policy.role_timeout_seconds == 30
+    assert policy.role_timeout_seconds == 120
     assert policy.role_max_retries == 2
     assert policy.retry_base_delay_seconds == 0.25
     assert policy.thresholds.minimum_confidence == 0.60
