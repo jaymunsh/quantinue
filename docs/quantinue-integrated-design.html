@@ -610,29 +610,29 @@ erDiagram
       <h3 id="enum-dict">ENUM 사전 — 허용값 정본 <span class="b b-gray">ontology.py의 문서판</span></h3>
       <p>모든 ENUM은 물리 TEXT + 백엔드(Pydantic) 검증(규칙 2). 아래가 허용값 전체다 — 여기 없는 값은 존재할 수 없다.</p>
       <div class="twrap"><table>
-        <tr><th>ENUM</th><th>허용값</th><th>쓰이는 곳</th></tr>
-        <tr><td>event_type</td><td class="mono">earnings · guidance_change · ma · capital_raise · buyback · management_change · insider_trade · product_deal · analyst_rating · regulation_legal · delisting_halt · other</td><td>공시·뉴스 (원본·집계)</td></tr>
-        <tr><td>bucket</td><td class="mono">trend_leader · volume_surge · high_52w_breakout · pullback · squeeze_breakout · backfill</td><td>tb_daily_pick</td></tr>
-        <tr><td>trend</td><td class="mono">up · mixed · down · no_data</td><td>tb_technical</td></tr>
-        <tr><td>regime</td><td class="mono">risk_on · neutral · risk_off</td><td>tb_macro</td></tr>
-        <tr><td>grade</td><td class="mono">allow · gray · block</td><td>tb_news (출처등급)</td></tr>
-        <tr><td>permission</td><td class="mono">block · block_buy · trade_eligible</td><td>공시·뉴스 원본</td></tr>
-        <tr><td>inv_type</td><td class="mono">aggressive · conservative</td><td>전략·계좌 (성향)</td></tr>
-        <tr><td>side (전략)</td><td class="mono">buy · hold · sell <span class="b b-hold">M2 +sell</span></td><td>tb_strategist_signals</td></tr>
-        <tr><td>side (체결)</td><td class="mono">buy · sell</td><td>tb_fill</td></tr>
-        <tr><td>decision</td><td class="mono">pass · reject · hold</td><td>tb_critic_verdict</td></tr>
-        <tr><td>decided_layer</td><td class="mono">quality_gate · hard_rule · llm · gate</td><td>tb_critic_verdict</td></tr>
-        <tr><td>verdict source</td><td class="mono">fresh · cache · cooldown</td><td>tb_critic_verdict</td></tr>
-        <tr><td>order_type</td><td class="mono">bracket</td><td>tb_order (1차는 브래킷만)</td></tr>
-        <tr><td>order status</td><td class="mono">planned · submitted · filled · failed · canceled</td><td>tb_order</td></tr>
-        <tr><td>snapshot source</td><td class="mono">fixture · market_data</td><td>tb_review_price_snapshots</td></tr>
-        <tr><td>model_provider</td><td class="mono">mock · openai · local</td><td>계보 공통</td></tr>
-        <tr><td>run status</td><td class="mono">pending · running · completed · failed · timed_out</td><td>pipeline_runs</td></tr>
-        <tr><td>attempt status</td><td class="mono">pending · running · retrying · completed · failed · timed_out</td><td>pipeline_stage_attempts</td></tr>
-        <tr><td>submission state</td><td class="mono">claimed · submitted · completed · failed</td><td>order_submissions</td></tr>
-        <tr><td>account status</td><td class="mono">active · paused · closed <span class="b b-hold">M2</span></td><td>tb_account</td></tr>
-        <tr><td>user role</td><td class="mono">admin · user <span class="b b-hold">M2</span></td><td>tb_user</td></tr>
-        <tr><td>llm task</td><td class="mono">disclosure · news · strategy · critic · review <span class="b b-hold">M2</span></td><td>tb_llm_usage</td></tr>
+        <tr><th>ENUM</th><th>허용값 · 뜻</th><th>쓰이는 테이블</th></tr>
+        <tr><td class="mono">event_type</td><td><span class="mono">earnings</span> 실적 발표 · <span class="mono">guidance_change</span> 실적 전망 변경 · <span class="mono">ma</span> 인수합병 · <span class="mono">capital_raise</span> 증자·자금 조달 · <span class="mono">buyback</span> 자사주 매입 · <span class="mono">management_change</span> 경영진 변동 · <span class="mono">insider_trade</span> 내부자 거래(Form 4) · <span class="mono">product_deal</span> 제품·계약 수주 · <span class="mono">analyst_rating</span> 애널리스트 등급 변경 · <span class="mono">regulation_legal</span> 규제·소송 · <span class="mono">delisting_halt</span> 상장폐지·거래정지 · <span class="mono">other</span> 기타</td><td class="mono">tb_disclosure · tb_disclosure_signal · tb_news · tb_news_signal</td></tr>
+        <tr><td class="mono">bucket</td><td><span class="mono">trend_leader</span> 추세 주도주 · <span class="mono">volume_surge</span> 거래량 급증 · <span class="mono">high_52w_breakout</span> 52주 신고가 돌파 · <span class="mono">pullback</span> 눌림목 · <span class="mono">squeeze_breakout</span> 변동성 수축 후 돌파 · <span class="mono">backfill</span> 후보 부족 시 보충</td><td class="mono">tb_daily_pick</td></tr>
+        <tr><td class="mono">trend</td><td><span class="mono">up</span> 상승 · <span class="mono">mixed</span> 혼조 · <span class="mono">down</span> 하락 · <span class="mono">no_data</span> 데이터 부족</td><td class="mono">tb_technical</td></tr>
+        <tr><td class="mono">regime</td><td><span class="mono">risk_on</span> 위험선호 — 공격 유리 · <span class="mono">neutral</span> 중립 · <span class="mono">risk_off</span> 위험회피 — 매수 감점/금지</td><td class="mono">tb_macro</td></tr>
+        <tr><td class="mono">grade</td><td><span class="mono">allow</span> 정상 매체 (가중 1.0) · <span class="mono">gray</span> 2급 매체 (가중 0.6) · <span class="mono">block</span> 차단 — 소셜·미등록, LLM 도달 전 drop</td><td class="mono">tb_news</td></tr>
+        <tr><td class="mono">permission</td><td><span class="mono">block</span> 전면 차단 · <span class="mono">block_buy</span> 매수만 차단 · <span class="mono">trade_eligible</span> 거래 가능</td><td class="mono">tb_disclosure · tb_news</td></tr>
+        <tr><td class="mono">inv_type</td><td><span class="mono">aggressive</span> 공격형 · <span class="mono">conservative</span> 안전형</td><td class="mono">tb_strategist_signals · tb_account <span class="b b-hold">M2</span></td></tr>
+        <tr><td class="mono">side (전략)</td><td><span class="mono">buy</span> 매수 · <span class="mono">hold</span> 보류 · <span class="mono">sell</span> 매도 <span class="b b-hold">M2 +sell</span></td><td class="mono">tb_strategist_signals</td></tr>
+        <tr><td class="mono">side (체결)</td><td><span class="mono">buy</span> 매수 · <span class="mono">sell</span> 매도</td><td class="mono">tb_fill</td></tr>
+        <tr><td class="mono">decision</td><td><span class="mono">pass</span> 승인 · <span class="mono">reject</span> 기각 · <span class="mono">hold</span> 보류</td><td class="mono">tb_critic_verdict</td></tr>
+        <tr><td class="mono">decided_layer</td><td><span class="mono">quality_gate</span> 품질 게이트 — 데이터·스키마 불량 · <span class="mono">hard_rule</span> 하드 규칙 — 코드 판정 · <span class="mono">llm</span> LLM 반박 · <span class="mono">gate</span> 최종 게이트</td><td class="mono">tb_critic_verdict</td></tr>
+        <tr><td class="mono">verdict source</td><td><span class="mono">fresh</span> 새 판정 · <span class="mono">cache</span> 캐시 재사용 · <span class="mono">cooldown</span> 쿨다운 — 재판정 대기</td><td class="mono">tb_critic_verdict</td></tr>
+        <tr><td class="mono">order_type</td><td><span class="mono">bracket</span> 브래킷 — 진입+손절+익절 한 세트</td><td class="mono">tb_order</td></tr>
+        <tr><td class="mono">order status</td><td><span class="mono">planned</span> 계획됨 · <span class="mono">submitted</span> 제출됨 · <span class="mono">filled</span> 체결됨 · <span class="mono">failed</span> 실패 · <span class="mono">canceled</span> 취소</td><td class="mono">tb_order</td></tr>
+        <tr><td class="mono">snapshot source</td><td><span class="mono">fixture</span> 테스트 고정값 · <span class="mono">market_data</span> 실제 시세</td><td class="mono">tb_review_price_snapshots</td></tr>
+        <tr><td class="mono">model_provider</td><td><span class="mono">mock</span> 가짜 응답 (테스트) · <span class="mono">openai</span> OpenAI · <span class="mono">local</span> 로컬 LLM</td><td class="mono">tb_disclosure · tb_disclosure_signal · tb_news · tb_news_signal · tb_review_price_snapshots (계보 공통)</td></tr>
+        <tr><td class="mono">run status</td><td><span class="mono">pending</span> 대기 · <span class="mono">running</span> 실행 중 · <span class="mono">completed</span> 완료 · <span class="mono">failed</span> 실패 · <span class="mono">timed_out</span> 시간 초과</td><td class="mono">pipeline_runs</td></tr>
+        <tr><td class="mono">attempt status</td><td><span class="mono">pending</span> 대기 · <span class="mono">running</span> 실행 중 · <span class="mono">retrying</span> 재시도 중 · <span class="mono">completed</span> 완료 · <span class="mono">failed</span> 실패 · <span class="mono">timed_out</span> 시간 초과</td><td class="mono">pipeline_stage_attempts</td></tr>
+        <tr><td class="mono">submission state</td><td><span class="mono">claimed</span> 선점됨 — 중복 제출 차단 · <span class="mono">submitted</span> 제출됨 · <span class="mono">completed</span> 완료 · <span class="mono">failed</span> 실패</td><td class="mono">order_submissions</td></tr>
+        <tr><td class="mono">account status</td><td><span class="mono">active</span> 운용 중 · <span class="mono">paused</span> 일시정지 · <span class="mono">closed</span> 해지 <span class="b b-hold">M2</span></td><td class="mono">tb_account</td></tr>
+        <tr><td class="mono">user role</td><td><span class="mono">admin</span> 관리자 · <span class="mono">user</span> 일반 유저 <span class="b b-hold">M2</span></td><td class="mono">tb_user</td></tr>
+        <tr><td class="mono">llm task</td><td><span class="mono">disclosure</span> 공시 분석 · <span class="mono">news</span> 뉴스 분석 · <span class="mono">strategy</span> 전략 판단 · <span class="mono">critic</span> 반박 · <span class="mono">review</span> 회고 <span class="b b-hold">M2</span></td><td class="mono">tb_llm_usage</td></tr>
       </table></div>
 
       <h3>테이블별 컬럼 명세 <span class="b b-gray">접이식 · 코드 정본 schema.sql 기준</span></h3>
