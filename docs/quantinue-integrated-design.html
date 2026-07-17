@@ -58,6 +58,7 @@
   a{color:var(--teal);text-decoration:none}
   a:hover{text-decoration:underline}
   .muted{color:var(--ink-faint)}
+  .small{font-size:13px}
   h1,h2,h3,h4{line-height:1.28;letter-spacing:-.012em;font-weight:700}
   code,.mono{font-family:var(--mono)}
   code{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:.06em .38em;font-size:.86em}
@@ -277,7 +278,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v4.2 · MVP-2</span>
+    <span class="rail-ver">v4.3 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
@@ -308,6 +309,8 @@
 
       <div class="nav-group">시스템</div>
       <a href="#defense"><span class="nnum">●</span> 판단 방어선</a>
+      <a href="#logic"><span class="nnum">●</span> 핵심 로직</a>
+      <a href="#llm"><span class="nnum">●</span> AI 모델·요금</a>
       <a href="#accounts"><span class="nnum">●</span> 계좌·투자 성향</a>
       <a href="#screens"><span class="nnum">●</span> 관리자·유저 화면</a>
 
@@ -1583,6 +1586,105 @@ erDiagram
       </table></div>
     </section>
 
+    <!-- 핵심 로직 -->
+    <section id="logic">
+      <div class="sec-eyebrow">Core logic</div>
+      <h2>핵심 로직 — 어떻게 계산·판정하나</h2>
+      <p class="sec-intro">파이프라인 섹션이 "무엇을 주고받나(입출력·스키마)"라면 여기는 "어떻게 계산·판정하나". <span class="b b-gray">as-built</span> = 1차 코드 확정값, <span class="b b-hold">M2</span> = 2차 구현 예정(설계값).</p>
+
+      <details class="schema"><summary><code>03 일일 스크리너</code><span class="sd">오늘의 50 선발</span><span class="cnt">as-built</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          지표 기반 5버킷 스코어링 → 버킷별 상위 + 종합 랭크로 <b>50종목</b>. 픽 게이트 <code>score ≥ 0.70</code>. <span class="b b-hold">M2</span>: LLM 심층 대상 = 상위 20 ∪ 보유 종목.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>06 대표 기사 선발</code><span class="sd">뉴스 집계의 얼굴 1건</span><span class="cnt">as-built → <span class="b b-hold">M2 개정</span></span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>as-built</b>: 관련성 점수(제목50·스니펫25·회사명 매칭) 최상위, 동률 시 published_at 최신 → canonical_url → index.<br>
+          <b><span class="b b-hold">M2 개정(하이브리드)</span></b>: ① 관련성 필터로 오귀속 차단(통과/탈락) → ② 통과분 중 <code>importance × 신뢰무게(w)</code> 최상위 1건, 동률 published_at 최신 → id. 신뢰무게 w = 확신도 × 확인계수(확정 1.0 / 소문 0.5) × 매체등급.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>06 importance vs peak_importance</code><span class="sd">대세 vs 한 방</span><span class="cnt">M2</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>importance</b> = 신뢰가중 <b>평균</b>(전체 흐름의 대세). <b>peak_importance</b> = 신뢰 검증분 <b>최댓값</b>(큰 단일 촉매 경보). 예: 로이터 0.90 + 블로그 4건 0.20 → importance 0.38, peak 0.90. 판단: 둘 다 높으면 강한 후보, peak만 높으면 재확인 후 보류, importance만 높으면 우선순위 하향, 둘 다 낮으면 제외.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>07 전략 — conviction·게이트</code><span class="sd">매수/매도 판정</span><span class="cnt">as-built → <span class="b b-hold">M2 게이트 추가</span></span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>as-built</b>: <code>conviction = round((technical + disclosure + news + LLM점수) / 4, 3)</code> · 매수 = <code>is_daily_pick AND conviction ≥ 문턱 AND not blockers</code> (문턱 as-built 0.65~0.70).<br>
+          <b><span class="b b-hold">M2 게이트 3종 추가</span></b>: ① source_trust &lt; 0.55인 뉴스 신호는 투표 박탈 ② 매크로 risk_score→감점표(최대 −0.40) ③ 강악재 sentiment ≤ 0.15 차단. 매수 문턱 성향별(공격 0.65 / 안전 0.75).<br>
+          <b><span class="b b-hold">M2 매도(R7-1)</span></b>: 보유 종목은 진입가·보유일·손익 맥락과 함께 buy/hold/<b>sell</b> 판정. 청산 3층 = 브래킷 · 시간(10영업일+논지 미실현) · 논지 붕괴(하드 이벤트 코드 직행 / 점수 악재 07→08).
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>08 반박(Critic) — 판정 순서</code><span class="sd">적대적 검증</span><span class="cnt">as-built → <span class="b b-hold">M2 배선 수정</span></span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          판정 층 순서: <code>quality_gate</code>(데이터·스키마 불량) → <code>hard_rule</code>(가격 이상치 등) → <code>llm</code>(논리 반박) → <code>gate</code>. 승인 <code>confidence ≥ 0.70</code>, 미만 reject. 과신 <code>conviction ≥ 0.90 → 문턱 0.80</code>.<br>
+          <b><span class="b b-hold">M2</span></b>: 현재 08이 시세를 합성(close_prev=현재가)해 30% 가드가 무력 → <b>07 박제 시세 실전달 + 허용오차 2% 검증</b>으로 수정. 매도 판단도 검증(패닉 매도 차단).
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>09 리스크·사이징·서킷</code><span class="sd">계좌별 실행</span><span class="cnt">as-built → <span class="b b-hold">M2 서킷</span></span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>as-built 브래킷</b>: <code>stop = 진입가 × (1 − 0.15)</code> · <code>take = 진입가 × (1 + 0.20)</code> (STOP_FRACTION 0.15 / TAKE 0.20). 일일 주문 한도 예약 구조 있음.<br>
+          <b><span class="b b-hold">M2 서킷브레이커 4종</span></b>(성향별): 동시 보유(10/5) · 종목당 비중(20%/10%) · <b>일일 손실 한도(−4%/−2%) 도달 시 당일 신규 매수 전면 중단</b>(익영업일 해제) · 최소 현금(10%/30%). + late_entry(ret_5d ≥ 15%/12% 금지) · 주문 직전 halted 체크.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>10 주문 멱등</code><span class="sd">중복·재실행 방지</span><span class="cnt">as-built</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <code>client_order_id = "q-a{account_id}-s{signal_id}"</code>로 결정적 파생 → 같은 판단·계좌는 항상 같은 id. order_submissions에 claim 후 제출, 409/타임아웃 시 <code>by_client_order_id</code>로 재조정. 페이퍼 3중 잠금(broker=alpaca ∧ trading_enabled ∧ paper URL).
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>11 회고 — T+5 채점</code><span class="sd">수익률·적중·lesson</span><span class="cnt">as-built 스키마 → <span class="b b-hold">M2 자동화</span></span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          T+1~5 종가 스냅샷 → <code>ret_Nd = (close_TN − decision_close) / decision_close</code> · <code>is_hit</code>(적중) · <code>max_drawdown</code>(≤0). <span class="b b-hold">M2</span>: 마감 후 창에서 <b>영업일 T+5 자동 채점</b> + LLM <b>lesson 생성</b>(현재 미배선) + 07이 같은 종목 최근 5 lesson 주입 + SPY 대비 상대 성과.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>흐름 — 리서치 공용 → 계좌 구독</code><span class="sd">역할을 넘나드는 계산</span><span class="cnt">M2</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          01~08은 사이클당 1회 실행해 종목당 신호 1개 생성(LLM 비용 계좌 수 무관 고정). 09~10만 계좌 루프 — <code>for 계좌 in 활성계좌: profiles[계좌.성향]으로 게이트·사이징·서킷 적용</code>. 분석 대상 = 오늘의 50 ∪ 전 계좌 보유 종목(보유는 스크리너 탈락과 무관하게 상시 분석).
+        </div>
+      </details>
+    </section>
+
+    <!-- AI 모델·요금 -->
+    <section id="llm">
+      <div class="sec-eyebrow">LLM cost</div>
+      <h2>AI 모델·요금</h2>
+      <p class="sec-intro">LLM 호출은 종목당 사이클당 몇 회, 지배 비용은 07 전략. 모델명·주기는 config 소유(하드코딩 금지), 단가·비용은 추정이며 <b>운영 첫 주 <code>tb_llm_usage</code> 실측으로 대체</b>한다.</p>
+
+      <h3>호출처와 모델</h3>
+      <div class="twrap"><table>
+        <tr><th>호출처</th><th>역할</th><th>운영 모델</th><th>비고</th></tr>
+        <tr><td class="mono">disclosure</td><td>05 공시 해석</td><td class="mono">gpt-4o-mini</td><td>Form 4는 LLM 0회(코드 템플릿)</td></tr>
+        <tr><td class="mono">news</td><td>06 뉴스 채점</td><td class="mono">gpt-4o-mini</td><td>block 매체는 호출 전 drop</td></tr>
+        <tr><td class="mono">strategy</td><td>07 전략 판단</td><td class="mono">gpt-4o-mini</td><td><b>지배 비용</b> · 태스크별 config로 상위 모델 교체 가능</td></tr>
+        <tr><td class="mono">critic</td><td>08 반박</td><td class="mono">gpt-4o-mini</td><td>—</td></tr>
+        <tr><td class="mono">review</td><td>11 lesson 생성</td><td class="mono">gpt-4o-mini</td><td><span class="b b-hold">M2 배선</span> (현재 미호출)</td></tr>
+        <tr><td class="mono">technical·macro</td><td>02·04</td><td>—</td><td>LLM 미사용(결정론)</td></tr>
+      </table></div>
+
+      <h3>실행 모드 3단</h3>
+      <p><span class="b b-gray">mock</span> 가짜 점수(단위 테스트, 비용 0) · <span class="b b-gray">local</span> 로컬 qwen(개발·통합, 비용 0) · <span class="b b-gray">openai</span> gpt-4o-mini(운영). 전환은 config <code>llm_mode</code> 한 줄.</p>
+
+      <h3>요금 추정 <span class="b b-gray">gpt-4o-mini · 2026-07 단가</span></h3>
+      <p>단가: 입력 <b>$0.15</b> / 출력 <b>$0.60</b> per 1M tokens. 호출당 대략 입력 2~4K + 출력 0.3~0.6K 토큰 가정 → <b>호출당 ≈ $0.0005~0.001</b>.</p>
+      <div class="twrap"><table>
+        <tr><th>구분</th><th>하루 호출(추정)</th><th>하루 비용</th><th>월 비용</th></tr>
+        <tr><td>운영 (openai)</td><td>05·06·07·08·11 합산 수백 회</td><td class="mono">≈ $0.3 ~ 1.0</td><td class="mono">≈ $10 ~ 30</td></tr>
+        <tr><td>개발 (local qwen)</td><td>제한 없음</td><td class="mono">$0 (전기료만)</td><td class="mono">$0</td></tr>
+      </table></div>
+      <p class="muted small" style="font-size:12.5px">※ 계좌 수와 무관(리서치 공용 1회). 다계좌·고빈도(phase_2)로 확장 시 재산정. 1차 문서의 gpt-5.4-mini 전제 요금표는 폐기.</p>
+
+      <h3>비용 가드 <span class="b b-teal">M2</span></h3>
+      <p>모든 호출을 <code>tb_llm_usage</code>(호출처·모델·토큰·추정비용)에 기록 → 관리자 대시보드에 사용량·잔여 예산 노출. <b>일일 예산 상한(<code>budget.daily_llm_usd</code>) 초과 시 LLM 호출 스킵</b> = 그 사이클 신규 매수 보류 + 텔레그램 알림(판단 없이 사는 게 아니라 안 사는 안전 방향). 상한 기본값은 운영 첫 주 실측 후 확정.</p>
+    </section>
+
     <!-- 계좌·성향 -->
     <section id="accounts">
       <div class="sec-eyebrow">Accounts</div>
@@ -1771,6 +1873,7 @@ erDiagram
       <p class="sec-intro">이 문서를 수정하면 표 맨 위에 한 줄 추가 + 버전 갱신 + git 커밋·태그.</p>
       <div class="twrap"><table>
         <tr><th>버전</th><th>날짜</th><th>수정자</th><th>변경 요약</th></tr>
+        <tr><td class="mono">v4.3</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>핵심 로직 · AI 모델·요금 섹션 신설</b> — 역할별 계산·판정 로직 접이식(as-built 확정 / M2 예정 구분: conviction 공식·게이트·대표기사 하이브리드·서킷·브래킷·T+5 채점) · LLM 호출처 6곳·실행 3단·gpt-4o-mini 실단가 추정(월 $10~30)·tb_llm_usage 예산 가드. 1차 gpt-5.4-mini 요금표 폐기</td></tr>
         <tr><td class="mono">v4.2</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>R10 — 07·08 계보 추가</b>: tb_strategist_signals·tb_critic_verdict도 LLM 산출이므로 계보 10컬럼 추가(재현 계약 #16 완성 · M2). 스키마 명세·계보 설명 카드(라이프사이클·출생 기록 비유)·ENUM 사전 한국어 뜻 병기·M2 변경표 반영</td></tr>
         <tr><td class="mono">v4.1</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>개발 착수 수준 상세화</b> — 테이블별 컬럼 명세 23개 접이식(1행=1컬럼 · schema.sql 정본) · <b>ENUM 사전</b> 신설(허용값 22종 전수) · <b>row 예시 19개</b>(NVDA 단일 시나리오 JSON — cycle_ts·src_*_at 눈 대조, reason JSONB 실형태) · 계보 공통 10컬럼 설명 카드 · 목차 스크롤 추적 · 배지 td 레이아웃 수정</td></tr>
         <tr><td class="mono">v4.0</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td>2차(MVP-2) 설계서 신규 — 디자인 전면 재설계(좌측 파이프라인 척추 목차·모노 계기판 타이포·다크모드), 뼈대 구축. 1차 정본은 <code>quantinue-integrated-design-mvp1.html</code>로 동결. <b>전 섹션 작성 완료</b> — 2차 확정사항(R1~R9)·컨벤션·전체흐름·데이터모델·파이프라인 01~11·방어선·계좌·화면·개발계획·AI제안·결정로그·보안·용어사전</td></tr>
