@@ -149,6 +149,14 @@
   .dec .kv2 span b{color:var(--navy)}
   @media(max-width:640px){.dec{grid-template-columns:1fr;gap:9px}}
 
+  /* 규칙 리스트 */
+  .rules{list-style:none;counter-reset:r;padding:0;margin:18px 0}
+  .rules li{counter-increment:r;position:relative;padding:13px 0 13px 46px;border-bottom:1px solid var(--line-soft);font-size:14.5px}
+  .rules li::before{content:counter(r,decimal-leading-zero);position:absolute;left:0;top:13px;
+    font-family:var(--mono);font-weight:700;font-size:13px;color:var(--teal)}
+  .rules li:last-child{border-bottom:none}
+  .rules b{font-weight:700}
+
   /* 콜아웃 */
   .note{border-left:3px solid var(--info);background:var(--info-bg);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:13px 16px;margin:16px 0;font-size:14.5px}
   .note.ai{border-color:var(--ai);background:var(--ai-bg)}
@@ -246,6 +254,7 @@
       <div class="nav-group">설계</div>
       <a href="#flow"><span class="nnum">●</span> 전체 흐름</a>
       <a href="#schedule"><span class="nnum">●</span> 시간·스케줄</a>
+      <a href="#conv"><span class="nnum">●</span> 공통 컨벤션</a>
       <a href="#data"><span class="nnum">●</span> 데이터 모델</a>
 
       <div class="nav-group">파이프라인 01→11</div>
@@ -395,6 +404,44 @@
       <h2>시간·스케줄 — 무엇이 언제 도나</h2>
       <p class="sec-intro">앱 내장 스케줄러가 역할별 실행 창(뉴욕 시간)에 슬롯 정렬 cycle_ts로 구동. 서머타임·휴장일 보정.</p>
       <div class="todo">역할별 실행 창 표 + 하루 타임라인(KST 변환) + cycle_ts 슬롯 멱등 설명</div>
+    </section>
+
+    <!-- 공통 컨벤션 -->
+    <section id="conv">
+      <div class="sec-eyebrow">Conventions</div>
+      <h2>공통 컨벤션 — 어휘·타입 규칙</h2>
+      <p class="sec-intro">이 8규칙이 문서 전체 어휘의 정본이다. 스키마·전달 JSON·코드 표기가 어긋나면 이 규칙이 이긴다. (1차에서 확정·계승, 규칙 4는 2차에서 개정.)</p>
+      <ol class="rules">
+        <li><b>Boolean은 BOOLEAN 타입 + <code>is_</code>/<code>has_</code> 접두.</b> INT 0/1 금지. 상태는 <code>is_</code>, 보유·존재는 <code>has_</code> (<code>is_hard_blocked</code>·<code>has_signal</code>).</li>
+        <li><b>ENUM은 영어 소문자 snake_case, 물리 타입은 TEXT.</b> Postgres 네이티브 ENUM·참조 테이블 FK를 쓰지 않고, 허용값 검증 1차 책임은 백엔드(Pydantic Literal). <code>event_type</code> 허용값 정본 = <code>ontology.py</code>.</li>
+        <li><b>시각은 <code>*_at</code> = TIMESTAMPTZ</b>(UTC 저장, 표시만 KST), <b>날짜는 <code>*_date</code> = DATE.</b></li>
+        <li><b>점수는 전부 0~1.</b> DB는 <code>NUMERIC + CHECK(0~1)</code>, 표기·전달은 소수 3자리. <span class="b b-teal">2차 개정</span> — 1차의 "NUMERIC(4,3) 예외 없음"에서 물리 정밀도 강제는 해제(값 범위만 강제, 코드 현실 수용).</li>
+        <li><b>전달 JSON 필드명 = DB 컬럼명.</b> 단계마다 이름을 바꾸지 않는다(개명 금지) — 추적·디버깅의 기준.</li>
+        <li><b>이름 규칙</b> — 원본 원장은 자연 명사(<code>tb_news</code>), 집계 전달은 <code>_signal</code> 접미(<code>tb_news_signal</code>), 뷰는 <code>v_</code> 접두.</li>
+        <li><b>신호(<code>_signal</code>) 테이블은 append 불변.</b> update 금지 — 최신 상태는 <code>(ticker, cycle_ts DESC)</code> 뷰/인덱스로 읽는다.</li>
+        <li><b>PK 규칙</b> — 시각 컬럼·ticker 단독을 PK로 쓰지 않는다. 사이클 append 테이블은 대리키 PK(<code>tns_id</code>·<code>tds_id</code>) + <code>UNIQUE(ticker, cycle_ts)</code>(멱등), 일봉 테이블은 <code>(날짜, ticker)</code> 자연 복합 PK.</li>
+      </ol>
+
+      <h3>원샷 리네임 매핑 <span class="b b-gray">구 이름 폐기</span></h3>
+      <div class="twrap"><table>
+        <tr><th>구 이름</th><th>새 이름</th><th>근거</th></tr>
+        <tr><td class="mono">hard_block</td><td class="mono">is_hard_blocked</td><td>규칙 1 (BOOLEAN·is_)</td></tr>
+        <tr><td class="mono">agree · hit · dropped</td><td class="mono">is_agreed · is_hit · is_dropped</td><td>규칙 1</td></tr>
+        <tr><td class="mono">side 매수·보류</td><td class="mono">buy · hold · sell</td><td>규칙 2 · <b>sell은 2차 추가</b></td></tr>
+        <tr><td class="mono">inv_type 공격형</td><td class="mono">aggressive · conservative</td><td>규칙 2 · 2차 2성향</td></tr>
+        <tr><td class="mono">bucket 한글</td><td class="mono">trend_leader · volume_surge …</td><td>규칙 2</td></tr>
+        <tr><td class="mono">risk_score 0~100</td><td class="mono">0~1</td><td>규칙 4</td></tr>
+      </table></div>
+
+      <h3>점수 눈금 가이드</h3>
+      <p>사람과 LLM이 같은 자로 채점하도록 0~1 기준점을 고정한다 — <b>LLM 채점 프롬프트의 기준 정본으로도 사용</b>.</p>
+      <div class="twrap"><table>
+        <tr><th>점수</th><th>≈0.2</th><th>≈0.5</th><th>≈0.8</th></tr>
+        <tr><td>sentiment · 호·악재</td><td>악재</td><td>중립</td><td>호재</td></tr>
+        <tr><td>importance · 중요도</td><td>흔한 소식</td><td>주목할 만함</td><td>대형 촉매</td></tr>
+        <tr><td>risk · 위험</td><td>낮음</td><td>보통</td><td>높음</td></tr>
+        <tr><td>confidence · 확신</td><td>추측</td><td>보통</td><td>확실</td></tr>
+      </table></div>
     </section>
 
     <!-- 데이터 모델 -->
