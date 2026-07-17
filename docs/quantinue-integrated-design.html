@@ -72,12 +72,12 @@
   /* ══ 좌측 레일 (파이프라인 척추) ══ */
   .rail{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
     background:var(--surface);border-right:1px solid var(--line);padding:26px 20px 40px}
-  .brand{display:flex;align-items:center;gap:10px;margin:2px 0 4px}
-  .brand .logo{width:34px;height:34px;flex-shrink:0}
-  .brand .logo img{width:100%;height:100%;border-radius:8px;display:block}
-  .brand .bt{font-weight:800;font-size:16.5px;letter-spacing:-.02em}
-  .brand .bs{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.02em}
-  .rail-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .brand{display:flex;align-items:center;gap:11px;margin:2px 0 4px}
+  .brand .logo{width:40px;height:40px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .brand .logo img{width:100%;height:100%;object-fit:contain;border-radius:9px;display:block}
+  .brand .bt{font-weight:800;font-size:16.5px;letter-spacing:-.02em;line-height:1.15}
+  .brand .bs{font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.02em;line-height:1.3;margin-top:1px}
+  .rail-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:2px}
   .rail-ver{font-family:var(--mono);font-size:11px;color:var(--teal);background:var(--teal-bg);
     border-radius:6px;padding:3px 8px;display:inline-block;margin:10px 0 20px}
   .theme-btn{width:34px;height:34px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);
@@ -273,7 +273,7 @@
   <aside class="rail" aria-label="문서 목차">
     <div class="rail-top">
       <div class="brand">
-        <div class="logo"><img src="../imgs/site-imgs/svg/quantinue-q-blue-bg.svg" alt="Quantinue" width="34" height="34"></div>
+        <div class="logo"><img src="../imgs/site-imgs/png/quantinue-q-blue-1024.png" alt="Quantinue" width="40" height="40"></div>
         <div>
           <div class="bt">Quantinue</div>
           <div class="bs">2차 설계서 · 팀 여름이었다</div>
@@ -329,7 +329,7 @@
   <!-- ══════════ 모바일 상단바 ══════════ -->
   <div class="topbar">
     <button class="hamburger" id="hamburger" type="button" aria-label="목차 열기" aria-expanded="false">☰</button>
-    <div class="brand" style="margin:0"><div class="logo"><img src="../imgs/site-imgs/svg/quantinue-q-blue-bg.svg" alt="Quantinue" width="34" height="34"></div><div class="bt">Quantinue</div></div>
+    <div class="brand" style="margin:0"><div class="logo"><img src="../imgs/site-imgs/png/quantinue-q-blue-1024.png" alt="Quantinue" width="40" height="40"></div><div class="bt">Quantinue</div></div>
     <button class="theme-btn" id="themeBtnM" type="button" aria-label="다크모드 전환">🌙</button>
   </div>
   <div class="rail-backdrop" id="railBackdrop" aria-hidden="true"></div>
