@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-label="Quantinue Q blue app icon">
+  <defs>
+    <mask id="q-cut"><rect width="1024" height="1024" fill="white"/><path d="M501 644 545 632 711 798 665 798Z" fill="black"/></mask>
+  </defs>
+  <rect width="1024" height="1024" rx="184" fill="#0B4DDB"/>
+  <g fill="#FFFDF5" mask="url(#q-cut)">
+    <path fill-rule="evenodd" d="M466 104C267 104 106 265 106 464s161 360 360 360c48 0 94-9 136-26l-121-121-15 1c-118 0-214-96-214-214s96-214 214-214 214 96 214 214c0 63-27 119-70 158l104 104c69-66 112-159 112-262 0-199-161-360-360-360Z"/>
+    <path d="m475 603 111-31 282 282H666Z"/>
+  </g>
+</svg>
