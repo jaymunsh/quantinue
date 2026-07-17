@@ -204,6 +204,11 @@
   details.schema td:first-child{font-family:var(--mono);font-size:12.5px;white-space:nowrap;color:var(--teal)}
   details.schema td:nth-child(2){font-family:var(--mono);font-size:11.5px;color:var(--ink-soft)}
 
+  /* row 예시 (JSON) */
+  .rowex{margin:0 14px 14px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:12px 14px;overflow-x:auto}
+  .rowex .rt{font-family:var(--mono);font-size:11px;color:var(--teal);margin-bottom:7px;font-weight:700}
+  .rowex pre{margin:0;font-family:var(--mono);font-size:12px;line-height:1.55;color:var(--ink);white-space:pre}
+
   /* AI 추천 제안 카드 */
   .ai-card{border:1px solid var(--line);border-radius:var(--radius);padding:0;margin:16px 0;overflow:hidden}
   .ai-card .ah{display:flex;align-items:center;gap:10px;padding:14px 20px;background:var(--surface-2);border-bottom:1px solid var(--line)}
@@ -602,11 +607,134 @@ erDiagram
         <tr><td class="mono">order_submissions</td><td>주문 제출 claim·멱등</td><td class="mono">client_order_id</td></tr>
       </table></div>
 
+      <h3 id="enum-dict">ENUM 사전 — 허용값 정본 <span class="b b-gray">ontology.py의 문서판</span></h3>
+      <p>모든 ENUM은 물리 TEXT + 백엔드(Pydantic) 검증(규칙 2). 아래가 허용값 전체다 — 여기 없는 값은 존재할 수 없다.</p>
+      <div class="twrap"><table>
+        <tr><th>ENUM</th><th>허용값</th><th>쓰이는 곳</th></tr>
+        <tr><td>event_type</td><td class="mono">earnings · guidance_change · ma · capital_raise · buyback · management_change · insider_trade · product_deal · analyst_rating · regulation_legal · delisting_halt · other</td><td>공시·뉴스 (원본·집계)</td></tr>
+        <tr><td>bucket</td><td class="mono">trend_leader · volume_surge · high_52w_breakout · pullback · squeeze_breakout · backfill</td><td>tb_daily_pick</td></tr>
+        <tr><td>trend</td><td class="mono">up · mixed · down · no_data</td><td>tb_technical</td></tr>
+        <tr><td>regime</td><td class="mono">risk_on · neutral · risk_off</td><td>tb_macro</td></tr>
+        <tr><td>grade</td><td class="mono">allow · gray · block</td><td>tb_news (출처등급)</td></tr>
+        <tr><td>permission</td><td class="mono">block · block_buy · trade_eligible</td><td>공시·뉴스 원본</td></tr>
+        <tr><td>inv_type</td><td class="mono">aggressive · conservative</td><td>전략·계좌 (성향)</td></tr>
+        <tr><td>side (전략)</td><td class="mono">buy · hold · sell <span class="b b-hold">M2 +sell</span></td><td>tb_strategist_signals</td></tr>
+        <tr><td>side (체결)</td><td class="mono">buy · sell</td><td>tb_fill</td></tr>
+        <tr><td>decision</td><td class="mono">pass · reject · hold</td><td>tb_critic_verdict</td></tr>
+        <tr><td>decided_layer</td><td class="mono">quality_gate · hard_rule · llm · gate</td><td>tb_critic_verdict</td></tr>
+        <tr><td>verdict source</td><td class="mono">fresh · cache · cooldown</td><td>tb_critic_verdict</td></tr>
+        <tr><td>order_type</td><td class="mono">bracket</td><td>tb_order (1차는 브래킷만)</td></tr>
+        <tr><td>order status</td><td class="mono">planned · submitted · filled · failed · canceled</td><td>tb_order</td></tr>
+        <tr><td>snapshot source</td><td class="mono">fixture · market_data</td><td>tb_review_price_snapshots</td></tr>
+        <tr><td>model_provider</td><td class="mono">mock · openai · local</td><td>계보 공통</td></tr>
+        <tr><td>run status</td><td class="mono">pending · running · completed · failed · timed_out</td><td>pipeline_runs</td></tr>
+        <tr><td>attempt status</td><td class="mono">pending · running · retrying · completed · failed · timed_out</td><td>pipeline_stage_attempts</td></tr>
+        <tr><td>submission state</td><td class="mono">claimed · submitted · completed · failed</td><td>order_submissions</td></tr>
+        <tr><td>account status</td><td class="mono">active · paused · closed <span class="b b-hold">M2</span></td><td>tb_account</td></tr>
+        <tr><td>user role</td><td class="mono">admin · user <span class="b b-hold">M2</span></td><td>tb_user</td></tr>
+        <tr><td>llm task</td><td class="mono">disclosure · news · strategy · critic · review <span class="b b-hold">M2</span></td><td>tb_llm_usage</td></tr>
+      </table></div>
+
       <h3>테이블별 컬럼 명세 <span class="b b-gray">접이식 · 코드 정본 schema.sql 기준</span></h3>
-      <p>클릭하면 펼쳐진다. 스키마 표는 <b>1행 = 1컬럼</b>. ENUM 컬럼은 허용값 전체를 명시한다. <span class="b b-hold">M2</span> = 2차에서 변경·추가 예정.</p>
+      <p>클릭하면 펼쳐진다. 스키마 표는 <b>1행 = 1컬럼</b>, 각 표 아래엔 <b>🧾 row 예시(JSON)</b> — 전부 <b>NVDA 단일 시나리오</b>(07-20 인수 공시 → 매수 → 07-27 T+5 회고)로 값이 서로 이어져 cycle_ts·src_*_at을 눈으로 대조할 수 있다(참고용 가짜 데이터). <span class="b b-hold">M2</span> = 2차에서 변경·추가 예정.</p>
 
       <details class="schema"><summary><code>🧬 계보(provenance) 공통 컬럼이란</code><span class="sd">먼저 읽기 — 아래 표들의 "(계보)" 행이 이것</span><span class="cnt">설명</span></summary>
         <p style="margin:10px 16px 14px;font-size:13.5px;color:var(--ink-soft)">공시·뉴스처럼 <b>LLM이 만든 데이터</b>에는 "이 값이 어디서 왔고, 어떤 모델·프롬프트·정책 버전으로 만들어졌나"를 함께 기록한다 — 나중에 <b>같은 입력으로 같은 결과를 재현</b>하고, 문제가 생기면 <b>거슬러 추적</b>하기 위해서다. 이 목적의 컬럼 10개(source · source_ref · captured_at · evidence_id · parent_evidence_ids · model_provider · model_name · prompt_version · policy_version · input_hash)가 여러 테이블에 반복 등장하며, 아래 각 표에서 <b>(계보)</b> 표시가 붙은 행이 그것이다.</p>
+              <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "id": 44120,
+  "ticker": "NVDA",
+  "trade_date": "2026-07-20",
+  "news_key": "reuters.com/nvda-example-robotics-20260720",
+  "title": "NVIDIA to acquire Example Robotics in $12B deal",
+  "source": "Reuters",
+  "url": "https://www.reuters.com/technology/nvda-example-robotics",
+  "published_at": "2026-07-20T13:12:40Z",
+  "grade": "allow",
+  "is_dropped": false,
+  "drop_reason": null,
+  "event_type": "ma",
+  "sentiment_score": 0.820,
+  "importance": 0.900,
+  "risk_score": 0.250,
+  "source_trust": 0.820,
+  "confidence": 0.860,
+  "is_confirmed": true,
+  "reason": {
+    "sentiment_score": "인수 공식 발표 확인 보도 — 명확한 호재",
+    "importance": "12B 규모 — 대형 촉매",
+    "risk_score": "종결 조건 관련 위험 언급 적음",
+    "source_trust": "1급 통신사 단독 아님 — 공시 원문 인용",
+    "confidence": "공시와 교차 확인됨"
+  },
+  "summary": "로이터: NVIDIA, Example Robotics 12B 인수 보도",
+  "keywords": ["acquisition", "nvda"],
+  "permission": "trade_eligible",
+  "source_ref": "rss://reuters/technology",
+  "captured_at": "2026-07-20T13:30:02Z",
+  "evidence_id": "r20260720-1330:06:news",
+  "parent_evidence_ids": [],
+  "model_provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "prompt_version": "p-2.1",
+  "policy_version": "pol-2.0",
+  "input_hash": "c81d20fe…(sha256 64자)",
+  "created_at": "2026-07-20T13:30:03Z"
+}</pre></div>
+              <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오 · importance 0.61(평균) vs peak 0.90(한 방) 대조)</div><pre>{
+  "tns_id": 951,
+  "cycle_ts": "2026-07-20T13:30:00Z",
+  "ticker": "NVDA",
+  "created_at": "2026-07-20T13:30:05Z",
+  "trade_date": "2026-07-20",
+  "has_signal": true,
+  "rep_news_id": 44120,
+  "news_title": "NVIDIA to acquire Example Robotics in $12B deal",
+  "source": "Reuters",
+  "published_at": "2026-07-20T13:12:40Z",
+  "ref": "https://www.reuters.com/technology/nvda-example-robotics",
+  "event_type": "ma",
+  "disclosure_ref": "0001045810-26-000123",
+  "reason": {
+    "sentiment_score": "주요 매체 6건 일관된 호재 보도",
+    "importance": "신뢰가중 평균 — 소형 매체 저중요 기사가 평균을 낮춤",
+    "risk_score": "규제 심사 언급 2건",
+    "source_trust": "대표 기사(로이터) 신뢰 계승",
+    "confidence": "공시 교차 확인으로 상향"
+  },
+  "summary": "인수 보도 6건 — 주요 매체 일치, 공시 교차 확인",
+  "news_count": 6,
+  "importance": 0.610,
+  "peak_importance": 0.900,
+  "risk_score": 0.250,
+  "sentiment_score": 0.780,
+  "source_trust": 0.820,
+  "grade_score": 1.000,
+  "confidence": 0.840,
+  "is_hard_blocked": false,
+  "hard_block_reason": null,
+  "top_evidence": ["Reuters: $12B 인수 (imp 0.90)", "Bloomberg: 규제 심사 전망 (imp 0.62)", "WSJ: 로보틱스 전략 분석 (imp 0.55)"],
+  "source_ref": "aggregate:tb_news(2026-07-20)",
+  "captured_at": "2026-07-20T13:30:04Z",
+  "evidence_id": "r20260720-1330:06:signal",
+  "parent_evidence_ids": ["r20260720-1330:06:news"],
+  "model_provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "prompt_version": "p-2.1",
+  "policy_version": "pol-2.0",
+  "input_hash": "77e0b3a9…(sha256 64자)"
+}</pre></div>
+              <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "run_id": "r20260720-1400-NVDA",
+  "idempotency_key": "cycle:NVDA:2026-07-20T14:00Z",
+  "ticker": "NVDA",
+  "cycle_ts": "2026-07-20T14:00:00Z",
+  "status": "completed",
+  "payload": {"trigger": "scheduler"},
+  "started_at": "2026-07-20T14:00:01Z",
+  "finished_at": "2026-07-20T14:01:58Z",
+  "created_at": "2026-07-20T14:00:01Z",
+  "updated_at": "2026-07-20T14:01:58Z"
+}</pre></div>
       </details>
 
       <details class="schema"><summary><code>tb_universe</code><span class="sd">주1회 감시망 스냅샷</span><span class="cnt">5컬럼</span></summary>
@@ -618,7 +746,14 @@ erDiagram
                 <tr><td>market_cap</td><td>BIGINT ≥ 0</td><td>시가총액 — 상위 2,000 선정 기준</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>DB 저장 시각 (기록용)</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "as_of_date": "2026-07-20",
+  "ticker": "NVDA",
+  "company_name": "NVIDIA Corporation",
+  "market_cap": 3210000000000,
+  "created_at": "2026-07-20T12:05:11Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_daily_pick</code><span class="sd">오늘의 후보 (버킷·랭크)</span><span class="cnt">8컬럼</span></summary>
               <div class="twrap"><table>
@@ -632,7 +767,17 @@ erDiagram
                 <tr><td>score</td><td>NUMERIC</td><td>버킷 스코어 (픽 게이트 0.70)</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>기록 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "trade_date": "2026-07-20",
+  "ticker": "NVDA",
+  "universe_as_of": "2026-07-20",
+  "bucket": "trend_leader",
+  "rank": 1,
+  "sector": "semiconductors",
+  "score": 0.812,
+  "created_at": "2026-07-20T12:40:02Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_technical</code><span class="sd">기술지표 (LLM 미사용)</span><span class="cnt">16컬럼</span></summary>
               <div class="twrap"><table>
@@ -654,7 +799,25 @@ erDiagram
                 <tr><td>ml_probs</td><td>JSONB DEFAULT '{}'</td><td>ML 확률 (확장용)</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>기록 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "trade_date": "2026-07-20",
+  "ticker": "NVDA",
+  "close": 178.95,
+  "rs_20": 1.24,
+  "vol_ratio": 1.85,
+  "ret_5d": 0.041,
+  "ret_20d": 0.126,
+  "atr_pct": 0.028,
+  "high_252_ratio": 0.97,
+  "rsi": 63.2,
+  "macd": 2.41,
+  "ma20": 171.30,
+  "ma50": 162.85,
+  "trend": "up",
+  "ml_probs": {},
+  "created_at": "2026-07-20T12:40:05Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_macro</code><span class="sd">시장 국면</span><span class="cnt">9컬럼</span></summary>
               <div class="twrap"><table>
@@ -669,7 +832,18 @@ erDiagram
                 <tr><td>dollar</td><td>NUMERIC</td><td>달러 인덱스</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>기록 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "as_of": "2026-07-20T13:00:00Z",
+  "regime": "neutral",
+  "risk_score": 0.420,
+  "vix": 15.8,
+  "nasdaq_ret": 0.004,
+  "sp500_ret": 0.002,
+  "rate": 4.25,
+  "dollar": 103.2,
+  "created_at": "2026-07-20T13:00:03Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_disclosure</code><span class="sd">공시 원본 원장 (1건=1행 · 불변)</span><span class="cnt">27컬럼</span></summary>
               <div class="twrap"><table>
@@ -681,7 +855,7 @@ erDiagram
                 <tr><td>form_type</td><td>TEXT NOT NULL</td><td>공시 종류 (8-K·10-Q·Form 4…)</td></tr>
                 <tr><td>filing_title</td><td>TEXT NOT NULL</td><td>공시 제목</td></tr>
                 <tr><td>filed_at</td><td>TIMESTAMPTZ NOT NULL</td><td>공시 발생 시각 (사건 시각)</td></tr>
-                <tr><td>event_type</td><td>TEXT NOT NULL — ENUM earnings·guidance_change·ma·capital_raise·buyback·management_change·insider_trade·product_deal·analyst_rating·regulation_legal·delisting_halt·other</td><td>사건 분류 (정본 ontology.py)</td></tr>
+                <tr><td>event_type</td><td>TEXT NOT NULL — ENUM 12종 → <a href="#enum-dict">ENUM 사전</a></td><td>사건 분류 (정본 ontology.py)</td></tr>
                 <tr><td>sentiment_score</td><td>NUMERIC 0~1</td><td>호·악재 (점수 눈금 가이드 기준)</td></tr>
                 <tr><td>importance</td><td>NUMERIC 0~1</td><td>중요도</td></tr>
                 <tr><td>risk_score</td><td>NUMERIC 0~1</td><td>위험</td></tr>
@@ -702,7 +876,41 @@ erDiagram
                 <tr><td>input_hash</td><td>TEXT — sha256 hex</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>기록 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오 · reason은 M2부터 JSONB 객체(1차 코드는 TEXT))</div><pre>{
+  "id": 5012,
+  "ticker": "NVDA",
+  "trade_date": "2026-07-20",
+  "filing_no": "0001045810-26-000123",
+  "form_type": "8-K",
+  "filing_title": "NVIDIA Announces Acquisition of Example Robotics",
+  "filed_at": "2026-07-20T11:05:00Z",
+  "event_type": "ma",
+  "sentiment_score": 0.850,
+  "importance": 0.900,
+  "risk_score": 0.300,
+  "confidence": 0.880,
+  "reason": {
+    "sentiment_score": "대형 인수 공식 발표 — 프리미엄 30%, 이사회 승인 완료",
+    "importance": "본업(AI 데이터센터)과 직결되는 볼트온 인수",
+    "risk_score": "규제 심사 리스크 있으나 규모 대비 제한적",
+    "confidence": "공식 8-K 원문 기반 — 해석 여지 낮음"
+  },
+  "summary": "Example Robotics 인수 발표 (현금+주식, 프리미엄 30%)",
+  "keywords": ["acquisition", "robotics"],
+  "permission": "trade_eligible",
+  "source": "sec",
+  "source_ref": "https://www.sec.gov/Archives/edgar/data/1045810/000104581026000123",
+  "captured_at": "2026-07-20T11:20:33Z",
+  "evidence_id": "r20260720-1300:05:disclosure",
+  "parent_evidence_ids": [],
+  "model_provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "prompt_version": "p-2.1",
+  "policy_version": "pol-2.0",
+  "input_hash": "9f2c41d8…(sha256 64자)",
+  "created_at": "2026-07-20T11:20:34Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_disclosure_signal</code><span class="sd">공시 집계 (종목·사이클 1행 · append 불변)</span><span class="cnt">28컬럼 <span class="b b-hold">M2 +2</span></span></summary>
               <div class="twrap"><table>
@@ -716,7 +924,7 @@ erDiagram
                 <tr><td>filing_title</td><td>TEXT (null 허용)</td><td>대표 공시 제목 (얼굴 필드)</td></tr>
                 <tr><td>filing_no</td><td>TEXT — FK → tb_disclosure</td><td>대표 공시 번호 (원본 역추적)</td></tr>
                 <tr><td>filed_at</td><td>TIMESTAMPTZ</td><td>대표 공시 발생 시각</td></tr>
-                <tr><td>event_type</td><td>TEXT — ENUM earnings·guidance_change·ma·capital_raise·buyback·management_change·insider_trade·product_deal·analyst_rating·regulation_legal·delisting_halt·other</td><td>대표 사건 분류</td></tr>
+                <tr><td>event_type</td><td>TEXT — ENUM 12종 → <a href="#enum-dict">ENUM 사전</a></td><td>대표 사건 분류</td></tr>
                 <tr><td>importance</td><td>NUMERIC 0~1</td><td>집계 중요도 (최댓값 규칙)</td></tr>
                 <tr><td>risk_score</td><td>NUMERIC 0~1</td><td>집계 위험 (최댓값 규칙)</td></tr>
                 <tr><td>sentiment_score</td><td>NUMERIC 0~1</td><td>집계 호악재 (강악재 ≤0.15는 최솟값 채택)</td></tr>
@@ -738,7 +946,44 @@ erDiagram
                 <tr><td>policy_version</td><td>TEXT</td><td>(계보) 정책(config) 버전</td></tr>
                 <tr><td>input_hash</td><td>TEXT — sha256 hex</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오 · disclosure_count·top_evidence는 M2 신규)</div><pre>{
+  "tds_id": 812,
+  "cycle_ts": "2026-07-20T13:00:00Z",
+  "ticker": "NVDA",
+  "created_at": "2026-07-20T13:00:07Z",
+  "trade_date": "2026-07-20",
+  "has_signal": true,
+  "filing_title": "NVIDIA Announces Acquisition of Example Robotics",
+  "filing_no": "0001045810-26-000123",
+  "filed_at": "2026-07-20T11:05:00Z",
+  "event_type": "ma",
+  "importance": 0.900,
+  "risk_score": 0.300,
+  "sentiment_score": 0.850,
+  "reason": {
+    "sentiment_score": "강한 호재 1건(인수) 지배 — 악재 없음",
+    "importance": "대표 공시 importance 최상위 채택",
+    "risk_score": "전 건 중 최댓값 채택",
+    "confidence": "대표 공시 확신 계승"
+  },
+  "is_hard_blocked": false,
+  "hard_block_reason": null,
+  "confidence": 0.880,
+  "summary": "Example Robotics 인수 발표 외 1건",
+  "disclosure_count": 2,
+  "top_evidence": ["8-K: 인수 발표 (imp 0.90)", "Form 4: 임원 매수 $1.2M (imp 0.55)"],
+  "source": "sec",
+  "source_ref": "aggregate:tb_disclosure(2026-07-20)",
+  "captured_at": "2026-07-20T13:00:06Z",
+  "evidence_id": "r20260720-1300:05:signal",
+  "parent_evidence_ids": ["r20260720-1300:05:disclosure"],
+  "model_provider": "openai",
+  "model_name": "gpt-4o-mini",
+  "prompt_version": "p-2.1",
+  "policy_version": "pol-2.0",
+  "input_hash": "4b77aa02…(sha256 64자)"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_news</code><span class="sd">뉴스 원본 원장 (1건=1행 · 불변)</span><span class="cnt">32컬럼</span></summary>
               <div class="twrap"><table>
@@ -754,7 +999,7 @@ erDiagram
                 <tr><td>grade</td><td>TEXT — ENUM allow·gray·block</td><td>출처등급 (block = LLM 도달 전 drop)</td></tr>
                 <tr><td>is_dropped</td><td>BOOLEAN NOT NULL</td><td>사전 차단 여부 (기록은 보존)</td></tr>
                 <tr><td>drop_reason</td><td>TEXT</td><td>차단 사유</td></tr>
-                <tr><td>event_type</td><td>TEXT — ENUM earnings·guidance_change·ma·capital_raise·buyback·management_change·insider_trade·product_deal·analyst_rating·regulation_legal·delisting_halt·other</td><td>사건 분류</td></tr>
+                <tr><td>event_type</td><td>TEXT — ENUM 12종 → <a href="#enum-dict">ENUM 사전</a></td><td>사건 분류</td></tr>
                 <tr><td>sentiment_score</td><td>NUMERIC 0~1</td><td>호·악재</td></tr>
                 <tr><td>importance</td><td>NUMERIC 0~1</td><td>중요도</td></tr>
                 <tr><td>risk_score</td><td>NUMERIC 0~1</td><td>위험</td></tr>
@@ -792,7 +1037,7 @@ erDiagram
                 <tr><td>source</td><td>TEXT</td><td>대표 기사 매체</td></tr>
                 <tr><td>published_at</td><td>TIMESTAMPTZ</td><td>대표 기사 발행 시각 — Critic 신선도 기준</td></tr>
                 <tr><td>ref</td><td>TEXT</td><td>대표 기사 참조 (URL)</td></tr>
-                <tr><td>event_type</td><td>TEXT — ENUM earnings·guidance_change·ma·capital_raise·buyback·management_change·insider_trade·product_deal·analyst_rating·regulation_legal·delisting_halt·other</td><td>대표 사건 분류</td></tr>
+                <tr><td>event_type</td><td>TEXT — ENUM 12종 → <a href="#enum-dict">ENUM 사전</a></td><td>대표 사건 분류</td></tr>
                 <tr><td>disclosure_ref</td><td>TEXT — FK → tb_disclosure(filing_no)</td><td>연관 공시 매칭 — 같은 ticker·event_type·|filed_at−published_at|≤72h 중 최신</td></tr>
                 <tr><td>reason</td><td>TEXT <span class="b b-hold">M2→JSONB</span></td><td>집계 근거 — 코드 조립</td></tr>
                 <tr><td>summary</td><td>TEXT</td><td>집계 요약</td></tr>
@@ -852,7 +1097,38 @@ erDiagram
                 <tr><td>low_52w</td><td>NUMERIC</td><td>52주 저가</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>기록 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오 · src_*_at이 공시 13:00·뉴스 13:30 signal의 cycle_ts와 일치(눈 대조))</div><pre>{
+  "id": 101,
+  "trade_date": "2026-07-20",
+  "ticker": "NVDA",
+  "cycle_ts": "2026-07-20T14:00:00Z",
+  "src_disclosure_at": "2026-07-20T13:00:00Z",
+  "src_news_at": "2026-07-20T13:30:00Z",
+  "src_macro_at": "2026-07-20T13:00:00Z",
+  "inv_type": "aggressive",
+  "side": "buy",
+  "conviction": 0.720,
+  "signal_consensus": 3,
+  "summary": "공시+뉴스 동시 확인된 대형 인수 촉매, 기술 추세 up — 매수",
+  "bull_case": "AI 로보틱스 볼트온으로 TAM 확대, 공시·뉴스·기술 3신호 일치",
+  "key_risk": "규제 심사 지연 시 프리미엄 되돌림",
+  "risk_rebuttal": "심사 실패 사례 대비 규모 작음 — 브래킷 SL로 방어",
+  "counter_scenarios": ["심사 6개월+ 지연", "시장 risk_off 전환"],
+  "evidence": {"disclosure": "0001045810-26-000123", "rep_news_id": 44120},
+  "sizing_hint": {"max_weight": 0.20},
+  "persona_notes": null,
+  "decision_close": 182.40,
+  "current_price": 183.10,
+  "day_high": 184.20,
+  "day_low": 179.60,
+  "close_prev": 178.95,
+  "volume": 31200000,
+  "turnover": 5700000000,
+  "high_52w": 188.40,
+  "low_52w": 98.20,
+  "created_at": "2026-07-20T14:00:03Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_critic_verdict</code><span class="sd">반박 판정 (08)</span><span class="cnt">12컬럼</span></summary>
               <div class="twrap"><table>
@@ -870,7 +1146,21 @@ erDiagram
                 <tr><td>skipped_rules</td><td>JSONB DEFAULT '[]'</td><td>건너뛴 규칙 기록</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>기록 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "id": 88,
+  "signal_id": 101,
+  "ticker": "NVDA",
+  "decision": "pass",
+  "is_agreed": true,
+  "category": "valuation",
+  "objection": "인수 프리미엄 30%는 부담이나 현금흐름 대비 감내 가능 — 스냅샷 가격 괴리 0.4%로 허용오차(2%) 내",
+  "confidence": 0.780,
+  "decided_layer": "llm",
+  "source": "fresh",
+  "skipped_rules": [],
+  "created_at": "2026-07-20T14:01:12Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_account</code><span class="sd">계좌 (upsert)</span><span class="cnt">9컬럼 <span class="b b-hold">M2 +3</span></span></summary>
               <div class="twrap"><table>
@@ -888,7 +1178,21 @@ erDiagram
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>생성 시각</td></tr>
                 <tr><td>updated_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>갱신 시각 (upsert 테이블)</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "id": 1,
+  "broker_account_id": "SIM-AGG-001",
+  "currency": "USD",
+  "cash": 990106.12,
+  "equity": 1000000.00,
+  "buying_power": 990106.12,
+  "is_paper": true,
+  "user_id": 2,
+  "inv_type": "aggressive",
+  "status": "active",
+  "created_at": "2026-07-19T09:00:00Z",
+  "updated_at": "2026-07-20T14:00:45Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_order</code><span class="sd">주문 (브래킷)</span><span class="cnt">17컬럼</span></summary>
               <div class="twrap"><table>
@@ -911,7 +1215,26 @@ erDiagram
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>생성 시각</td></tr>
                 <tr><td>updated_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>상태 갱신 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "id": 3001,
+  "signal_id": 101,
+  "account_id": 1,
+  "ticker": "NVDA",
+  "quantity": 54,
+  "entry_price": 183.10,
+  "stop_price": 155.64,
+  "take_profit_price": 219.72,
+  "order_type": "bracket",
+  "status": "filled",
+  "idempotency_key": "q-a1-s101",
+  "broker_order_id": "sim-ord-9f3a",
+  "parent_order_id": "sim-ord-9f3a",
+  "stop_leg_order_id": "sim-ord-9f3b",
+  "take_profit_leg_order_id": "sim-ord-9f3c",
+  "created_at": "2026-07-20T14:00:05Z",
+  "updated_at": "2026-07-20T14:00:41Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_fill</code><span class="sd">체결</span><span class="cnt">8컬럼</span></summary>
               <div class="twrap"><table>
@@ -925,7 +1248,17 @@ erDiagram
                 <tr><td>broker_fill_id</td><td>TEXT UNIQUE</td><td>브로커 체결 id (중복 수신 방지)</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>기록 시각</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "id": 7001,
+  "order_id": 3001,
+  "side": "buy",
+  "quantity": 54,
+  "price": 183.22,
+  "filled_at": "2026-07-20T14:00:41Z",
+  "broker_fill_id": "sim-fill-11c2",
+  "created_at": "2026-07-20T14:00:42Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_review_price_snapshots</code><span class="sd">T+1~5 종가 스냅샷 (upsert)</span><span class="cnt">18컬럼</span></summary>
               <div class="twrap"><table>
@@ -949,7 +1282,27 @@ erDiagram
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>생성 시각</td></tr>
                 <tr><td>updated_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>갱신 시각 (upsert)</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "signal_id": 101,
+  "day_offset": 5,
+  "price_date": "2026-07-27",
+  "close": 193.70,
+  "source": "market_data",
+  "confidence": 1.000,
+  "source_ref": "alpaca:bars/NVDA/2026-07-27",
+  "observed_at": "2026-07-27T20:10:00Z",
+  "captured_at": "2026-07-27T20:10:02Z",
+  "evidence_id": "r20260727-review:11:price5",
+  "parent_evidence_ids": [],
+  "model_provider": null,
+  "model_name": null,
+  "prompt_version": null,
+  "policy_version": null,
+  "input_hash": null,
+  "created_at": "2026-07-27T20:10:02Z",
+  "updated_at": "2026-07-27T20:10:02Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_review</code><span class="sd">회고 결과·lesson (11 · upsert)</span><span class="cnt">9컬럼</span></summary>
               <div class="twrap"><table>
@@ -964,7 +1317,18 @@ erDiagram
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>생성 시각</td></tr>
                 <tr><td>updated_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>갱신 시각 (upsert)</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "signal_id": 101,
+  "ret_1d": 0.015,
+  "ret_3d": 0.034,
+  "ret_5d": 0.062,
+  "is_hit": true,
+  "max_drawdown": -0.018,
+  "lesson": "공식 8-K 기반 인수 신호는 보도 과열 전 초기 진입이 유효했다 — 유사 상황에서 신선도 우선.",
+  "created_at": "2026-07-27T21:00:04Z",
+  "updated_at": "2026-07-27T21:00:04Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>pipeline_runs</code><span class="sd">실행 이력 (운영 로그 — 도메인 FK 부모 아님)</span><span class="cnt">10컬럼</span></summary>
               <div class="twrap"><table>
@@ -1040,7 +1404,16 @@ erDiagram
                 <tr><td>is_active</td><td>BOOLEAN DEFAULT true</td><td>활성 여부</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>생성 시각 — 계정은 관리자만 생성</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "user_id": 2,
+  "login_id": "member01",
+  "display_name": "공격형-1",
+  "role": "user",
+  "otp_secret": "(암호화 저장 — 표시 안 함)",
+  "is_active": true,
+  "created_at": "2026-07-19T09:00:00Z"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_llm_usage</code><span class="sd"><span class="b b-hold">M2 예정</span> LLM 호출 기록</span><span class="cnt">8컬럼</span></summary>
               <div class="twrap"><table>
@@ -1054,7 +1427,17 @@ erDiagram
                 <tr><td>est_cost_usd</td><td>NUMERIC ≥ 0</td><td>추정 비용 — 대시보드·일일 예산 가드의 데이터원</td></tr>
                 <tr><td>run_id</td><td>TEXT</td><td>실행 연결</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "id": 90211,
+  "called_at": "2026-07-20T14:00:02Z",
+  "task": "strategy",
+  "model": "gpt-4o-mini",
+  "prompt_tokens": 3120,
+  "completion_tokens": 410,
+  "est_cost_usd": 0.0049,
+  "run_id": "r20260720-1400-NVDA"
+}</pre></div>
+      </details>
 
       <details class="schema"><summary><code>tb_benchmark_price</code><span class="sd"><span class="b b-hold">M2 예정</span> SPY 벤치마크 일봉</span><span class="cnt">3컬럼</span></summary>
               <div class="twrap"><table>
@@ -1063,7 +1446,12 @@ erDiagram
                 <tr><td>ticker</td><td>TEXT · PK</td><td>벤치마크 티커 (SPY)</td></tr>
                 <tr><td>close</td><td>NUMERIC > 0</td><td>종가 — 상대 성과 기준</td></tr>
               </table></div>
-            </details>
+                    <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
+  "price_date": "2026-07-20",
+  "ticker": "SPY",
+  "close": 642.10
+}</pre></div>
+      </details>
 
       <h3>2차(MVP-2) 스키마 변경 <span class="b b-teal">M2에서 일괄 계약화</span></h3>
       <p>아래 변경은 코드 3파일(schema.sql·schemas.py/ontology.py·pipeline.yaml)에 <b>먼저</b> 반영한 뒤 구현이 따라온다(착수 순서 규칙).</p>
