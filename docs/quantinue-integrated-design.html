@@ -136,6 +136,19 @@
   .stat .v{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
   .stat .d{font-size:12.5px;color:var(--ink-soft);margin-top:3px}
 
+  /* 결정 카드 */
+  .dec{display:grid;grid-template-columns:54px 1fr;gap:16px;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;margin:12px 0}
+  .dec .dn{font-family:var(--mono);font-weight:700;font-size:13px;color:var(--teal);
+    background:var(--teal-bg);border-radius:8px;height:30px;display:grid;place-items:center;align-self:start}
+  .dec h3{margin:0 0 6px;font-size:16.5px}
+  .dec p{margin:0;color:var(--ink-soft);font-size:14.5px}
+  .dec .kv2{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .dec .kv2 span{font-family:var(--mono);font-size:11.5px;color:var(--ink-soft);
+    background:var(--surface-2);border:1px solid var(--line-soft);border-radius:6px;padding:3px 9px}
+  .dec .kv2 span b{color:var(--navy)}
+  @media(max-width:640px){.dec{grid-template-columns:1fr;gap:9px}}
+
   /* 콜아웃 */
   .note{border-left:3px solid var(--info);background:var(--info-bg);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:13px 16px;margin:16px 0;font-size:14.5px}
   .note.ai{border-color:var(--ai);background:var(--ai-bg)}
@@ -313,8 +326,51 @@
     <section id="decisions">
       <div class="sec-eyebrow">Decisions</div>
       <h2>2차 확정 사항</h2>
-      <p class="sec-intro">본격 개발 전 대화로 확정한 결정들(R1~R8). 세부 근거는 <code>docs/mvp2-planning/phase1-decisions.md</code>에 보존.</p>
-      <div class="todo">R1~R8 요약 카드 — 2차 정의(AI 펀드 서비스)·스케줄러·방어선·LLM 3단·신호품질·학습루프·실무보강·깔때기 복원</div>
+      <p class="sec-intro">본격 개발 전 대화로 확정한 결정 8건(R1~R8). 이 결정들이 아래 모든 섹션의 전제다. 세부 근거·대안 검토는 <code>docs/mvp2-planning/phase1-decisions.md</code>에 보존.</p>
+
+      <div class="dec"><div class="dn">R1</div><div class="dc">
+        <h3>2차 = AI 페이퍼 펀드 서비스</h3>
+        <p>사람 손 없이 도는 <b>무인 운영</b> 위에 두 개의 화면을 얹는다 — 관리자(펀드매니저 ERP: 계좌 CRUD·운영·비용·리포트)와 유저(조회 전용 포털). <b>리서치 신호(01~08)는 사이클당 1회 공용 생성</b>, 계좌는 성향별 파라미터로 <b>구독·실행(09~10)</b>하므로 LLM 비용이 계좌 수와 무관하게 고정된다. 실계좌 전환은 범위 외(페이퍼 전용).</p>
+        <div class="kv2"><span>성향 <b>공격형·안전형</b></span><span>유저 <b>read-only</b></span><span>계좌 생성 <b>관리자만</b></span></div>
+      </div></div>
+
+      <div class="dec"><div class="dn">R2</div><div class="dc">
+        <h3>앱 내장 스케줄러 · cycle_ts 슬롯 멱등</h3>
+        <p>FastAPI 앱 안의 백그라운드 루프가 역할별 <b>실행 창(뉴욕 시간)</b>에 파이프라인을 자동 구동한다. <code>cycle_ts</code>는 실행 시각이 아니라 <b>주기 슬롯 경계로 내림한 값</b>이라, 같은 슬롯을 몇 번 실행해도 <code>UNIQUE(ticker, cycle_ts)</code>가 중복을 막는다(멱등). 슬롯은 계산값이라 마스터 테이블을 두지 않고, 실행 기록은 기존 <code>pipeline_runs</code>가 담당.</p>
+        <div class="kv2"><span>배포 <b>로컬 → AWS</b></span><span>주문 계열 <b>개장 중만</b></span></div>
+      </div></div>
+
+      <div class="dec"><div class="dn">R3</div><div class="dc">
+        <h3>판단 방어선 3종 전부 구현</h3>
+        <p>1차에서 하드코딩 껍데기로 남았던 게이트를 실제로 작동시킨다 — <b>출처등급</b>(소셜·미등록 매체는 LLM 도달 전 사전 차단)·<b>07 게이트 3종</b>(신뢰도 낮은 뉴스 투표 박탈, 위험 국면 감점, 강한 악재 차단)·<b>snapshot 실전달</b>(08이 07 박제값을 실제로 검증). 모든 문턱은 config 소유 <b>⚙️ 운영 실측 후 조정 가능</b>.</p>
+        <div class="kv2"><span>source_trust <b>≥0.55</b></span><span>강악재 <b>≤0.15</b></span><span>매크로 감점 <b>−0.40</b></span><span>snapshot 오차 <b>2%</b></span><span>Critic <b>0.70</b></span><span>과신 <b>0.90→0.80</b></span></div>
+      </div></div>
+
+      <div class="dec"><div class="dn">R4</div><div class="dc">
+        <h3>LLM 3단 실행 모드</h3>
+        <p><b>mock</b>(가짜 점수 · 단위 테스트) → <b>로컬 qwen</b>(이 PC의 MLX · 개발·통합 테스트, 무료) → <b>OpenAI gpt-4o-mini</b>(운영). 모델 전환은 config 몇 줄. 단 점수 눈금은 모델마다 다르므로 로컬은 <b>배관 검증용</b>이고, 문턱값 캘리브레이션은 운영 모델 실측으로 한다.</p>
+      </div></div>
+
+      <div class="dec"><div class="dn">R5</div><div class="dc">
+        <h3>신호 품질 7건 (실무 개정 3건 포함)</h3>
+        <p>reason를 <b>점수별 근거 객체(JSONB)</b>로 확장(#23) — 유저 화면 "거래 이유"의 원천. <b>대표 기사</b>는 관련성 필터(오귀속 차단) 통과분 중 importance×신뢰무게 최상위로 개정. <b>Form 4</b>는 템플릿 조립하되 자발 매수(코드 P)만 유의미 신호로. <b>consensus</b>는 설명용 지표로만(게이트 아님 — 좁은 깔때기 방지). peak_importance 계산·halted 체크도 구현.</p>
+      </div></div>
+
+      <div class="dec"><div class="dn">R6</div><div class="dc">
+        <h3>학습 루프 · 비용 가드</h3>
+        <p>T+5(영업일) 회고 채점을 <b>자동화</b>하고 lesson을 생성해, 07 전략이 <b>같은 종목 최근 lesson을 프롬프트에 주입</b>받는다 — "회고가 다음 판단을 개선한다"는 서사의 완성. LLM 호출을 전부 기록해 관리자 대시보드에 사용량·비용을 노출하고, <b>일일 예산 상한</b> 초과 시 호출을 멈춘다(그 사이클 신규 매수 보류).</p>
+      </div></div>
+
+      <div class="dec"><div class="dn">R7</div><div class="dc">
+        <h3>실무 보강 6건</h3>
+        <p>1차에 빠져 있던 실무 기본기 — ① <b>매도·보유 재평가</b>(보유 종목 상시 분석 + 청산 3층: 가격·시간·논지 붕괴) ② <b>포트폴리오 서킷브레이커</b>(일일 손실 한도 도달 시 당일 신규 매수 중단) ③ 텔레그램 알림 ④ NYSE 휴장일 캘린더 ⑤ 계좌 정합 대사 ⑥ SPY 벤치마크. ①이 07 파이프라인 구조에 손대는 최대 설계 작업.</p>
+      </div></div>
+
+      <div class="dec"><div class="dn">R8</div><div class="dc">
+        <h3>스크리닝 깔때기 원설계 복원</h3>
+        <p>1차 코드의 임의 축소(50→20→20)를 되돌려, 주1회 <b>시총 상위 2,000</b> 감시 → 매일 유동성 필터 후 <b>오늘의 50</b> → LLM 심층은 상위 20 ∪ 보유 종목. 촉매 기반 전략이 재료를 놓치지 않게 감시망을 넓힌다.</p>
+        <div class="kv2"><span>유니버스 <b>2,000/주</b></span><span>일일 픽 <b>50</b></span><span>LLM 심층 <b>20+보유</b></span><span>필터 <b>$5·$20M</b></span></div>
+      </div></div>
     </section>
 
     <!-- 용어 사전 -->
