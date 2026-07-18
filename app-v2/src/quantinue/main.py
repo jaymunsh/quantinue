@@ -37,6 +37,8 @@ from quantinue.orchestration.factory import (
     build_default_orchestrator,
     build_market_data,
 )
+from quantinue.orchestration.policy import load_mvp2_config
+from quantinue.orchestration.slots import slot_of
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -48,8 +50,8 @@ PACKAGE_DIR = Path(__file__).parent
 DASHBOARD_CSS = (PACKAGE_DIR / "web" / "static" / "dashboard.css").read_text(encoding="utf-8")
 
 
-def _pipeline_request(ticker: str) -> PipelineRequest:
-    cycle_ts = datetime.now(UTC).replace(second=0, microsecond=0)
+def _pipeline_request(ticker: str, *, slot_minutes: int) -> PipelineRequest:
+    cycle_ts = slot_of(datetime.now(UTC), slot_minutes)
     return PipelineRequest(ticker=ticker, cycle_ts=cycle_ts)
 
 
@@ -62,6 +64,8 @@ def create_app(  # noqa: C901, PLR0915
     """Create one application with adapters fixed for its lifetime."""
     selected_settings = settings or Settings()
     configure_logging(debug=selected_settings.debug)
+    mvp2_config = load_mvp2_config(PACKAGE_DIR.parent.parent / "config" / "pipeline.yaml")
+    slot_minutes = mvp2_config.schedule.cycle_slot_minutes
     if store is None:
         selected_orchestrator, selected_store = build_configured_orchestrator(selected_settings)
     else:
@@ -200,7 +204,7 @@ def create_app(  # noqa: C901, PLR0915
             return RedirectResponse(
                 url="/?error=invalid_ticker", status_code=status.HTTP_303_SEE_OTHER
             )
-        request_payload = _pipeline_request(payload.ticker)
+        request_payload = _pipeline_request(payload.ticker, slot_minutes=slot_minutes)
         _ = _live_run_runtime().start(request_payload)
         return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
@@ -214,7 +218,9 @@ def create_app(  # noqa: C901, PLR0915
     ) -> PipelineRun:
         if access is not None:
             access.require(request, x_quantinue_control_token)
-        return await selected_orchestrator.run(_pipeline_request(payload.ticker))
+        return await selected_orchestrator.run(
+            _pipeline_request(payload.ticker, slot_minutes=slot_minutes)
+        )
 
     @app.post(
         "/api/runs/async",
@@ -230,7 +236,7 @@ def create_app(  # noqa: C901, PLR0915
     ) -> AsyncRunStart:
         if access is not None:
             access.require(request, x_quantinue_control_token)
-        request_payload = _pipeline_request(payload.ticker)
+        request_payload = _pipeline_request(payload.ticker, slot_minutes=slot_minutes)
         accepted = _live_run_runtime().start(request_payload)
         return AsyncRunStart(
             accepted=accepted,
