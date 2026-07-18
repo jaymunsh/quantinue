@@ -113,10 +113,19 @@ CREATE TABLE IF NOT EXISTS tb_critic_verdict (
   prompt_version TEXT, policy_version TEXT, input_hash TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS tb_user (
+  user_id BIGSERIAL PRIMARY KEY, login_id TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL,
+  role TEXT NOT NULL CHECK (role IN ('admin','user')), otp_secret TEXT,
+  is_active BOOLEAN NOT NULL DEFAULT true, created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS tb_account (
   id BIGSERIAL PRIMARY KEY, broker_account_id TEXT NOT NULL UNIQUE, currency TEXT NOT NULL DEFAULT 'USD',
   cash NUMERIC NOT NULL CHECK (cash >= 0), equity NUMERIC NOT NULL CHECK (equity >= 0),
   buying_power NUMERIC NOT NULL CHECK (buying_power >= 0), is_paper BOOLEAN NOT NULL DEFAULT true,
+  user_id BIGINT REFERENCES tb_user(user_id),
+  inv_type TEXT CHECK (inv_type IN ('aggressive','conservative')),
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused','closed')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(), updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS tb_order (
@@ -187,3 +196,17 @@ CREATE TABLE IF NOT EXISTS order_submissions (
   CHECK (stale_after > claimed_at)
 );
 CREATE INDEX IF NOT EXISTS ix_pipeline_runs_ticker_cycle ON pipeline_runs (ticker, cycle_ts DESC);
+
+CREATE UNIQUE INDEX IF NOT EXISTS tb_account_user_id_key ON tb_account(user_id) WHERE user_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS tb_llm_usage (
+  id BIGSERIAL PRIMARY KEY, called_at TIMESTAMPTZ NOT NULL, task TEXT NOT NULL,
+  model TEXT NOT NULL, prompt_tokens INT NOT NULL CHECK (prompt_tokens >= 0),
+  completion_tokens INT NOT NULL CHECK (completion_tokens >= 0),
+  est_cost_usd NUMERIC NOT NULL CHECK (est_cost_usd >= 0), run_id TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tb_benchmark_price (
+  price_date DATE NOT NULL, ticker TEXT NOT NULL, close NUMERIC NOT NULL CHECK (close > 0),
+  PRIMARY KEY (price_date, ticker)
+);

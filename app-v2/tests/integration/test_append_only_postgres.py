@@ -52,7 +52,7 @@ class _VerdictRow(BaseModel):
     objection: str
     confidence: Decimal
     decided_layer: str
-    source: str
+    verdict_source: str
 
 
 @pytest.mark.anyio
@@ -192,7 +192,7 @@ async def test_postgres_keeps_first_ledger_rows_when_conflicting_payload_replays
                         await connection.execute(
                             text(
                                 """SELECT ticker,decision,is_agreed,category,objection,confidence,
-                                decided_layer,source
+                                decided_layer,verdict_source
                                 FROM tb_critic_verdict WHERE signal_id=:signal_id"""
                             ),
                             {"signal_id": signal_id},
@@ -269,7 +269,7 @@ async def test_postgres_keeps_first_ledger_rows_when_conflicting_payload_replays
                         objection="conflicting objection",
                         confidence=Decimal("0.001"),
                         decided_layer="hard_rule",
-                        source="cache",
+                        verdict_source="cache",
                     )
                 )
             ) == verdict_id
@@ -323,7 +323,7 @@ async def test_postgres_keeps_first_ledger_rows_when_conflicting_payload_replays
                         await connection.execute(
                             text(
                                 """SELECT ticker,decision,is_agreed,category,objection,confidence,
-                                decided_layer,source
+                                decided_layer,verdict_source
                                 FROM tb_critic_verdict WHERE signal_id=:signal_id"""
                             ),
                             {"signal_id": signal_id},

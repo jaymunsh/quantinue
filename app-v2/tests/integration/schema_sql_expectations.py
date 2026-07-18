@@ -26,6 +26,9 @@ TABLES = {
     "pipeline_stage_attempts",
     "pipeline_checkpoints",
     "order_submissions",
+    "tb_user",
+    "tb_llm_usage",
+    "tb_benchmark_price",
 }
 PK = {
     "tb_universe": ("as_of_date", "ticker"),
@@ -47,6 +50,9 @@ PK = {
     "pipeline_stage_attempts": ("attempt_id",),
     "pipeline_checkpoints": ("checkpoint_id",),
     "order_submissions": ("submission_id",),
+    "tb_user": ("user_id",),
+    "tb_llm_usage": ("id",),
+    "tb_benchmark_price": ("price_date", "ticker"),
 }
 UNIQUE = {
     "tb_disclosure": {("filing_no",)},
@@ -56,6 +62,7 @@ UNIQUE = {
     "tb_strategist_signals": {("ticker", "cycle_ts", "inv_type")},
     "tb_critic_verdict": {("signal_id",)},
     "tb_account": {("broker_account_id",)},
+    "tb_user": {("login_id",)},
     "tb_order": {
         ("broker_order_id",),
         ("idempotency_key",),
@@ -157,6 +164,7 @@ FK: dict[str, set[ForeignKey]] = {
         (("src_macro_at",), "tb_macro", ("as_of",)),
     },
     "tb_critic_verdict": {(("signal_id",), "tb_strategist_signals", ("id",))},
+    "tb_account": {(("user_id",), "tb_user", ("user_id",))},
     "tb_order": {
         (("signal_id",), "tb_strategist_signals", ("id",)),
         (("account_id",), "tb_account", ("id",)),
@@ -195,6 +203,7 @@ CHECKS = {
         ("risk_score",): ("risk_score >=", "risk_score <="),
         ("sentiment_score",): ("sentiment_score >=", "sentiment_score <="),
         ("confidence",): ("confidence >=", "confidence <="),
+        ("disclosure_count",): ("disclosure_count >=",),
     },
     "tb_news": {
         ("grade",): ("'allow'", "'gray'", "'block'"),
@@ -227,12 +236,25 @@ CHECKS = {
         ("decision",): ("'pass'", "'reject'", "'hold'"),
         ("confidence",): ("confidence >=", "confidence <="),
         ("decided_layer",): ("'quality_gate'", "'hard_rule'", "'llm'", "'gate'"),
-        ("source",): ("'fresh'", "'cache'", "'cooldown'"),
+        ("verdict_source",): ("'fresh'", "'cache'", "'cooldown'"),
+    },
+    "tb_user": {
+        ("role",): ("'admin'", "'user'"),
+    },
+    "tb_llm_usage": {
+        ("prompt_tokens",): ("prompt_tokens >=",),
+        ("completion_tokens",): ("completion_tokens >=",),
+        ("est_cost_usd",): ("est_cost_usd >=",),
+    },
+    "tb_benchmark_price": {
+        ("close",): ("close >",),
     },
     "tb_account": {
         ("cash",): ("cash >=",),
         ("equity",): ("equity >=",),
         ("buying_power",): ("buying_power >=",),
+        ("inv_type",): ("'aggressive'", "'conservative'"),
+        ("status",): ("'active'", "'paused'", "'closed'"),
     },
     "tb_order": {
         ("quantity",): ("quantity > 0",),

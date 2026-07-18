@@ -49,7 +49,7 @@ async def test_postgres_rejects_orphan_technical_snapshot() -> None:
 
 @pytest.mark.anyio
 @pytest.mark.skipif(_URL is None, reason="disposable PostgreSQL URL not provided")
-async def test_postgres_rejects_phase_two_sell_strategist_signal() -> None:
+async def test_postgres_accepts_sell_and_rejects_unknown_strategist_side() -> None:
     # Given: the parent universe and daily-pick rows required by a strategist signal
     assert _URL is not None
     trade_date = datetime(2031, 1, 3, tzinfo=UTC).date()
@@ -74,7 +74,28 @@ async def test_postgres_rejects_phase_two_sell_strategist_signal() -> None:
                 {"trade_date": trade_date, "ticker": ticker},
             )
 
-        # When / Then: PostgreSQL receives a phase-two strategist side
+        # When: a sell side reaches the boundary (M2 admits it for M5 exits)
+        async with engine.begin() as connection:
+            _ = await connection.execute(
+                text(
+                    """INSERT INTO tb_strategist_signals(
+                    trade_date,ticker,cycle_ts,inv_type,side,conviction,signal_consensus,
+                    summary,evidence,sizing_hint,decision_close,current_price,day_high,
+                    day_low,close_prev,volume,turnover,high_52w,low_52w
+                    ) VALUES (:trade_date,:ticker,:cycle_ts,'aggressive','sell',0.8,2,
+                    'exit signal','{}','{}',100,100,101,99,99,1,100,120,80)"""
+                ),
+                {"trade_date": trade_date, "ticker": ticker, "cycle_ts": cycle_ts},
+            )
+
+        # Then: it persists, while an unknown direction is still rejected
+        async with engine.connect() as connection:
+            stored = await connection.scalar(
+                text("SELECT side FROM tb_strategist_signals WHERE ticker = :ticker"),
+                {"ticker": ticker},
+            )
+        assert stored == "sell"
+
         with pytest.raises(IntegrityError):
             async with engine.begin() as connection:
                 _ = await connection.execute(
@@ -83,13 +104,13 @@ async def test_postgres_rejects_phase_two_sell_strategist_signal() -> None:
                         trade_date,ticker,cycle_ts,inv_type,side,conviction,signal_consensus,
                         summary,evidence,sizing_hint,decision_close,current_price,day_high,
                         day_low,close_prev,volume,turnover,high_52w,low_52w
-                        ) VALUES (:trade_date,:ticker,:cycle_ts,'aggressive','sell',0.8,2,
-                        'phase-two','{}','{}',100,100,101,99,99,1,100,120,80)"""
+                        ) VALUES (:trade_date,:ticker,:cycle_ts2,'conservative','short',0.8,2,
+                        'unknown direction','{}','{}',100,100,101,99,99,1,100,120,80)"""
                     ),
                     {
                         "trade_date": trade_date,
                         "ticker": ticker,
-                        "cycle_ts": cycle_ts,
+                        "cycle_ts2": cycle_ts,
                     },
                 )
     finally:
