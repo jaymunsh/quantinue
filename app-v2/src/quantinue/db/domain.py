@@ -183,7 +183,7 @@ class PostgresDomainRepository:
             "objection": value.objection,
             "confidence": value.confidence,
             "decided_layer": value.decided_layer,
-            "source": value.source,
+            "verdict_source": value.verdict_source,
         }
         statement = (
             insert(table).values(**fields).on_conflict_do_nothing(index_elements=["signal_id"])

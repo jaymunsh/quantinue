@@ -36,7 +36,7 @@ class CriticVerdictWrite:
     objection: str
     confidence: Decimal
     decided_layer: str
-    source: str = "fresh"
+    verdict_source: str = "fresh"
 
 
 @dataclass(frozen=True, slots=True)

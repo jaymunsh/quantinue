@@ -92,7 +92,11 @@ CREATE TABLE IF NOT EXISTS tb_strategist_signals (
   key_risk TEXT, risk_rebuttal TEXT, counter_scenarios JSONB, evidence JSONB NOT NULL, sizing_hint JSONB NOT NULL,
   persona_notes TEXT, decision_close NUMERIC NOT NULL CHECK (decision_close > 0), current_price NUMERIC NOT NULL CHECK (current_price > 0),
   day_high NUMERIC NOT NULL, day_low NUMERIC NOT NULL, close_prev NUMERIC NOT NULL, volume BIGINT NOT NULL,
-  turnover NUMERIC NOT NULL, high_52w NUMERIC NOT NULL, low_52w NUMERIC NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  turnover NUMERIC NOT NULL, high_52w NUMERIC NOT NULL, low_52w NUMERIC NOT NULL,
+  source TEXT, source_ref TEXT, captured_at TIMESTAMPTZ, evidence_id TEXT,
+  parent_evidence_ids JSONB NOT NULL DEFAULT '[]', model_provider TEXT, model_name TEXT,
+  prompt_version TEXT, policy_version TEXT, input_hash TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (ticker, cycle_ts, inv_type), FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker),
   FOREIGN KEY (ticker, src_disclosure_at) REFERENCES tb_disclosure_signal(ticker, cycle_ts),
   FOREIGN KEY (ticker, src_news_at) REFERENCES tb_news_signal(ticker, cycle_ts), FOREIGN KEY (src_macro_at) REFERENCES tb_macro(as_of)
@@ -102,7 +106,11 @@ CREATE TABLE IF NOT EXISTS tb_critic_verdict (
   decision TEXT NOT NULL CHECK (decision IN ('pass','reject','hold')), is_agreed BOOLEAN, category TEXT NOT NULL,
   objection TEXT NOT NULL, confidence NUMERIC(4,3) NOT NULL CHECK (confidence BETWEEN 0 AND 1),
   decided_layer TEXT NOT NULL CHECK (decided_layer IN ('quality_gate','hard_rule','llm','gate')),
-  source TEXT NOT NULL CHECK (source IN ('fresh','cache','cooldown')), skipped_rules JSONB NOT NULL DEFAULT '[]',
+  verdict_source TEXT NOT NULL CHECK (verdict_source IN ('fresh','cache','cooldown')),
+  skipped_rules JSONB NOT NULL DEFAULT '[]',
+  source TEXT, source_ref TEXT, captured_at TIMESTAMPTZ, evidence_id TEXT,
+  parent_evidence_ids JSONB NOT NULL DEFAULT '[]', model_provider TEXT, model_name TEXT,
+  prompt_version TEXT, policy_version TEXT, input_hash TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE TABLE IF NOT EXISTS tb_account (
