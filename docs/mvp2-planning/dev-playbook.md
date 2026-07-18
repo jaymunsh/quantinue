@@ -9,7 +9,7 @@
 - **작업 위치**: `app-v2/` 전용. `app/`(1차)은 다른 작업자 WIP — 절대 수정 금지.
 - **브랜치**: dev 통합 브랜치 **`sunghyuk`** 생성 후 거기서 M1~M8 순차 진행, Wave 단위로 `main` merge. M9~M10은 필요 시 worktree 병렬. 완성 후 담당자 핸드오프 브랜치(`eunmi`·`changwook`·`miyeon`·`jihyun`) 컷.
 - **커밋**: 태스크 단위 1커밋, 메시지 `feat|fix|test(mN): 요약`. 문서(docs/)와 코드(app-v2/) 커밋 분리.
-- **TDD**: 실패 테스트 → 최소 구현 → green → 커밋. 기존 347개 테스트는 항상 green 유지(계약 변경 시 테스트도 같은 커밋에서 수정).
+- **TDD**: 실패 테스트 → 최소 구현 → green → 커밋. 기존 **491개** 유닛 테스트는 항상 green 유지(계약 변경 시 테스트도 같은 커밋에서 수정). ※ baseline 실측 2026-07-18: `uv run pytest tests/unit -q` → 491 passed.
 - **config 소유**: 문턱·주기·한도 하드코딩 금지 — `config/pipeline.yaml` + Settings. 리터럴 발견 시 즉시 config로 승격.
 - **문서 미러**: 핵심 로직·프롬프트가 코드로 확정되면 정본 HTML `#logic`에 반영(M2 배지 → as-built 승격) + changelog 한 줄.
 - **점수 규칙**: 0~1 · DB `NUMERIC + CHECK(0~1)` · 표기 소수 3자리. ENUM 정본 = `ontology.py`.
@@ -24,8 +24,8 @@
 | # | 태스크 | 상세 |
 |---|---|---|
 | W0-1 | app-v2 baseline 커밋 | ✅ **완료** (2026-07-18, 커밋 `dea5944`, 브랜치 `sunghyuk`). `.omo/`(1차 오케스트레이션 흔적 21MB)는 baseline에서 제외 + gitignore 추가 — 순수 앱소스 199파일만 커밋. `.env`(Alpaca 키)는 gitignore로 제외 확인. push는 원격 붙일 때 |
-| W0-2 | 의존성 설치 | `cd app-v2 && uv sync`. 실패 시 pyproject 확인 |
-| W0-3 | Postgres 기동 | `docker compose up -d` (app-v2/compose.yaml — DB 포트 5444). ⏳ compose가 schema.sql 자동 적용하는지 확인 — 아니면 `psql postgresql://quantinue:quantinue@127.0.0.1:5444/quantinue -f db/schema.sql` |
+| W0-2 | 의존성 설치 | ✅ **완료**. `cd app-v2 && uv sync` 성공. 검증: `uv run pytest tests/unit -q` → **491 passed**(playbook 기존 "347개" 표기는 부정확 → 실측 491). 항상 green 유지 기준선 = 491 |
+| W0-3 | Postgres 기동 | ✅ **완료**. ⚠️ **포트 5444→5445 변경**: 5444는 1차 `app-db-1`(다른 작업자 WIP, tb_order=1·pipeline_runs=91)이 점유 → app-v2 전용 DB를 **5445**로 격리(compose.yaml·.env 동시 수정). ⏳해소: compose가 schema.sql **자동 적용함**(`./db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql` 마운트, 빈 볼륨 첫 기동 시). `docker compose up -d db`(web 제외) → `app-v2-db-1` healthy, 19테이블 자동생성·전부 empty. 1차 DB 무손상 확인 |
 | W0-4 | env 점검 (드라이런 구성) | `app-v2/.env`: `DATA_MODE=public` ✓ · `LLM_MODE=local`(base 127.0.0.1:8888, 모델 Qwen3.6-35B-A3B-OptiQ-4bit) ✓ · **브로커는 일단 mock 유지** |
 | W0-5 | MLX 서버 확인 | `curl -s -H "Authorization: Bearer $QUANTINUE_LOCAL_LLM_API_KEY" http://127.0.0.1:8888/v1/models` → 모델 목록 응답 |
 | W0-6 | 드라이런 (mock 브로커) | `uv run uvicorn quantinue.main:app --port 8000` → `curl -X POST localhost:8000/api/runs -H 'content-type: application/json' -d '{"ticker":"NVDA"}'` → 01→11 완주·주문 계획 생성 확인. 대시보드 `localhost:8000` 육안 확인 |
@@ -188,8 +188,10 @@
 
 | 위치 | 항목 |
 |---|---|
-| W0-3 | compose의 schema.sql 자동 적용 여부 확인 |
+| W0-3 | ✅해소: compose가 schema.sql 자동 적용함(초기화 마운트). app-v2 DB는 5445로 격리 |
 | W0 완료 후 | 자동 스크리닝 첫 실행 관찰 기록 |
+| M11 | compose.yaml `web` 서비스가 LLM을 Ollama(host.docker.internal:11434·`qwen3.6:35b-a3b-nvfp4`)로 설정 — 실제 운영은 MLX(127.0.0.1:8888·`Qwen3.6-35B-A3B-OptiQ-4bit`). 컨테이너 배포 시 이 불일치 정리 필요 |
+| 정책(결정됨) | 장외거래는 **정규장 전용 유지**로 결정(2026-07-18). Alpaca가 장외에서 시장가·브래킷 거부 → 브래킷 안전장치 상실·유동성 리스크. 이벤트드리븐 진입을 의도적으로 설계할 때만 별도 마일스톤으로 재검토(지정가+보호주문 재설정 전제) |
 | M1 | DueRoleScheduler 시그니처·last_runs 쿼리 확정 |
 | M2-4 | side CHECK 제약명 확인 |
 | M2-8·M8-3 | budget.daily_llm_usd — 첫 주 실측 후 확정(임시 $3) |
