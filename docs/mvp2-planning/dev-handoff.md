@@ -8,6 +8,9 @@
 - **`app-v2/` 생성 완료** — 깨끗한 1차 커밋 `6163630`에서 소스만 복사(23MB·453파일, 잡동사니 제거). `.env`는 현재 것 복사(MLX 8888·Alpaca 페이퍼 키·정리 완료). **아직 git 미커밋**(로컬만).
   - 재생성 필요 시: `rm -rf app-v2 && mkdir app-v2 && git archive 6163630 app | tar -x --strip-components=1 -C app-v2 && cp app/.env app-v2/.env` + 잡동사니 제거
 
+## ⭐ 실행 정본 = `dev-playbook.md`
+개발은 **`docs/mvp2-planning/dev-playbook.md`**를 열고 위에서부터 실행한다 — Wave 0 런북 + M1~M11 태스크 레벨 상세(대상 파일·인터페이스·완료 기준·검증 명령) + ⏳ 보완 목록 완비. TDD 스텝(실코드)만 각 태스크 착수 직전 그 자리에서 전개. 아래는 요약.
+
 ## 다음 할 일 (순서)
 1. **app-v2 git 커밋** — 2차 dev baseline으로 1커밋 (사용자 확인 후). node_modules/.pyc는 .gitignore됨.
 2. **Wave 0 무장·드라이런** (월요일 개장 전까지, 급하지 않음 — 토요일이라 체결은 월 20일):
