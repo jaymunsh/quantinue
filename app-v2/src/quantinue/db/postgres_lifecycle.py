@@ -1,6 +1,7 @@
 """Canonical domain writes triggered by completed PostgreSQL pipeline stages."""
 
 from dataclasses import replace
+from datetime import date
 from decimal import Decimal
 
 from quantinue.core.contracts import PipelineContext
@@ -48,6 +49,21 @@ class PostgresDomainLifecycleMixin:
         return await persist_domain_stage(self._domain, self._account, component, result)
 
 
+def _session_trade_date(result: PipelineContext) -> date:
+    """Return the session date screening persisted, not the wall-clock date.
+
+    tb_disclosure/tb_news/tb_strategist_signals all FK (trade_date, ticker) to
+    tb_daily_pick, whose rows carry the last session's candle date (role_02).
+    Outside regular hours (weekends, premarket) the wall clock has already moved
+    past that session, so cycle_ts.date() would violate the FK.
+    """
+    if result.technical_output is not None:
+        for snapshot in result.technical_output.snapshots:
+            if snapshot.ticker == result.request.ticker:
+                return snapshot.trade_date
+    return result.request.cycle_ts.date()
+
+
 async def persist_domain_stage(
     domain: PostgresDomainRepository,
     account: AccountWrite,
@@ -72,7 +88,7 @@ async def persist_domain_stage(
         price = Decimal(str(result.last_price or 0))
         signal = StrategistSignalWrite(
             run_id=str(result.run_id),
-            trade_date=result.request.cycle_ts.date(),
+            trade_date=_session_trade_date(result),
             ticker=result.request.ticker,
             cycle_ts=result.request.cycle_ts,
             side=result.side or "hold",
