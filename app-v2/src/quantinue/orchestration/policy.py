@@ -227,6 +227,10 @@ class DueRoleScheduler:
         self._plan = plan
         self._timezone = timezone
 
+    def plan_periods(self) -> tuple[tuple[str, timedelta], ...]:
+        """Expose the bound plan's role cadences for cycle-level consumers."""
+        return tuple(self._plan.periods())
+
     def due_roles(
         self,
         at: datetime,
