@@ -167,3 +167,13 @@ def test_mvp2_screening_caps_technical_fetch_work() -> None:
     assert config.screening.dollar_volume_window == 20
     assert config.screening.technical_candidates <= config.screening.universe_size
     assert config.screening.llm_depth <= config.screening.daily_picks
+
+
+def test_role_timeout_override_gives_screening_a_longer_deadline() -> None:
+    policy = load_pipeline_policy(Path("config/pipeline.yaml"))
+
+    # 스크리닝(02)은 수백 종목 일봉을 받아야 해 기본 한도로는 못 끝낸다.
+    assert policy.timeout_for("02") > policy.role_timeout_seconds
+    # 나머지 역할은 기본 보호를 그대로 유지한다.
+    assert policy.timeout_for("07") == policy.role_timeout_seconds
+    assert policy.timeout_for("10") == policy.role_timeout_seconds

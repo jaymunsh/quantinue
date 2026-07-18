@@ -104,6 +104,16 @@ class PipelinePolicy(BaseModel):
     thresholds: ThresholdPolicy
     models: ModelPolicy = Field(default_factory=default_model_policy)
     schedule: SchedulePlan = Field(default_factory=default_schedule_plan)
+    role_timeout_overrides: dict[str, float] = Field(default_factory=dict)
+
+    def timeout_for(self, component: str) -> float:
+        """Return the deadline for one role.
+
+        Screening pulls daily candles one ticker per request, so it needs a
+        far longer deadline than a single model call. Overriding per role keeps
+        the tight default guarding everything else.
+        """
+        return self.role_timeout_overrides.get(component, self.role_timeout_seconds)
 
     def apply_model_defaults(self, settings: Settings) -> Settings:
         """Apply YAML model defaults while preserving explicit env/input overrides."""

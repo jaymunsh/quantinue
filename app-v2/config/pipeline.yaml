@@ -9,6 +9,9 @@ mvp:
   take_profit_ratio: 0.20
   evidence_max_age_seconds: 300
   role_timeout_seconds: 120
+  # 02는 수백 종목 일봉을 종목당 1콜로 받아야 해 기본 한도로는 못 끝낸다.
+  role_timeout_overrides:
+    "02": 900
   role_max_retries: 2
   retry_base_delay_seconds: 0.25
   resume_failed: true

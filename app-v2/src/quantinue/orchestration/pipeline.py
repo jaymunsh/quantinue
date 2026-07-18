@@ -151,7 +151,7 @@ class PipelineOrchestrator:
 
             try:
                 result = await _execute_before_deadline(
-                    role, context, self._policy.role_timeout_seconds
+                    role, context, self._policy.timeout_for(role.component)
                 )
                 result = await self._domain_lifecycle.stage_completed(
                     role.component, context, result
