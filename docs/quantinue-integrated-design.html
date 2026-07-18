@@ -281,7 +281,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v4.4 · MVP-2</span>
+    <span class="rail-ver">v4.5 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
@@ -1653,6 +1653,21 @@ erDiagram
           01~08은 사이클당 1회 실행해 종목당 신호 1개 생성(LLM 비용 계좌 수 무관 고정). 09~10만 계좌 루프 — <code>for 계좌 in 활성계좌: profiles[계좌.성향]으로 게이트·사이징·서킷 적용</code>. 분석 대상 = 오늘의 50 ∪ 전 계좌 보유 종목(보유는 스크리너 탈락과 무관하게 상시 분석).
         </div>
       </details>
+
+      <details class="schema"><summary><code>거래 세션 정책</code><span class="sd">언제 사고 언제 파나</span><span class="cnt">결정 2026-07-18 → 단계 활성화</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>원칙</b>: 관측(데이터 수집·판단)은 24시간, 체결은 세션별 개방. 최종 목표 = 프리(04:00–09:30)·정규(09:30–16:00)·애프터(16:00–20:00, America/New_York) <b>전 세션 거래</b>.<br>
+          <b>제약(Alpaca)</b>: 장외는 시장가·브래킷 불가 → <b>지정가 + extended_hours=true</b>만 가능. 따라서 장외 <b>매수</b>는 체결 후 보호주문(손절) 공백이 생기고, <b>매도(청산)</b>는 포지션을 닫는 행위라 공백이 없음(비대칭).<br>
+          <b>활성화 순서</b>: ① <span class="b b-gray">W0 as-built</span> 정규장 시장가 브래킷 ② <span class="b b-hold">M5</span> 장외 <b>청산</b> 개방(하드 악재 시 애프터아워 즉시 청산) ③ <span class="b b-hold">M5+</span> <b>보호주문 상태기계</b>(미보호 포지션 레지스터 → 개장 시 부착 → 실패 시 알림+청산 폴백 → 재시작 복구) 완성 후 장외 <b>매수</b> 개방. 세션 스위치는 config 소유. 오버나이트(20:00–04:00)는 Alpaca 24/5 지원 확인 후 별도 판단.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>세션 trade_date 규칙</code><span class="sd">시계 날짜가 아니라 장 날짜</span><span class="cnt">as-built(최소) → <span class="b b-hold">M1 일원화</span></span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          공시·뉴스·전략 신호는 전부 <code>(trade_date, ticker)</code>로 오늘의 픽(tb_daily_pick)에 FK 연결 — 여기서 trade_date는 <b>마지막 거래 세션의 봉 날짜</b>(데이터 기준)다. 주말·프리마켓엔 시계 날짜(<code>cycle_ts.date()</code>)가 이미 다음 날로 넘어가 있어 시계 기준으로 쓰면 FK가 깨진다(토요일 드라이런에서 실증).<br>
+          <b>as-built(W0 최소 수정)</b>: stage-08 기록 시 기술 스냅샷의 세션 날짜를 사용(<code>db/postgres_lifecycle.py:_session_trade_date</code>). <b><span class="b b-hold">M1</span></b>: NYSE 캘린더 도입과 함께 세션 날짜를 사이클 시작 시 1회 확정해 전 역할에 관통(정식 일원화).
+        </div>
+      </details>
     </section>
 
     <!-- AI 모델·요금 -->
@@ -1674,6 +1689,7 @@ erDiagram
 
       <h3>실행 모드 3단</h3>
       <p><span class="b b-gray">mock</span> 가짜 점수(단위 테스트, 비용 0) · <span class="b b-gray">local</span> 로컬 qwen(개발·통합, 비용 0) · <span class="b b-gray">openai</span> gpt-4o-mini(운영). 전환은 config <code>llm_mode</code> 한 줄.</p>
+      <p class="muted small" style="font-size:12.5px">※ local 모드 as-built(2026-07-18): Qwen3.6 같은 추론형 모델은 <code>reasoning_effort</code>를 무시하고 사고과정을 본문에 출력해 구조화 JSON이 깨진다 → 호출에 <code>chat_template_kwargs.enable_thinking=false</code>를 함께 보내 thinking 자체를 끈다(<code>llm/provider.py</code>). max_tokens 256 · temperature 0.</p>
 
       <h3>요금 추정 <span class="b b-gray">gpt-4o-mini · 2026-07 단가</span></h3>
       <p>단가: 입력 <b>$0.15</b> / 출력 <b>$0.60</b> per 1M tokens. 호출당 대략 입력 2~4K + 출력 0.3~0.6K 토큰 가정 → <b>호출당 ≈ $0.0005~0.001</b>.</p>
@@ -1876,6 +1892,7 @@ erDiagram
       <p class="sec-intro">이 문서를 수정하면 표 맨 위에 한 줄 추가 + 버전 갱신 + git 커밋·태그.</p>
       <div class="twrap"><table>
         <tr><th>버전</th><th>날짜</th><th>수정자</th><th>변경 요약</th></tr>
+        <tr><td class="mono">v4.5</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>Wave 0 착수 — 드라이런 완주·세션 정책</b> — app-v2 baseline 커밋(브랜치 sunghyuk·DB 5445 격리) · NVDA 드라이런 01→11 완주(실데이터+MLX 실호출) · 버그 2건 수정: 로컬 LLM thinking 억제(enable_thinking=false)·세션 trade_date FK(#logic 카드 신설) · <b>거래 세션 정책 확정</b>: 전 세션 개방 목표, W0 정규장 → M5 장외 청산 → M5+ 보호주문 상태기계 후 장외 매수(#logic 카드 신설)</td></tr>
         <tr><td class="mono">v4.4</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>브랜딩·문서 미러 규칙</b> — Quantinue Q 로고(상승 추세선 심볼) 적용 · 파비콘·애플터치 아이콘 · 브랜드 컬러를 <b>Quantinue Blue #0B4DDB</b>로 정렬(기존 틸 대체) · 계획서에 "핵심 로직·프롬프트는 코드 확정 후 #logic 반영" 미러 규칙 추가</td></tr>
         <tr><td class="mono">v4.3</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>핵심 로직 · AI 모델·요금 섹션 신설</b> — 역할별 계산·판정 로직 접이식(as-built 확정 / M2 예정 구분: conviction 공식·게이트·대표기사 하이브리드·서킷·브래킷·T+5 채점) · LLM 호출처 6곳·실행 3단·gpt-4o-mini 실단가 추정(월 $10~30)·tb_llm_usage 예산 가드. 1차 gpt-5.4-mini 요금표 폐기</td></tr>
         <tr><td class="mono">v4.2</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>R10 — 07·08 계보 추가</b>: tb_strategist_signals·tb_critic_verdict도 LLM 산출이므로 계보 10컬럼 추가(재현 계약 #16 완성 · M2). 스키마 명세·계보 설명 카드(라이프사이클·출생 기록 비유)·ENUM 사전 한국어 뜻 병기·M2 변경표 반영</td></tr>
