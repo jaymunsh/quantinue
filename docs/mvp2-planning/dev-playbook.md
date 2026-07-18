@@ -46,7 +46,7 @@
 |---|---|---|---|
 | 1-1 | 슬롯 함수 | 신규 `src/quantinue/orchestration/slots.py` | `def slot_of(now: datetime, period_minutes: int) -> datetime` — UTC 기준 period 경계 내림. 성질: 같은 period 내 임의 시각 → 같은 슬롯 / 경계값 자기 자신 / tz-aware 강제 |
 | 1-2 | cycle_ts 교체 | `src/quantinue/main.py:52` | `now().replace(second=0,...)` → 역할 주기 기반 `slot_of()`. 수동 `POST /runs`·`/api/runs`도 동일 경로 |
-| 1-3 | NYSE 캘린더 | 신규 `src/quantinue/core/market_calendar.py` | 라이브러리 `exchange-calendars`(XNYS). 인터페이스: `is_trading_day(date)` · `session_open/close(date)` · `add_business_days(date, n)`(T+5용) · `is_market_open(dt)`. 서머타임은 라이브러리가 처리 |
+| 1-3 | NYSE 캘린더 | 신규 `src/quantinue/core/market_calendar.py` | 라이브러리 `exchange-calendars`(XNYS). 인터페이스: `is_trading_day(date)` · `session_open/close(date)` · `add_business_days(date, n)`(T+5용) · `is_market_open(dt)` · **`current_session(dt) -> pre\|regular\|after\|closed`**(세션 정책 결정 2026-07-18 파급 — 장외 청산/매수 게이트용). 서머타임은 라이브러리가 처리 |
 | 1-4 | 실행 창 config | `config/pipeline.yaml` | `mvp2.windows:` — role_01: weekly_premarket / role_02·03: daily_premarket / role_04·05: extended / role_06: premarket+open / role_07~10: market_open_only / role_11: after_close. 값은 America/New_York 상대 정의 |
 | 1-5 | 스케줄러 루프 | `main.py` lifespan | anyio 태스크: 60초마다 ① `DueRoleScheduler.due_roles(now, last_runs)`(기존 seam, policy.py:200) ② 창 검사(1-3·1-4) ③ due면 슬롯 cycle_ts로 파이프라인 트리거. last_runs는 pipeline_runs 조회 |
 | 1-6 | claim 락 | `orchestration/` 기존 idempotent claim 확장 | `(component, cycle_ts)` 단위 claim — 선점 실행만 진행, 후발은 no-op 로그. 수동+자동 동시 발화 대비 |
@@ -98,6 +98,7 @@
 | 4-5 | 대표기사 하이브리드 | `selection.py:141-147` | 1단계 관련성 필터(기존 relevance ≥ `MINIMUM_RELEVANCE_SCORE` — 통과/탈락으로만) → 2단계 `importance × w` 최상위(w = confidence × (is_confirmed?1.0:0.5) × grade가중) · 동률 published_at 최신→id. `peak_importance` 실계산(신뢰 검증분 max) + 저장 배선(`domain_sources.py` insert에 누락 중) |
 | 4-6 | Form 4 정책 | 신규 `roles/role_05.../form4.py` | LLM 우회 분기: form_type='4' → 템플릿 조립(reason 객체 포함). 정책: 코드 P(공개시장 매수)+임원·$문턱 → importance 정상 / 매도 기본 저평가 / 클러스터(2인+) 가산·클러스터 매도 리스크. ⏳ SEC Form 4 파싱 필드(transactionCode·officerTitle) 소스 확인 |
 | 4-7 | 잔여 3건 | role_07·09·10 | consensus 실계산(4신호 동의 수, 저장만 — 게이트 아님·`domain.py:129` 하드코딩 제거) · late_entry(ret_5d ≥ profiles별 0.15/0.12 → 매수 금지, role_09) · halted 체크(role_10 주문 직전 Alpaca asset tradable 조회 → skip+사유) |
+| 4-8 | 프리마켓 갭 가드 | role_09 또는 role_10 진입 직전 | (세션 정책 2026-07-18 파급) 분석 기준가(직전 종가) 대비 현재가 갭 ≥ config `gates.premarket_gap_max` 초과 시 신규 매수 skip(사유 기록) — 금요일 종가 기준 픽이 월요일 갭업이면 진입가·손절·익절이 무의미해지는 문제. 문턱값은 M4 착수 시 실측 보고 확정 |
 
 **완료 기준**: 게이트 경계값 단위 테스트(±0.001) · block 매체 LLM 호출 0 · 08 합성 코드 부재(grep) · 문턱 전부 yaml로만 변경 가능(코드 리터럴 grep 0).
 
@@ -112,6 +113,8 @@
 | 5-3 | Critic 매도 검증 | role_08 | sell 판단 검증 규칙(근거 없는 패닉 매도 반박). 하드 이벤트(delisting_halt 등) 코드 직행은 검증 예외 |
 | 5-4 | 청산 3층 | 신규 `roles/exits.py` + role_09/10 | ① 브래킷(기존) ② 시간: 보유 ≥ `exits.time_exit_bdays`(10, 영업일—M1 캘린더) & 논지 미실현 → 정리 ③ 논지 붕괴: 하드 event_type → 즉시, 점수 악재 → 07 sell 경유 |
 | 5-5 | 브로커 청산 | `broker/alpaca.py` | 브래킷 leg(stop·take) 취소 → 시장가 매도 제출 → tb_fill(side='sell'). 멱등: close용 client_order_id 파생 규칙 추가 |
+| 5-6 | 장외 청산 개방 | broker + exits + M1 `current_session` | (세션 정책 2026-07-18 파급) 프리·애프터 세션에서 청산 허용: 지정가+`extended_hours=true` 제출(장외는 시장가 불가). 하드 악재(논지 붕괴)는 애프터아워 즉시 청산. ⏳ 장외 호가 확보 확인 선행 |
+| 5-7 | 보호주문 상태기계 → 장외 매수 개방 | 신규 | (세션 정책 파급, M5 완료 후 착수 가능) 미보호 포지션 레지스터 → 개장 시 보호주문 부착(멱등·재시도) → 실패 시 알림+즉시청산 폴백 → 앱 재시작 복구. **이 상태기계 완성이 장외 매수 개방의 하드 전제**(장외 브래킷 불가 → 손절 공백 방지) |
 
 **완료 기준**: E2E-4(보유 종목 하드 악재 fixture → 자동 청산+사유) · 스크리너 탈락 보유 종목이 05~07 분석에 포함(로그).
 
@@ -191,7 +194,8 @@
 | W0-3 | ✅해소: compose가 schema.sql 자동 적용함(초기화 마운트). app-v2 DB는 5445로 격리 |
 | W0 완료 후 | 자동 스크리닝 첫 실행 관찰 기록 |
 | M11 | compose.yaml `web` 서비스가 LLM을 Ollama(host.docker.internal:11434·`qwen3.6:35b-a3b-nvfp4`)로 설정 — 실제 운영은 MLX(127.0.0.1:8888·`Qwen3.6-35B-A3B-OptiQ-4bit`). 컨테이너 배포 시 이 불일치 정리 필요 |
-| 정책(결정됨) | 장외거래는 **정규장 전용 유지**로 결정(2026-07-18). Alpaca가 장외에서 시장가·브래킷 거부 → 브래킷 안전장치 상실·유동성 리스크. 이벤트드리븐 진입을 의도적으로 설계할 때만 별도 마일스톤으로 재검토(지정가+보호주문 재설정 전제) |
+| 정책(결정됨) | **거래 세션 정책 확정(2026-07-18, 문성혁)**: 최종 목표 = **전 세션 개방**(프리 04:00–09:30 · 정규 09:30–16:00 · 애프터 16:00–20:00, America/New_York). 관측(데이터 수집·판단)은 24시간. 활성화는 전제 충족 순: ① W0 = 정규장 시장가 브래킷(현행 코드) ② M5 = 장외 **청산** 개방(지정가+extended_hours, 전제 없음 — 하드 악재 시 애프터아워 즉시 청산) ③ M5+ = **보호주문 상태기계**(미보호 포지션 레지스터·개장 시 부착·실패 시 알림+청산 폴백·재시작 복구) 완성 후 장외 **매수** 개방. 근거: 장외 브래킷 불가(Alpaca) → 매수는 손절 공백이 생기나 매도는 무관(비대칭). 세션별 스위치는 config 소유. 파급: M1-3 캘린더에 `current_session(dt)→pre\|regular\|after\|closed` 추가 · M4 프리마켓 갭 가드 · M5 장외 청산+상태기계 |
+| ⏳ M5 착수 시 | Alpaca 오버나이트(24/5, 20:00–04:00) 지원·대상종목 확인 + 프리/애프터 **호가 데이터** 확보 여부(장외 지정가 산정에 필요) |
 | M1 | DueRoleScheduler 시그니처·last_runs 쿼리 확정 |
 | M2-4 | side CHECK 제약명 확인 |
 | M2-8·M8-3 | budget.daily_llm_usd — 첫 주 실측 후 확정(임시 $3) |
