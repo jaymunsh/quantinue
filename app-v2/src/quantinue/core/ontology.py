@@ -83,10 +83,11 @@ class InvestmentType(StrEnum):
 
 @unique
 class Side(StrEnum):
-    """Trading direction supported by the MVP."""
+    """Trading direction supported by the pipeline."""
 
     BUY = "buy"
     HOLD = "hold"
+    SELL = "sell"
 
 
 @unique
@@ -168,3 +169,31 @@ class SubmissionState(StrEnum):
     SUBMITTED = "submitted"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+@unique
+class AccountStatus(StrEnum):
+    """Operational lifecycle of one managed account."""
+
+    ACTIVE = "active"
+    PAUSED = "paused"
+    CLOSED = "closed"
+
+
+@unique
+class UserRole(StrEnum):
+    """Authorization role backing the admin and portal surfaces."""
+
+    ADMIN = "admin"
+    USER = "user"
+
+
+@unique
+class LlmTask(StrEnum):
+    """Closed set of billable LLM responsibilities recorded in usage."""
+
+    DISCLOSURE = "disclosure"
+    NEWS = "news"
+    STRATEGY = "strategy"
+    CRITIC = "critic"
+    REVIEW = "review"

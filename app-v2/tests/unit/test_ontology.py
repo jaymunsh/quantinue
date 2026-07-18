@@ -65,11 +65,11 @@ def test_logical_enums_use_contract_values() -> None:
     }
 
 
-def test_strategist_side_rejects_phase_two_sell() -> None:
-    # Given: the MVP strategist vocabulary
+def test_strategist_side_admits_sell_and_rejects_unknown_direction() -> None:
+    # Given: the MVP-2 strategist vocabulary (sell added for M5 exits)
     allowed_sides = {side.value for side in Side}
 
-    # When / Then: a phase-two sell recommendation reaches the boundary
-    assert allowed_sides == {"buy", "hold"}
-    with pytest.raises(ValueError, match="'sell' is not a valid Side"):
-        _ = Side("sell")
+    # When / Then
+    assert allowed_sides == {"buy", "hold", "sell"}
+    with pytest.raises(ValueError, match="'short' is not a valid Side"):
+        _ = Side("short")
