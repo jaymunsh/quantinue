@@ -4,13 +4,10 @@ from datetime import date
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
-from pydantic_core import to_json
 from sqlalchemy import MetaData, Table, and_, case, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from quantinue.core.contracts import PipelineRun, ReviewResult
-from quantinue.core.terminal_detail import RoleDetail
 from quantinue.roles.analysis.contracts import analysis_run_id
 from quantinue.roles.role_11_reviewer.processor import DueReviewSignal, ReviewSnapshotWrite
 
@@ -223,50 +220,12 @@ class PostgresReviewRepository:
             .values(signal_id=signal.signal_id, **fields)
             .on_conflict_do_update(index_elements=["signal_id"], set_=fields)
         )
-        runs = self._table("pipeline_runs")
-        review = ReviewResult(
-            outcome="hit" if fields["is_hit"] else "miss",
-            summary=(
-                f"T+5 return {returns[5]:.3f}% | max drawdown "
-                f"{fields['max_drawdown']:.3f}% | {lesson}"
-            ),
-        )
+        # 결과의 durable 기록은 tb_review 한 곳이다. 예전에는 여기서
+        # pipeline_runs.payload에도 리뷰를 되썼는데, 그건 구 관제실의 role 11
+        # 패널을 채우기 위한 것이었고 화면과 러너가 함께 죽었다. 잡이 만든
+        # 판단에는 애초에 그 행이 없어 조건문이 늘 건너뛰던 갈래이기도 하다.
         async with self._engine.begin() as connection:
             _ = await connection.execute(statement)
-            payload = await connection.scalar(
-                select(runs.c.payload).where(runs.c.run_id == signal.run_id).with_for_update()
-            )
-            if payload is not None:
-                run = PipelineRun.model_validate_json(to_json(payload))
-                detail = run.detail.model_copy(
-                    update={
-                        "roles": tuple(
-                            RoleDetail(
-                                component=role.component,
-                                title=role.title,
-                                status="completed" if role.component == "11" else role.status,
-                                summary=review.summary if role.component == "11" else role.summary,
-                                facts=(
-                                    ("결과", review.outcome),
-                                    ("리뷰", review.summary),
-                                )
-                                if role.component == "11"
-                                else role.facts,
-                                items=role.items,
-                            )
-                            for role in run.detail.roles
-                        )
-                    }
-                )
-                _ = await connection.execute(
-                    runs.update()
-                    .where(runs.c.run_id == signal.run_id)
-                    .values(
-                        payload=run.model_copy(
-                            update={"review": review, "detail": detail}
-                        ).model_dump(mode="json")
-                    )
-                )
 
     def _table(self, name: str) -> Table:
         return self._metadata.tables[name]
