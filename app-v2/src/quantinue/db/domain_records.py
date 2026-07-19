@@ -49,6 +49,8 @@ class AccountWrite:
     equity: Decimal
     buying_power: Decimal
     currency: str = "USD"
+    inv_type: str | None = None
+    """공격형/안전형 — 프로필 선택의 근거. None이면 기본 프로필을 쓴다."""
 
 
 @dataclass(frozen=True, slots=True)

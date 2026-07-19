@@ -25,6 +25,8 @@ async def initialize_account(engine: AsyncEngine, table: Table, value: AccountWr
         "buying_power": value.buying_power,
         "is_paper": True,
     }
+    if value.inv_type is not None:
+        fields["inv_type"] = value.inv_type
     async with engine.begin() as connection:
         _ = await connection.execute(
             insert(table)
