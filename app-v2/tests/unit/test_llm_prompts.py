@@ -136,3 +136,32 @@ def test_the_persona_separates_a_weak_reading_from_a_missing_one(profile: str) -
 
     # Then
     assert "indicators=none" in prompt.content
+
+
+@pytest.mark.parametrize("profile", ["aggressive", "conservative"])
+def test_the_reason_must_agree_with_the_direction_it_accompanies(profile: str) -> None:
+    """실측: 이유는 "신규 진입은 기다려야"인데 side는 buy로 저장됐다.
+
+    방향은 **코드가** 정한다(확신도 vs 성향 문턱). 모델은 그 문턱을 모른 채
+    이유를 쓰고, 우리 프롬프트는 거기에 "무엇이 이 판단을 뒤집는가"까지
+    요구한다. 그래서 판단과 산문이 어긋나고, 08이 그 모순을 잡아 기각했다 —
+    conservative는 이 이유로 **승인이 0건**이었다.
+    """
+    # When
+    prompt = load_system_prompt("strategy", profile=profile)
+
+    # Then
+    assert "다른 행동" in prompt.content
+
+
+def test_the_critic_does_not_mistake_a_named_risk_for_a_contradiction() -> None:
+    """리스크를 적는 것은 07의 **계약**이지 반박 사유가 아니다.
+
+    "뒤집을 조건을 적어라"와 "근거의 모순을 찾아라"가 서로 싸우면, 정직하게
+    리스크를 적은 판단만 골라서 기각된다 — 정확히 그 반대가 되어야 한다.
+    """
+    # When
+    prompt = load_system_prompt("critic")
+
+    # Then
+    assert "뒤집" in prompt.content
