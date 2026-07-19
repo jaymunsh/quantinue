@@ -17,7 +17,7 @@
 |---|---|
 | 작업 브랜치 | **`sunghyuk`** (여기서 계속 작업) |
 | main 병합 | **Wave 0~1 병합 완료**(커밋 `818416e`, `--no-ff`). **push는 안 함** — 공유 저장소이고 `app/`에 다른 작업자 WIP가 있어 사용자 확인 후 진행 |
-| 테스트 | 유닛/웹 **676 green** · 통합 **58 green** · ruff clean |
+| 테스트 | 유닛/웹 **681 green** · 통합 **58 green** · ruff clean |
 | DB | app-v2 전용 **포트 5445**(`app-v2-db-1`), M2 마이그레이션 적용 완료. 1차 `app-db-1`(5444)은 **다른 작업자 WIP — 불간섭** |
 | 앱 실행 포트 | **8020** (8000은 다른 프로세스 점유) |
 
@@ -27,7 +27,7 @@
 - **M2** 스키마·계약 일괄 확장 + 무손실 멱등 마이그레이션
 - **M3** 깔때기 복원 (2000 → 500 → 50 → 20)
 - **M4 검증 라운드** ✅ (2026-07-19) — 방어선 E2E 강제 발동 5종 · **halted 생략이 런을 죽이던 버그 수정** · 크리틱 문턱 이중값 정리(0.60→0.70) · `tb_order_plan` 신설로 방어선 발동 관측 가능화
-- **M6** 🔶 **진행 중** — 6-4 계좌 프로비저닝 ✅(테스트 2 + 데모 5, DB 반영) · 6-2 서킷 3/4 ✅(`daily_loss_limit`만 M5 이후) · 6-1 계획 팬아웃 ✅/집행 대표계좌 🔶 · 6-3 계좌별 포트폴리오 ✅
+- **M6** 🔶 **거의 완료** — 6-1 ✅(계좌별 계획·집행. **실 브로커는 팬아웃 안 함** — 외부 계좌가 하나라 7배 주문이 된다) · 6-2 🔶 3/4(`daily_loss_limit`만 M5 이후) · 6-3 ✅ · 6-4 ✅. 잔여: role_11 계좌별 채점(M7)
 - **M4** ✅ **완료 (2026-07-19)** — 방어선 8건 + 신설 2건(4-0 role_05 CIK 실배선 · 4-9 role_09 배선). 범위 결정 근거는 `m4-scope-decisions.md`
 
 ### 다음 할 일
@@ -49,7 +49,7 @@
 
 ```bash
 cd app-v2
-uv run pytest tests/unit tests/test_web.py -q          # 676 green 유지
+uv run pytest tests/unit tests/test_web.py -q          # 681 green 유지
 uv run ruff check src tests
 uv run uvicorn quantinue.main:app --port 8020          # 8000 점유됨
 docker compose up -d db                                 # 5445
