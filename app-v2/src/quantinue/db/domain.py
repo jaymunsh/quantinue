@@ -3,7 +3,7 @@
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import MetaData, Table, func, select
+from sqlalchemy import ColumnElement, MetaData, Table, and_, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
@@ -46,6 +46,34 @@ _TABLES = (
 class _IdentifierRow(BaseModel):
     model_config = ConfigDict(strict=True)
     value: int
+
+
+def _is_open_position(orders: Table) -> ColumnElement[bool]:
+    """Match filled buys that no close order has claimed yet.
+
+    보유는 "체결된 매수"가 아니라 "체결됐고 아직 닫히지 않은 매수"다. 두 가지를
+    걸러야 한다:
+
+    1. ``order_type='bracket'`` — 청산 행 자체가 같은 종목으로 한 건 더 잡히면
+       한 포지션이 둘로 세어진다(DISTINCT ticker라도 매수·청산이 같은 티커라
+       중복은 안 나지만, 전량 청산 후에도 청산 행 때문에 보유가 남는다).
+    2. 자신을 가리키는 close 행이 없을 것 — ``closes_order_id``가 실현손익의
+       짝이자 "이 매수는 닫혔다"는 유일한 증거다.
+
+    청산 주문이 아직 체결 전(submitted)이어도 열린 것으로 보지 않는다. 곧 닫힐
+    포지션에 신규 매수 한도를 내주면 한도를 두 번 쓰게 된다 — 보수적으로 막는다.
+    """
+    closes = orders.alias("closing_order")
+    return and_(
+        orders.c.status == "filled",
+        orders.c.order_type == "bracket",
+        ~select(closes.c.id)
+        .where(
+            closes.c.closes_order_id == orders.c.id,
+            closes.c.status.in_(("filled", "submitted")),
+        )
+        .exists(),
+    )
 
 
 class PostgresDomainRepository:
@@ -145,7 +173,7 @@ class PostgresDomainRepository:
                             orders.c.account_id,
                             func.count(func.distinct(orders.c.ticker)),
                         )
-                        .where(orders.c.status == "filled")
+                        .where(_is_open_position(orders))
                         .group_by(orders.c.account_id)
                     )
                 ).all()
@@ -164,8 +192,8 @@ class PostgresDomainRepository:
     async def account_risk_state(self, account_id: int) -> AccountRiskState | None:
         """Read the capital and book size the portfolio limits are applied to.
 
-        Positions are derived from filled orders: there is no sell path yet, so
-        a filled buy is an open position until M5 introduces closing.
+        Positions are derived from filled buys that nothing has closed yet — see
+        ``_is_open_position``.
         """
         accounts = self._table("tb_account")
         orders = self._table("tb_order")
@@ -182,7 +210,7 @@ class PostgresDomainRepository:
             held = await connection.scalar(
                 select(func.count(func.distinct(orders.c.ticker))).where(
                     orders.c.account_id == account_id,
-                    orders.c.status == "filled",
+                    _is_open_position(orders),
                 )
             )
         return AccountRiskState(
