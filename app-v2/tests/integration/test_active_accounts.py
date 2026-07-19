@@ -1,7 +1,7 @@
 """Only active accounts subscribe to a cycle.
 
 A paused or closed account must not receive orders, and the research stages
-(01–08) must not multiply with the account count — they run once per cycle.
+(01-08) must not multiply with the account count — they run once per cycle.
 """
 
 import os
