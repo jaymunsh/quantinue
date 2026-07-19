@@ -1,6 +1,6 @@
 """PostgreSQL repository for canonical trading and delayed-review rows."""
 
-from datetime import date
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import Final
 
@@ -21,6 +21,7 @@ from quantinue.db.domain_records import (
     DailyBarWrite,
     DailyPickWrite,
     KnownListing,
+    MacroSnapshot,
     OrderPlanWrite,
     OrderReconciliation,
     RawDisclosureWrite,
@@ -658,6 +659,37 @@ class PostgresDomainRepository:
             for ticker in observed
         }
 
+    async def latest_macro(
+        self, as_of: date, max_age_minutes: int
+    ) -> MacroSnapshot | None:
+        """Return the newest market regime, or None when it is too old to trust.
+
+        **묵은 국면으로 판단하지 않는다.** 매크로는 판단을 막을 수 있는 값이라
+        (성향에 따라 신규 매수 차단), 수집이 멈춘 뒤에도 마지막 값을 계속 쓰면
+        한 번의 위험회피 관측이 무기한 매수 금지로 굳는다. 신선도 문턱을 증거
+        문턱(``gates.evidence_max_age_minutes``)과 공유하는 이유는 이것도
+        판단에 들어가는 증거이기 때문이다.
+
+        없거나 묵었으면 None이고, 부르는 쪽은 감점도 차단도 하지 않는다 —
+        모르는 것을 근거로 막으면 수집 실패가 매수 금지로 둔갑한다.
+        """
+        table = self._table("tb_macro")
+        cutoff = datetime.combine(as_of, time(), tzinfo=UTC) - timedelta(
+            minutes=max_age_minutes
+        )
+        async with self._engine.begin() as connection:
+            row = (
+                await connection.execute(
+                    select(table.c.regime, table.c.risk_score)
+                    .where(table.c.as_of >= cutoff)
+                    .order_by(table.c.as_of.desc())
+                    .limit(1)
+                )
+            ).first()
+        if row is None:
+            return None
+        return MacroSnapshot(regime=row.regime, risk_score=float(row.risk_score))
+
     async def approved_sell_profiles(
         self, as_of: date, tickers: tuple[str, ...]
     ) -> dict[str, frozenset[str]]:
@@ -1178,6 +1210,7 @@ class PostgresDomainRepository:
             "confidence": value.confidence,
             "decided_layer": value.decided_layer,
             "verdict_source": value.verdict_source,
+            "skipped_rules": list(value.skipped_rules),
         }
         statement = (
             insert(table).values(**fields).on_conflict_do_nothing(index_elements=["signal_id"])

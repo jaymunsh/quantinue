@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from quantinue.db.domain_records import MacroSnapshot
 from quantinue.llm.provider import AnalysisMetadata, AnalysisResult, AnalysisTask
 from quantinue.orchestration.policy import GatesConfig, ProfileConfig
 from quantinue.roles.analysis.contracts import AnalysisSubject
@@ -67,7 +68,9 @@ class _Domain:
         subjects: tuple[AnalysisSubject, ...],
         positions: tuple[OpenPosition, ...] = (),
         headlines: dict[str, tuple[str, ...]] | None = None,
+        macro: tuple[str, float] | None = None,
     ) -> None:
+        self._macro = macro
         self._subjects = subjects
         self._positions = positions
         self._headlines = headlines or {}
@@ -92,6 +95,12 @@ class _Domain:
     ) -> dict[str, tuple[str, ...]]:
         self.news_calls.append((session, tickers, limit))
         return self._headlines
+
+    async def latest_macro(self, as_of: date, max_age_minutes: int) -> object | None:
+        del as_of, max_age_minutes
+        if self._macro is None:
+            return None
+        return MacroSnapshot(regime=self._macro[0], risk_score=self._macro[1])
 
     async def open_positions(self) -> tuple[OpenPosition, ...]:
         return self._positions
@@ -126,13 +135,21 @@ def _position(ticker: str, quantity: int = 10) -> OpenPosition:
 
 
 def _job(
-    domain: _Domain, analyzer: _Analyzer, *, headlines_per_ticker: int = 5
+    domain: _Domain,
+    analyzer: _Analyzer,
+    *,
+    headlines_per_ticker: int = 5,
+    risk_off_action: str = "penalty",
 ) -> AnalysisJob:
     return AnalysisJob(
         store=_Store(domain),
         analyzer=analyzer,
         gates=GatesConfig(evidence_max_age_minutes=2_880),
-        profile=ProfileConfig(buy_threshold=0.65, sell_threshold=0.60),
+        profile=ProfileConfig(
+            buy_threshold=0.65,
+            sell_threshold=0.60,
+            risk_off_action=risk_off_action,  # pyright: ignore[reportArgumentType]
+        ),
         profile_name="aggressive",
         headlines_per_ticker=headlines_per_ticker,
     )
@@ -351,3 +368,57 @@ async def test_a_high_ranking_holding_can_still_be_sold() -> None:
 
     # Then
     assert outcomes[0].side == "sell"
+
+
+@pytest.mark.anyio
+async def test_the_regime_reaches_the_judgement_under_the_persona_that_declared_it() -> None:
+    """risk_off_action은 선언만 있고 소비자가 없던 설정이다.
+
+    role_08이 risk_off를 무조건 reject해서 공격형의 penalty가 무시됐다. 소비자를
+    붙이려면 **매크로가 판단에 도달해야** 한다 — 새 분석 잡은 매크로를 아예
+    보지 않고 있어서, 문턱을 고쳐도 그 갈래가 돌지 않았다.
+    """
+    # Given: 원장에 위험회피 국면이 기록돼 있다(감점 구간 0.50 → -0.05)
+    domain = _Domain((_subject("AAA"),), macro=("risk_off", 0.5))
+
+    # When: 감수하겠다고 선언한 성향
+    outcomes = await _job(
+        domain, _Analyzer(strategy=0.9), risk_off_action="penalty"
+    ).run(as_of=_AS_OF, session=_SESSION)
+
+    # Then: 매수까지 가되 감점은 받는다 — 같은 악재로 두 번 벌하지 않는다
+    assert outcomes[0].side == "buy"
+    assert domain.verdicts[0].category == "model_review"
+    assert outcomes[0].conviction == 0.85
+
+
+@pytest.mark.anyio
+async def test_the_cautious_persona_stops_buying_in_the_same_regime() -> None:
+    """같은 국면, 같은 증거, 다른 성향 — 여기서 갈리지 않으면 설정이 유령이다."""
+    # Given
+    domain = _Domain((_subject("AAA"),), macro=("risk_off", 0.5))
+
+    # When
+    _ = await _job(domain, _Analyzer(strategy=0.9), risk_off_action="no_new_buys").run(
+        as_of=_AS_OF, session=_SESSION
+    )
+
+    # Then
+    assert domain.verdicts[0].category == "macro_riskoff"
+
+
+@pytest.mark.anyio
+async def test_a_missing_macro_snapshot_neither_penalises_nor_blocks() -> None:
+    """모르는 것을 근거로 막지 않는다 — 수집 실패가 매수 금지로 둔갑하면
+    매크로 잡이 죽은 날 시스템 전체가 조용히 멈춘다."""
+    # Given
+    domain = _Domain((_subject("AAA"),), macro=None)
+
+    # When
+    outcomes = await _job(domain, _Analyzer(strategy=0.9), risk_off_action="no_new_buys").run(
+        as_of=_AS_OF, session=_SESSION
+    )
+
+    # Then
+    assert domain.verdicts[0].category != "macro_riskoff"
+    assert outcomes[0].side == "buy"

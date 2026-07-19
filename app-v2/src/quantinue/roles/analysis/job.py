@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, time
 from decimal import Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.domain_records import CriticVerdictWrite, StrategistSignalWrite
@@ -29,9 +29,18 @@ from quantinue.roles.exits.contracts import business_days_held
 from quantinue.roles.role_07_strategist.contracts import StrategyInput, StrategyOutput
 from quantinue.roles.role_08_critic.contracts import CriticInput, CriticVerdict
 
+# 원장의 국면 문자열 → 크리틱 계약의 Literal. 모르는 값은 중립으로 떨어뜨린다:
+# 못 읽은 국면을 위험회피로 읽으면 파싱 실패가 매수 금지가 된다.
+_REGIMES: Final = {
+    "risk_on": "risk_on",
+    "neutral": "neutral",
+    "risk_off": "risk_off",
+}
+
 if TYPE_CHECKING:
     from datetime import date
 
+    from quantinue.db.domain_records import MacroSnapshot
     from quantinue.llm.provider import LlmAnalyzer
     from quantinue.orchestration.policy import GatesConfig, ProfileConfig
     from quantinue.roles.analysis.contracts import AnalysisSubject
@@ -72,6 +81,9 @@ class AnalysisJob:
             session, tickers, self.headlines_per_ticker
         )
         holdings = await self._holdings(domain, as_of)
+        # 매크로는 종목마다 같으므로 한 번만 읽는다. 이 값이 없으면 감점도
+        # 차단도 없다 — 모르는 것을 근거로 막지 않는다.
+        macro = await self._macro(domain, as_of)
         outcomes: list[AnalysisOutcome] = []
         for subject in subjects:
             outcome = await self._analyse(
@@ -80,11 +92,19 @@ class AnalysisJob:
                 holdings.get(subject.ticker, HoldingContext()),
                 filings.get(subject.ticker, ()),
                 headlines.get(subject.ticker, ()),
+                macro,
                 as_of=as_of,
             )
             if outcome is not None:
                 outcomes.append(outcome)
         return tuple(outcomes)
+
+    async def _macro(self, domain: object, as_of: date) -> MacroSnapshot | None:
+        """Read the regime once per run, if this store knows about it."""
+        reader = getattr(domain, "latest_macro", None)
+        if reader is None:
+            return None
+        return await reader(as_of, self.gates.evidence_max_age_minutes)
 
     async def _holdings(self, domain: object, as_of: date) -> dict[str, HoldingContext]:
         """Fold open positions into per-ticker holding context.
@@ -122,6 +142,7 @@ class AnalysisJob:
         holding: HoldingContext,
         filings: tuple[str, ...],
         headlines: tuple[str, ...],
+        macro: MacroSnapshot | None,
         *,
         as_of: date,
     ) -> AnalysisOutcome | None:
@@ -157,6 +178,10 @@ class AnalysisJob:
             is_daily_pick=True,
             disclosure_snapshot_at=cycle_ts,
             news_snapshot_at=cycle_ts,
+            # 국면 감점(gates.macro_penalty_table)의 첫 소비자. 지금까지 새
+            # 분석 경로는 매크로를 아예 보지 않아서 감점 표가 통째로 잠들어
+            # 있었다 — 표를 고쳐도 아무 일이 일어나지 않았다는 뜻이다.
+            macro_risk_score=0.0 if macro is None else macro.risk_score,
             held_quantity=holding.quantity,
             entry_price=(
                 None if holding.entry_price is None else float(holding.entry_price)
@@ -197,7 +222,9 @@ class AnalysisJob:
                 ),
             )
         )
-        verdict = await self._verify(subject, decision, signal_id, cycle_ts, run_id)
+        verdict = await self._verify(
+            subject, decision, signal_id, cycle_ts, run_id, macro
+        )
         _ = await domain.save_verdict(
             CriticVerdictWrite(
                 signal_id=signal_id,
@@ -207,6 +234,7 @@ class AnalysisJob:
                 objection=verdict.objection[:500],
                 confidence=Decimal(str(verdict.confidence)),
                 decided_layer=verdict.decided_layer,
+                skipped_rules=verdict.skipped_rules,
             )
         )
         return AnalysisOutcome(
@@ -216,13 +244,14 @@ class AnalysisJob:
             approved=verdict.decision == "pass",
         )
 
-    async def _verify(
+    async def _verify(  # noqa: PLR0913 - 판정 하나를 만드는 데 필요한 사실들이다
         self,
         subject: AnalysisSubject,
         decision: StrategyOutput,
         signal_id: int,
         cycle_ts: datetime,
         run_id: str,
+        macro: MacroSnapshot | None,
     ) -> CriticVerdict:
         """Critique the proposal, or record why no critique was needed.
 
@@ -254,11 +283,18 @@ class AnalysisJob:
             close_prev=float(subject.close_prev or subject.close),
             disclosure_filed_at=cycle_ts,
             news_published_at=cycle_ts,
+            macro_regime=_REGIMES.get("" if macro is None else macro.regime, "neutral"),
             evidence_ids=decision.evidence_ids,
         )
-        blocked = CriticVerdict.apply_hard_gates(critic_input)
+        skipped = CriticVerdict.skipped_rules_for(critic_input)
+        # 성향이 여기까지 와야 risk_off_action이 의미를 갖는다. 안 넘기면
+        # 크리틱이 두 성향을 똑같이 막고, 공격형의 penalty 선언은 원장 어디에도
+        # 나타나지 않는다 — 선언만 있고 소비자가 없던 그 상태다.
+        blocked = CriticVerdict.apply_hard_gates(
+            critic_input, risk_off_action=self.profile.risk_off_action
+        )
         if blocked is not None:
-            return blocked
+            return blocked.model_copy(update={"skipped_rules": skipped})
         review = await self.analyzer.analyze(
             AnalysisTask.CRITIC,
             f"proposal={decision.side} ticker={subject.ticker}"
@@ -284,5 +320,8 @@ class AnalysisJob:
             # mock 크리틱이 고정 0.82로 늘 통과해서 이 갈래는 실 LLM을 붙이기
             # 전까지 한 번도 실행되지 않았다. 이름은 role_08/service.py:137을 따른다.
             decided_layer="gate" if passed else "llm",
+            # 매도는 매수용 게이트 셋을 통과하지 않는다 — 그 사실을 원장에
+            # 남기지 않으면 화면이 "전부 검증했다"로 읽힌다.
+            skipped_rules=skipped,
             evidence_ids=decision.evidence_ids,
         )

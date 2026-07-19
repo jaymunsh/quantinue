@@ -45,6 +45,9 @@ class CriticVerdictWrite:
     confidence: Decimal
     decided_layer: str
     verdict_source: str = "fresh"
+    # 이 판정에 적용되지 않은 게이트들. 화면("건너뛴 규칙")이 읽는 값이고,
+    # 비어 있으면 "전부 검증했다"로 읽힌다 — 매도는 그렇지 않다.
+    skipped_rules: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,6 +246,19 @@ class RawNewsWrite:
     source: str
     url: str
     published_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class MacroSnapshot:
+    """The market regime the ledger last recorded.
+
+    분석 잡이 매크로를 보게 하려고 만든 최소 계약이다. 두 값만 있는 이유:
+    ``regime``은 크리틱의 차단 판정(성향별)에, ``risk_score``는 확신도 감점
+    (``gates.macro_penalty_table``)에 쓰인다 — 소비자가 있는 것만 담는다.
+    """
+
+    regime: str
+    risk_score: float
 
 
 @dataclass(frozen=True, slots=True)

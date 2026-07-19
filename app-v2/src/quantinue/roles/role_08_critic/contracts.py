@@ -115,9 +115,32 @@ class CriticVerdict(BaseModel):
             raise ContractViolation("pass requires gate proof and confidence below 0.70")
         return self
 
+    @staticmethod
+    def skipped_rules_for(source: CriticInput) -> tuple[str, ...]:
+        """Name the gates that did not apply to this proposal.
+
+        건너뛴다는 **사실 자체가 기록돼야** 한다. 매도 판정은 매수용 게이트 셋을
+        통과하지 않는데(아래 sell 분기), 화면에 "건너뛴 규칙: 없음"이라고 나오면
+        그 매도가 매수와 같은 검증을 받은 것처럼 보인다. 나중에 "왜 이 매도는
+        검증이 약했나"를 물을 때 답할 수 있어야 한다.
+
+        시세 정합성 게이트는 목록에 없다 — 매도에도 적용되기 때문이다. 값을
+        매길 수 없으면 팔 수도 없다.
+        """
+        if source.side != "sell":
+            return ()
+        return ("macro_riskoff", "fake_consensus", "evidence_freshness")
+
     @classmethod
-    def apply_hard_gates(cls, source: CriticInput) -> Self | None:
-        """Return a terminal verdict when quality, risk, or lineage blocks apply."""
+    def apply_hard_gates(
+        cls, source: CriticInput, risk_off_action: str = "no_new_buys"
+    ) -> Self | None:
+        """Return a terminal verdict when quality, risk, or lineage blocks apply.
+
+        ``risk_off_action``의 기본값이 막는 쪽인 이유: 성향을 모르는 호출자
+        (구 11단계 러너)의 기존 거동을 그대로 둬야 이 인자가 조용한 완화가
+        되지 않는다. 완화는 성향이 그렇게 선언했을 때만 일어난다.
+        """
         if (
             source.day_high < source.day_low
             or not source.day_low <= source.current_price <= source.day_high
@@ -152,7 +175,11 @@ class CriticVerdict(BaseModel):
             # 근거가 조용한 종목만 영원히 남는다. 시세 정합성(위 두 게이트)은
             # 매도에도 적용된다 — 값을 매길 수 없으면 팔 수도 없기 때문이다.
             return None
-        if source.macro_regime == "risk_off":
+        if source.macro_regime == "risk_off" and risk_off_action == "no_new_buys":
+            # penalty 성향은 여기서 막지 않는다. 매크로 악재는 이미 확신도
+            # 단계에서 감점(gates.macro_penalty_table)으로 반영됐고, 여기서
+            # 또 막으면 같은 악재로 두 번 벌하는 셈이다 — 그리고 그 감점을
+            # 감수하고 사겠다는 것이 공격형 성향의 정의다.
             return cls(
                 run_id=source.run_id,
                 signal_id=source.signal_id,
