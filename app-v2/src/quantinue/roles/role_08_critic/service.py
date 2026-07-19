@@ -1,14 +1,17 @@
 """Challenge the strategist proposal before risk execution."""
 
 from dataclasses import dataclass, replace
-from typing import ClassVar, Literal
+from typing import ClassVar, Final, Literal
 
 from quantinue.core.contracts import PipelineContext
 from quantinue.core.ontology import EvidenceKind
 from quantinue.core.schemas import Evidence
 from quantinue.core.typing import require_value
 from quantinue.llm.provider import AnalysisTask, LlmAnalyzer
+from quantinue.orchestration.policy import GatesConfig
 from quantinue.roles.role_08_critic.contracts import CriticInput, CriticVerdict
+
+DEFAULT_GATES: Final[GatesConfig] = GatesConfig()
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,6 +21,7 @@ class Critic:
     analyzer: LlmAnalyzer
     minimum_confidence: float = 0.0
     critic_approval_score: float = 0.70
+    gates: GatesConfig = DEFAULT_GATES
     component: ClassVar[str] = "08"
     name: ClassVar[str] = "크리틱 검증"
 
@@ -39,6 +43,35 @@ class Critic:
             updated = replace(context, critic_approved=False, critic_verdict=verdict)
             return updated.add_stage(self.component, self.name, "크리틱 차단, 매수 제안 없음")
         price = require_value(context.last_price, component=self.component, field_name="last_price")
+        snapshot = context.price_snapshot
+        if snapshot is None:
+            stale_verdict = CriticVerdict(
+                run_id=str(context.run_id),
+                signal_id=context.signal_id or 1,
+                ticker=context.request.ticker,
+                decision="hold",
+                category="missing_snapshot",
+                objection="시세 스냅샷 없음 — 합성하지 않고 보류",
+                confidence=1.0,
+                decided_layer="quality_gate",
+                evidence_ids=(f"{context.run_id}:strategy",),
+            )
+            updated = replace(context, critic_approved=False, critic_verdict=stale_verdict)
+            return updated.add_stage(self.component, self.name, "크리틱 차단, missing_snapshot")
+        if snapshot.is_stale(price, self.gates.snapshot_tolerance):
+            stale_verdict = CriticVerdict(
+                run_id=str(context.run_id),
+                signal_id=context.signal_id or 1,
+                ticker=context.request.ticker,
+                decision="hold",
+                category="stale_snapshot",
+                objection="판단 시점 대비 시세 괴리 초과",
+                confidence=1.0,
+                decided_layer="quality_gate",
+                evidence_ids=(f"{context.run_id}:strategy",),
+            )
+            updated = replace(context, critic_approved=False, critic_verdict=stale_verdict)
+            return updated.add_stage(self.component, self.name, "크리틱 차단, stale_snapshot")
         critic_input = CriticInput(
             run_id=str(context.run_id),
             signal_id=1,
@@ -47,10 +80,10 @@ class Critic:
             conviction=require_value(
                 context.conviction, component=self.component, field_name="conviction"
             ),
-            current_price=price,
-            day_high=price * 1.01,
-            day_low=price * 0.99,
-            close_prev=price,
+            current_price=snapshot.current_price,
+            day_high=snapshot.day_high,
+            day_low=snapshot.day_low,
+            close_prev=snapshot.close_prev,
             macro_regime=_critic_macro_regime(context.macro_regime),
             disclosure_filing_no=(
                 context.disclosure_source.filing_no
@@ -81,6 +114,10 @@ class Critic:
             )
         result = await self.analyzer.analyze(AnalysisTask.CRITIC, f"proposal={side}")
         approval_threshold = max(self.minimum_confidence, self.critic_approval_score)
+        conviction = context.conviction or 0.0
+        if conviction >= self.gates.overconfidence_conviction:
+            # 과신할수록 반박을 더 세게 통과해야 한다.
+            approval_threshold = max(approval_threshold, self.gates.overconfidence_approval)
         approved = side == "buy" and result.score >= approval_threshold
         verdict = CriticVerdict(
             run_id=str(context.run_id),

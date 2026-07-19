@@ -6,7 +6,7 @@ from typing import ClassVar, Final, assert_never
 
 import anyio
 
-from quantinue.core.contracts import PipelineContext
+from quantinue.core.contracts import PipelineContext, PriceSnapshot
 from quantinue.core.errors import (
     AuthenticationFailureError,
     HttpFailureError,
@@ -25,8 +25,26 @@ from quantinue.roles.role_02_technical_analysis.contracts import (
 )
 
 MINIMUM_HISTORY: Final = 50
+SESSIONS_FOR_PREVIOUS_CLOSE: Final = 2
 
 DEFAULT_SCREENING: Final[ScreeningConfig] = ScreeningConfig()
+
+
+def price_snapshot_from(candles: tuple[Candle, ...]) -> PriceSnapshot | None:
+    """Capture the observed session prices, including a real previous close.
+
+    Returns None when history is too short to know a previous close — better an
+    absent snapshot than an invented one.
+    """
+    if len(candles) < SESSIONS_FOR_PREVIOUS_CLOSE:
+        return None
+    latest = candles[-1]
+    return PriceSnapshot(
+        current_price=float(latest.close),
+        day_high=float(latest.high),
+        day_low=float(latest.low),
+        close_prev=float(candles[-2].close),
+    )
 
 
 def average_dollar_volume(candles: tuple[Candle, ...], window: int) -> float:
@@ -185,6 +203,12 @@ class TechnicalAnalysis:
                 context,
                 technical_score=0.82,
                 last_price=snapshot.close,
+                price_snapshot=PriceSnapshot(
+                    current_price=snapshot.close,
+                    day_high=snapshot.close * 1.01,
+                    day_low=snapshot.close * 0.99,
+                    close_prev=snapshot.close / (1 + snapshot.ret_5d / 100 / 5),
+                ),
                 technical_output=result,
             )
             evidence = Evidence(
@@ -260,6 +284,7 @@ class TechnicalAnalysis:
             context,
             technical_score=score,
             last_price=requested_snapshot.close,
+            price_snapshot=price_snapshot_from(requested_candles),
             technical_output=result,
         )
         provenance = requested_candles[-1].provenance

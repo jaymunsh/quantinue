@@ -13,6 +13,7 @@ from quantinue.core.contracts import (
     NewsSourceRecord,
     PipelineContext,
     PipelineRequest,
+    PriceSnapshot,
 )
 from quantinue.core.terminal_detail import RoleDetail
 from quantinue.db.store import InMemoryRunStore
@@ -277,6 +278,9 @@ async def test_critic_hard_block_retains_typed_rejection_detail() -> None:
         side="buy",
         conviction=0.8,
         last_price=100.0,
+        price_snapshot=PriceSnapshot(
+            current_price=100.0, day_high=101.0, day_low=99.0, close_prev=98.0
+        ),
         macro_regime="risk_off",
     )
 

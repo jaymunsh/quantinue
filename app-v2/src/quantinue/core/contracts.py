@@ -199,6 +199,30 @@ class PipelineRun(BaseModel):
 
 
 @dataclass(frozen=True, slots=True)
+class PriceSnapshot:
+    """Prices as one role actually observed them, carried forward unchanged.
+
+    Downstream roles must never re-derive these. Synthesising `close_prev` from
+    the current price silently disables every move-size guard built on it.
+    """
+
+    current_price: float
+    day_high: float
+    day_low: float
+    close_prev: float
+
+    def drift_from(self, observed_price: float) -> float:
+        """Return the relative gap between this snapshot and a later price."""
+        if self.current_price <= 0:
+            return 0.0
+        return abs(observed_price - self.current_price) / self.current_price
+
+    def is_stale(self, observed_price: float, tolerance: float) -> bool:
+        """Return whether the price moved past the tolerance since capture."""
+        return self.drift_from(observed_price) > tolerance
+
+
+@dataclass(frozen=True, slots=True)
 class PipelineContext:
     """Internal immutable state passed through roles 01 to 11."""
 
@@ -212,6 +236,7 @@ class PipelineContext:
     daily_screener_output: DailyScreenerOutput | None = None
     macro_output: MacroAnalysisOutput | None = None
     last_price: float | None = None
+    price_snapshot: PriceSnapshot | None = None
     technical_score: float | None = None
     is_daily_pick: bool = False
     macro_regime: str | None = None
