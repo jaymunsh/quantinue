@@ -7,7 +7,8 @@
 ## 0. 공통 규칙 (모든 세션·모든 태스크)
 
 - **작업 위치**: `app-v2/` 전용. `app/`(1차)은 다른 작업자 WIP — 절대 수정 금지.
-- **브랜치**: dev 통합 브랜치 **`sunghyuk`** 생성 후 거기서 M1~M8 순차 진행, Wave 단위로 `main` merge. M9~M10은 필요 시 worktree 병렬. 완성 후 담당자 핸드오프 브랜치(`eunmi`·`changwook`·`miyeon`·`jihyun`) 컷.
+- **브랜치**: dev 통합 브랜치 **`sunghyuk`** 생성 후 거기서 M1~M8 순차 진행, Wave 단위로 `main` merge.
+  - ✅ **Wave 0~1 병합 완료**(2026-07-19, 커밋 `818416e`, `--no-ff`). ⚠️ **push는 보류** — 공유 원격이고 `app/`에 다른 작업자 WIP가 있어 사용자 확인 후에만. 다음 병합 지점은 Wave 2(M4~M6) 완료 시. M9~M10은 필요 시 worktree 병렬. 완성 후 담당자 핸드오프 브랜치(`eunmi`·`changwook`·`miyeon`·`jihyun`) 컷.
 - **커밋**: 태스크 단위 1커밋, 메시지 `feat|fix|test(mN): 요약`. 문서(docs/)와 코드(app-v2/) 커밋 분리.
 - **TDD**: 실패 테스트 → 최소 구현 → green → 커밋. 기존 **491개** 유닛 테스트는 항상 green 유지(계약 변경 시 테스트도 같은 커밋에서 수정). ※ baseline 실측 2026-07-18: `uv run pytest tests/unit -q` → 491 passed.
 - **config 소유**: 문턱·주기·한도 하드코딩 금지 — `config/pipeline.yaml` + Settings. 리터럴 발견 시 즉시 config로 승격.

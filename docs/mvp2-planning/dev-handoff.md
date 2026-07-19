@@ -1,25 +1,64 @@
-# 개발 착수 핸드오프 (다음 세션용)
+# 개발 핸드오프 — 현재 상태
 
-> 작성 2026-07-18 · usage 절약으로 복사·메모까지만 하고 중단. 다음 세션이 여기서 이어감.
+> 최종 갱신 2026-07-19. **이 파일은 "지금 어디까지 왔나"만 담는다.**
+> 실행 지시는 전부 **`dev-playbook.md`**에 있다 — 새 세션은 그 파일을 열고 이어가면 된다.
 
-## 지금까지 완료
-- 문서 v4.4 완성 (`docs/quantinue-integrated-design.html`) · GitHub Pages 서빙 · 이미지 `docs/assets/`로 이동(경로 깨짐 해결)
-- 계획 정본: `phase0-asbuilt-audit.md`(감사) · `phase1-decisions.md`(결정 R1~R10) · `phase2-dev-plan.md`(마스터 계획 M1~M11)
-- **`app-v2/` 생성 완료** — 깨끗한 1차 커밋 `6163630`에서 소스만 복사(23MB·453파일, 잡동사니 제거). `.env`는 현재 것 복사(MLX 8888·Alpaca 페이퍼 키·정리 완료). **아직 git 미커밋**(로컬만).
-  - 재생성 필요 시: `rm -rf app-v2 && mkdir app-v2 && git archive 6163630 app | tar -x --strip-components=1 -C app-v2 && cp app/.env app-v2/.env` + 잡동사니 제거
+## ⭐ 먼저 읽을 것
 
-## ⭐ 실행 정본 = `dev-playbook.md`
-개발은 **`docs/mvp2-planning/dev-playbook.md`**를 열고 위에서부터 실행한다 — Wave 0 런북 + M1~M11 태스크 레벨 상세(대상 파일·인터페이스·완료 기준·검증 명령) + ⏳ 보완 목록 완비. TDD 스텝(실코드)만 각 태스크 착수 직전 그 자리에서 전개. 아래는 요약.
+1. **`docs/mvp2-planning/dev-playbook.md`** — 실행 정본. 마일스톤별 완료 표시(✅/🔶)와 남은 태스크, ⏳ 보완 목록이 전부 여기 있다.
+2. `docs/quantinue-integrated-design.html` — 설계 정본(v4.8). 확정 로직은 `#logic`, 결정 이력은 changelog.
 
-## 다음 할 일 (순서)
-1. **app-v2 git 커밋** — 2차 dev baseline으로 1커밋 (사용자 확인 후). node_modules/.pyc는 .gitignore됨.
-2. **Wave 0 무장·드라이런** (월요일 개장 전까지, 급하지 않음 — 토요일이라 체결은 월 20일):
-   - `app-v2/.env`: `QUANTINUE_DATA_MODE=public` 확인 · `QUANTINUE_LLM_MODE=local`(MLX 8888) · **`QUANTINUE_BROKER_MODE=alpaca` + `QUANTINUE_TRADING_ENABLED=true`로 변경**(현재 mock/false — 실 페이퍼 주문 스위치, 켜기 전 확인)
-   - Postgres 기동 → schema 적용 → NVDA 1종목 드라이런(mock 브로커로 먼저) → OK면 실 페이퍼 무장 → 월요일 09:30 뉴욕 개장 대기
-   - 목표: 20일 매수 → T+5 = 27일(마감일) 안에 첫 회고 데이터 확보
-3. **마일스톤 착수** (Wave 1~4, `phase2-dev-plan.md` 순서): M1 스케줄러·멱등 → M2 스키마(reason JSONB·신규 3테이블·07/08 계보·side sell) → M3 깔때기 → M4 방어선 → M5 매도 → M6 계좌·서킷 → M7 학습 → M8 운영 → M9~11 서비스·배포. 각 마일스톤은 writing-plans로 TDD 상세 플랜 생성 후 진행.
+## 현재 상태 (2026-07-19)
 
-## 주의
-- 문서 미러 규칙: 핵심 로직·프롬프트(페르소나)는 **코드 확정 후** 문서 `#logic`에 반영(추측 선기재 금지)
-- 문턱값·주기·한도는 전부 config 소유 · ⚙️ 조정 가능
-- app/(원본 1차)은 다른 작업자 WIP 있음 — 2차 개발은 app-v2/에서만
+| 항목 | 상태 |
+|---|---|
+| 작업 브랜치 | **`sunghyuk`** (여기서 계속 작업) |
+| main 병합 | **Wave 0~1 병합 완료**(커밋 `818416e`, `--no-ff`). **push는 안 함** — 공유 저장소이고 `app/`에 다른 작업자 WIP가 있어 사용자 확인 후 진행 |
+| 테스트 | 유닛/웹 **592 green** · 통합 **30 green** · ruff clean |
+| DB | app-v2 전용 **포트 5445**(`app-v2-db-1`), M2 마이그레이션 적용 완료. 1차 `app-db-1`(5444)은 **다른 작업자 WIP — 불간섭** |
+| 앱 실행 포트 | **8020** (8000은 다른 프로세스 점유) |
+
+### 완료
+- **W0** 드라이런까지 — 01→11 완주 검증 (실 페이퍼 무장 W0-7·W0-8만 남음)
+- **M1** 슬롯 멱등·NYSE 캘린더·자동 스케줄러(config `mvp2.schedule.enabled=false`로 꺼둠)
+- **M2** 스키마·계약 일괄 확장 + 무손실 멱등 마이그레이션
+- **M3** 깔때기 복원 (2000 → 500 → 50 → 20)
+- **M4** 🔶 **4/8 진행** — 07 게이트 3종·08 합성 제거·과신 에스컬레이션·출처등급 완료
+
+### 다음 할 일
+1. **월요일 개장 시(KST 22:30)**: playbook **W0-7**(실 페이퍼 무장 — ⚠️ 사용자 확인 필수) → **W0-8**(스모크·첫 체결) → T+5 시계 가동
+2. **M4 남은 4건**: 4-5 대표기사 하이브리드 · 4-6 Form 4 · 4-7 잔여 3건(consensus·late_entry·halted) · 4-8 프리마켓 갭 가드
+3. 이후 **M5 매도**(최대 설계 작업 — 착수 시 첫 태스크는 매도 주문 표현 설계) → M6 계좌·서킷
+
+## 확정된 정책 (되묻지 말 것)
+
+- **거래 세션**: 최종 목표는 **전 세션 개방**. 활성화는 전제 충족 순 — W0 정규장 → M5 장외 **청산** → M5+ 보호주문 상태기계 완성 후 장외 **매수**. 매수만 조건부인 이유는 장외에서 브래킷이 불가해 손절 공백이 생기기 때문. (상세: playbook ⏳목록 "정책(결정됨)" 행)
+- **작업 위치**: `app-v2/` 전용. `app/`(1차)은 다른 작업자 WIP — 절대 수정 금지.
+- **문턱·주기·한도**: 전부 `config/pipeline.yaml` 소유. 코드 리터럴 금지.
+- **문서 미러**: 로직이 코드로 확정되면 정본 `#logic`에 반영 + changelog 한 줄.
+
+## 실행 명령
+
+```bash
+cd app-v2
+uv run pytest tests/unit tests/test_web.py -q          # 592 green 유지
+uv run ruff check src tests
+uv run uvicorn quantinue.main:app --port 8020          # 8000 점유됨
+docker compose up -d db                                 # 5445
+
+# 통합 테스트는 '일회용 DB' 전제 — 같은 DB에 두 번 돌리면 중복키로 실패한다(정상)
+docker run -d --name t -e POSTGRES_DB=quantinue -e POSTGRES_USER=quantinue \
+  -e POSTGRES_PASSWORD=quantinue -p 127.0.0.1:5480:5432 postgres:17-alpine
+docker exec -i t psql -q -U quantinue -d quantinue < db/schema.sql
+QUANTINUE_TEST_DATABASE_URL="postgresql+asyncpg://quantinue:quantinue@127.0.0.1:5480/quantinue" \
+  uv run pytest tests/integration -q
+```
+
+## app-v2 재생성이 필요할 때 (거의 없음)
+
+```bash
+rm -rf app-v2 && mkdir app-v2 \
+  && git archive 6163630 app | tar -x --strip-components=1 -C app-v2 \
+  && cp app/.env app-v2/.env
+```
+※ `.omo/`(1차 오케스트레이션 흔적 21MB)는 baseline에서 제외했다 — 다시 넣지 말 것.
