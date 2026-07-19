@@ -81,6 +81,11 @@ mvp2:
     # 갭 가드 적용 창: 프리마켓 전체 + 개장 후 이 분(分)까지.
     # 장중 3% 이동은 평범하므로 종일 적용하면 정상 매수까지 막는다.
     gap_guard_open_minutes: 30
+  disclosure:
+    # 정형 소유권 신고서 — 소유권 XML 없이는 매수/매도 구분이 불가하므로
+    # LLM에 태우지 않는다. 대형주는 Form 4를 상시 제출해 최신 1건이 실질 공시를
+    # 밀어내므로, 후보에서 제외하고 다음 실질 공시를 채점한다.
+    llm_bypass_forms: ["4", "4/A", "3", "5"]
   screening:
     universe_size: 2000
     min_price_usd: 5

@@ -21,6 +21,7 @@ from quantinue.market_data import (
 from quantinue.orchestration.pipeline import PipelineOrchestrator, PipelineRole
 from quantinue.orchestration.policy import (
     DEFAULT_PIPELINE_POLICY,
+    DisclosureConfig,
     GatesConfig,
     PipelinePolicy,
     ProfileConfig,
@@ -43,6 +44,7 @@ from quantinue.roles.role_11_reviewer.service import Reviewer
 DEFAULT_SCREENING: Final[ScreeningConfig] = ScreeningConfig()
 DEFAULT_GATES: Final[GatesConfig] = GatesConfig()
 DEFAULT_PROFILE: Final[ProfileConfig] = ProfileConfig()
+DEFAULT_DISCLOSURE: Final[DisclosureConfig] = DisclosureConfig()
 # 단일 계좌 기준 성향. 계좌별 성향 루프는 M6에서 도입한다.
 DEFAULT_PROFILE_NAME: Final[str] = "aggressive"
 
@@ -81,6 +83,7 @@ def build_roles(  # noqa: PLR0913 - one composition seam per replaceable collabo
     screening: ScreeningConfig = DEFAULT_SCREENING,
     gates: GatesConfig = DEFAULT_GATES,
     profile: ProfileConfig = DEFAULT_PROFILE,
+    disclosure: DisclosureConfig = DEFAULT_DISCLOSURE,
 ) -> tuple[PipelineRole, ...]:
     """Compose the replaceable role implementations in canonical order."""
     selected_store = store or InMemoryRunStore()
@@ -89,7 +92,7 @@ def build_roles(  # noqa: PLR0913 - one composition seam per replaceable collabo
         TechnicalAnalysis(market_data, screening),
         DailyScreener(screening),
         MacroAnalysis(market_data),
-        DisclosureAnalysis(analyzer, market_data=market_data),
+        DisclosureAnalysis(analyzer, market_data=market_data, disclosure=disclosure),
         NewsAnalysis(analyzer, market_data=market_data),
         Strategist(
             analyzer,
@@ -190,6 +193,7 @@ def build_configured_orchestrator(
             screening,
             mvp2.gates,
             mvp2.profiles[DEFAULT_PROFILE_NAME],
+            mvp2.disclosure,
         ),
         store,
         policy=policy,

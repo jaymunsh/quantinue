@@ -243,6 +243,18 @@ class GatesConfig(BaseModel):
         return min(penalty, self.macro_penalty_cap)
 
 
+class DisclosureConfig(BaseModel):
+    """Which filing forms bypass the LLM because they carry no readable signal."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    llm_bypass_forms: tuple[str, ...] = ("4", "4/A", "3", "5")
+
+    def is_bypassed(self, form: str) -> bool:
+        """Return whether this filing form should never reach the model."""
+        return form.strip().upper() in {item.upper() for item in self.llm_bypass_forms}
+
+
 class ScreeningConfig(BaseModel):
     """Funnel widths from the raw universe down to LLM-depth candidates.
 
@@ -304,6 +316,7 @@ class Mvp2Config(BaseModel):
     profiles: dict[str, ProfileConfig] = Field(default_factory=_default_profiles)
     gates: GatesConfig = GatesConfig()
     screening: ScreeningConfig = ScreeningConfig()
+    disclosure: DisclosureConfig = DisclosureConfig()
     exits: ExitsConfig = ExitsConfig()
     budget: BudgetConfig = BudgetConfig()
 
