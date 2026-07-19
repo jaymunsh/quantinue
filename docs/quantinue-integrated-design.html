@@ -281,7 +281,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v4.4 · MVP-2</span>
+    <span class="rail-ver">v4.8 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
@@ -361,8 +361,8 @@
       <h2>현재 상태 — 어디까지 왔고 무엇을 만드나</h2>
       <p class="sec-intro">1차 MVP(반자동 단일 파이프라인)는 코드로 완성됐다. 2차는 그 위에 자동 운영·다계좌·서비스 화면을 얹는다.</p>
       <div class="grid c4" style="margin-top:18px">
-        <div class="stat"><div class="k">1차 MVP</div><div class="v">완성</div><div class="d">11역할·페이퍼 주문·347 테스트</div></div>
-        <div class="stat"><div class="k">2차 목표</div><div class="v">무인 운영</div><div class="d">자동 스케줄 + 방어선 + 회고 루프</div></div>
+        <div class="stat"><div class="k">1차 MVP</div><div class="v">완성</div><div class="d">11역할·페이퍼 주문·491 테스트</div></div>
+        <div class="stat"><div class="k">2차 진행</div><div class="v">Wave 0</div><div class="d">드라이런 01→11 완주 · 월요일 실 페이퍼 무장 대기</div></div>
         <div class="stat"><div class="k">서비스</div><div class="v">2면</div><div class="d">관리자 ERP · 유저 포털</div></div>
         <div class="stat"><div class="k">기간</div><div class="v">'26.06.29–07.29</div><div class="d">전 기능 · 월요일 매수 개시 목표</div></div>
       </div>
@@ -1481,8 +1481,9 @@ erDiagram
 }</pre></div>
       </details>
 
-      <h3>2차(MVP-2) 스키마 변경 <span class="b b-teal">M2에서 일괄 계약화</span></h3>
-      <p>아래 변경은 코드 3파일(schema.sql·schemas.py/ontology.py·pipeline.yaml)에 <b>먼저</b> 반영한 뒤 구현이 따라온다(착수 순서 규칙).</p>
+      <h3>2차(MVP-2) 스키마 변경 <span class="b b-gray">M2 완료 · as-built</span></h3>
+      <p>아래 변경은 코드 3파일(schema.sql·schemas.py/ontology.py·pipeline.yaml)에 <b>먼저</b> 반영한 뒤 구현이 따라온다(착수 순서 규칙). <b>2026-07-18 M2에서 전부 적용 완료</b> — 신규 설치는 <code>db/schema.sql</code>, 기존 DB는 멱등 <code>db/migrations/mvp2.sql</code>로 올린다(두 경로가 동일 카탈로그로 수렴함을 컬럼 344·제약 134 비교로 검증).</p>
+      <div class="note"><b>기존 DB 업그레이드 시 알아둘 것</b> — ① <code>reason</code>의 기존 텍스트는 버리지 않고 <code>{"legacy": "원문"}</code>으로 감싸 보존한다. ② <code>tb_critic_verdict.source</code>(fresh/cache/cooldown, 캐시 상태)는 계보의 <code>source</code>(출처)와 이름이 겹쳐 <b><code>verdict_source</code>로 리네임</b>했다 — 6개 계보 테이블의 컬럼 이름을 통일하기 위함. ③ 계보 10컬럼은 전부 NULL 허용 — 기존 행은 계보 없이 남고 <b>신규 기록부터 채운다</b>.</div>
       <div class="twrap"><table>
         <tr><th>구분</th><th>변경</th><th>이유</th></tr>
         <tr><td><span class="b b-ai">신규</span></td><td class="mono">tb_user</td><td>로그인·권한(admin/user)·OTP — 관리자가 생성</td></tr>
@@ -1653,6 +1654,38 @@ erDiagram
           01~08은 사이클당 1회 실행해 종목당 신호 1개 생성(LLM 비용 계좌 수 무관 고정). 09~10만 계좌 루프 — <code>for 계좌 in 활성계좌: profiles[계좌.성향]으로 게이트·사이징·서킷 적용</code>. 분석 대상 = 오늘의 50 ∪ 전 계좌 보유 종목(보유는 스크리너 탈락과 무관하게 상시 분석).
         </div>
       </details>
+
+      <details class="schema"><summary><code>거래 세션 정책</code><span class="sd">언제 사고 언제 파나</span><span class="cnt">결정 2026-07-18 → 단계 활성화</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>원칙</b>: 관측(데이터 수집·판단)은 24시간, 체결은 세션별 개방. 최종 목표 = 프리(04:00–09:30)·정규(09:30–16:00)·애프터(16:00–20:00, America/New_York) <b>전 세션 거래</b>.<br>
+          <b>제약(Alpaca)</b>: 장외는 시장가·브래킷 불가 → <b>지정가 + extended_hours=true</b>만 가능. 따라서 장외 <b>매수</b>는 체결 후 보호주문(손절) 공백이 생기고, <b>매도(청산)</b>는 포지션을 닫는 행위라 공백이 없음(비대칭).<br>
+          <b>활성화 순서</b>: ① <span class="b b-gray">W0 as-built</span> 정규장 시장가 브래킷 ② <span class="b b-hold">M5</span> 장외 <b>청산</b> 개방(하드 악재 시 애프터아워 즉시 청산) ③ <span class="b b-hold">M5+</span> <b>보호주문 상태기계</b>(미보호 포지션 레지스터 → 개장 시 부착 → 실패 시 알림+청산 폴백 → 재시작 복구) 완성 후 장외 <b>매수</b> 개방. 세션 스위치는 config 소유. 오버나이트(20:00–04:00)는 Alpaca 24/5 지원 확인 후 별도 판단.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>깔때기 — 2000에서 20까지</code><span class="sd">넓게 보고 좁게 판단</span><span class="cnt">as-built M3</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>단계</b>: 유니버스 <b>2,000</b>(주1회, 시총 내림차순 — 1차의 "응답 순서 앞 50" 버그 수정) → 일봉 조회 <b>시총 상위 500</b> → 하드 필터(주가 ≥ $5 · <b>20일 평균 거래대금</b> ≥ $20M) → 지표 계산 → 오늘의 픽 <b>50</b> → LLM 심층 <b>20</b>(+보유, M5). 폭은 전부 config <code>mvp2.screening</code> 소유.<br>
+          <b>왜 500에서 자르나</b> — public 데이터 소스(NASDAQ)의 일봉은 <b>종목당 1콜</b>이고 실측 <b>2.4~3.4초</b>가 걸린다. 2,000종목 전량은 장전 창을 넘긴다. 그래서 <b>유니버스는 2,000 전부 저장하되 가격 조회는 시총 상위 500</b>(= 시총 $28B 이상)으로 제한한다. 일봉 벌크 소스를 붙이면 이 상한은 올릴 수 있다 — 전략이 아니라 <b>소스 제약</b>이다.<br>
+          <b>타임아웃</b>: 스크리닝은 본질적으로 오래 걸리므로 역할별 오버라이드(<code>role_timeout_overrides["02"]=900s</code>)를 둔다. 나머지 역할은 기본 120초 보호를 유지.<br>
+          <b>실측(2026-07-18)</b>: 01→11 완주 <b>152초</b> · 유니버스 2,000행 · 후보 500 중 <b>465개 필터 통과</b> · 레이트리밋 0건.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>자동 스케줄 · 슬롯 멱등</code><span class="sd">사람 없이 도는 사이클</span><span class="cnt">as-built M1</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          <b>슬롯 멱등</b>: 모든 트리거(수동 API·자동)의 cycle_ts를 <code>slot_of(now, 30분)</code>으로 UTC 경계 내림 → 같은 슬롯의 어떤 발화든 <code>run_key = sha256(ticker, cycle_ts)</code>가 동일 → 기존 원자 claim이 중복을 자연 흡수(신규 락 0줄). 같은 슬롯 2회 실행 = 런 1개(E2E 검증).<br>
+          <b>스케줄러</b>(<code>orchestration/scheduler.py</code>): 60초 틱마다 ① NYSE 캘린더로 거래일 검사(휴장 skip) ② 세션 검사(pre 04:00~ / regular / after ~20:00 ET — config <code>trigger_sessions</code>) ③ 역할 주기(DueRoleScheduler seam) due 판정 ④ due면 현재 슬롯으로 사이클 발화. <b>재시작 catch-up = 첫 틱의 자연 due 판정</b>(과거 슬롯 소급 없음). 수동 컨트롤: <code>POST /api/scheduler/catchup</code>(강제 1틱) · <code>GET /api/scheduler/status</code>.<br>
+          <b>안전 기본값</b>: config <code>mvp2.schedule.enabled=false</code> — W0 수동 운용 중 자동 발화 방지, 운영 전환 시 yaml 한 줄. 캘린더는 exchange-calendars(XNYS) — 서머타임 전환일(3/8·11/1) 검증 포함.
+        </div>
+      </details>
+
+      <details class="schema"><summary><code>세션 trade_date 규칙</code><span class="sd">시계 날짜가 아니라 장 날짜</span><span class="cnt">as-built(최소) → <span class="b b-hold">M1 일원화</span></span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">
+          공시·뉴스·전략 신호는 전부 <code>(trade_date, ticker)</code>로 오늘의 픽(tb_daily_pick)에 FK 연결 — 여기서 trade_date는 <b>마지막 거래 세션의 봉 날짜</b>(데이터 기준)다. 주말·프리마켓엔 시계 날짜(<code>cycle_ts.date()</code>)가 이미 다음 날로 넘어가 있어 시계 기준으로 쓰면 FK가 깨진다(토요일 드라이런에서 실증).<br>
+          <b>as-built(W0 최소 수정)</b>: stage-08 기록 시 기술 스냅샷의 세션 날짜를 사용(<code>db/postgres_lifecycle.py:_session_trade_date</code>). <b><span class="b b-hold">M1</span></b>: NYSE 캘린더 도입과 함께 세션 날짜를 사이클 시작 시 1회 확정해 전 역할에 관통(정식 일원화).
+        </div>
+      </details>
     </section>
 
     <!-- AI 모델·요금 -->
@@ -1674,6 +1707,7 @@ erDiagram
 
       <h3>실행 모드 3단</h3>
       <p><span class="b b-gray">mock</span> 가짜 점수(단위 테스트, 비용 0) · <span class="b b-gray">local</span> 로컬 qwen(개발·통합, 비용 0) · <span class="b b-gray">openai</span> gpt-4o-mini(운영). 전환은 config <code>llm_mode</code> 한 줄.</p>
+      <p class="muted small" style="font-size:12.5px">※ local 모드 as-built(2026-07-18): Qwen3.6 같은 추론형 모델은 <code>reasoning_effort</code>를 무시하고 사고과정을 본문에 출력해 구조화 JSON이 깨진다 → 호출에 <code>chat_template_kwargs.enable_thinking=false</code>를 함께 보내 thinking 자체를 끈다(<code>llm/provider.py</code>). max_tokens 256 · temperature 0.</p>
 
       <h3>요금 추정 <span class="b b-gray">gpt-4o-mini · 2026-07 단가</span></h3>
       <p>단가: 입력 <b>$0.15</b> / 출력 <b>$0.60</b> per 1M tokens. 호출당 대략 입력 2~4K + 출력 0.3~0.6K 토큰 가정 → <b>호출당 ≈ $0.0005~0.001</b>.</p>
@@ -1757,13 +1791,13 @@ erDiagram
     <section id="plan">
       <div class="sec-eyebrow">Plan</div>
       <h2>개발 계획 — 마일스톤</h2>
-      <p class="sec-intro">4단계 11마일스톤 + 웨이브 일정. 각 마일스톤은 <b>독립적으로 동작·테스트 가능한 산출</b>을 낸다. 상세 = <code>docs/mvp2-planning/phase2-dev-plan.md</code>.</p>
+      <p class="sec-intro">4단계 11마일스톤 + 웨이브 일정. 각 마일스톤은 <b>독립적으로 동작·테스트 가능한 산출</b>을 낸다. <b>실행 정본 = <code>docs/mvp2-planning/dev-playbook.md</code></b>(태스크 레벨 상세·진행 체크·⏳ 보완 목록 — 어느 세션이든 여기서 이어감) · 마스터 계획 = <code>phase2-dev-plan.md</code>.</p>
 
       <h3>웨이브 일정</h3>
       <div class="twrap"><table>
         <tr><th>Wave</th><th>마일스톤</th><th>산출</th></tr>
-        <tr><td class="mono">0 · 매수 개시</td><td>기존 코드 페이퍼 라이브</td><td><b>T+5 시계 시작</b> (월요일 개장)</td></tr>
-        <tr><td class="mono">1 · 백본</td><td>M1 스케줄러·멱등 → M2 스키마 → M3 깔때기</td><td>자동 매수 루프</td></tr>
+        <tr><td class="mono">0 · 매수 개시</td><td>기존 코드 페이퍼 라이브 — <b>드라이런 완주 ✓</b>(07-18), 실 페이퍼 무장·스모크만 남음</td><td><b>T+5 시계 시작</b> (월요일 개장)</td></tr>
+        <tr><td class="mono">1 · 백본</td><td>M1 스케줄러·멱등 → M2 스키마 → M3 깔때기 <b>✓ 완료</b></td><td>자동 매수 루프</td></tr>
         <tr><td class="mono">2 · 판단 품질</td><td>M4 방어선 → M5 매도 → M6 계좌·서킷</td><td>멀티 계좌·양방향 판단</td></tr>
         <tr><td class="mono">3 · 루프·운영</td><td>M7 학습 → M8 운영 가드</td><td>무인 안정성</td></tr>
         <tr><td class="mono">4 · 서비스</td><td>M9 관리자 → M10 유저 → M11 배포<span class="muted">(선택)</span></td><td>화면·발표</td></tr>
@@ -1876,6 +1910,10 @@ erDiagram
       <p class="sec-intro">이 문서를 수정하면 표 맨 위에 한 줄 추가 + 버전 갱신 + git 커밋·태그.</p>
       <div class="twrap"><table>
         <tr><th>버전</th><th>날짜</th><th>수정자</th><th>변경 요약</th></tr>
+        <tr><td class="mono">v4.8</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>M3 완료 — 깔때기 복원(Wave 1 종료)</b> — 유니버스 50→2,000 + <b>시총 정렬로 응답순 버그 수정</b> · 하드 필터(주가 $5·20일 평균 거래대금 $20M) 신설 · 오늘의 픽 10→50 · 폭은 전부 config 소유 · <b>일봉이 종목당 1콜(~3s)이라 가격 조회는 시총 상위 500으로 제한</b>(소스 제약, #logic 카드) · 역할별 타임아웃 오버라이드 신설 · 실행 검증 152초 완주</td></tr>
+        <tr><td class="mono">v4.7</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>M2 완료 — 스키마·계약 일괄 확장</b> — reason JSONB ×4(legacy 보존)·공시signal +2·side +sell·07/08 계보 10 ×2·신규 3테이블·tb_account 확장·config mvp2(profiles/gates/screening/exits/budget) · <b>critic <code>source</code>→<code>verdict_source</code> 동명 충돌 해소</b> · 멱등 마이그레이션으로 W0 실데이터 무손실 적용 검증(행수 동일·2회 멱등·신규설치 경로와 카탈로그 일치)</td></tr>
+        <tr><td class="mono">v4.6</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>M1 완료 — 자동 스케줄·슬롯 멱등</b> — slot_of 슬롯 양자화(같은 슬롯 = 런 1개, 기존 claim 재사용·신규 락 0) · NYSE 캘린더(XNYS·DST 검증·current_session) · CycleScheduler 60s 틱(거래일·세션·due 게이트, 기본 disabled) · catch-up=첫 틱 + /api/scheduler/catchup·status · 테스트 542 green(#logic 카드 신설)</td></tr>
+        <tr><td class="mono">v4.5</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>Wave 0 착수 — 드라이런 완주·세션 정책</b> — app-v2 baseline 커밋(브랜치 sunghyuk·DB 5445 격리) · NVDA 드라이런 01→11 완주(실데이터+MLX 실호출) · 버그 2건 수정: 로컬 LLM thinking 억제(enable_thinking=false)·세션 trade_date FK(#logic 카드 신설) · <b>거래 세션 정책 확정</b>: 전 세션 개방 목표, W0 정규장 → M5 장외 청산 → M5+ 보호주문 상태기계 후 장외 매수(#logic 카드 신설)</td></tr>
         <tr><td class="mono">v4.4</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>브랜딩·문서 미러 규칙</b> — Quantinue Q 로고(상승 추세선 심볼) 적용 · 파비콘·애플터치 아이콘 · 브랜드 컬러를 <b>Quantinue Blue #0B4DDB</b>로 정렬(기존 틸 대체) · 계획서에 "핵심 로직·프롬프트는 코드 확정 후 #logic 반영" 미러 규칙 추가</td></tr>
         <tr><td class="mono">v4.3</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>핵심 로직 · AI 모델·요금 섹션 신설</b> — 역할별 계산·판정 로직 접이식(as-built 확정 / M2 예정 구분: conviction 공식·게이트·대표기사 하이브리드·서킷·브래킷·T+5 채점) · LLM 호출처 6곳·실행 3단·gpt-4o-mini 실단가 추정(월 $10~30)·tb_llm_usage 예산 가드. 1차 gpt-5.4-mini 요금표 폐기</td></tr>
         <tr><td class="mono">v4.2</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>R10 — 07·08 계보 추가</b>: tb_strategist_signals·tb_critic_verdict도 LLM 산출이므로 계보 10컬럼 추가(재현 계약 #16 완성 · M2). 스키마 명세·계보 설명 카드(라이프사이클·출생 기록 비유)·ENUM 사전 한국어 뜻 병기·M2 변경표 반영</td></tr>

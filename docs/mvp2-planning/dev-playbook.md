@@ -9,7 +9,7 @@
 - **작업 위치**: `app-v2/` 전용. `app/`(1차)은 다른 작업자 WIP — 절대 수정 금지.
 - **브랜치**: dev 통합 브랜치 **`sunghyuk`** 생성 후 거기서 M1~M8 순차 진행, Wave 단위로 `main` merge. M9~M10은 필요 시 worktree 병렬. 완성 후 담당자 핸드오프 브랜치(`eunmi`·`changwook`·`miyeon`·`jihyun`) 컷.
 - **커밋**: 태스크 단위 1커밋, 메시지 `feat|fix|test(mN): 요약`. 문서(docs/)와 코드(app-v2/) 커밋 분리.
-- **TDD**: 실패 테스트 → 최소 구현 → green → 커밋. 기존 347개 테스트는 항상 green 유지(계약 변경 시 테스트도 같은 커밋에서 수정).
+- **TDD**: 실패 테스트 → 최소 구현 → green → 커밋. 기존 **491개** 유닛 테스트는 항상 green 유지(계약 변경 시 테스트도 같은 커밋에서 수정). ※ baseline 실측 2026-07-18: `uv run pytest tests/unit -q` → 491 passed.
 - **config 소유**: 문턱·주기·한도 하드코딩 금지 — `config/pipeline.yaml` + Settings. 리터럴 발견 시 즉시 config로 승격.
 - **문서 미러**: 핵심 로직·프롬프트가 코드로 확정되면 정본 HTML `#logic`에 반영(M2 배지 → as-built 승격) + changelog 한 줄.
 - **점수 규칙**: 0~1 · DB `NUMERIC + CHECK(0~1)` · 표기 소수 3자리. ENUM 정본 = `ontology.py`.
@@ -23,14 +23,14 @@
 
 | # | 태스크 | 상세 |
 |---|---|---|
-| W0-1 | app-v2 baseline 커밋 | `git checkout -b sunghyuk && git add app-v2 && git commit -m "chore: app-v2 baseline (1차 커밋 6163630 스냅샷)"`. push |
-| W0-2 | 의존성 설치 | `cd app-v2 && uv sync`. 실패 시 pyproject 확인 |
-| W0-3 | Postgres 기동 | `docker compose up -d` (app-v2/compose.yaml — DB 포트 5444). ⏳ compose가 schema.sql 자동 적용하는지 확인 — 아니면 `psql postgresql://quantinue:quantinue@127.0.0.1:5444/quantinue -f db/schema.sql` |
-| W0-4 | env 점검 (드라이런 구성) | `app-v2/.env`: `DATA_MODE=public` ✓ · `LLM_MODE=local`(base 127.0.0.1:8888, 모델 Qwen3.6-35B-A3B-OptiQ-4bit) ✓ · **브로커는 일단 mock 유지** |
-| W0-5 | MLX 서버 확인 | `curl -s -H "Authorization: Bearer $QUANTINUE_LOCAL_LLM_API_KEY" http://127.0.0.1:8888/v1/models` → 모델 목록 응답 |
-| W0-6 | 드라이런 (mock 브로커) | `uv run uvicorn quantinue.main:app --port 8000` → `curl -X POST localhost:8000/api/runs -H 'content-type: application/json' -d '{"ticker":"NVDA"}'` → 01→11 완주·주문 계획 생성 확인. 대시보드 `localhost:8000` 육안 확인 |
+| W0-1 | app-v2 baseline 커밋 | ✅ **완료** (2026-07-18, 커밋 `dea5944`, 브랜치 `sunghyuk`). `.omo/`(1차 오케스트레이션 흔적 21MB)는 baseline에서 제외 + gitignore 추가 — 순수 앱소스 199파일만 커밋. `.env`(Alpaca 키)는 gitignore로 제외 확인. push는 원격 붙일 때 |
+| W0-2 | 의존성 설치 | ✅ **완료**. `cd app-v2 && uv sync` 성공. 검증: `uv run pytest tests/unit -q` → **491 passed**(playbook 기존 "347개" 표기는 부정확 → 실측 491). 항상 green 유지 기준선 = 491 |
+| W0-3 | Postgres 기동 | ✅ **완료**. ⚠️ **포트 5444→5445 변경**: 5444는 1차 `app-db-1`(다른 작업자 WIP, tb_order=1·pipeline_runs=91)이 점유 → app-v2 전용 DB를 **5445**로 격리(compose.yaml·.env 동시 수정). ⏳해소: compose가 schema.sql **자동 적용함**(`./db/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql` 마운트, 빈 볼륨 첫 기동 시). `docker compose up -d db`(web 제외) → `app-v2-db-1` healthy, 19테이블 자동생성·전부 empty. 1차 DB 무손상 확인 |
+| W0-4 | env 점검 (드라이런 구성) | ✅ **완료**. `DATA_MODE=public` ✓ · `LLM_MODE=local`(8888, Qwen3.6-35B-A3B-OptiQ-4bit) ✓ · 브로커 mock/false ✓ · DATABASE_URL 5445 ✓ |
+| W0-5 | MLX 서버 확인 | ✅ **완료**. `/v1/models` 응답 정상 — Qwen3.6-35B-A3B-OptiQ-4bit 서빙 중(max_model_len 262144) |
+| W0-6 | 드라이런 (mock 브로커) | ✅ **완료** (2026-07-18). 포트 8000은 다른 프로세스 점유 → **8020 사용**. 1·2차 시도에서 **버그 2건 발견·수정**(TDD, 유닛 491→493 green): ① 로컬 LLM thinking 미억제 → `enable_thinking=false` extra_body 전달(커밋 `3002fcf`) ② 주말·프리마켓에서 stage-08 trade_date가 픽과 갈라져 FK 위반 → 세션 날짜 사용(커밋 `eae11dd`). 3차 시도: **HTTP 201 · 01→11 완주 · MLX 실호출 12건 · FK 자식 3테이블 trade_date=07-17 일치 · pipeline_runs=completed**. 판단: NVDA hold(확신도 0.231, 뉴스 0.10·공시 0.00 — 크리틱 차단·주문 0주, 주말 실데이터 기반 정상 판단). 깔때기 동작: universe 50 → picks 10(NVDA 포함) |
 | W0-7 | 실 페이퍼 무장 | ⚠️ 사용자 확인 후: `.env` `QUANTINUE_BROKER_MODE=alpaca` + `QUANTINUE_TRADING_ENABLED=true`. `DAILY_NEW_ORDER_CAP=5` 유지 |
-| W0-8 | 스모크 (장전) | 월요일 개장(뉴욕 09:30 = KST 22:30) 직후 수동 실행 → Alpaca 페이퍼 대시보드에서 브래킷 주문 접수·체결 확인 → tb_order/tb_fill 기록 확인 |
+| W0-8 | 스모크 (장전) | 월요일 개장(뉴욕 09:30 = KST 22:30) 직후 수동 실행 → Alpaca 페이퍼 대시보드에서 브래킷 주문 접수·체결 확인 → tb_order/tb_fill 기록 확인. ⚠️ **반드시 정규장 시간에만**: 주문 페이로드(`broker/alpaca.py:244-255`)가 `type=market·order_class=bracket·extended_hours 미설정` — Alpaca는 시장가·브래킷 주문을 장외(프리마켓/애프터아워)에서 거부. 장외 매수는 지정가+extended_hours로 바꾸는 코드변경 필요(Wave 0 범위 밖, 필요 시 별도 항목화) |
 | W0-9 | 매일 반복 | 자동 스케줄(M1) 전까지는 개장 시간대 수동 트리거 1~2회/일. PC 절전 방지: `caffeinate -s` |
 
 **완료 기준**: Alpaca 페이퍼에 실제 포지션 ≥ 1 · tb_order status=filled · T+5 카운트 시작.
@@ -38,15 +38,20 @@
 
 ---
 
-## M1. 슬롯 멱등 + 스케줄러 + 캘린더 (R2·R9) — Wave 1
+## M1. 슬롯 멱등 + 스케줄러 + 캘린더 (R2·R9) — Wave 1 ✅ **완료 (2026-07-18)**
 
 **전제**: 없음(첫 마일스톤). **파급**: 이후 모든 실행이 이 슬롯·스케줄 위에서 돈다.
+
+> **구현 완료 요약** (플랜: `plans/2026-07-18-m1-scheduler-plan.md` · 커밋 `31009aa`~`d5350f7` 8개):
+> - 1-1 `orchestration/slots.py:slot_of` ✅ · 1-2 main.py 3개 트리거 경로 슬롯화 ✅ · 1-3 `core/market_calendar.py`(exchange-calendars 4.13 XNYS, **current_session pre/regular/after/closed 포함**, DST 3/9·11/2 검증) ✅ · 1-4 `mvp2.schedule` config(**기본 enabled=false** — 운영 전환 시 yaml 한 줄로 켬) ✅ · 1-5 `orchestration/scheduler.py:CycleScheduler`(60s 틱, lifespan task group 스폰) ✅ · 1-6 **신규 락 불필요 — 기존 `deterministic_run_key`+`store.claim`이 슬롯 양자화만으로 dedup**(E2E-2 테스트로 검증) ✅ · 1-7 catch-up=첫 틱 자연 판정 + `POST /api/scheduler/catchup`·`GET /api/scheduler/status` ✅ · 1-8 테스트 21개 신규(슬롯 6·캘린더 11·스케줄러 7 등, 전체 542 green·ruff clean) ✅
+> - **스코프 노트**: 역할별 창(role_01 weekly 등)은 M1에 없음 — 파이프라인이 01→11 원자 실행이라 무의미, M3 역할 분리와 함께 확장. `RunStore.latest_cycle_ts()`가 last_runs 데이터원(전 역할 공통).
+> - ⏳해소: DueRoleScheduler 시그니처 확인 완료(순수 seam 재사용, `plan_periods()` 공개 1줄 추가) · last_runs 쿼리 = `latest_useful_cycle_ts`(pending/running/completed 중 max cycle_ts).
 
 | # | 태스크 | 파일 | 상세 |
 |---|---|---|---|
 | 1-1 | 슬롯 함수 | 신규 `src/quantinue/orchestration/slots.py` | `def slot_of(now: datetime, period_minutes: int) -> datetime` — UTC 기준 period 경계 내림. 성질: 같은 period 내 임의 시각 → 같은 슬롯 / 경계값 자기 자신 / tz-aware 강제 |
 | 1-2 | cycle_ts 교체 | `src/quantinue/main.py:52` | `now().replace(second=0,...)` → 역할 주기 기반 `slot_of()`. 수동 `POST /runs`·`/api/runs`도 동일 경로 |
-| 1-3 | NYSE 캘린더 | 신규 `src/quantinue/core/market_calendar.py` | 라이브러리 `exchange-calendars`(XNYS). 인터페이스: `is_trading_day(date)` · `session_open/close(date)` · `add_business_days(date, n)`(T+5용) · `is_market_open(dt)`. 서머타임은 라이브러리가 처리 |
+| 1-3 | NYSE 캘린더 | 신규 `src/quantinue/core/market_calendar.py` | 라이브러리 `exchange-calendars`(XNYS). 인터페이스: `is_trading_day(date)` · `session_open/close(date)` · `add_business_days(date, n)`(T+5용) · `is_market_open(dt)` · **`current_session(dt) -> pre\|regular\|after\|closed`**(세션 정책 결정 2026-07-18 파급 — 장외 청산/매수 게이트용). 서머타임은 라이브러리가 처리 |
 | 1-4 | 실행 창 config | `config/pipeline.yaml` | `mvp2.windows:` — role_01: weekly_premarket / role_02·03: daily_premarket / role_04·05: extended / role_06: premarket+open / role_07~10: market_open_only / role_11: after_close. 값은 America/New_York 상대 정의 |
 | 1-5 | 스케줄러 루프 | `main.py` lifespan | anyio 태스크: 60초마다 ① `DueRoleScheduler.due_roles(now, last_runs)`(기존 seam, policy.py:200) ② 창 검사(1-3·1-4) ③ due면 슬롯 cycle_ts로 파이프라인 트리거. last_runs는 pipeline_runs 조회 |
 | 1-6 | claim 락 | `orchestration/` 기존 idempotent claim 확장 | `(component, cycle_ts)` 단위 claim — 선점 실행만 진행, 후발은 no-op 로그. 수동+자동 동시 발화 대비 |
@@ -55,10 +60,18 @@
 
 **완료 기준**: 같은 슬롯 2회 실행 → signal 1행 · 동시 발화 중복 0 · 휴장일 07~10 미실행 · 재시작 후 catch-up 동작 · **앱 켜두면 사람 없이 하루 사이클 자동 완주**.
 ⏳ 보완: `DueRoleScheduler` 현재 시그니처 확인 후 창 검사와의 결합 방식 확정 · pipeline_runs에서 last_runs 조회 쿼리 작성.
+※ W0에서 선반영: trade_date 이원화(시계 vs 데이터) FK 버그의 **최소 수정**이 `db/postgres_lifecycle.py:_session_trade_date()`로 들어감(커밋 `eae11dd`) — M1-3 캘린더 도입 시 이걸 정식 세션날짜 일원화(전 역할 관통)로 승격할 것.
 
-## M2. 스키마·계약 일괄 확장 — Wave 1
+## M2. 스키마·계약 일괄 확장 — Wave 1 ✅ **완료 (2026-07-18)**
 
 **전제**: M1과 독립(병행 가능). **원칙**: 3파일(schema.sql·ontology/schemas·pipeline.yaml) 먼저, 구현은 이후 마일스톤.
+
+> **구현 완료 요약** (플랜: `plans/2026-07-18-m2-schema-plan.md` · 커밋 `ee3bd56`~`538c0e4` 7개):
+> - 2-1 ontology ✅(Side+SELL·AccountStatus·UserRole·LlmTask — 1차의 "sell 거부" 계약 테스트를 새 계약으로 교체) · 2-2 reason JSONB ×4 ✅(신규 `db/reason.py` — 점수 컬럼명→사유 맵, 미지 키 거부. **실제 점수별 사유 채우기는 M4**) · 2-3 공시 signal +2 ✅ · 2-4 side sell ✅ · 2-5 계보 10 ×2 ✅ · 2-6 신규 3테이블 ✅ · 2-7 tb_account 확장 ✅ · 2-8 config mvp2 ✅(profiles/gates/screening/exits/budget frozen 모델) · 2-9 마이그레이션 ✅
+> - **⏳2-4 해소**: 제약명 = `tb_strategist_signals_side_check`(실 DB 조회 확인).
+> - **계획에 없던 충돌 발견·해소**: `tb_critic_verdict.source`(fresh/cache/cooldown, 캐시 상태)가 R10 계보의 `source`(출처)와 **동명 충돌** → 기존 것을 **`verdict_source`로 리네임**해 6개 계보 테이블 컬럼명을 통일. `CriticVerdictWrite.source`→`verdict_source`(코드·테스트 동반 수정).
+> - **무손실 검증**(완료 기준): W0 실데이터 DB(5445)에 적용 → 11테이블 **행수 완전 동일**, reason은 `{"legacy": "..."}`로 보존, **2회 실행 멱등**. 추가로 **마이그레이션 경로 == 신규 설치 경로** 확증(컬럼 344·제약 134 완전 일치) + 마이그레이션 DB에서 스키마 계약 테스트 green + 앱 기동·조회 정상.
+> - 테스트: 유닛/웹 **553 green** · 통합 **30 green**(깨끗한 DB 1회 실행) · ruff clean. ※ 통합 테스트는 일회용 DB 전제라 같은 DB 재실행 시 중복키로 실패함(설계상 정상).
 
 | # | 태스크 | 상세 |
 |---|---|---|
@@ -74,7 +87,17 @@
 
 **완료 기준**: 마이그레이션 1차 DB 무손실 적용 · 전체 테스트 green(계약 수정 포함) · 한 PR로 merge.
 
-## M3. 깔때기 복원 (R8) — Wave 1
+## M3. 깔때기 복원 (R8) — Wave 1 ✅ **완료 (2026-07-18)**
+
+> **구현 완료 요약** (커밋 `c7eb8a2`·`877f5e2`):
+> - 3-1 ✅ 유니버스 50→**2000**(config `universe_size`) + **응답순 앞 50 버그를 시총 내림차순 정렬로 수정**
+> - 3-2 **⚠️ 계획 수정 — Alpaca 멀티심볼 벌크는 적용 불가**: 실제 public 소스는 NASDAQ이고 일봉이 **종목당 1콜**(`/quote/{ticker}/historical`)이다. Alpaca는 주문 전용이라 시장데이터 어댑터가 없음. **실측: 일봉 1콜 2.4~3.4초** → 2000종목 전량은 장전 창 초과. 대안으로 **2단 구조** 채택: 유니버스 2000은 전부 저장, 일봉은 **시총 상위 `technical_candidates`(500)**만 조회(시총 500위 = $28B, 투자 가능 대형·중형주 커버).
+> - 3-3 ✅ 하드 필터 신설(주가 ≥ `min_price_usd` 5 · **20일 평균 거래대금** ≥ `min_avg_dollar_vol` $20M, 일봉에서 실계산) + `TECHNICAL_UNIVERSE_LIMIT`(20) 제거 · 동시성 5→`technical_concurrency`(10)
+> - 3-4 ✅ 오늘의 픽 10→**50**(config `daily_picks`) · 3-5 ✅ LLM 심층은 요청 종목 한정(보유 합류 훅은 M5) · 3-6 ✅ 필터 경계 테스트($4.99 vs $5.00, 거래대금 정확 경계, 윈도우 밖 구간 무시)
+> - **발견·수정**: 깔때기를 넓히자 role_02가 **공용 역할 타임아웃 120s**를 넘겨 재시도 3회 후 실패(365s). 전역 상향은 LLM 역할 보호를 함께 약화시키므로 **`role_timeout_overrides`(config)로 02만 900s**로 연장.
+> - **실행 검증**(완료 기준 전부 충족): tb_universe **2000행** · 이번 실행 픽 **50개** · **152초 완주**(창 30분 대비 여유) · **HTTP 429 0건**(500요청 전부 200) · LLM 12콜(요청 종목만). 500 후보 중 **465개가 필터 통과**(35개 탈락).
+> - 테스트: 유닛/웹 **567 green**(1차의 50/20/10 고정 계약 6건을 config 주도로 갱신 + 신규 필터·유니버스 테스트) · ruff clean.
+> - ⏳ **남은 개선**: 일봉 벌크 소스(Alpaca 시장데이터 등)를 붙이면 `technical_candidates`를 2000까지 올릴 수 있다. 현재는 소스 제약이 상한을 정한다.
 
 | # | 태스크 | 파일 | 상세 |
 |---|---|---|---|
@@ -98,6 +121,7 @@
 | 4-5 | 대표기사 하이브리드 | `selection.py:141-147` | 1단계 관련성 필터(기존 relevance ≥ `MINIMUM_RELEVANCE_SCORE` — 통과/탈락으로만) → 2단계 `importance × w` 최상위(w = confidence × (is_confirmed?1.0:0.5) × grade가중) · 동률 published_at 최신→id. `peak_importance` 실계산(신뢰 검증분 max) + 저장 배선(`domain_sources.py` insert에 누락 중) |
 | 4-6 | Form 4 정책 | 신규 `roles/role_05.../form4.py` | LLM 우회 분기: form_type='4' → 템플릿 조립(reason 객체 포함). 정책: 코드 P(공개시장 매수)+임원·$문턱 → importance 정상 / 매도 기본 저평가 / 클러스터(2인+) 가산·클러스터 매도 리스크. ⏳ SEC Form 4 파싱 필드(transactionCode·officerTitle) 소스 확인 |
 | 4-7 | 잔여 3건 | role_07·09·10 | consensus 실계산(4신호 동의 수, 저장만 — 게이트 아님·`domain.py:129` 하드코딩 제거) · late_entry(ret_5d ≥ profiles별 0.15/0.12 → 매수 금지, role_09) · halted 체크(role_10 주문 직전 Alpaca asset tradable 조회 → skip+사유) |
+| 4-8 | 프리마켓 갭 가드 | role_09 또는 role_10 진입 직전 | (세션 정책 2026-07-18 파급) 분석 기준가(직전 종가) 대비 현재가 갭 ≥ config `gates.premarket_gap_max` 초과 시 신규 매수 skip(사유 기록) — 금요일 종가 기준 픽이 월요일 갭업이면 진입가·손절·익절이 무의미해지는 문제. 문턱값은 M4 착수 시 실측 보고 확정 |
 
 **완료 기준**: 게이트 경계값 단위 테스트(±0.001) · block 매체 LLM 호출 0 · 08 합성 코드 부재(grep) · 문턱 전부 yaml로만 변경 가능(코드 리터럴 grep 0).
 
@@ -112,6 +136,8 @@
 | 5-3 | Critic 매도 검증 | role_08 | sell 판단 검증 규칙(근거 없는 패닉 매도 반박). 하드 이벤트(delisting_halt 등) 코드 직행은 검증 예외 |
 | 5-4 | 청산 3층 | 신규 `roles/exits.py` + role_09/10 | ① 브래킷(기존) ② 시간: 보유 ≥ `exits.time_exit_bdays`(10, 영업일—M1 캘린더) & 논지 미실현 → 정리 ③ 논지 붕괴: 하드 event_type → 즉시, 점수 악재 → 07 sell 경유 |
 | 5-5 | 브로커 청산 | `broker/alpaca.py` | 브래킷 leg(stop·take) 취소 → 시장가 매도 제출 → tb_fill(side='sell'). 멱등: close용 client_order_id 파생 규칙 추가 |
+| 5-6 | 장외 청산 개방 | broker + exits + M1 `current_session` | (세션 정책 2026-07-18 파급) 프리·애프터 세션에서 청산 허용: 지정가+`extended_hours=true` 제출(장외는 시장가 불가). 하드 악재(논지 붕괴)는 애프터아워 즉시 청산. ⏳ 장외 호가 확보 확인 선행 |
+| 5-7 | 보호주문 상태기계 → 장외 매수 개방 | 신규 | (세션 정책 파급, M5 완료 후 착수 가능) 미보호 포지션 레지스터 → 개장 시 보호주문 부착(멱등·재시도) → 실패 시 알림+즉시청산 폴백 → 앱 재시작 복구. **이 상태기계 완성이 장외 매수 개방의 하드 전제**(장외 브래킷 불가 → 손절 공백 방지) |
 
 **완료 기준**: E2E-4(보유 종목 하드 악재 fixture → 자동 청산+사유) · 스크리너 탈락 보유 종목이 05~07 분석에 포함(로그).
 
@@ -188,8 +214,11 @@
 
 | 위치 | 항목 |
 |---|---|
-| W0-3 | compose의 schema.sql 자동 적용 여부 확인 |
+| W0-3 | ✅해소: compose가 schema.sql 자동 적용함(초기화 마운트). app-v2 DB는 5445로 격리 |
 | W0 완료 후 | 자동 스크리닝 첫 실행 관찰 기록 |
+| M11 | compose.yaml `web` 서비스가 LLM을 Ollama(host.docker.internal:11434·`qwen3.6:35b-a3b-nvfp4`)로 설정 — 실제 운영은 MLX(127.0.0.1:8888·`Qwen3.6-35B-A3B-OptiQ-4bit`). 컨테이너 배포 시 이 불일치 정리 필요 |
+| 정책(결정됨) | **거래 세션 정책 확정(2026-07-18, 문성혁)**: 최종 목표 = **전 세션 개방**(프리 04:00–09:30 · 정규 09:30–16:00 · 애프터 16:00–20:00, America/New_York). 관측(데이터 수집·판단)은 24시간. 활성화는 전제 충족 순: ① W0 = 정규장 시장가 브래킷(현행 코드) ② M5 = 장외 **청산** 개방(지정가+extended_hours, 전제 없음 — 하드 악재 시 애프터아워 즉시 청산) ③ M5+ = **보호주문 상태기계**(미보호 포지션 레지스터·개장 시 부착·실패 시 알림+청산 폴백·재시작 복구) 완성 후 장외 **매수** 개방. 근거: 장외 브래킷 불가(Alpaca) → 매수는 손절 공백이 생기나 매도는 무관(비대칭). 세션별 스위치는 config 소유. 파급: M1-3 캘린더에 `current_session(dt)→pre\|regular\|after\|closed` 추가 · M4 프리마켓 갭 가드 · M5 장외 청산+상태기계 |
+| ⏳ M5 착수 시 | Alpaca 오버나이트(24/5, 20:00–04:00) 지원·대상종목 확인 + 프리/애프터 **호가 데이터** 확보 여부(장외 지정가 산정에 필요) |
 | M1 | DueRoleScheduler 시그니처·last_runs 쿼리 확정 |
 | M2-4 | side CHECK 제약명 확인 |
 | M2-8·M8-3 | budget.daily_llm_usd — 첫 주 실측 후 확정(임시 $3) |
