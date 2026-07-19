@@ -37,7 +37,7 @@ class RiskPortfolio:
     component: ClassVar[str] = "09"
     name: ClassVar[str] = "리스크·포트폴리오"
     store: RunStore
-    daily_new_order_cap: int = 1
+    daily_new_order_cap: int = 5
     max_app_order_exposure_usd: Decimal = Decimal("1000.00")
     maximum_risk_score: float = 1.0
     stop_loss_ratio: float = 0.15

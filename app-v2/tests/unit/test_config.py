@@ -1,5 +1,6 @@
 """Configuration boundary tests."""
 
+from dataclasses import fields
 from decimal import Decimal
 
 import pytest
@@ -7,6 +8,9 @@ from pydantic import SecretStr, ValidationError
 from pydantic_settings import SettingsConfigDict
 
 from quantinue.core.config import BrokerMode, DataMode, LlmMode, Settings
+from quantinue.orchestration.policy import AllocationConfig, PipelinePolicy
+from quantinue.roles.role_09_risk_portfolio.contracts import RiskPortfolioInput
+from quantinue.roles.role_09_risk_portfolio.service import RiskPortfolio
 
 
 class IsolatedSettings(Settings):
@@ -160,7 +164,8 @@ def test_first_cycle_order_controls_default_to_one_thousand_usd_and_one_attempt(
 
     # Then
     assert settings.max_app_order_exposure_usd == Decimal("1000.00")
-    assert settings.daily_new_order_cap == 1
+    # 5는 mvp2.allocation.daily_new_order_cap(단일 소유자)에 정렬된 값이다.
+    assert settings.daily_new_order_cap == 5
 
 
 def test_simulated_opening_cash_is_one_million_and_independent_of_exposure_cap() -> None:
@@ -209,3 +214,19 @@ def test_selected_model_name_must_be_nonblank(mode: LlmMode, field: str) -> None
 
     with pytest.raises(ValidationError):
         _ = Settings.model_validate(values)
+
+
+def test_the_daily_order_cap_default_agrees_everywhere() -> None:
+    """캡 기본값이 4곳에서 서로 달랐다(1·1·1·5) — redesign §7이 지적한 드리프트.
+
+    실효값의 단일 소유자는 mvp2.allocation.daily_new_order_cap이고, 나머지는
+    전부 그 값(5)에 정렬한다. 이 테스트는 다음 드리프트를 커밋 시점에 잡는다.
+    """
+    owner = AllocationConfig().daily_new_order_cap
+    service_default = next(
+        item.default for item in fields(RiskPortfolio) if item.name == "daily_new_order_cap"
+    )
+    assert Settings.model_fields["daily_new_order_cap"].default == owner
+    assert PipelinePolicy.model_fields["daily_new_order_cap"].default == owner
+    assert service_default == owner
+    assert RiskPortfolioInput.model_fields["daily_new_order_cap"].default == owner
