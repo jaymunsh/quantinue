@@ -17,6 +17,13 @@
 | F7 | `Broker` 프로토콜에 `submit()` 하나뿐 — asset/tradable/halted 조회 수단이 없다 | `broker/contracts.py:34-39` · `broker/alpaca.py` |
 | F8 | `current_session()`의 역할 레벨 소비자가 **아직 없다**(스케줄러만 사용) | `core/market_calendar.py:81` · `orchestration/scheduler.py:61` |
 
+### 착수 후 추가 발견
+
+| # | 사실 | 처리 |
+|---|---|---|
+| F9 | `role_07`이 `require_value(context.disclosure_score)`를 쓴다 → **공시 부재 시 파이프라인이 터진다**. 지금까지 항상 NVDA 공시가 있어 드러나지 않았을 뿐 | **4-0에 포함해 해소.** 부재 = 투표 기권(0점 아님). 0점이면 `hard_negative_max`에 걸려 무공시 종목 매수가 전부 차단된다 |
+| F10 | `role_05`가 `filings[0]`을 **날짜 무관하게** 사용 → 3개월 전 공시가 오늘의 시그널로 채점될 수 있다 | **미해소.** F1과 같은 계열(입력 비진실)이나 별건. 신선도 창(`gates.disclosure_lookback_days`) 신설 필요 — 문턱은 실측 후. **M4 클로즈 시 ⏳로 이관** |
+
 ### 공통 패턴 — "선언됐는데 배선 안 된 것"
 
 F4·F5·F6, 그리고 `peak_importance`(스키마·Pydantic·UI에 다 있는데 insert에 없음), `exits.time_exit_bdays`(소비자 0), `late_entry_max`(소비자 0)가 **같은 계열**이다.
