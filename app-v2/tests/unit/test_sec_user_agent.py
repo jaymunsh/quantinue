@@ -26,9 +26,8 @@ def test_user_agent_is_overridable_for_deployment() -> None:
             os.environ["QUANTINUE_HTTP_USER_AGENT"] = previous
 
 
-def test_client_sends_the_contact_bearing_user_agent() -> None:
-    client = build_http_client()
-    try:
-        assert "@" in client.headers["User-Agent"]
-    finally:
-        pass
+def test_the_shared_client_keeps_the_bare_product_token() -> None:
+    # NASDAQ resets the connection when the User-Agent carries a contact
+    # address, so the contact-bearing form is attached per SEC request only.
+    # The two upstreams demand opposite things.
+    assert "@" not in build_http_client().headers["User-Agent"]

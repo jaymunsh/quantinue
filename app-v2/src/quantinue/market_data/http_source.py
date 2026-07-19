@@ -20,6 +20,7 @@ from anyio.to_thread import run_sync
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError, field_validator
 
 from quantinue.core.errors import HttpFailureError, TransientFailureError, ValidationFailureError
+from quantinue.market_data.http_client import sec_user_agent
 from quantinue.market_data.models import (
     Candle,
     MacroObservation,
@@ -285,8 +286,8 @@ class HttpMarketData:
         """Close the owned HTTP client at application shutdown."""
         await self._client.aclose()
 
-    async def _get(self, url: str) -> httpx2.Response:
-        response = await self._client.get(url)
+    async def _get(self, url: str, headers: dict[str, str] | None = None) -> httpx2.Response:
+        response = await self._client.get(url, headers=headers)
         if response.is_error:
             raise HttpFailureError(response.status_code)
         return response
@@ -382,7 +383,10 @@ class HttpMarketData:
         del execution_id
         async with self._cik_map_lock:
             if self._cik_map is None:
-                response = await self._get(self._endpoints.sec_ticker_map_url)
+                response = await self._get(
+                    self._endpoints.sec_ticker_map_url,
+                    headers={"User-Agent": sec_user_agent()},
+                )
                 rows = _SecTickerMap.validate_python(response.json())
                 self._cik_map = {
                     row.ticker.upper(): str(row.cik_str).zfill(10) for row in rows.values()
@@ -391,7 +395,10 @@ class HttpMarketData:
 
     async def sec_submissions(self, cik: str, execution_id: str) -> tuple[SecSubmission, ...]:
         """Fetch recent SEC submissions for one CIK."""
-        response = await self._get(self._endpoints.sec_url.format(cik=cik.zfill(10)))
+        response = await self._get(
+            self._endpoints.sec_url.format(cik=cik.zfill(10)),
+            headers={"User-Agent": sec_user_agent()},
+        )
         payload = _SecResponse.model_validate_json(response.content)
         recent = payload.filings.recent
         rows = zip(
