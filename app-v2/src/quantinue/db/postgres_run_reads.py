@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Table
+from sqlalchemy import Table, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from quantinue.core.contracts import PipelineRun, RunId
@@ -18,7 +18,7 @@ from quantinue.db.contracts import (
     PersistedAttempt,
 )
 from quantinue.db.postgres_portfolio import read_simulated_portfolio
-from quantinue.db.simulated_portfolio import SimulatedPortfolioSnapshot
+from quantinue.db.simulated_portfolio import AccountPortfolio, SimulatedPortfolioSnapshot
 
 
 class PostgresRunReadMixin(ABC):
@@ -66,6 +66,59 @@ class PostgresRunReadMixin(ABC):
             self._table("pipeline_stage_attempts"),
             limit,
         )
+
+    async def account_portfolio(
+        self, broker_account_id: str
+    ) -> SimulatedPortfolioSnapshot | None:
+        """Return one account's portfolio, opened with its own capital.
+
+        Opening cash comes from the account row, not an app-wide setting — a
+        single value cannot describe accounts of different sizes.
+        """
+        accounts = self._table("tb_account")
+        async with self.engine.connect() as connection:
+            opening = await connection.scalar(
+                select(accounts.c.equity).where(
+                    accounts.c.broker_account_id == broker_account_id
+                )
+            )
+        if opening is None:
+            return None
+        return await read_simulated_portfolio(
+            self.engine,
+            accounts.metadata,
+            Decimal(str(opening)),
+            broker_account_id,
+        )
+
+    async def account_portfolios(self) -> tuple[AccountPortfolio, ...]:
+        """Return every active account's portfolio, in stable account order."""
+        accounts = self._table("tb_account")
+        async with self.engine.connect() as connection:
+            rows = (
+                await connection.execute(
+                    select(
+                        accounts.c.id,
+                        accounts.c.broker_account_id,
+                        accounts.c.inv_type,
+                    )
+                    .where(accounts.c.status == "active")
+                    .order_by(accounts.c.id)
+                )
+            ).all()
+        portfolios: list[AccountPortfolio] = []
+        for row in rows:
+            snapshot = await self.account_portfolio(row.broker_account_id)
+            if snapshot is not None:
+                portfolios.append(
+                    AccountPortfolio(
+                        account_id=row.id,
+                        broker_account_id=row.broker_account_id,
+                        inv_type=row.inv_type,
+                        snapshot=snapshot,
+                    )
+                )
+        return tuple(portfolios)
 
     async def simulated_portfolio(self, opening_cash: Decimal) -> SimulatedPortfolioSnapshot:
         """Return the durable simulated portfolio read model."""

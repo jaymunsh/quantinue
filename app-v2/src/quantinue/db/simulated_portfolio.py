@@ -115,6 +115,16 @@ class SimulatedPortfolioSnapshot:
     realized_pnl_status: RealizedPnlStatus = RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
 
 
+@dataclass(frozen=True, slots=True)
+class AccountPortfolio:
+    """One account's identity paired with its portfolio snapshot."""
+
+    account_id: int
+    broker_account_id: str
+    inv_type: str | None
+    snapshot: SimulatedPortfolioSnapshot
+
+
 @runtime_checkable
 class SimulatedOrderRecorder(Protocol):
     """Atomic write boundary for app-owned local simulated orders and fills."""
