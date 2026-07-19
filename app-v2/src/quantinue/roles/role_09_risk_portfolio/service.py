@@ -11,6 +11,7 @@ from exchange_calendars.errors import DateOutOfBounds
 from quantinue.core.contracts import AccountOrderPlan, PipelineContext
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.core.ontology import EvidenceKind
+from quantinue.core.order_identity import derive_client_order_id
 from quantinue.core.schemas import Evidence
 from quantinue.core.typing import require_value
 from quantinue.db.contracts import (
@@ -144,7 +145,9 @@ class RiskPortfolio:
                     account_id=plan.account_id,
                     trade_date=context.request.cycle_ts.date(),
                     signal_id=plan.signal_id,
-                    idempotency_key=f"q-a{plan.account_id}-s{plan.signal_id}",
+                    idempotency_key=derive_client_order_id(
+                        account_id=plan.account_id, signal_id=plan.signal_id
+                    ),
                     ticker=plan.ticker,
                     quantity=plan.quantity,
                     entry_price=parse_app_order_money(plan.entry_price),
