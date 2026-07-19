@@ -8,7 +8,8 @@
 1. **`docs/mvp2-planning/dev-playbook.md`** — 실행 정본. 마일스톤별 완료 표시(✅/🔶)와 남은 태스크, ⏳ 보완 목록이 전부 여기 있다.
 2. `docs/quantinue-integrated-design.html` — 설계 정본(v4.9). 확정 로직은 `#logic`, 결정 이력은 changelog.
 3. `docs/mvp2-planning/ghost-config-audit.md` — **유령 설정·컬럼 감사**(2026-07-19). 선언만 되고 소비자가 없는 값 전수 조사. ⚠️ **M5·M6·M8 착수 전 반드시 볼 것** — 성향별 리스크 한도와 LLM 예산 상한이 현재 하나도 적용되지 않는다.
-4. `docs/mvp2-planning/m4-scope-decisions.md` — **M4 범위 결정 기록**(2026-07-19). 코드 실사에서 나온 사실 F1~F8과 그에 따른 범위·순서 재정의(D1~D6). 각 결정에 근거와 "뒤집을 조건"을 병기 — 나중에 수정할 때 여기부터 볼 것.
+4. `docs/mvp2-planning/troubleshooting-log.md` — **트러블슈팅 기록**. 증상→원인→조치→교훈. **정본 HTML 트러블슈팅 섹션의 원본** — 정본 갱신 시 여기서 옮긴다.
+5. `docs/mvp2-planning/m4-scope-decisions.md` — **M4 범위 결정 기록**(2026-07-19). 코드 실사에서 나온 사실 F1~F8과 그에 따른 범위·순서 재정의(D1~D6). 각 결정에 근거와 "뒤집을 조건"을 병기 — 나중에 수정할 때 여기부터 볼 것.
 
 ## 현재 상태 (2026-07-19)
 
