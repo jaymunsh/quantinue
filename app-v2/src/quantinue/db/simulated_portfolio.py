@@ -26,9 +26,18 @@ class MarkSource(StrEnum):
 
 @unique
 class RealizedPnlStatus(StrEnum):
-    """Supported realized-profit state for the phase-one buy-only ledger."""
+    """Whether the ledger has closed anything to realize profit against."""
 
     NOT_APPLICABLE_BUY_ONLY = "not_applicable_buy_only"
+    AVAILABLE = "available"
+
+
+@unique
+class FillSide(StrEnum):
+    """Direction of one local fill, mirroring the ``tb_fill.side`` constraint."""
+
+    BUY = "buy"
+    SELL = "sell"
 
 
 @unique
@@ -58,7 +67,11 @@ class SimulatedOrder:
 
 @dataclass(frozen=True, slots=True)
 class SimulatedFill:
-    """Unique local buy fill used by simulated-account accounting."""
+    """Unique local fill used by simulated-account accounting.
+
+    ``side`` defaults to a buy so that every pre-close call site keeps its
+    meaning; a close order is the only writer that must state it.
+    """
 
     fill_id: str
     order_id: str
@@ -66,6 +79,7 @@ class SimulatedFill:
     quantity: int
     price: Decimal
     filled_at: datetime
+    side: FillSide = FillSide.BUY
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,7 +125,7 @@ class SimulatedPortfolioSnapshot:
     positions: tuple[SimulatedPosition, ...]
     orders: tuple[SimulatedOrder, ...]
     fills: tuple[SimulatedFill, ...]
-    realized_pnl: None = None
+    realized_pnl: Decimal | None = None
     realized_pnl_status: RealizedPnlStatus = RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
 
 
@@ -140,6 +154,36 @@ class SimulatedOrderRecorder(Protocol):
 
 def _money(value: Decimal) -> Decimal:
     return value.quantize(_CENT, rounding=ROUND_HALF_UP)
+
+
+def _signed_notional(fill: SimulatedFill) -> Decimal:
+    """Return cash consumed by one fill: a buy spends it, a sell returns it."""
+    notional = Decimal(fill.quantity) * fill.price
+    return -notional if fill.side is FillSide.SELL else notional
+
+
+def _realized_pnl(fills: tuple[SimulatedFill, ...]) -> Decimal | None:
+    """Book each sale against its ticker's average buy cost, or None if unsold."""
+    realized = Decimal(0)
+    sold_anything = False
+    for ticker in sorted({fill.ticker for fill in fills}):
+        ticker_fills = tuple(fill for fill in fills if fill.ticker == ticker)
+        bought = tuple(fill for fill in ticker_fills if fill.side is FillSide.BUY)
+        sold = tuple(fill for fill in ticker_fills if fill.side is FillSide.SELL)
+        bought_quantity = sum(fill.quantity for fill in bought)
+        if not sold or bought_quantity == 0:
+            continue
+        sold_anything = True
+        bought_cost = sum(
+            (Decimal(fill.quantity) * fill.price for fill in bought),
+            start=Decimal(0),
+        )
+        average_cost = bought_cost / Decimal(bought_quantity)
+        realized += sum(
+            (Decimal(fill.quantity) * (fill.price - average_cost) for fill in sold),
+            start=Decimal(0),
+        )
+    return _money(realized) if sold_anything else None
 
 
 def ensure_fill_is_affordable(
@@ -195,7 +239,7 @@ def project_buy_only_portfolio(
         _ = unique_fills_by_id.setdefault(fill.fill_id, fill)
     unique_fills = tuple(unique_fills_by_id.values())
     total_cost = sum(
-        (Decimal(fill.quantity) * fill.price for fill in unique_fills),
+        (_signed_notional(fill) for fill in unique_fills),
         start=Decimal(0),
     )
     if total_cost > opening_cash:
@@ -212,11 +256,21 @@ def project_buy_only_portfolio(
     positions_without_allocation: list[tuple[str, int, Decimal, PortfolioMark]] = []
     for ticker in sorted({fill.ticker for fill in unique_fills}):
         ticker_fills = tuple(fill for fill in unique_fills if fill.ticker == ticker)
-        quantity = sum(fill.quantity for fill in ticker_fills)
-        cost_basis = sum(
-            (Decimal(fill.quantity) * fill.price for fill in ticker_fills),
+        bought = tuple(fill for fill in ticker_fills if fill.side is FillSide.BUY)
+        bought_quantity = sum(fill.quantity for fill in bought)
+        sold_quantity = sum(
+            fill.quantity for fill in ticker_fills if fill.side is FillSide.SELL
+        )
+        quantity = bought_quantity - sold_quantity
+        if quantity <= 0:
+            continue
+        bought_cost = sum(
+            (Decimal(fill.quantity) * fill.price for fill in bought),
             start=Decimal(0),
         )
+        # Average-cost basis: a sale carries out its share of the cost, so the
+        # remainder stays valued at the same unit cost it was bought at.
+        cost_basis = bought_cost * Decimal(quantity) / Decimal(bought_quantity)
         latest_fill = max(ticker_fills, key=lambda fill: fill.filled_at)
         mark = completed_marks.get(
             ticker,
@@ -257,9 +311,16 @@ def project_buy_only_portfolio(
         equity=equity,
         buying_power=current_cash,
     )
+    realized = _realized_pnl(unique_fills)
     return SimulatedPortfolioSnapshot(
         account=account,
         positions=positions,
         orders=orders,
         fills=unique_fills,
+        realized_pnl=realized,
+        realized_pnl_status=(
+            RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
+            if realized is None
+            else RealizedPnlStatus.AVAILABLE
+        ),
     )

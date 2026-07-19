@@ -5,6 +5,7 @@ import pytest
 
 from quantinue.db.domain_records import InsufficientSimulatedCashError
 from quantinue.db.simulated_portfolio import (
+    FillSide,
     MarkSource,
     PortfolioMark,
     RealizedPnlStatus,
@@ -173,3 +174,55 @@ def test_projection_rejects_fill_cost_above_opening_cash() -> None:
     # When / Then
     with pytest.raises(InsufficientSimulatedCashError):
         _ = project_buy_only_portfolio(Decimal("100.00"), (), (fill,), ())
+
+
+def test_sell_fill_reduces_position_and_credits_cash() -> None:
+    """A sell fill must shrink the holding and return cash, never add to both."""
+    # Given: buy 3 @ 100, then sell 1 @ 130 against a 1000 opening balance
+    fills = (
+        SimulatedFill("fill-1", "order-1", "NVDA", 3, Decimal("100.00"), _at(1)),
+        SimulatedFill(
+            "fill-2", "order-2", "NVDA", 1, Decimal("130.00"), _at(2), FillSide.SELL
+        ),
+    )
+    marks = (PortfolioMark("NVDA", Decimal("120.00"), MarkSource.COMPLETED_RUN, _at(3)),)
+
+    # When
+    result = project_buy_only_portfolio(Decimal("1000.00"), (), fills, marks)
+
+    # Then: 3 - 1 held, cash 1000 - 300 + 130, basis follows the average cost out
+    assert result.positions[0].quantity == 2
+    assert result.positions[0].cost_basis == Decimal("200.00")
+    assert result.account.current_cash == Decimal("830.00")
+    assert result.account.equity == Decimal("1070.00")
+
+
+def test_sell_fill_realizes_profit_against_average_cost() -> None:
+    """Selling above average cost books the difference as realized profit."""
+    # Given: buy 3 @ 100 then sell 1 @ 130 — 30 realized on the share sold
+    fills = (
+        SimulatedFill("fill-1", "order-1", "NVDA", 3, Decimal("100.00"), _at(1)),
+        SimulatedFill(
+            "fill-2", "order-2", "NVDA", 1, Decimal("130.00"), _at(2), FillSide.SELL
+        ),
+    )
+
+    # When
+    result = project_buy_only_portfolio(Decimal("1000.00"), (), fills, ())
+
+    # Then
+    assert result.realized_pnl == Decimal("30.00")
+    assert result.realized_pnl_status is RealizedPnlStatus.AVAILABLE
+
+
+def test_buy_only_ledger_still_reports_realized_pnl_as_not_applicable() -> None:
+    """Without a sale there is nothing realized — the status must say so."""
+    # Given
+    fills = (SimulatedFill("fill-1", "order-1", "NVDA", 3, Decimal("100.00"), _at(1)),)
+
+    # When
+    result = project_buy_only_portfolio(Decimal("1000.00"), (), fills, ())
+
+    # Then
+    assert result.realized_pnl is None
+    assert result.realized_pnl_status is RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
