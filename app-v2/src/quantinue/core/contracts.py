@@ -214,6 +214,14 @@ class AccountOrderPlan:
 
 
 @dataclass(frozen=True, slots=True)
+class AccountOrder:
+    """One account's broker result for this cycle."""
+
+    account_id: int
+    result: OrderResult
+
+
+@dataclass(frozen=True, slots=True)
 class PriceSnapshot:
     """Prices as one role actually observed them, carried forward unchanged.
 
@@ -286,6 +294,7 @@ class PipelineContext:
     order_skipped_reason: str | None = None
     signal_consensus: int | None = None
     account_plans: tuple[AccountOrderPlan, ...] = ()
+    account_orders: tuple[AccountOrder, ...] = ()
     risk_entry_price: float | None = None
     signal_id: int | None = None
     account_id: int | None = None

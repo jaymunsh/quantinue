@@ -8,7 +8,12 @@ from typing import ClassVar
 from quantinue.broker.contracts import TradabilityBroker
 from quantinue.broker.mock import MockBroker
 from quantinue.broker.provider import Broker, OrderPlan
-from quantinue.core.contracts import PipelineContext
+from quantinue.core.contracts import (
+    AccountOrder,
+    AccountOrderPlan,
+    OrderResult,
+    PipelineContext,
+)
 from quantinue.core.errors import ValidationFailureError
 from quantinue.core.ontology import EvidenceKind
 from quantinue.core.schemas import Evidence
@@ -33,18 +38,8 @@ class OrderExecution:
     component: ClassVar[str] = "10"
     name: ClassVar[str] = "주문·체결"
 
-    async def _is_tradable(self, ticker: str) -> bool:
-        """Ask the venue whether this symbol accepts orders right now.
-
-        Brokers without the capability are treated as tradable so the guard
-        never silently disables execution on an adapter that predates it.
-        """
-        if not isinstance(self.broker, TradabilityBroker):
-            return True
-        return await self.broker.is_tradable(ticker)
-
-    async def execute(self, context: PipelineContext) -> PipelineContext:
-        """Submit a paper bracket or simulate it in mock mode."""
+    async def _execute_scalar(self, context: PipelineContext) -> PipelineContext:
+        """Legacy single-account path, kept for contexts without per-account plans."""
         quantity = require_value(context.quantity, component=self.component, field_name="quantity")
         stop_loss = require_value(
             context.stop_loss, component=self.component, field_name="stop_loss"
@@ -140,6 +135,128 @@ class OrderExecution:
             evidence=evidence,
         )
 
+    async def _is_tradable(self, ticker: str) -> bool:
+        """Ask the venue whether this symbol accepts orders right now.
+
+        Brokers without the capability are treated as tradable so the guard
+        never silently disables execution on an adapter that predates it.
+        """
+        if not isinstance(self.broker, TradabilityBroker):
+            return True
+        return await self.broker.is_tradable(ticker)
+
+    def _executable_plans(self, context: PipelineContext) -> tuple[AccountOrderPlan, ...]:
+        """Return the plans this broker may actually submit.
+
+        A real broker sits in front of exactly one external account, so
+        iterating the internal roster would pile every account's position into
+        that one — seven accounts would mean seven times the intended size.
+        Fan-out therefore belongs to simulation only.
+        """
+        plans = tuple(plan for plan in context.account_plans if plan.quantity > 0)
+        if not plans:
+            return ()
+        if isinstance(self.broker, MockBroker):
+            return plans
+        primary = context.account_id or plans[0].account_id
+        return tuple(plan for plan in plans if plan.account_id == primary)[:1]
+
+    async def _submit_one(
+        self, context: PipelineContext, plan: AccountOrderPlan
+    ) -> tuple[OrderResult, Evidence]:
+        """Submit one account's bracket and record its simulated bookkeeping."""
+        request = OrderExecutionInput(
+            run_id=context.run_id,
+            execution_at=context.request.cycle_ts,
+            evidence=evidence_from_pipeline_traces(context, ("08", "09")),
+            signal_id=plan.signal_id,
+            account_id=plan.account_id,
+            ticker=context.request.ticker,
+            cycle_ts=context.request.cycle_ts,
+            quantity=plan.quantity,
+            entry_price=plan.entry_price,
+            stop_loss=plan.stop_loss,
+            take_profit=plan.take_profit,
+        )
+        broker_order = await self.broker.submit(
+            OrderPlan(
+                ticker=request.ticker,
+                client_order_id=request.client_order_id,
+                quantity=request.quantity,
+                entry_price=request.entry_price,
+                stop_loss=request.stop_loss,
+                take_profit=request.take_profit,
+            )
+        )
+        order_status = _app_order_exposure_status(broker_order.status)
+        order = broker_order.model_copy(update={"status": order_status.value})
+        _ = await self.store.reconcile_app_order_exposure(request.client_order_id, order_status)
+        if isinstance(self.broker, MockBroker) and isinstance(self.store, SimulatedOrderRecorder):
+            simulated_status = _simulated_order_status(order.status)
+            simulated_order = SimulatedOrder(
+                order_id=order.order_id,
+                ticker=request.ticker,
+                quantity=order.quantity,
+                reference_price=Decimal(str(request.entry_price)),
+                status=simulated_status,
+                created_at=request.execution_at,
+            )
+            fill = (
+                SimulatedFill(
+                    fill_id=order.order_id,
+                    order_id=order.order_id,
+                    ticker=request.ticker,
+                    quantity=order.quantity,
+                    price=Decimal(str(order.filled_avg_price)),
+                    filled_at=request.execution_at,
+                )
+                if simulated_status is SimulatedOrderStatus.FILLED
+                else None
+            )
+            await self.store.record_simulated_order(simulated_order, fill)
+        evidence = Evidence(
+            evidence_id=f"{context.run_id}:10:order:{order.order_id}",
+            run_id=context.run_id,
+            source="broker-result",
+            source_ref=f"broker://order/{order.order_id}",
+            observed_at=context.request.cycle_ts,
+            captured_at=context.request.cycle_ts,
+            confidence=1.0,
+            kind=EvidenceKind.BROKER,
+            parent_evidence_ids=(context.evidence_trace[-1].evidence_id,),
+        )
+        return order, evidence
+
+    async def execute(self, context: PipelineContext) -> PipelineContext:
+        """Submit one bracket per executable account plan."""
+        plans = self._executable_plans(context)
+        if not plans:
+            return await self._execute_scalar(context)
+        entry_price = require_value(
+            context.last_price, component=self.component, field_name="last_price"
+        )
+        del entry_price
+        if not await self._is_tradable(context.request.ticker):
+            return replace(context, quantity=0, order_skipped_reason="not_tradable").add_stage(
+                self.component, self.name, "주문 생략 · 거래 불가 종목(정지·상폐)"
+            )
+        orders: list[AccountOrder] = []
+        evidences: list[Evidence] = []
+        for plan in plans:
+            order, evidence = await self._submit_one(context, plan)
+            orders.append(AccountOrder(account_id=plan.account_id, result=order))
+            evidences.append(evidence)
+        primary = orders[0]
+        prefix = "로컬 모의 체결" if isinstance(self.broker, MockBroker) else "Alpaca Paper 체결"
+        detail = (
+            f"{len(orders)}개 계좌 · "
+            + " / ".join(f"a{item.account_id}:{item.result.quantity}주" for item in orders)
+            if len(orders) > 1
+            else f"{primary.result.status}, {primary.result.quantity}주"
+        )
+        return replace(
+            context, order=primary.result, account_orders=tuple(orders)
+        ).add_stage(self.component, self.name, f"{prefix} · {detail}", evidence=evidences[0])
 
 def _app_order_exposure_status(status: str) -> AppOrderExposureStatus:
     match status:

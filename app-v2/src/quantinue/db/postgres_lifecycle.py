@@ -159,7 +159,22 @@ async def persist_domain_stage(
         # 계좌별 계획을 전부 남긴다 — 하나만 남기면 팬아웃이 관측되지 않는다.
         for plan in _persisted_plans(result):
             await domain.save_order_plan(plan)
-    if component == "10" and result.order is not None:
+    if component == "10" and result.account_orders:
+        # 계좌별 주문을 전부 기록한다 — 대표 하나만 남기면 나머지 계좌의
+        # 체결이 원장에서 사라진다.
+        for item in result.account_orders:
+            if item.result.status == "filled":
+                await domain.record_completed_buy(
+                    CompletedBuyWrite(
+                        idempotency_key=item.result.client_order_id,
+                        broker_order_id=item.result.order_id,
+                        broker_fill_id=f"{item.result.order_id}:fill",
+                        quantity=item.result.quantity,
+                        price=Decimal(str(item.result.filled_avg_price)),
+                        filled_at=result.request.cycle_ts,
+                    )
+                )
+    elif component == "10" and result.order is not None:
         if result.order.status == "filled":
             _ = await domain.record_completed_buy(
                 CompletedBuyWrite(
