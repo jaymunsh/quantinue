@@ -289,7 +289,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v5.2 · MVP-2</span>
+    <span class="rail-ver">v5.3 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
@@ -303,7 +303,8 @@
       <a href="#conv"><span class="nnum">●</span> 공통 컨벤션</a>
       <a href="#data"><span class="nnum">●</span> 데이터 모델</a>
 
-      <div class="nav-group">파이프라인 01→11</div>
+      <div class="nav-group"><a href="#jobs">파이프라인 — 잡 체인</a></div>
+      <div class="nav-group">구 11단계(기록)</div>
       <div class="spine">
         <a href="#s01"><span class="snum">01</span> 유니버스</a>
         <a href="#s02"><span class="snum">02</span> 기술분석</a>
@@ -356,7 +357,7 @@
         2차는 이 사이클을 <b>사람 손 없이 자동으로</b> 돌리고, <b>관리자·유저 화면</b>을 얹어
         <b>AI 페이퍼 펀드 서비스</b>로 완성한다. LLM이 검증 없이 돈에 닿는 경로는 <b>0개</b>.</p>
       <div class="chips">
-        <span class="chip">파이프라인<b>11단계</b></span>
+        <span class="chip">파이프라인<b>잡 9종</b></span>
         <span class="chip">투자 성향<b>공격형·안전형</b></span>
         <span class="chip">계좌<b>페이퍼·다계좌</b></span>
         <span class="chip">운영<b>무인 자동</b></span>
@@ -1641,8 +1642,34 @@ erDiagram
     <!-- 파이프라인 상세 -->
     <section id="pipeline">
       <div class="sec-eyebrow">Pipeline</div>
-      <h2>파이프라인 상세 01→11</h2>
-      <p class="sec-intro">각 역할: 하는 일 → 입력/출력 → 스키마 → 전달 JSON → row 예시. 좌측 척추에서 바로 이동.</p>
+      <h2 id="jobs">파이프라인 — 잡 체인 (현행)</h2>
+      <p class="sec-intro">2026-07-20 재설계 완료. 선형 11단계 런은 삭제됐고, 서로 독립인 <b>잡 9종</b>이 DB로만 손을 주고받는다. 한 잡이 죽어도 나머지는 어제 데이터로 돈다.</p>
+      <div class="card">
+        <h3>등록 순서가 계약이다</h3>
+        <p style="margin-top:4px"><b>유니버스 → 일봉 → 공시 → 뉴스 → 매크로 → 스크리닝 → 분석×성향수 → 청산 → 배분</b>. 수집이 판단보다 먼저 와야 오늘 시세·공시로 판단하고, 유니버스가 일봉보다 먼저 와야 그 주에 새로 든 종목이 봉 없이 남지 않는다. <b>청산이 배분보다 앞</b>인 이유는 지갑이다 — 판 돈과 빈 자리로 사야 "자리가 없어 못 산다"가 하루 늦지 않는다.</p>
+        <div class="io"><span>🗓 주기 <code>mvp2.jobs.cadences</code></span><span>🔒 슬롯 멱등 <code>tb_job_run</code> PK(job_name, slot_date)</span><span>🧯 예외는 잡마다 격리</span></div>
+      </div>
+      <div class="card">
+        <h3>구 11단계와의 대응</h3>
+        <div class="twrap"><table>
+          <tr><th>구 러너</th><th>새 잡</th><th>동등성 증거</th></tr>
+          <tr><td>role_01 유니버스</td><td>universe</td><td>실수집 2,000행 + 상장폐지 보유 이월 1</td></tr>
+          <tr><td>role_02·03 스크리닝</td><td>screening (DB 랭킹)</td><td>깔때기 373→21픽 · <b>API 0콜</b>. ⚠️ <code>tb_technical</code>은 의도적으로 대체 안 함</td></tr>
+          <tr><td>role_04 매크로</td><td>macro</td><td>같은 산식 공유(<code>regime_from_rate</code>) · 실측 neutral/0.302 일치</td></tr>
+          <tr><td>role_05~08 분석</td><td>analysis × 성향수</td><td>승인율 실측 aggressive 8/22 · conservative 3/22</td></tr>
+          <tr><td>role_09 사이징·게이트</td><td>allocation</td><td><code>build_order_plan</code> <b>같은 함수</b> + 순차 상태 갱신</td></tr>
+          <tr><td>role_10 체결</td><td>allocation·exits 내부</td><td>같은 MockBroker·같은 멱등 축, 실 체결 33건</td></tr>
+          <tr><td>role_11 리뷰</td><td>ReviewRuntime (API 계층)</td><td>러너와 무관. ⚠️ 2026-07-20 수리 전까지 <b>잡 판단을 채점 못 하고 있었다</b></td></tr>
+        </table></div>
+      </div>
+      <div class="card">
+        <h3>관제실이 답하는 질문이 바뀌었다</h3>
+        <p style="margin-top:4px">구 화면은 "런 하나가 11단계를 어디까지 갔나"를 그렸다. 잡은 서로 독립이라 그 질문이 성립하지 않는다. 새 화면(<code>/</code>)은 넷을 그린다 — <b>오늘 체인이 어디서 끊겼나</b>(<code>tb_job_run</code>) · <b>무엇을 샀고 왜 못 샀나</b>(<code>tb_order_plan</code>의 보류 사유 순위) · <b>계좌가 어떻게 움직였나</b>(<code>tb_account_equity_daily</code>) · <b>두 성향이 어떻게 갈렸나</b>(판단×평결).</p>
+        <div class="io"><span>📤 <code>GET /</code> · <code>GET /api/pipeline/today</code></span><span>🗓 <code>?slot=YYYY-MM-DD</code>로 지난 날</span><span>🚫 실행 트리거 없음(읽기 전용)</span></div>
+      </div>
+
+      <h2>파이프라인 상세 01→11 <span class="b b-gray">구 러너 · 2026-07-20 삭제 · 기록 보존</span></h2>
+      <p class="sec-intro">⚠️ <b>아래 11개 역할 카드는 삭제된 구 러너의 기록이다.</b> 현행 동작은 위 「잡 체인」 절이 정본이다. 판단 규칙(게이트·사이징·페르소나)은 계약으로 살아남아 잡이 그대로 호출하므로, 규칙 설명으로서는 계속 유효하다 — 사라진 것은 <b>배선</b>이지 규칙이 아니다.</p>
       <div id="s01" class="card">
         <h3><span class="mono b b-gray">01</span> 유니버스 스크리너 <span class="b b-gray">주1회</span></h3>
         <p style="margin-top:4px">미국 상장 전체(~16,000)에서 <b>시총 상위 2,000</b>을 골라 감시망(tb_universe)에 박제한다. 주1회라 시총 순위처럼 천천히 변하는 값에 맞고, <code>(as_of_date, ticker)</code> 복합 PK로 매주 스냅샷을 쌓아 <b>생존편향</b>을 막는다(사라진 종목도 과거 기록에 남음).</p>
@@ -2150,6 +2177,7 @@ erDiagram
       <p class="sec-intro">이 문서를 수정하면 표 맨 위에 한 줄 추가 + 버전 갱신 + git 커밋·태그.</p>
       <div class="twrap"><table>
         <tr><th>버전</th><th>날짜</th><th>수정자</th><th>변경 요약</th></tr>
+        <tr><td class="mono">v5.3</td><td class="mono">2026-07-20</td><td>문성혁 + Claude</td><td><b>Phase 5 — 잡 기반 전환 완료 · 구 11단계 러너 삭제</b> — 관제실을 잡 원장 기반으로 재작성(<code>/</code>: 잡 체인·배분 보류 사유 순위·계좌 곡선·성향별 판단×반박, <code>?slot=</code> 지난 날 이동) · 웹에서 잡 원장으로 가는 <b>읽기 계층 신설</b>(<code>tb_order_plan</code>은 그때까지 문자 그대로 write-only였다) · 구 러너 전면 삭제(pipeline·factory·role_01~11 service 11개 — <b>src 소비자가 factory 하나뿐임을 전수 확인</b>) · <b>T+5 리뷰를 러너에서 분리</b>(<code>get_signal</code>이 <code>pipeline_runs</code>와 내부 조인을 해 잡 판단 91건 중 0건만 매칭 — 리뷰 API가 새 파이프라인의 어떤 판단도 채점 못 하던 상태) · 체결 없는 매수 제안의 기준가 NULL 결함 수정 · 러너와 함께 유령이 된 설정 정리(policy.py 472→256행 · yaml <code>mvp</code>/<code>phase_2</code> 블록 · Settings 3필드 · .env 3키) · 이중 캘린더는 통합 대신 <b>어긋남 감시 테스트</b>로 전환(리뷰 경로가 직접 쓰므로 자연소멸하지 않았다) · <b>실행에서만 잡힌 결함 3건</b>(관제실이 원장보다 많이 셈 · 없는 분모로 "체인 완주" · 리뷰 기준가 NULL) · 유닛/웹 538 green · 통합 109 green</td></tr>
         <tr><td class="mono">v5.2</td><td class="mono">2026-07-19</td><td>문성혁 + Claude</td><td><b>스키마 문서 현행화 — 2차 추가분 시각 구분</b> — 컬럼 명세 표에 <b>행 배경 강조</b> 도입(초록=2차 신규 · 노랑=2차 제약 변경)과 범례 · <code>tb_order</code>에 <code>closes_order_id</code>·<code>order_type +close</code>·손절/익절 NULL 허용 반영 · <b><code>tb_order_plan</code> 표 신설</b>(M4 관측 테이블, 왜 필요했는지 포함) · <code>signal_consensus</code> 0~3→0~4 · ERD에 청산 자기참조·계좌별 판단 관계 추가 · 데이터 사전 갱신</td></tr>
         <tr><td class="mono">v5.1</td><td class="mono">2026-07-19</td><td>문성혁 + Claude</td><td><b>M6 완료 · M5 매도 주문 표현 확정</b> — 계좌 구독 팬아웃(계좌별 계획·집행, <b>실 브로커는 팬아웃 안 함</b> — 외부 계좌가 하나라 내부 7계좌를 순회하면 의도의 7배가 쌓인다) · 서킷 3종 배선(<code>max_weight</code>가 <code>POSITION_CAP_FRACTION</code> 리터럴 대체) · 계좌별 자본·포트폴리오 · 계좌 프로비저닝(테스트 2 + 데모 5: 공격 $150K/$100K/$5K · 안전 $100K/$5K) · <b>매도 주문 표현 = 별도 청산 행</b>(<code>order_type='close'</code>·<code>closes_order_id</code>, 브래킷 제약을 조건부로 — 청산에 더미 손절·익절을 채우지 않는다) · 신규설치 경로 == 마이그레이션 경로 확증 · 유닛 681 · 통합 63 green</td></tr>
         <tr><td class="mono">v5.0</td><td class="mono">2026-07-19</td><td>문성혁 + Claude</td><td><b>M4 검증 라운드 + M6 착수 · 트러블슈팅 섹션 신설</b> — 방어선 3종을 <b>강제 발동 E2E</b>로 검증(기다려서는 검증 불가: 크리틱이 대부분을 막아 매수일이 곧 실거래일이 된다) · <b>halted 생략이 런 전체를 죽이던 버그</b> 수정 · 크리틱 문턱 이중값 정리(0.60→0.70, 문서대로) · <b>tb_order_plan 신설</b>로 방어선 발동 관측 가능화 · <b>유령 설정 전수 감사</b>(선언됐으나 소비자 없는 값) · M6: 계좌 프로비저닝(테스트 2 + 데모 5) · 서킷 3종 배선(max_weight가 POSITION_CAP_FRACTION 리터럴 대체) · <b>자본이 계좌에서 오게 됨</b>(그 전엔 앱 전역 상한이 equity라 $5K와 $150K 계좌가 같은 크기로 주문) · conservative 프로필 도달 가능화 · 계좌 구독 팬아웃 · 계좌별 포트폴리오 · 유닛/웹 676 · 통합 58 green</td></tr>
