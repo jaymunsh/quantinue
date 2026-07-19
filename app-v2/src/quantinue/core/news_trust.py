@@ -6,14 +6,12 @@ and, more importantly, cannot smuggle its framing into a judgement.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from pathlib import Path
+from typing import Literal
 from urllib.parse import urlparse
 
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 Grade = Literal["allow", "gray", "block"]
 DEFAULT_TRUST_SCORES: dict[str, float] = {"allow": 0.95, "gray": 0.50, "block": 0.0}
@@ -67,3 +65,8 @@ def load_news_trust_policy(path: Path) -> NewsTrustPolicy:
     with path.open(encoding="utf-8") as stream:
         document = yaml.safe_load(stream) or {}
     return NewsTrustPolicy.model_validate(document)
+
+
+NEWS_TRUST_POLICY: NewsTrustPolicy = load_news_trust_policy(
+    Path(__file__).parents[3] / "config" / "news_trust_policy.yaml"
+)

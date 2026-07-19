@@ -4,7 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Table, select
+from sqlalchemy import Table, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -149,6 +149,23 @@ async def save_source_records(
             reason=reason_payload(),
             summary=news_source.summary,
             news_count=1,
+            importance=value.news_score,
+            # 오늘 이 종목 뉴스 중 최고 중요도. 사이클마다 새 행이라 GREATEST를
+            # 기존 최댓값과 직접 겨룬다 — 장중에 식은 뉴스가 최고치를 지우지 않게.
+            peak_importance=func.greatest(
+                value.news_score,
+                func.coalesce(
+                    select(func.max(news.c.importance))
+                    .where(news.c.ticker == value.ticker)
+                    .where(news.c.trade_date == value.trade_date)
+                    .scalar_subquery(),
+                    0,
+                ),
+            ),
+            sentiment_score=value.news_score,
+            risk_score=0,
+            source_trust=source_trust,
+            grade_score=source_trust,
             confidence=_db_confidence(news_source.confidence),
             is_hard_blocked=False,
             source_ref=news_source.url,

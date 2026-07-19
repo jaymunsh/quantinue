@@ -2,11 +2,10 @@
 
 from dataclasses import dataclass, replace
 from datetime import timedelta
-from pathlib import Path
 from typing import ClassVar, Protocol
 
 from quantinue.core.contracts import NewsSourceRecord, PipelineContext
-from quantinue.core.news_trust import load_news_trust_policy
+from quantinue.core.news_trust import NEWS_TRUST_POLICY
 from quantinue.core.ontology import EvidenceKind
 from quantinue.core.schemas import Evidence
 from quantinue.llm.provider import AnalysisTask, LlmAnalyzer
@@ -18,10 +17,6 @@ from quantinue.market_data.models import (
 )
 from quantinue.roles.role_06_news_analysis.contracts import NewsSignal
 from quantinue.roles.role_06_news_analysis.selection import SelectedNewsItem, select_ticker_news
-
-NEWS_TRUST_POLICY = load_news_trust_policy(
-    Path(__file__).parents[4] / "config" / "news_trust_policy.yaml"
-)
 
 
 class RssNewsSource(Protocol):

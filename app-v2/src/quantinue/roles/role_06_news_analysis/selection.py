@@ -6,6 +6,7 @@ from hashlib import sha256
 from typing import Final
 from urllib.parse import urlsplit, urlunsplit
 
+from quantinue.core.news_trust import NEWS_TRUST_POLICY
 from quantinue.market_data.models import (
     NewsItem,
     NewsMatchReason,
@@ -138,8 +139,21 @@ def _evaluate_item(
     return replace(item, status=NewsMatchStatus.RELEVANT)
 
 
-def _selection_key(item: SelectedNewsItem, index: int) -> tuple[int, float, str, int]:
+def _trust_weight(item: SelectedNewsItem) -> float:
+    """Weight an eligible item by how much its source can be believed."""
+    return NEWS_TRUST_POLICY.trust_for(item.item.url) * item.item.provenance.confidence
+
+
+def _selection_key(item: SelectedNewsItem, index: int) -> tuple[float, int, float, str, int]:
+    """Rank eligible items by trust first, then relevance, then recency.
+
+    Trust leads because ranking on relevance alone let a keyword-dense unknown
+    blog outrank a wire service that mentioned the ticker once. Relevance still
+    ranks beneath it: when two stories share a source the weights tie, and the
+    more on-topic one must win rather than whichever URL sorts first.
+    """
     return (
+        -_trust_weight(item),
         -item.score,
         -item.item.published_at.timestamp(),
         _canonical_url(item.item.url),

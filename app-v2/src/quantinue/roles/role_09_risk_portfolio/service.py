@@ -5,6 +5,8 @@ from decimal import Decimal
 from hashlib import sha256
 from typing import ClassVar, assert_never
 
+from exchange_calendars.errors import DateOutOfBounds
+
 from quantinue.core.contracts import PipelineContext
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.core.ontology import EvidenceKind
@@ -67,11 +69,15 @@ class RiskPortfolio:
         if snapshot is None:
             return None
         now = context.request.cycle_ts
-        if not self.calendar.is_trading_day(now.date()):
+        try:
+            if not self.calendar.is_trading_day(now.date()):
+                return None
+            session_open = self.calendar.session_open(now.date())
+        except (ValueError, DateOutOfBounds):
+            # 거래소 캘린더는 유한한 구간만 안다. 그 밖의 날짜라면 세션을 판정할 수
+            # 없으니 측정하지 않는다 — 가드가 파이프라인을 죽이는 쪽이 더 나쁘다.
             return None
-        if not gap_guard_applies(
-            now, self.calendar.session_open(now.date()), self.gates.gap_guard_open_minutes
-        ):
+        if not gap_guard_applies(now, session_open, self.gates.gap_guard_open_minutes):
             return None
         return snapshot.gap_from_reference()
 
