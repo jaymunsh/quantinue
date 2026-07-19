@@ -1,5 +1,6 @@
 """Create a deterministic risk-sized fixed-bracket order plan."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from decimal import Decimal
 from hashlib import sha256
@@ -18,6 +19,7 @@ from quantinue.db.contracts import (
     RunStore,
     parse_app_order_money,
 )
+from quantinue.db.domain_records import AccountRiskState
 from quantinue.orchestration.policy import GatesConfig, ProfileConfig
 from quantinue.roles.role_09_risk_portfolio.contracts import (
     RiskPortfolioInput,
@@ -42,6 +44,20 @@ class RiskPortfolio:
     gates: GatesConfig = field(default_factory=GatesConfig)
     calendar: NyseCalendar = field(default_factory=NyseCalendar)
     profile: ProfileConfig = field(default_factory=ProfileConfig)
+    profiles: Mapping[str, ProfileConfig] = field(default_factory=dict)
+
+    def _profile_for(self, inv_type: str | None) -> ProfileConfig:
+        """Pick the profile the account actually subscribes to."""
+        if inv_type is None:
+            return self.profile
+        return self.profiles.get(inv_type, self.profile)
+
+    async def _account_state(self, account_id: int) -> AccountRiskState | None:
+        """Read this account's capital and book, when the store can answer."""
+        reader = getattr(self.store, "account_risk_state", None)
+        if reader is None:
+            return None
+        return await reader(account_id)
 
     def _recent_return(self, context: PipelineContext) -> float | None:
         """Return role 02's five-day run-up as a fraction.
@@ -87,6 +103,13 @@ class RiskPortfolio:
         signal_key = f"{context.request.ticker}:{context.request.cycle_ts.isoformat()}".encode()
         signal_id = context.signal_id or int(sha256(signal_key).hexdigest()[:8], 16) + 1
         account_id = context.account_id or 1
+        state = await self._account_state(account_id)
+        profile = self._profile_for(state.inv_type if state is not None else None)
+        # 자본은 계좌에서 온다. 앱 전역 노출 상한을 자본으로 쓰면 $5,000 계좌와
+        # $150,000 계좌가 같은 크기로 주문한다.
+        equity = (
+            float(state.equity) if state is not None else float(self.max_app_order_exposure_usd)
+        )
         plan = build_order_plan(
             RiskPortfolioInput(
                 run_id=context.run_id,
@@ -98,7 +121,9 @@ class RiskPortfolio:
                 cycle_ts=context.request.cycle_ts,
                 critic_approved=context.critic_approved,
                 current_price=price,
-                equity=float(self.max_app_order_exposure_usd),
+                equity=equity,
+                cash=float(state.cash) if state is not None else None,
+                open_position_count=state.open_position_count if state is not None else 0,
                 daily_new_order_cap=self.daily_new_order_cap,
                 risk_score=context.macro_risk_score or 0,
                 reference_gap=self._reference_gap(context),
@@ -108,7 +133,8 @@ class RiskPortfolio:
             take_profit_ratio=self.take_profit_ratio,
             maximum_risk_score=self.maximum_risk_score,
             premarket_gap_max=self.gates.premarket_gap_max,
-            late_entry_max=self.profile.late_entry_max,
+            late_entry_max=profile.late_entry_max,
+            profile=profile,
         )
         if plan.quantity > 0:
             reserved = await self.store.reserve_daily_new_order(
@@ -149,7 +175,11 @@ class RiskPortfolio:
             summary = "수량 0, 앱 주문 계획 노출 한도 또는 일일 신규 주문 한도 도달"
         if plan.skipped_reason == "late_entry":
             run_up = self._recent_return(context) or 0.0
-            summary = f"주문 보류 · 5일 상승 {run_up:.1%} > {self.profile.late_entry_max:.1%}"
+            summary = f"주문 보류 · 5일 상승 {run_up:.1%} > {profile.late_entry_max:.1%}"
+        if plan.skipped_reason == "max_positions":
+            summary = f"주문 보류 · 보유 종목 수 한도 {profile.max_positions}개 도달"
+        if plan.skipped_reason == "min_cash":
+            summary = f"주문 보류 · 현금 바닥 {profile.min_cash_ratio:.0%} 유지"
         if plan.skipped_reason == "premarket_gap":
             gap = self._reference_gap(context) or 0.0
             summary = f"주문 보류 · 기준가 대비 갭 {gap:.1%} > {self.gates.premarket_gap_max:.1%}"

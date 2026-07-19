@@ -19,6 +19,8 @@ from quantinue.core.contracts import (
     PipelineRun,
     PriceSnapshot,
 )
+from quantinue.core.ontology import EvidenceKind
+from quantinue.core.schemas import Evidence
 from quantinue.db.postgres import PostgresRunStore
 from quantinue.llm.provider import DeterministicAnalyzer
 from quantinue.orchestration.factory import build_roles
@@ -45,6 +47,18 @@ MIDDAY = datetime(2026, 7, 20, 17, 0, tzinfo=UTC)
 MIDDAY_LATE_ENTRY = datetime(2026, 7, 20, 17, 5, tzinfo=UTC)
 MIDDAY_HALTED = datetime(2026, 7, 20, 17, 10, tzinfo=UTC)
 GATES = GatesConfig()
+
+# 다른 통합 테스트가 재사용하는 신선한 증거 한 건.
+_EVIDENCE_FOR_PROFILE_TEST = Evidence(
+    evidence_id="run-profile:08:critic",
+    run_id="run-profile",
+    source="critic",
+    source_ref="policy://critic/v1",
+    observed_at=MIDDAY,
+    captured_at=MIDDAY,
+    confidence=1.0,
+    kind=EvidenceKind.MODEL_OUTPUT,
+)
 
 
 @dataclass(frozen=True, slots=True)

@@ -120,3 +120,14 @@ class OrderPlanWrite:
     entry_price: Decimal | None = None
     stop_price: Decimal | None = None
     take_profit_price: Decimal | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AccountRiskState:
+    """One account's capital and book size at decision time."""
+
+    account_id: int
+    cash: Decimal
+    equity: Decimal
+    open_position_count: int
+    inv_type: str | None

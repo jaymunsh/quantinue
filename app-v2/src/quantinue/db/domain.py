@@ -3,13 +3,14 @@
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import MetaData, Table, select
+from sqlalchemy import MetaData, Table, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from quantinue.core.contracts import DisclosureSourceRecord, NewsSourceRecord
 from quantinue.db.contracts import AppOrderExposureStatus
 from quantinue.db.domain_records import (
+    AccountRiskState,
     AccountWrite,
     CompletedBuyWrite,
     CriticVerdictWrite,
@@ -115,6 +116,38 @@ class PostgresDomainRepository:
         )
         async with self._engine.begin() as connection:
             _ = await connection.execute(statement)
+
+    async def account_risk_state(self, account_id: int) -> AccountRiskState | None:
+        """Read the capital and book size the portfolio limits are applied to.
+
+        Positions are derived from filled orders: there is no sell path yet, so
+        a filled buy is an open position until M5 introduces closing.
+        """
+        accounts = self._table("tb_account")
+        orders = self._table("tb_order")
+        async with self._engine.begin() as connection:
+            row = (
+                await connection.execute(
+                    select(
+                        accounts.c.cash, accounts.c.equity, accounts.c.inv_type
+                    ).where(accounts.c.id == account_id)
+                )
+            ).first()
+            if row is None:
+                return None
+            held = await connection.scalar(
+                select(func.count(func.distinct(orders.c.ticker))).where(
+                    orders.c.account_id == account_id,
+                    orders.c.status == "filled",
+                )
+            )
+        return AccountRiskState(
+            account_id=account_id,
+            cash=Decimal(str(row.cash)),
+            equity=Decimal(str(row.equity)),
+            open_position_count=int(held or 0),
+            inv_type=row.inv_type,
+        )
 
     async def save_order_plan(self, value: OrderPlanWrite) -> None:
         """Record role 09's decision — including the ones that blocked a buy.

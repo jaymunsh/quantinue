@@ -1,5 +1,6 @@
 """Dependency composition for the default 01 to 11 pipeline."""
 
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Final, assert_never
 
@@ -84,6 +85,7 @@ def build_roles(  # noqa: PLR0913 - one composition seam per replaceable collabo
     gates: GatesConfig = DEFAULT_GATES,
     profile: ProfileConfig = DEFAULT_PROFILE,
     disclosure: DisclosureConfig = DEFAULT_DISCLOSURE,
+    profiles: Mapping[str, ProfileConfig] | None = None,
 ) -> tuple[PipelineRole, ...]:
     """Compose the replaceable role implementations in canonical order."""
     selected_store = store or InMemoryRunStore()
@@ -115,6 +117,7 @@ def build_roles(  # noqa: PLR0913 - one composition seam per replaceable collabo
             take_profit_ratio=policy.take_profit_ratio,
             gates=gates,
             profile=profile,
+            profiles=dict(profiles or {}),
         ),
         OrderExecution(broker, selected_store),
         Reviewer(),
@@ -193,6 +196,7 @@ def build_configured_orchestrator(
             mvp2.gates,
             mvp2.profiles[DEFAULT_PROFILE_NAME],
             mvp2.disclosure,
+            mvp2.profiles,
         ),
         store,
         policy=policy,
