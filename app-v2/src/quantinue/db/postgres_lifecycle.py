@@ -8,7 +8,7 @@ from quantinue.core.contracts import AccountOrderPlan, PipelineContext
 from quantinue.db.domain import PostgresDomainRepository
 from quantinue.db.domain_records import (
     AccountWrite,
-    CompletedBuyWrite,
+    CompletedFillWrite,
     CriticVerdictWrite,
     OrderPlanWrite,
     OrderReconciliation,
@@ -30,9 +30,9 @@ class PostgresDomainLifecycleMixin:
         self._account_identity = account_identity
         self._account = AccountWrite(account_identity, opening_cash, opening_cash, opening_cash)
 
-    async def record_completed_buy(self, value: CompletedBuyWrite) -> int:
+    async def record_completed_fill(self, value: CompletedFillWrite) -> int:
         """Apply the shared completed-buy contract through atomic accounting."""
-        return await self._domain.record_completed_buy(value)
+        return await self._domain.record_completed_fill(value)
 
     @property
     def account_identity(self) -> str:
@@ -110,8 +110,8 @@ async def _record_account_fills(
     for item in result.account_orders:
         if item.result.status != "filled":
             continue
-        _ = await domain.record_completed_buy(
-            CompletedBuyWrite(
+        _ = await domain.record_completed_fill(
+            CompletedFillWrite(
                 idempotency_key=item.result.client_order_id,
                 broker_order_id=item.result.order_id,
                 broker_fill_id=f"{item.result.order_id}:fill",
@@ -182,8 +182,8 @@ async def persist_domain_stage(  # noqa: C901 - one branch per persisted stage
         await _record_account_fills(domain, result)
     elif component == "10" and result.order is not None:
         if result.order.status == "filled":
-            _ = await domain.record_completed_buy(
-                CompletedBuyWrite(
+            _ = await domain.record_completed_fill(
+                CompletedFillWrite(
                     idempotency_key=result.order.client_order_id,
                     broker_order_id=result.order.order_id,
                     broker_fill_id=f"{result.order.order_id}:fill",

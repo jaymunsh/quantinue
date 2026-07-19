@@ -1,4 +1,4 @@
-"""Shared completed-buy store contract for process-local accounting."""
+"""Shared completed-fill store contract for process-local accounting."""
 
 from __future__ import annotations
 
@@ -9,19 +9,19 @@ import anyio
 from quantinue.db.simulated_portfolio import (
     SimulatedFill,
     SimulatedOrder,
-    completed_buy_records,
+    completed_fill_records,
 )
 
 if TYPE_CHECKING:
-    from quantinue.db.domain_records import CompletedBuyWrite
+    from quantinue.db.domain_records import CompletedFillWrite
     from quantinue.db.memory_exposure import AppOrderExposure
 
 
-class MemoryCompletedBuyMixin:
-    """Apply completed buys using state owned by the concrete memory store."""
+class MemoryCompletedFillMixin:
+    """Apply completed fills using state owned by the concrete memory store."""
 
     def __init__(self) -> None:
-        """Initialize state shared by exposure and completed-buy accounting."""
+        """Initialize state shared by exposure and completed-fill accounting."""
         self._lock = anyio.Lock()
         self._app_order_exposures: dict[str, AppOrderExposure] = {}
         self._simulated_fills: dict[str, SimulatedFill] = {}
@@ -33,11 +33,11 @@ class MemoryCompletedBuyMixin:
         del order, fill
         raise NotImplementedError
 
-    async def record_completed_buy(self, value: CompletedBuyWrite) -> int:
-        """Apply the shared durable completed-buy contract to process-local state."""
+    async def record_completed_fill(self, value: CompletedFillWrite) -> int:
+        """Apply the shared durable completed-fill contract to process-local state."""
         async with self._lock:
             exposure = self._app_order_exposures[value.idempotency_key]
-        order, fill = completed_buy_records(
+        order, fill = completed_fill_records(
             exposure.request.ticker, exposure.request.entry_price, value
         )
         await self.record_simulated_order(order, fill)

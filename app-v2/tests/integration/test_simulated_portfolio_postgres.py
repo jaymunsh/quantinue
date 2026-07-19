@@ -11,11 +11,11 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from quantinue.db.domain import PostgresDomainRepository
-from quantinue.db.domain_records import AccountWrite, CompletedBuyWrite
+from quantinue.db.domain_records import AccountWrite, CompletedFillWrite
 from quantinue.db.postgres import PostgresRunStore
 from quantinue.db.simulated_portfolio import (
     MarkSource,
-    project_buy_only_portfolio,
+    project_portfolio,
 )
 
 DATABASE_URL = os.getenv("QUANTINUE_TEST_DATABASE_URL")
@@ -126,8 +126,8 @@ async def _seed_nonterminal_mark_candidates(database_url: str, ticker: str) -> N
     await engine.dispose()
 
 
-def _buy(identity: str) -> CompletedBuyWrite:
-    return CompletedBuyWrite(
+def _buy(identity: str) -> CompletedFillWrite:
+    return CompletedFillWrite(
         idempotency_key=identity,
         broker_order_id=f"broker-{identity}",
         broker_fill_id=f"fill-{identity}",
@@ -157,7 +157,7 @@ async def test_account_initialization_is_concurrent_and_never_resets_mutated_cas
         _ = group.start_soon(initialize, first)
         _ = group.start_soon(initialize, second)
     _ = await _seed_reserved_order(DATABASE_URL, ids[0], "once")
-    _ = await first.record_completed_buy(_buy("once"))
+    _ = await first.record_completed_fill(_buy("once"))
     replayed_id = await second.save_account(account)
 
     # Then
@@ -201,7 +201,7 @@ async def test_unique_buy_fill_debits_once_and_survives_store_reopen() -> None:
     fill_ids: list[int] = []
 
     async def record_once(candidate: PostgresDomainRepository) -> None:
-        fill_ids.append(await candidate.record_completed_buy(_buy("restart")))
+        fill_ids.append(await candidate.record_completed_fill(_buy("restart")))
 
     async with anyio.create_task_group() as group:
         _ = group.start_soon(record_once, repository)
@@ -223,7 +223,7 @@ async def test_unique_buy_fill_debits_once_and_survives_store_reopen() -> None:
     persisted_position = next(
         position for position in after.positions if position.ticker == "RESTART"
     )
-    memory_projection = project_buy_only_portfolio(
+    memory_projection = project_portfolio(
         OPENING_CASH,
         after.orders,
         after.fills,
@@ -258,7 +258,7 @@ async def test_insufficient_cash_rolls_back_fill_and_account_debit() -> None:
 
     # When / Then
     with pytest.raises(ValueError, match="insufficient simulated cash"):
-        _ = await repository.record_completed_buy(_buy("insufficient"))
+        _ = await repository.record_completed_fill(_buy("insufficient"))
     engine = create_async_engine(DATABASE_URL)
     async with engine.connect() as connection:
         fill_count = _INT.validate_python(

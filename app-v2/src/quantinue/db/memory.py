@@ -28,7 +28,7 @@ from quantinue.db.contracts import (
     PersistedAttempt,
     RunClaim,
 )
-from quantinue.db.memory_completed_buy import MemoryCompletedBuyMixin
+from quantinue.db.memory_completed_fill import MemoryCompletedFillMixin
 from quantinue.db.memory_exposure import (
     TERMINAL_APP_ORDER_STATUSES,
     AppOrderExposure,
@@ -41,13 +41,13 @@ from quantinue.db.simulated_portfolio import (
     SimulatedOrder,
     SimulatedPortfolioSnapshot,
     ensure_fill_is_affordable,
-    project_buy_only_portfolio,
+    project_portfolio,
 )
 
 _DEFAULT_OPENING_CASH: Final = Decimal("1000000.00")
 
 
-class InMemoryRunStore(MemoryCompletedBuyMixin):
+class InMemoryRunStore(MemoryCompletedFillMixin):
     """Mutable process-local fake with atomic claim and checkpoint semantics."""
 
     def __init__(self, opening_cash: Decimal = _DEFAULT_OPENING_CASH) -> None:
@@ -224,7 +224,7 @@ class InMemoryRunStore(MemoryCompletedBuyMixin):
                 and run.status is RunStatus.COMPLETED
                 and context.last_price is not None
             )
-        return project_buy_only_portfolio(opening_cash, orders, fills, marks)
+        return project_portfolio(opening_cash, orders, fills, marks)
 
     @override
     async def record_simulated_order(

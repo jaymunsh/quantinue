@@ -1,4 +1,4 @@
-"""Atomic PostgreSQL accounting for one app-owned simulated buy."""
+"""Atomic PostgreSQL accounting for one app-owned simulated fill."""
 
 from decimal import Decimal
 
@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from quantinue.core.ontology import FillSide
 from quantinue.db.domain_records import (
     AccountWrite,
-    CompletedBuyWrite,
+    CompletedFillWrite,
     InsufficientSimulatedCashError,
 )
 
@@ -41,14 +41,14 @@ async def initialize_account(engine: AsyncEngine, table: Table, value: AccountWr
         )
 
 
-async def record_completed_buy(
+async def record_completed_fill(
     engine: AsyncEngine,
     order_table: Table,
     fill_table: Table,
     account_table: Table,
-    value: CompletedBuyWrite,
+    value: CompletedFillWrite,
 ) -> int:
-    """Insert one unique fill and debit cash in the same transaction."""
+    """Insert one unique fill and move cash in the same transaction."""
     async with engine.begin() as connection:
         existing_fill_id = await connection.scalar(
             select(fill_table.c.id).where(fill_table.c.broker_fill_id == value.broker_fill_id)

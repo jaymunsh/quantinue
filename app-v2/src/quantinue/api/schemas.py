@@ -265,7 +265,7 @@ class SimulatedFillView(BaseModel):
 
 
 class SimulatedPortfolioView(BaseModel):
-    """Local buy-only portfolio projection."""
+    """Local portfolio projection."""
 
     model_config = ConfigDict(frozen=True)
 

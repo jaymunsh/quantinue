@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
     from quantinue.core.contracts import PipelineContext, PipelineRequest, PipelineRun, RunId
     from quantinue.db.active_snapshot import ActivePipelineSnapshot
-    from quantinue.db.domain_records import CompletedBuyWrite
+    from quantinue.db.domain_records import CompletedFillWrite
     from quantinue.db.simulated_portfolio import SimulatedPortfolioSnapshot
 
 _CENT: Final = Decimal("0.01")
@@ -251,11 +251,11 @@ class RunStore(Protocol):
         ...
 
     async def simulated_portfolio(self, opening_cash: Decimal) -> SimulatedPortfolioSnapshot:
-        """Return the derived local buy-only account read model."""
+        """Return the derived local account read model."""
         ...
 
-    async def record_completed_buy(self, value: CompletedBuyWrite) -> int:
-        """Apply one unique app-owned completed buy to the simulated account."""
+    async def record_completed_fill(self, value: CompletedFillWrite) -> int:
+        """Apply one unique app-owned completed fill to the simulated account."""
         ...
 
     async def reserve_daily_new_order(

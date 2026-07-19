@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from quantinue.db.domain_records import CompletedBuyWrite, InsufficientSimulatedCashError
+from quantinue.db.domain_records import CompletedFillWrite, InsufficientSimulatedCashError
 from quantinue.db.simulated_portfolio import (
     FillSide,
     MarkSource,
@@ -12,8 +12,8 @@ from quantinue.db.simulated_portfolio import (
     SimulatedFill,
     SimulatedOrder,
     SimulatedOrderStatus,
-    completed_buy_records,
-    project_buy_only_portfolio,
+    completed_fill_records,
+    project_portfolio,
 )
 
 
@@ -48,7 +48,7 @@ def test_two_unique_buys_produce_weighted_cost_cash_and_marked_equity() -> None:
     marks = (PortfolioMark("NVDA", Decimal("120.00"), MarkSource.COMPLETED_RUN, _at(3)),)
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000000.00"), orders, fills, marks)
+    result = project_portfolio(Decimal("1000000.00"), orders, fills, marks)
 
     # Then
     assert result.account.current_cash == Decimal("999670.00")
@@ -72,7 +72,7 @@ def test_duplicate_fill_identity_cannot_double_debit() -> None:
     fill = SimulatedFill("fill-1", "order-1", "NVDA", 2, Decimal("100.00"), _at(1))
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000000.00"), (order,), (fill, fill), ())
+    result = project_portfolio(Decimal("1000000.00"), (order,), (fill, fill), ())
 
     # Then
     assert result.account.current_cash == Decimal("999800.00")
@@ -86,7 +86,7 @@ def test_latest_completed_run_mark_wins_over_newer_fill_fallback() -> None:
     marks = (PortfolioMark("NVDA", Decimal("125.00"), MarkSource.COMPLETED_RUN, _at(3)),)
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000000.00"), (), fills, marks)
+    result = project_portfolio(Decimal("1000000.00"), (), fills, marks)
 
     # Then
     assert result.positions[0].mark.price == Decimal("125.00")
@@ -102,7 +102,7 @@ def test_stale_completed_run_mark_is_replaced_by_latest_completed_run_mark() -> 
     )
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000000.00"), (), (fill,), marks)
+    result = project_portfolio(Decimal("1000000.00"), (), (fill,), marks)
 
     # Then
     assert result.positions[0].mark.price == Decimal("110.00")
@@ -110,7 +110,7 @@ def test_stale_completed_run_mark_is_replaced_by_latest_completed_run_mark() -> 
 
 def test_empty_account_preserves_opening_cash_and_realized_is_not_applicable() -> None:
     # Given / When
-    result = project_buy_only_portfolio(Decimal("1000000.00"), (), (), ())
+    result = project_portfolio(Decimal("1000000.00"), (), (), ())
 
     # Then
     assert result.account.opening_cash == Decimal("1000000.00")
@@ -118,7 +118,7 @@ def test_empty_account_preserves_opening_cash_and_realized_is_not_applicable() -
     assert result.account.equity == Decimal("1000000.00")
     assert result.positions == ()
     assert result.realized_pnl is None
-    assert result.realized_pnl_status is RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
+    assert result.realized_pnl_status is RealizedPnlStatus.NOT_APPLICABLE_NO_CLOSES
 
 
 def test_rejected_order_without_fill_does_not_change_account() -> None:
@@ -133,7 +133,7 @@ def test_rejected_order_without_fill_does_not_change_account() -> None:
     )
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000000.00"), (order,), (), ())
+    result = project_portfolio(Decimal("1000000.00"), (order,), (), ())
 
     # Then
     assert result.account.current_cash == Decimal("1000000.00")
@@ -147,7 +147,7 @@ def test_money_and_allocation_use_deterministic_decimal_rounding() -> None:
     mark = PortfolioMark("ABC", Decimal("0.02"), MarkSource.COMPLETED_RUN, _at(2))
 
     # When
-    result = project_buy_only_portfolio(Decimal("1.00"), (), (fill,), (mark,))
+    result = project_portfolio(Decimal("1.00"), (), (fill,), (mark,))
 
     # Then
     assert result.account.current_cash == Decimal("0.97")
@@ -161,7 +161,7 @@ def test_stale_conflicting_duplicate_fill_cannot_replace_first_canonical_fill() 
     stale_replay = SimulatedFill("fill-1", "order-1", "NVDA", 9, Decimal("500.00"), _at(1))
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000000.00"), (), (canonical, stale_replay), ())
+    result = project_portfolio(Decimal("1000000.00"), (), (canonical, stale_replay), ())
 
     # Then
     assert result.account.current_cash == Decimal("999800.00")
@@ -174,7 +174,7 @@ def test_projection_rejects_fill_cost_above_opening_cash() -> None:
 
     # When / Then
     with pytest.raises(InsufficientSimulatedCashError):
-        _ = project_buy_only_portfolio(Decimal("100.00"), (), (fill,), ())
+        _ = project_portfolio(Decimal("100.00"), (), (fill,), ())
 
 
 def test_sell_fill_reduces_position_and_credits_cash() -> None:
@@ -189,7 +189,7 @@ def test_sell_fill_reduces_position_and_credits_cash() -> None:
     marks = (PortfolioMark("NVDA", Decimal("120.00"), MarkSource.COMPLETED_RUN, _at(3)),)
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000.00"), (), fills, marks)
+    result = project_portfolio(Decimal("1000.00"), (), fills, marks)
 
     # Then: 3 - 1 held, cash 1000 - 300 + 130, basis follows the average cost out
     assert result.positions[0].quantity == 2
@@ -209,7 +209,7 @@ def test_sell_fill_realizes_profit_against_average_cost() -> None:
     )
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000.00"), (), fills, ())
+    result = project_portfolio(Decimal("1000.00"), (), fills, ())
 
     # Then
     assert result.realized_pnl == Decimal("30.00")
@@ -219,7 +219,7 @@ def test_sell_fill_realizes_profit_against_average_cost() -> None:
 def test_close_write_maps_to_a_sell_fill() -> None:
     """A close order's fill must carry SELL so the ledger credits instead of debits."""
     # Given
-    value = CompletedBuyWrite(
+    value = CompletedFillWrite(
         idempotency_key="q-a1-s7-c",
         broker_order_id="order-2",
         broker_fill_id="fill-2",
@@ -230,20 +230,20 @@ def test_close_write_maps_to_a_sell_fill() -> None:
     )
 
     # When
-    _, fill = completed_buy_records("NVDA", Decimal("130.00"), value)
+    _, fill = completed_fill_records("NVDA", Decimal("130.00"), value)
 
     # Then
     assert fill.side is FillSide.SELL
 
 
-def test_buy_only_ledger_still_reports_realized_pnl_as_not_applicable() -> None:
+def test_ledger_without_closes_reports_realized_pnl_as_not_applicable() -> None:
     """Without a sale there is nothing realized — the status must say so."""
     # Given
     fills = (SimulatedFill("fill-1", "order-1", "NVDA", 3, Decimal("100.00"), _at(1)),)
 
     # When
-    result = project_buy_only_portfolio(Decimal("1000.00"), (), fills, ())
+    result = project_portfolio(Decimal("1000.00"), (), fills, ())
 
     # Then
     assert result.realized_pnl is None
-    assert result.realized_pnl_status is RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
+    assert result.realized_pnl_status is RealizedPnlStatus.NOT_APPLICABLE_NO_CLOSES

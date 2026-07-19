@@ -1,4 +1,4 @@
-"""Typed durable reads for the PostgreSQL simulated buy-only portfolio."""
+"""Typed durable reads for the PostgreSQL simulated portfolio."""
 
 from dataclasses import replace
 from datetime import datetime
@@ -17,7 +17,7 @@ from quantinue.db.simulated_portfolio import (
     SimulatedOrder,
     SimulatedOrderStatus,
     SimulatedPortfolioSnapshot,
-    project_buy_only_portfolio,
+    project_portfolio,
 )
 
 LOCAL_SIMULATED_ACCOUNT_ID: Final = "quantinue-local-simulated"
@@ -151,7 +151,7 @@ async def read_simulated_portfolio(
     parsed_orders = tuple(_OrderRow.model_validate(dict(row)) for row in order_rows)
     parsed_fills = tuple(_FillRow.model_validate(dict(row)) for row in fill_rows)
     parsed_marks = tuple(_MarkRow.model_validate(dict(row)) for row in mark_rows)
-    projected = project_buy_only_portfolio(
+    projected = project_portfolio(
         opening_cash,
         tuple(
             SimulatedOrder(

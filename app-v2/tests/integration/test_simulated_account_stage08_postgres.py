@@ -14,7 +14,7 @@ from quantinue.db.contracts import (
     AppOrderExposureReservationOutcome,
     DailyOrderReservation,
 )
-from quantinue.db.domain_records import CompletedBuyWrite
+from quantinue.db.domain_records import CompletedFillWrite
 from quantinue.db.memory import InMemoryRunStore
 from quantinue.db.postgres import PostgresRunStore
 
@@ -75,8 +75,8 @@ async def test_component_08_second_distinct_run_does_not_reset_debited_account()
             {"signal": first_result.signal_id, "account": first_result.account_id},
         )
     await engine.dispose()
-    _ = await store.domain.record_completed_buy(
-        CompletedBuyWrite(
+    _ = await store.domain.record_completed_fill(
+        CompletedFillWrite(
             idempotency_key="stage-08-fill",
             broker_order_id="stage-08-broker-order",
             broker_fill_id="stage-08-broker-fill",
@@ -161,7 +161,7 @@ async def test_memory_and_postgres_public_store_contracts_produce_exact_snapshot
     memory_reservation = await memory.reserve_daily_new_order(reservation)
     assert postgres_reservation.outcome is AppOrderExposureReservationOutcome.ACQUIRED
     assert memory_reservation.outcome is AppOrderExposureReservationOutcome.ACQUIRED
-    completed_buy = CompletedBuyWrite(
+    completed_fill = CompletedFillWrite(
         idempotency_key=reservation.idempotency_key,
         broker_order_id="parity-broker-order",
         broker_fill_id="parity-broker-fill",
@@ -171,8 +171,8 @@ async def test_memory_and_postgres_public_store_contracts_produce_exact_snapshot
     )
 
     # When
-    _ = await postgres.record_completed_buy(completed_buy)
-    _ = await memory.record_completed_buy(completed_buy)
+    _ = await postgres.record_completed_fill(completed_fill)
+    _ = await memory.record_completed_fill(completed_fill)
     postgres_snapshot = await postgres.simulated_portfolio(OPENING_CASH)
     memory_snapshot = await memory.simulated_portfolio(OPENING_CASH)
 

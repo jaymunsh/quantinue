@@ -1,4 +1,4 @@
-"""Pure contracts and accounting for the phase-one simulated buy-only account."""
+"""Pure contracts and accounting for the local simulated account ledger."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final, Protocol, runtime_checkable
 
 from quantinue.core.ontology import FillSide
-from quantinue.db.domain_records import CompletedBuyWrite, InsufficientSimulatedCashError
+from quantinue.db.domain_records import CompletedFillWrite, InsufficientSimulatedCashError
 
 __all__ = [
     "AccountPortfolio",
@@ -22,9 +22,9 @@ __all__ = [
     "SimulatedOrderStatus",
     "SimulatedPortfolioSnapshot",
     "SimulatedPosition",
-    "completed_buy_records",
+    "completed_fill_records",
     "ensure_fill_is_affordable",
-    "project_buy_only_portfolio",
+    "project_portfolio",
 ]
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class MarkSource(StrEnum):
 class RealizedPnlStatus(StrEnum):
     """Whether the ledger has closed anything to realize profit against."""
 
-    NOT_APPLICABLE_BUY_ONLY = "not_applicable_buy_only"
+    NOT_APPLICABLE_NO_CLOSES = "not_applicable_no_closes"
     AVAILABLE = "available"
 
 
@@ -115,7 +115,7 @@ class SimulatedAccount:
 
 @dataclass(frozen=True, slots=True)
 class SimulatedPosition:
-    """Derived buy-only holding valued with an observable mark."""
+    """Derived net holding valued with an observable mark."""
 
     ticker: str
     quantity: int
@@ -136,7 +136,7 @@ class SimulatedPortfolioSnapshot:
     orders: tuple[SimulatedOrder, ...]
     fills: tuple[SimulatedFill, ...]
     realized_pnl: Decimal | None = None
-    realized_pnl_status: RealizedPnlStatus = RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
+    realized_pnl_status: RealizedPnlStatus = RealizedPnlStatus.NOT_APPLICABLE_NO_CLOSES
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,10 +211,10 @@ def ensure_fill_is_affordable(
         raise InsufficientSimulatedCashError(available=available, required=required)
 
 
-def completed_buy_records(
+def completed_fill_records(
     ticker: str,
     reference_price: Decimal,
-    value: CompletedBuyWrite,
+    value: CompletedFillWrite,
 ) -> tuple[SimulatedOrder, SimulatedFill]:
     """Map the shared completed-buy contract to local immutable records."""
     return (
@@ -238,7 +238,7 @@ def completed_buy_records(
     )
 
 
-def project_buy_only_portfolio(
+def project_portfolio(
     opening_cash: Decimal,
     orders: tuple[SimulatedOrder, ...],
     fills: tuple[SimulatedFill, ...],
@@ -332,7 +332,7 @@ def project_buy_only_portfolio(
         fills=unique_fills,
         realized_pnl=realized,
         realized_pnl_status=(
-            RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
+            RealizedPnlStatus.NOT_APPLICABLE_NO_CLOSES
             if realized is None
             else RealizedPnlStatus.AVAILABLE
         ),

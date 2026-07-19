@@ -80,7 +80,7 @@ class FillWrite:
 
 
 @dataclass(frozen=True, slots=True)
-class CompletedBuyWrite:
+class CompletedFillWrite:
     """One app-owned filled order applied atomically to the local account.
 
     ``side`` defaults to a buy so every pre-close call site keeps its meaning;

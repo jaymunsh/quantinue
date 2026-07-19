@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 from quantinue.core.contracts import PipelineContext, PipelineRequest
 from quantinue.core.ontology import FillSide
-from quantinue.db.domain_records import CompletedBuyWrite
+from quantinue.db.domain_records import CompletedFillWrite
 from quantinue.db.postgres import PostgresRunStore
 
 DATABASE_URL = os.getenv("QUANTINUE_TEST_DATABASE_URL")
@@ -94,8 +94,8 @@ async def test_close_fill_credits_cash_instead_of_debiting_it() -> None:
             ),
             {"signal": buy_signal, "account": account_id},
         )
-    _ = await store.domain.record_completed_buy(
-        CompletedBuyWrite(
+    _ = await store.domain.record_completed_fill(
+        CompletedFillWrite(
             idempotency_key="close-acct-buy",
             broker_order_id="close-acct-buy-order",
             broker_fill_id="close-acct-buy-fill",
@@ -123,8 +123,8 @@ async def test_close_fill_credits_cash_instead_of_debiting_it() -> None:
             ),
             {"signal": sell_signal, "account": account_id, "closes": buy_order_id},
         )
-    _ = await store.domain.record_completed_buy(
-        CompletedBuyWrite(
+    _ = await store.domain.record_completed_fill(
+        CompletedFillWrite(
             idempotency_key="close-acct-sell",
             broker_order_id="close-acct-sell-order",
             broker_fill_id="close-acct-sell-fill",

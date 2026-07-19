@@ -26,7 +26,7 @@ from quantinue.db.simulated_portfolio import (
     SimulatedOrder,
     SimulatedOrderStatus,
     SimulatedPortfolioSnapshot,
-    project_buy_only_portfolio,
+    project_portfolio,
 )
 from quantinue.main import create_app
 
@@ -90,7 +90,7 @@ class FilledPortfolioStore(InMemoryRunStore):
         )
         fill = SimulatedFill("local-fill-1", "local-order-1", "NVDA", 2, Decimal("100.00"), now)
         mark = PortfolioMark("NVDA", Decimal("125.00"), MarkSource.COMPLETED_RUN, now)
-        return project_buy_only_portfolio(opening_cash, (order,), (fill,), (mark,))
+        return project_portfolio(opening_cash, (order,), (fill,), (mark,))
 
 
 def test_dashboard_runs_and_displays_pipeline() -> None:

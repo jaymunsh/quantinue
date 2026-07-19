@@ -12,14 +12,14 @@ from quantinue.db.contracts import AppOrderExposureStatus
 from quantinue.db.domain_records import (
     AccountRiskState,
     AccountWrite,
-    CompletedBuyWrite,
+    CompletedFillWrite,
     CriticVerdictWrite,
     OrderPlanWrite,
     OrderReconciliation,
     StrategistSignalWrite,
 )
 from quantinue.db.domain_sources import save_source_records
-from quantinue.db.postgres_accounting import initialize_account, record_completed_buy
+from quantinue.db.postgres_accounting import initialize_account, record_completed_fill
 from quantinue.roles.role_01_universe_screener.contracts import UniverseScreenerOutput
 from quantinue.roles.role_02_technical_analysis.contracts import TechnicalAnalysisOutput
 from quantinue.roles.role_03_daily_screener.contracts import DailyScreenerOutput
@@ -345,9 +345,9 @@ class PostgresDomainRepository:
         )
         return await self.save_account(account)
 
-    async def record_completed_buy(self, value: CompletedBuyWrite) -> int:
+    async def record_completed_fill(self, value: CompletedFillWrite) -> int:
         """Insert one unique local buy fill and debit its account atomically."""
-        return await record_completed_buy(
+        return await record_completed_fill(
             self._engine,
             self._table("tb_order"),
             self._table("tb_fill"),

@@ -204,7 +204,7 @@ def _news_selection_view(detail: NewsSelectionDetail) -> NewsSelectionView:
 
 
 def simulated_portfolio_view(snapshot: SimulatedPortfolioSnapshot) -> SimulatedPortfolioView:
-    """Project the local buy-only ledger without implying an Alpaca account balance."""
+    """Project the local ledger without implying an Alpaca account balance."""
     return SimulatedPortfolioView(
         account=PortfolioAccountView(
             opening_cash=snapshot.account.opening_cash,
