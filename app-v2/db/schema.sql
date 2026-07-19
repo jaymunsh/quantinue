@@ -131,13 +131,21 @@ CREATE TABLE IF NOT EXISTS tb_account (
 CREATE TABLE IF NOT EXISTS tb_order (
   id BIGSERIAL PRIMARY KEY, signal_id BIGINT NOT NULL REFERENCES tb_strategist_signals(id),
   account_id BIGINT NOT NULL REFERENCES tb_account(id), ticker TEXT NOT NULL, quantity INT NOT NULL CHECK (quantity > 0),
-  entry_price NUMERIC NOT NULL CHECK (entry_price > 0), stop_price NUMERIC NOT NULL CHECK (stop_price > 0),
-  take_profit_price NUMERIC NOT NULL CHECK (take_profit_price > 0), order_type TEXT NOT NULL DEFAULT 'bracket' CHECK (order_type IN ('bracket')),
+  entry_price NUMERIC NOT NULL CHECK (entry_price > 0), stop_price NUMERIC CHECK (stop_price > 0),
+  take_profit_price NUMERIC CHECK (take_profit_price > 0), order_type TEXT NOT NULL DEFAULT 'bracket' CHECK (order_type IN ('bracket','close')),
+  closes_order_id BIGINT REFERENCES tb_order(id),
   status TEXT NOT NULL CHECK (status IN ('planned','submitted','filled','failed','canceled')),
   idempotency_key TEXT NOT NULL UNIQUE, broker_order_id TEXT UNIQUE, created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   parent_order_id TEXT, stop_leg_order_id TEXT, take_profit_leg_order_id TEXT,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (account_id, signal_id), CHECK (stop_price < entry_price AND entry_price < take_profit_price)
+  UNIQUE (account_id, signal_id),
+  -- 브래킷 삼중 제약은 매수에만 해당한다. 청산에는 손절·익절이 없으므로
+  -- 더미 값을 채우는 대신 컬럼을 비운다.
+  CHECK (order_type <> 'bracket' OR (
+    stop_price IS NOT NULL AND take_profit_price IS NOT NULL
+    AND stop_price < entry_price AND entry_price < take_profit_price)),
+  -- 청산은 반드시 어느 매수를 닫는지 가리켜야 한다(실현손익의 짝).
+  CHECK (order_type <> 'close' OR closes_order_id IS NOT NULL)
 );
 CREATE TABLE IF NOT EXISTS tb_fill (
   id BIGSERIAL PRIMARY KEY, order_id BIGINT NOT NULL REFERENCES tb_order(id), side TEXT NOT NULL CHECK (side IN ('buy','sell')),

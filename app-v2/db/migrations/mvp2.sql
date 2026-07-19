@@ -163,3 +163,28 @@ CREATE TABLE IF NOT EXISTS tb_order_plan (
   CHECK ((decision = 'planned' AND skipped_reason IS NULL AND quantity > 0)
       OR (decision = 'skipped' AND skipped_reason IS NOT NULL AND quantity = 0))
 );
+
+-- M5: 매도(청산) 주문 표현. tb_order는 브래킷 매수 전용이었다 —
+-- order_type CHECK가 'bracket'만 받고, 손절·익절이 NOT NULL이며,
+-- stop < entry < take_profit 삼중 제약이 매도에서는 만족될 수 없다.
+-- 청산에 더미 손절·익절을 채우는 대신 컬럼을 비우고 제약을 조건부로 만든다.
+DO $$
+BEGIN
+  ALTER TABLE tb_order ALTER COLUMN stop_price DROP NOT NULL;
+  ALTER TABLE tb_order ALTER COLUMN take_profit_price DROP NOT NULL;
+  ALTER TABLE tb_order ADD COLUMN IF NOT EXISTS closes_order_id BIGINT REFERENCES tb_order(id);
+
+  ALTER TABLE tb_order DROP CONSTRAINT IF EXISTS tb_order_order_type_check;
+  ALTER TABLE tb_order ADD CONSTRAINT tb_order_order_type_check
+    CHECK (order_type IN ('bracket','close'));
+
+  ALTER TABLE tb_order DROP CONSTRAINT IF EXISTS tb_order_check;
+  ALTER TABLE tb_order ADD CONSTRAINT tb_order_check
+    CHECK (order_type <> 'bracket' OR (
+      stop_price IS NOT NULL AND take_profit_price IS NOT NULL
+      AND stop_price < entry_price AND entry_price < take_profit_price));
+
+  ALTER TABLE tb_order DROP CONSTRAINT IF EXISTS tb_order_close_target_check;
+  ALTER TABLE tb_order ADD CONSTRAINT tb_order_close_target_check
+    CHECK (order_type <> 'close' OR closes_order_id IS NOT NULL);
+END $$;

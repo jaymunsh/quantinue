@@ -171,6 +171,8 @@ FK: dict[str, set[ForeignKey]] = {
     "tb_order": {
         (("signal_id",), "tb_strategist_signals", ("id",)),
         (("account_id",), "tb_account", ("id",)),
+        # 청산이 어느 매수를 닫는지 — 실현손익의 짝.
+        (("closes_order_id",), "tb_order", ("id",)),
     },
     "tb_fill": {(("order_id",), "tb_order", ("id",))},
     "tb_review_price_snapshots": {(("signal_id",), "tb_strategist_signals", ("id",))},
@@ -275,11 +277,18 @@ CHECKS = {
         ("entry_price",): ("entry_price >",),
         ("stop_price",): ("stop_price >",),
         ("take_profit_price",): ("take_profit_price >",),
-        ("order_type",): ("order_type = 'bracket'",),
+        ("order_type",): ("'bracket'", "'close'"),
         ("status",): ("'planned'", "'submitted'", "'filled'", "'failed'", "'canceled'"),
-        ("stop_price", "entry_price", "take_profit_price"): (
+        # 브래킷 삼중 제약은 매수에만 — 청산엔 손절·익절이 없다.
+        ("order_type", "stop_price", "take_profit_price", "entry_price"): (
+            "order_type <> 'bracket'",
             "stop_price < entry_price",
             "entry_price < take_profit_price",
+        ),
+        # 청산은 반드시 어느 매수를 닫는지 가리킨다.
+        ("order_type", "closes_order_id"): (
+            "order_type <> 'close'",
+            "closes_order_id is not null",
         ),
     },
     "tb_fill": {
