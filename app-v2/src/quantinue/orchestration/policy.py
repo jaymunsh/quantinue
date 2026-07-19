@@ -291,6 +291,10 @@ class MarketDataConfig(BaseModel):
     # 호출 한도도 공식 문서에서 확인되지 않았다 — 추정해 박는 대신 URL 길이가
     # 안전한 값에서 시작하고, 실측 후 여기서 조인다.
     symbols_per_request: int = Field(default=200, gt=0, le=2_000)
+    # 봉이 없는 종목을 처음 볼 때 소급해 받는 **달력일** 수(거래일이 아니다).
+    # 스크리닝의 가장 긴 창이 52주라 그보다 넉넉해야 하고, 상한을 둔 이유는
+    # 이 값이 곧 첫 실행의 응답 크기이기 때문이다.
+    history_days: int = Field(default=400, gt=0, le=3_650)
 
 
 class JobCadenceConfig(BaseModel):

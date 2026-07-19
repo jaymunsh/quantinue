@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import TYPE_CHECKING
@@ -51,20 +51,28 @@ def _bar(ticker: str) -> DailyBarWrite:
 class _Source:
     def __init__(self, bars: tuple[DailyBarWrite, ...]) -> None:
         self.bars = bars
-        self.calls: list[tuple[date, tuple[str, ...]]] = []
+        self.calls: list[tuple[date, date, tuple[str, ...]]] = []
 
-    async def daily_bars(
-        self, trade_date: date, tickers: tuple[str, ...]
+    async def daily_bars_range(
+        self, start: date, end: date, tickers: tuple[str, ...]
     ) -> tuple[DailyBarWrite, ...]:
-        self.calls.append((trade_date, tickers))
+        self.calls.append((start, end, tickers))
         return self.bars
 
 
 class _Domain:
-    def __init__(self, observations: Mapping[str, DailyObservation] | None = None) -> None:
+    def __init__(
+        self,
+        observations: Mapping[str, DailyObservation] | None = None,
+        coverage: Mapping[str, date] | None = None,
+    ) -> None:
         self.saved: list[tuple[DailyBarWrite, ...]] = []
         self._observations = dict(observations or {})
+        self._coverage = dict(coverage or {})
         self.observation_calls: list[tuple[date, tuple[str, ...]]] = []
+
+    async def bar_coverage(self) -> dict[str, date]:
+        return dict(self._coverage)
 
     async def save_daily_bars(self, bars: tuple[DailyBarWrite, ...]) -> None:
         self.saved.append(bars)
@@ -105,13 +113,15 @@ async def test_the_bars_job_collects_the_last_closed_session_not_today() -> None
         domain=domain,
         tickers=_held("AAA"),
         calendar=NyseCalendar(),
+        history_days=400,
     )
 
     # When
     detail = await job.run(_MONDAY)
 
     # Then
-    assert source.calls == [(_FRIDAY, ("AAA",))]
+    # 원장에 봉이 없는 종목이라 창 전체를 소급해 받는다 — 창 지표의 전제다.
+    assert source.calls == [(_FRIDAY - timedelta(days=400), _FRIDAY, ("AAA",))]
     assert domain.saved == [(_bar("AAA"),)]
     assert detail is not None
     assert "1" in detail
@@ -123,7 +133,11 @@ async def test_the_bars_job_does_nothing_when_nothing_is_held() -> None:
     source = _Source(())
     domain = _Domain()
     job = build_daily_bars_job(
-        source=source, domain=domain, tickers=_held(), calendar=NyseCalendar()
+        source=source,
+        domain=domain,
+        tickers=_held(),
+        calendar=NyseCalendar(),
+        history_days=400,
     )
 
     # When
@@ -381,7 +395,9 @@ async def test_bars_cover_the_universe_snapshot_as_well_as_holdings() -> None:
     _ = await bars.run(_MONDAY)
 
     # Then: 보유가 앞, 유니버스가 뒤, 중복은 한 번만
-    assert source.calls == [(_FRIDAY, ("HELD", "UNIA", "UNIB"))]
+    assert source.calls == [
+        (_FRIDAY - timedelta(days=400), _FRIDAY, ("HELD", "UNIA", "UNIB"))
+    ]
 
 
 @pytest.mark.anyio

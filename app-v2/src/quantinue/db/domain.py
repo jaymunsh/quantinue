@@ -2,6 +2,7 @@
 
 from datetime import date
 from decimal import Decimal
+from typing import Final
 
 from pydantic import BaseModel, ConfigDict
 from sqlalchemy import ColumnElement, MetaData, Table, and_, func, select
@@ -83,6 +84,13 @@ def _is_open_position(orders: Table) -> ColumnElement[bool]:
         )
         .exists(),
     )
+
+
+# 봉 업서트 시 갱신하는 열. PK(trade_date, ticker)는 제외한다.
+_BAR_VALUE_COLUMNS: Final = ("open", "high", "low", "close", "volume", "source")
+# 한 문장에 싣는 봉 행 수. 백필은 수십만 행이라 통째로 보내면 드라이버가
+# 파라미터를 전부 메모리에 들고 있게 된다.
+_BAR_WRITE_CHUNK: Final = 5_000
 
 
 class PostgresDomainRepository:
@@ -180,23 +188,50 @@ class PostgresDomainRepository:
         if not bars:
             return
         table = self._table("tb_daily_bar")
+        statement = insert(table)
+        statement = statement.on_conflict_do_update(
+            index_elements=["trade_date", "ticker"],
+            set_={name: statement.excluded[name] for name in _BAR_VALUE_COLUMNS},
+        )
+        rows = [
+            {
+                "trade_date": bar.trade_date,
+                "ticker": bar.ticker,
+                "open": bar.open,
+                "high": bar.high,
+                "low": bar.low,
+                "close": bar.close,
+                "volume": bar.volume,
+                "source": bar.source,
+            }
+            for bar in bars
+        ]
         async with self._engine.begin() as connection:
-            for bar in bars:
-                fields = {
-                    "open": bar.open,
-                    "high": bar.high,
-                    "low": bar.low,
-                    "close": bar.close,
-                    "volume": bar.volume,
-                    "source": bar.source,
-                }
+            # 행마다 한 번씩 왕복하면 이력 백필(2000종목 x 260세션, 약 50만 행)이
+            # 사실상 끝나지 않는다. 한 문장에 여러 행을 실어 보내되, 한 번에
+            # 전부 싣지는 않는다 — 드라이버가 파라미터를 통째로 들고 있어야 해서
+            # 메모리가 행 수에 비례해 튄다.
+            for start in range(0, len(rows), _BAR_WRITE_CHUNK):
                 _ = await connection.execute(
-                    insert(table)
-                    .values(trade_date=bar.trade_date, ticker=bar.ticker, **fields)
-                    .on_conflict_do_update(
-                        index_elements=["trade_date", "ticker"], set_=fields
-                    )
+                    statement, rows[start : start + _BAR_WRITE_CHUNK]
                 )
+
+    async def bar_coverage(self) -> dict[str, date]:
+        """Return the newest stored bar date per ticker.
+
+        수집 잡이 "무엇을 아직 모르는가"를 묻는 유일한 통로다. 종목 목록을
+        인자로 받지 않는 이유: 2000개짜리 IN 절을 만드는 것보다 원장 전체를
+        한 번 훑는 편이 싸고, 어차피 잡이 자기 목록과 교집합을 낸다.
+        """
+        table = self._table("tb_daily_bar")
+        async with self._engine.begin() as connection:
+            rows = (
+                await connection.execute(
+                    select(table.c.ticker, func.max(table.c.trade_date).label("newest"))
+                    .group_by(table.c.ticker)
+                )
+            ).all()
+        return {row.ticker: row.newest for row in rows}
 
     async def daily_bars(
         self, trade_date: date, tickers: tuple[str, ...]

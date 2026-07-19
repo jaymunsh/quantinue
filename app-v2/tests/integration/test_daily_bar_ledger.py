@@ -110,3 +110,44 @@ async def test_bars_become_exit_observations() -> None:
     assert observations["BARE"].day_range.low == Decimal("95.00")
     assert observations["BARE"].last_price == Decimal("105.00")
     await store.close()
+
+
+@pytest.mark.anyio
+async def test_coverage_reports_the_newest_stored_session_per_ticker() -> None:
+    """수집 잡이 "무엇을 아직 모르는가"를 묻는 통로 — 창의 시작점이 여기서 나온다."""
+    # Given: 같은 종목의 두 세션, 그리고 아예 없는 종목 하나.
+    assert DATABASE_URL is not None
+    store = PostgresRunStore(DATABASE_URL)
+    await store.initialize()
+    await store.domain.save_daily_bars(
+        (_bar("BARCOV"), _bar("BARCOV", trade_date=date(2026, 7, 9)))
+    )
+
+    # When
+    coverage = await store.domain.bar_coverage()
+
+    # Then: 가장 최신 세션만 보고된다 — 그 다음 날이 곧 증분의 시작이다.
+    assert coverage["BARCOV"] == max(_DAY, date(2026, 7, 9))
+    assert "BARNEVERSTORED" not in coverage
+    await store.close()
+
+
+@pytest.mark.anyio
+async def test_a_bulk_upsert_corrects_rows_it_already_holds() -> None:
+    """백필은 수만 행을 한 번에 쓴다 — 묶어 보내도 정정 규칙이 그대로여야 한다."""
+    # Given
+    assert DATABASE_URL is not None
+    store = PostgresRunStore(DATABASE_URL)
+    await store.initialize()
+    await store.domain.save_daily_bars((_bar("BARBULK"), _bar("BARBULK2")))
+
+    # When: 같은 키를 다른 종가로 다시 적재한다.
+    await store.domain.save_daily_bars(
+        (_bar("BARBULK", close=Decimal("107.00")), _bar("BARBULK2"))
+    )
+
+    # Then: 나중 값이 이긴다 — 거래소 정정이 반영되어야 하기 때문.
+    bars = await store.domain.daily_bars(_DAY, ("BARBULK", "BARBULK2"))
+    assert bars["BARBULK"].close == Decimal("107.00")
+    assert bars["BARBULK2"].close == Decimal("105.00")
+    await store.close()

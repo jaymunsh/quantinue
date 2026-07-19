@@ -13,8 +13,8 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time
-from typing import TYPE_CHECKING, Protocol, TypeAlias
+from datetime import UTC, date, datetime, time, timedelta
+from typing import TYPE_CHECKING, Final, Protocol, TypeAlias
 
 from quantinue.broker.mock import MockBroker
 from quantinue.core.market_calendar import NyseCalendar
@@ -38,16 +38,22 @@ if TYPE_CHECKING:
 
 TickerSource: TypeAlias = Callable[[date], Awaitable[tuple[str, ...]]]
 
+_ONE_DAY: Final = timedelta(days=1)
+
 
 class _BarSource(Protocol):
-    async def daily_bars(
-        self, trade_date: date, tickers: tuple[str, ...]
+    async def daily_bars_range(
+        self, start: date, end: date, tickers: tuple[str, ...]
     ) -> tuple[DailyBarWrite, ...]:
-        """Fetch one session's bars for the requested tickers."""
+        """Fetch an inclusive window of bars for the requested tickers."""
         ...
 
 
 class _BarSink(Protocol):
+    async def bar_coverage(self) -> dict[str, date]:
+        """Return the newest stored bar date per ticker."""
+        ...
+
     async def save_daily_bars(self, bars: tuple[DailyBarWrite, ...]) -> None:
         """Upsert the collected bars into the ledger."""
         ...
@@ -173,15 +179,34 @@ def build_disclosures_job(
     return JobDefinition(name=name, run=run)
 
 
-def build_daily_bars_job(
+def build_daily_bars_job(  # noqa: PLR0913 - 각 인자가 교체 가능한 협력자 하나다
     *,
     source: _BarSource,
     domain: _BarSink,
     tickers: TickerSource,
     calendar: NyseCalendar,
+    history_days: int,
     name: str = "daily_bars",
 ) -> JobDefinition:
-    """Collect and store the last closed session's bars."""
+    """Fill the ledger up to the last closed session, backfilling what is missing.
+
+    **백필을 별도 잡으로 만들지 않은 이유.** 스크리닝의 랭킹 지표는 전부 창
+    지표(``ret_20d``·``ma20/50``·``high_252_ratio``·``rsi``)라 하루치 봉으로는
+    계산 자체가 안 된다. 그렇다고 "처음 한 번만 도는 잡"을 두면, 그 잡이 실패한
+    날과 성공한 날의 시스템이 서로 다른 물건이 된다. 대신 이 잡이 매번 **원장이
+    아는 마지막 날부터 직전 세션까지**를 채우게 하면 첫 실행은 백필이고 이후
+    실행은 증분이라, 경로가 하나뿐이고 중단된 백필도 다음 실행이 이어받는다.
+
+    창을 두 갈래로 나눠 부른다:
+    - 봉이 하나도 없는 종목: ``history_days`` 전체 창. 증분만 주면 창 지표가
+      영원히 계산되지 않는다.
+    - 이미 있는 종목: 원장이 아는 가장 최신 세션 다음 날부터.
+
+    남는 비용 하나: 유니버스에 있지만 거래소에 봉이 **한 번도** 없는 종목(실측
+    2000 중 1개)은 매 실행 cold로 남아 전체 창을 다시 묻는다. 응답이 비어 있어
+    원장에 아무것도 안 남기 때문이다. "찾아봤지만 없더라"를 기록할 자리를 새로
+    만들 만한 비용은 아니라고 판단했다 — 요청 한 건이다.
+    """
 
     async def run(as_of: date) -> str:
         wanted = await tickers(as_of)
@@ -189,9 +214,27 @@ def build_daily_bars_job(
             # 빈 목록으로 외부 API를 두드리지 않는다 — 한도만 축낸다.
             return "no tickers"
         session = calendar.previous_trading_day(as_of)
-        bars = await source.daily_bars(session, wanted)
-        await domain.save_daily_bars(bars)
-        return f"{len(bars)}/{len(wanted)} bars for {session.isoformat()}"
+        history_start = session - timedelta(days=history_days)
+        coverage = await domain.bar_coverage()
+        cold = tuple(ticker for ticker in wanted if ticker not in coverage)
+        warm = tuple(ticker for ticker in wanted if ticker in coverage)
+        collected: tuple[DailyBarWrite, ...] = ()
+        if cold:
+            collected += await source.daily_bars_range(history_start, session, cold)
+        if warm:
+            # **가장 앞선** 종목이 창의 시작을 정한다. 뒤처진 종목에 맞추면
+            # 실행마다 수십만 행을 다시 받는다(실측: 2회차가 30만 봉 재수신).
+            # 뒤처지는 이유는 우리가 못 받아서가 아니라 거래소에 그 종목의 봉이
+            # 없어서다 — 상장폐지·거래정지가 대부분이라 소급해도 채워지지 않는다.
+            # 정말 아무것도 없는 종목은 cold 갈래가 전체 창으로 덮는다.
+            warm_start = max(max(coverage[ticker] for ticker in warm) + _ONE_DAY, history_start)
+            if warm_start <= session:
+                collected += await source.daily_bars_range(warm_start, session, warm)
+        await domain.save_daily_bars(collected)
+        return (
+            f"{len(collected)} bars up to {session.isoformat()}"
+            f" ({len(cold)} backfilled, {len(warm)} incremental)"
+        )
 
     return JobDefinition(name=name, run=run)
 
@@ -299,6 +342,7 @@ def build_job_runner(
                 domain=domain,
                 tickers=covered_tickers,
                 calendar=calendar,
+                history_days=config.market_data.history_days,
             )
         )
     jobs.append(

@@ -91,6 +91,18 @@ class AlpacaBarSource:
         봉이 없는 게 정상이고, 여기서 0이나 전일 값으로 채우면 청산 잡이
         가짜 관측을 근거로 판단하게 된다.
         """
+        return await self.daily_bars_range(trade_date, trade_date, tickers)
+
+    async def daily_bars_range(
+        self, start: date, end: date, tickers: tuple[str, ...]
+    ) -> tuple[DailyBarWrite, ...]:
+        """Return every bar these symbols had between two dates, inclusive.
+
+        창을 날짜별로 쪼개 부르지 않는 이유: ``start``/``end``는 같은 요청의
+        파라미터라 260일 이력도 요청 수는 하루치와 같다. 늘어나는 것은 응답
+        크기뿐이고, 그건 이미 페이지네이션이 감당한다(``limit``은 종목당이
+        아니라 **전체 데이터 포인트** 기준이라 창이 넓어지면 페이지가 는다).
+        """
         if not tickers:
             return ()
         collected: list[DailyBarWrite] = []
@@ -105,7 +117,7 @@ class AlpacaBarSource:
             },
         ) as client:
             for chunk in self._chunks(tickers):
-                collected.extend(await self._collect_chunk(client, trade_date, chunk))
+                collected.extend(await self._collect_chunk(client, start, end, chunk))
         return tuple(collected)
 
     def _chunks(self, tickers: tuple[str, ...]) -> list[tuple[str, ...]]:
@@ -116,7 +128,8 @@ class AlpacaBarSource:
     async def _collect_chunk(
         self,
         client: httpx2.AsyncClient,
-        trade_date: date,
+        start: date,
+        end: date,
         chunk: tuple[str, ...],
     ) -> list[DailyBarWrite]:
         """Follow pagination, dropping symbols the venue refuses to recognise.
@@ -126,7 +139,6 @@ class AlpacaBarSource:
         관측이 없으면 아무것도 하지 않으므로 그 손실이 조용히 지나간다.
         루프는 심볼이 하나씩 줄어들 때만 돌므로 반드시 끝난다.
         """
-        day = trade_date.isoformat()
         # 우리 표기 → 거래소 표기. 응답을 되돌리려면 역매핑이 필요하다.
         venue_to_ours = {_to_venue_symbol(ticker): ticker for ticker in chunk}
         bars: list[DailyBarWrite] = []
@@ -134,8 +146,8 @@ class AlpacaBarSource:
             params: dict[str, str | int] = {
                 "symbols": ",".join(venue_to_ours),
                 "timeframe": "1Day",
-                "start": day,
-                "end": day,
+                "start": start.isoformat(),
+                "end": end.isoformat(),
                 "feed": "iex",
                 "limit": _MAX_POINTS_PER_PAGE,
             }
@@ -150,7 +162,9 @@ class AlpacaBarSource:
                     break
                 _ = response.raise_for_status()
                 payload = response.json()
-                bars.extend(_parse_page(payload, trade_date))
+                # 하루짜리 요청이면 응답 시각이 깨져도 어느 날인지 알지만,
+                # 창 요청이면 알 수 없다 — 그때는 지어내지 않고 버린다.
+                bars.extend(_parse_page(payload, start if start == end else None))
                 page_token = payload.get("next_page_token")
                 if not page_token:
                     return [
@@ -165,18 +179,20 @@ class AlpacaBarSource:
         return bars
 
 
-def _parse_page(payload: dict[str, Any], trade_date: date) -> list[DailyBarWrite]:
+def _parse_page(payload: dict[str, Any], fallback: date | None) -> list[DailyBarWrite]:
     """Map one response page, dropping bars the ledger would reject anyway."""
     parsed: list[DailyBarWrite] = []
     for ticker, entries in (payload.get("bars") or {}).items():
         for entry in entries or ():
-            bar = _parse_bar(ticker, entry, trade_date)
+            bar = _parse_bar(ticker, entry, fallback)
             if bar is not None:
                 parsed.append(bar)
     return parsed
 
 
-def _parse_bar(ticker: str, entry: dict[str, Any], trade_date: date) -> DailyBarWrite | None:
+def _parse_bar(
+    ticker: str, entry: dict[str, Any], fallback: date | None
+) -> DailyBarWrite | None:
     """Build one ledger row, or None when the venue handed us something impossible.
 
     나쁜 봉 하나가 적재 전체를 죽이지 않게 여기서 거른다. DB의 정합성 CHECK를
@@ -194,8 +210,12 @@ def _parse_bar(ticker: str, entry: dict[str, Any], trade_date: date) -> DailyBar
         return None
     if not (low <= open_ <= high and low <= close <= high):
         return None
+    trade_date = _bar_date(entry, fallback)
+    if trade_date is None:
+        # 어느 날의 봉인지 모르는 행은 원장의 PK를 만들 수 없다.
+        return None
     return DailyBarWrite(
-        trade_date=_bar_date(entry, trade_date),
+        trade_date=trade_date,
         ticker=ticker,
         open=open_,
         high=high,
@@ -206,7 +226,7 @@ def _parse_bar(ticker: str, entry: dict[str, Any], trade_date: date) -> DailyBar
     )
 
 
-def _bar_date(entry: dict[str, Any], fallback: date) -> date:
+def _bar_date(entry: dict[str, Any], fallback: date | None) -> date | None:
     """Trust the venue's own timestamp when it parses, else the requested day."""
     raw = entry.get("t")
     if not isinstance(raw, str):
