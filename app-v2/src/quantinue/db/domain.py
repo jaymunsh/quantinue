@@ -440,6 +440,75 @@ class PostgresDomainRepository:
                 .returning(orders.c.id)
             )
 
+    async def revalue_accounts(self, trade_date: date) -> dict[int, Decimal]:
+        """Mark every active account to the session close and persist the equity.
+
+        재설계 D8. 그 전까지 ``tb_account.equity``는 **최초 자본에 동결**돼
+        있었다 — 매수는 현금만 차감했고 보유의 시가평가가 어디에도 없었다
+        (ghost 감사 §2). 그래서 ``daily_loss_limit`` 같은 미실현손익 기반
+        서킷이 구조적으로 발동할 수 없었다.
+
+        평가식은 **현금(원장) + 보유수량 * 종가**다. 종가가 없는 보유는 진입가로
+        평가한다 — 0으로 두면 시세 수집이 한 번 실패한 날 계좌가 파산한 것처럼
+        보이고, 그 거짓 손실이 서킷을 발동시킨다.
+
+        멱등하다. 현금은 원장에서 다시 읽고 보유는 매번 새로 계산하므로,
+        같은 날 두 번 돌려도 값이 누적되지 않는다.
+        """
+        accounts = self._table("tb_account")
+        orders = self._table("tb_order")
+        bars = self._table("tb_daily_bar")
+        revalued: dict[int, Decimal] = {}
+        async with self._engine.begin() as connection:
+            rows = (
+                await connection.execute(
+                    select(accounts.c.id, accounts.c.cash)
+                    .where(accounts.c.status == "active")
+                    .order_by(accounts.c.id)
+                )
+            ).all()
+            holdings = (
+                await connection.execute(
+                    select(
+                        orders.c.account_id,
+                        orders.c.quantity,
+                        orders.c.entry_price,
+                        bars.c.close,
+                    )
+                    .select_from(
+                        orders.outerjoin(
+                            bars,
+                            and_(
+                                bars.c.ticker == orders.c.ticker,
+                                bars.c.trade_date == trade_date,
+                            ),
+                        )
+                    )
+                    .where(_is_open_position(orders))
+                )
+            ).all()
+            market_value: dict[int, Decimal] = {}
+            for holding in holdings:
+                mark = (
+                    Decimal(str(holding.entry_price))
+                    if holding.close is None
+                    else Decimal(str(holding.close))
+                )
+                account_id = int(holding.account_id)
+                market_value[account_id] = market_value.get(
+                    account_id, Decimal(0)
+                ) + Decimal(holding.quantity) * mark
+            for row in rows:
+                account_id = int(row.id)
+                equity = Decimal(str(row.cash)) + market_value.get(account_id, Decimal(0))
+                _ = await connection.execute(
+                    accounts.update()
+                    .where(accounts.c.id == account_id)
+                    .values(equity=equity)
+                )
+                revalued[account_id] = equity
+        return revalued
+
     async def account_risk_state(self, account_id: int) -> AccountRiskState | None:
         """Read the capital and book size the portfolio limits are applied to.
 
