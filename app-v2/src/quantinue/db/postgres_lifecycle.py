@@ -103,7 +103,26 @@ def _persisted_plans(result: PipelineContext) -> tuple[OrderPlanWrite, ...]:
     )
 
 
-async def persist_domain_stage(
+async def _record_account_fills(
+    domain: PostgresDomainRepository, result: PipelineContext
+) -> None:
+    """Record every account's fill — keeping only the primary loses the rest."""
+    for item in result.account_orders:
+        if item.result.status != "filled":
+            continue
+        _ = await domain.record_completed_buy(
+            CompletedBuyWrite(
+                idempotency_key=item.result.client_order_id,
+                broker_order_id=item.result.order_id,
+                broker_fill_id=f"{item.result.order_id}:fill",
+                quantity=item.result.quantity,
+                price=Decimal(str(item.result.filled_avg_price)),
+                filled_at=result.request.cycle_ts,
+            )
+        )
+
+
+async def persist_domain_stage(  # noqa: C901 - one branch per persisted stage
     domain: PostgresDomainRepository,
     account: AccountWrite,
     component: str,
@@ -160,20 +179,7 @@ async def persist_domain_stage(
         for plan in _persisted_plans(result):
             await domain.save_order_plan(plan)
     if component == "10" and result.account_orders:
-        # 계좌별 주문을 전부 기록한다 — 대표 하나만 남기면 나머지 계좌의
-        # 체결이 원장에서 사라진다.
-        for item in result.account_orders:
-            if item.result.status == "filled":
-                await domain.record_completed_buy(
-                    CompletedBuyWrite(
-                        idempotency_key=item.result.client_order_id,
-                        broker_order_id=item.result.order_id,
-                        broker_fill_id=f"{item.result.order_id}:fill",
-                        quantity=item.result.quantity,
-                        price=Decimal(str(item.result.filled_avg_price)),
-                        filled_at=result.request.cycle_ts,
-                    )
-                )
+        await _record_account_fills(domain, result)
     elif component == "10" and result.order is not None:
         if result.order.status == "filled":
             _ = await domain.record_completed_buy(
