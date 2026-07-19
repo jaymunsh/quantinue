@@ -6,7 +6,7 @@
 ## ⭐ 먼저 읽을 것
 
 1. **`docs/mvp2-planning/dev-playbook.md`** — 실행 정본. 마일스톤별 완료 표시(✅/🔶)와 남은 태스크, ⏳ 보완 목록이 전부 여기 있다.
-2. `docs/quantinue-integrated-design.html` — 설계 정본(v4.9). 확정 로직은 `#logic`, 결정 이력은 changelog.
+2. `docs/quantinue-integrated-design.html` — 설계 정본(v5.0). 확정 로직은 `#logic`, 결정 이력은 changelog.
 3. `docs/mvp2-planning/ghost-config-audit.md` — **유령 설정·컬럼 감사**(2026-07-19). 선언만 되고 소비자가 없는 값 전수 조사. ⚠️ **M5·M6·M8 착수 전 반드시 볼 것** — 성향별 리스크 한도와 LLM 예산 상한이 현재 하나도 적용되지 않는다.
 4. `docs/mvp2-planning/troubleshooting-log.md` — **트러블슈팅 기록**. 증상→원인→조치→교훈. **정본 HTML 트러블슈팅 섹션의 원본** — 정본 갱신 시 여기서 옮긴다.
 5. `docs/mvp2-planning/m4-scope-decisions.md` — **M4 범위 결정 기록**(2026-07-19). 코드 실사에서 나온 사실 F1~F8과 그에 따른 범위·순서 재정의(D1~D6). 각 결정에 근거와 "뒤집을 조건"을 병기 — 나중에 수정할 때 여기부터 볼 것.
@@ -17,7 +17,7 @@
 |---|---|
 | 작업 브랜치 | **`sunghyuk`** (여기서 계속 작업) |
 | main 병합 | **Wave 0~1 병합 완료**(커밋 `818416e`, `--no-ff`). **push는 안 함** — 공유 저장소이고 `app/`에 다른 작업자 WIP가 있어 사용자 확인 후 진행 |
-| 테스트 | 유닛/웹 **657 green** · 통합 **39 green** · ruff clean |
+| 테스트 | 유닛/웹 **676 green** · 통합 **58 green** · ruff clean |
 | DB | app-v2 전용 **포트 5445**(`app-v2-db-1`), M2 마이그레이션 적용 완료. 1차 `app-db-1`(5444)은 **다른 작업자 WIP — 불간섭** |
 | 앱 실행 포트 | **8020** (8000은 다른 프로세스 점유) |
 
@@ -27,13 +27,15 @@
 - **M2** 스키마·계약 일괄 확장 + 무손실 멱등 마이그레이션
 - **M3** 깔때기 복원 (2000 → 500 → 50 → 20)
 - **M4 검증 라운드** ✅ (2026-07-19) — 방어선 E2E 강제 발동 5종 · **halted 생략이 런을 죽이던 버그 수정** · 크리틱 문턱 이중값 정리(0.60→0.70) · `tb_order_plan` 신설로 방어선 발동 관측 가능화
+- **M6** 🔶 **진행 중** — 6-4 계좌 프로비저닝 ✅(테스트 2 + 데모 5, DB 반영) · 6-2 서킷 3/4 ✅(`daily_loss_limit`만 M5 이후) · 6-1 계획 팬아웃 ✅/집행 대표계좌 🔶 · 6-3 계좌별 포트폴리오 ✅
 - **M4** ✅ **완료 (2026-07-19)** — 방어선 8건 + 신설 2건(4-0 role_05 CIK 실배선 · 4-9 role_09 배선). 범위 결정 근거는 `m4-scope-decisions.md`
 
 ### 다음 할 일
 1. **월요일 개장 시(KST 22:30)**: playbook **W0-7**(실 페이퍼 무장 — ⚠️ 사용자 확인 필수) → **W0-8**(스모크·첫 체결) → T+5 시계 가동
 2. ✅ **드라이런 완료** (AAPL, HTTP 201, 01→11 완주) — 실행에서만 드러나는 결함 2건 수정(SEC UA 403 · NASDAQ과 UA 충돌). **단 갭 가드·late_entry·halted는 크리틱 선차단으로 미발동 — 유닛 검증만 된 상태**. block 매체도 표본에 차단 도메인이 없어 미실측. 상세: `m4-scope-decisions.md` §드라이런 실측
-3. ✅ **주문 규모 조정 완료 (2026-07-19)** — `.env`의 `MAX_APP_ORDER_EXPOSURE_USD`를 `1000000.00` → **`90000.00`**. 그 전 설정이면 첫 주문이 종목당 **$250,000** 규모로 나갔다(이 값이 사이징의 equity로 이중 사용됨). 현재: 포지션당 $22,500 · 4건에서 천장 · 현금 10% 유지. **M6-2에서 `min_cash_ratio` 배선 시 되돌릴 것.** 백업 `.env.bak-m4`
-4. ⚠️ **배포 전**: `QUANTINUE_HTTP_USER_AGENT`를 실제 연락 가능한 주소로 설정(SEC 공정접근 — 기본값은 동작하나 응답 불가)
+3. ℹ️ **주문 규모**: M6-2에서 **자본이 계좌에서 오게 되어** env 우회는 사실상 무력해졌다(계좌가 있으면 그 자본을 쓰고 현금 바닥은 `min_cash_ratio`가 지킨다). `.env` 기록은 아래 유지.
+4. ✅ **주문 규모 조정 (2026-07-19)** — `.env`의 `MAX_APP_ORDER_EXPOSURE_USD`를 `1000000.00` → **`90000.00`**. 그 전 설정이면 첫 주문이 종목당 **$250,000** 규모로 나갔다(이 값이 사이징의 equity로 이중 사용됨). 현재: 포지션당 $22,500 · 4건에서 천장 · 현금 10% 유지. **M6-2에서 `min_cash_ratio` 배선 시 되돌릴 것.** 백업 `.env.bak-m4`
+5. ⚠️ **배포 전**: `QUANTINUE_HTTP_USER_AGENT`를 실제 연락 가능한 주소로 설정(SEC 공정접근 — 기본값은 동작하나 응답 불가)
 5. 이후 **M5 매도**(최대 설계 작업 — 착수 시 첫 태스크는 매도 주문 표현 설계) → M6 계좌·서킷
 
 ## 확정된 정책 (되묻지 말 것)
@@ -47,7 +49,7 @@
 
 ```bash
 cd app-v2
-uv run pytest tests/unit tests/test_web.py -q          # 657 green 유지
+uv run pytest tests/unit tests/test_web.py -q          # 676 green 유지
 uv run ruff check src tests
 uv run uvicorn quantinue.main:app --port 8020          # 8000 점유됨
 docker compose up -d db                                 # 5445

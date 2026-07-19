@@ -281,7 +281,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v4.9 · MVP-2</span>
+    <span class="rail-ver">v5.0 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
@@ -322,6 +322,7 @@
       <a href="#ai"><span class="nnum">●</span> AI 추천 제안</a>
       <a href="#decisionlog"><span class="nnum">●</span> 결정 로그</a>
       <a href="#security"><span class="nnum">●</span> 보안</a>
+      <a href="#troubleshooting"><span class="nnum">●</span> 트러블슈팅</a>
       <a href="#changelog"><span class="nnum">●</span> 변경 이력</a>
     </nav>
   </aside>
@@ -1932,6 +1933,60 @@ erDiagram
       <div class="note warn"><b>실전(라이브) 전환 전 게이트 — 범위 외지만 명시</b> — 킬스위치 이중화 · 키 로테이션 절차 · 이상 탐지 알림(체결·잔고 급변) · 일일 손실 하드캡. 이 표가 다 차기 전 실계좌 금지.</div>
     </section>
 
+    <!-- 트러블슈팅 -->
+    <section id="troubleshooting">
+      <div class="sec-eyebrow">Troubleshooting</div>
+      <h2>트러블슈팅 — 무엇이 틀렸고 무엇을 배웠나</h2>
+      <p class="sec-intro">MVP-2 개발 중 실제로 발생한 결함을 <b>증상 → 원인 → 조치 → 교훈</b>으로 정리한다. 원본·전체 목록은 <code>docs/mvp2-planning/troubleshooting-log.md</code>(T1~T13).</p>
+
+      <div class="twrap"><table>
+        <tr><th>#</th><th>증상</th><th>근본 원인</th><th>영향</th></tr>
+        <tr><td class="mono">T1</td><td>모든 종목이 같은 공시로 채점됨</td><td>CIK 하드코딩</td><td>판단 오염</td></tr>
+        <tr><td class="mono">T2</td><td>공시 없는 종목에서 파이프라인 사망</td><td>부재를 표현할 자리가 없음</td><td>중단</td></tr>
+        <tr><td class="mono">T3</td><td>거래정지 종목 만나면 런 전체 실패</td><td>생략 시 수량 잔존</td><td>중단</td></tr>
+        <tr><td class="mono">T4</td><td>갭 가드가 파이프라인을 죽임</td><td>캘린더 구간 밖 날짜</td><td>중단</td></tr>
+        <tr><td class="mono">T5</td><td>SEC 403 / NASDAQ 연결 끊김</td><td>두 상류의 User-Agent 요구가 반대</td><td>수집 중단</td></tr>
+        <tr><td class="mono">T6</td><td>게이트가 영원히 안 걸림</td><td>퍼센트 vs 분수 100배 불일치</td><td>무력화</td></tr>
+        <tr><td class="mono">T7</td><td>문서보다 10p 느슨하게 승인</td><td>문턱 값이 두 곳에서 경쟁</td><td>무력화</td></tr>
+        <tr><td class="mono">T8</td><td>첫 주문이 종목당 $250,000</td><td>노출 상한을 자본으로 이중 사용</td><td>규모 오류</td></tr>
+        <tr><td class="mono">T9</td><td>방어선 발동을 셀 수 없음</td><td>결정이 저장되지 않음</td><td>관측 불가</td></tr>
+        <tr><td class="mono">T10</td><td>만장일치에서 INSERT 실패</td><td>CHECK 범위가 투표원 수보다 좁음</td><td>저장 실패</td></tr>
+        <tr><td class="mono">T11</td><td>소유권 신고서가 실질 공시를 밀어냄</td><td>최신 1건만 보고 종류를 안 가림</td><td>판단 오염</td></tr>
+        <tr><td class="mono">T12</td><td>감사 보고 3건이 틀림</td><td>정적 검색 결과를 추정으로 확장</td><td>판단 오염</td></tr>
+        <tr><td class="mono">T13</td><td>계좌별 사이징 켜자 큰 계좌만 거부됨</td><td>전역 천장을 다계좌가 나눠 씀</td><td>배분 왜곡</td></tr>
+      </table></div>
+
+      <h3 style="margin-top:28px">되풀이된 세 가지 교훈</h3>
+
+      <details class="schema"><summary><code>① 부재를 0으로 채우지 마라</code><span class="sd">T1 · T2 · T11</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">없는 값을 0으로 채우면 <b>그 0이 의미를 갖는 곳에서 오작동한다.</b> 공시 부재를 0점으로 두면 중립이 아니라 <b>강한 악재</b>로 읽혀 <code>hard_negative_max</code>(0.15)에 걸리고, 공시 없는 종목의 매수가 전부 차단된다.<br>
+ → <b>"모르는 상태"를 표현할 자리를 계약에 먼저 만든다.</b> 저신뢰 뉴스의 투표권 박탈과 같은 원리이고, M4 전체를 관통한 규칙이 됐다.</div>
+      </details>
+
+      <details class="schema"><summary><code>② 전역 설정으로 외부 규약을 맞추지 마라</code><span class="sd">T5 · T8 · T13</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">소스가 둘 이상이면 전역 값은 반드시 깨진다. SEC는 연락처가 든 User-Agent를 <b>요구</b>하고 NASDAQ은 같은 형식을 <b>거부</b>한다 — 전역 UA로는 둘 다 만족할 수 없다.<br>
+ 같은 병이 내부에도 있었다: <code>max_app_order_exposure_usd</code> 하나가 <b>사이징의 자본</b>이자 <b>누적 노출 천장</b>으로 이중 사용돼, 포지션 크기가 항상 자본의 정확히 25%로 고정됐다(현금 비율·비중을 따로 정할 방법이 없음). 다계좌를 도입하자 같은 값이 계좌들 사이에서 나눠 쓰이며 큰 계좌가 먼저 소진했다.<br>
+ → <b>정책의 적용 단위를 도메인 단위와 일치시킨다.</b> 소스별 정책은 소스별로, 계좌별 한도는 계좌별로.</div>
+      </details>
+
+      <details class="schema"><summary><code>③ 정적 검색은 후보를 줄 뿐 결론을 주지 않는다</code><span class="sd">T12</span></summary>
+        <div style="padding:6px 16px 16px;font-size:14px;line-height:1.8">유령 설정 감사에서 <code>grep</code>으로 "소비자 없음"을 확인한 뒤 <b>그 결과를 추정으로 확장</b>했고, 세 번 다 틀렸다 — "픽 50개 전부가 LLM을 탄다"(실제로는 다종목 팬아웃이 아예 없었다) · "리스크 한도가 하나도 없다"(작동하는 한도가 둘 있었고 문제는 그 값이었다) · "125% 과다배분"(예약 함수의 한도 둘 중 하나만 보고 계산, 실제로는 100%에서 멈춤).<br>
+ → <b>"소비자 없음"은 기계적으로 판정되지만 "그래서 무엇이 위험한가"는 호출 경로를 끝까지 읽어야 안다.</b></div>
+      </details>
+
+      <h3 style="margin-top:28px">검증 계층 — 무엇이 무엇을 잡았나</h3>
+      <div class="twrap"><table>
+        <tr><th>잡은 계층</th><th>결함</th></tr>
+        <tr><td>유닛 테스트</td><td class="mono">T6 · T10</td></tr>
+        <tr><td>통합 테스트</td><td class="mono">T4</td></tr>
+        <tr><td>강제 발동 E2E</td><td class="mono">T3</td></tr>
+        <tr><td><b>실행(드라이런)</b></td><td class="mono">T1 · T5 · T8 · T11</td></tr>
+        <tr><td>코드 정독</td><td class="mono">T7 · T9 · T12</td></tr>
+      </table></div>
+      <p class="sec-intro" style="margin-top:14px"><b>실행에서만 드러난 것이 가장 많았고, 대체로 가장 위험했다</b> — 판단 오염·수집 중단·규모 오류. mock은 우리가 만든 세계라서 <b>우리가 안 만든 현실은 보여주지 않는다.</b><br>
+      → 새 외부 연동·새 게이트는 <b>① 유닛 ② 통합 ③ 강제 발동 E2E ④ 실호출 드라이런</b>까지 통과시킨다.</p>
+    </section>
+
     <!-- 변경 이력 -->
     <section id="changelog">
       <div class="sec-eyebrow">Changelog</div>
@@ -1939,6 +1994,7 @@ erDiagram
       <p class="sec-intro">이 문서를 수정하면 표 맨 위에 한 줄 추가 + 버전 갱신 + git 커밋·태그.</p>
       <div class="twrap"><table>
         <tr><th>버전</th><th>날짜</th><th>수정자</th><th>변경 요약</th></tr>
+        <tr><td class="mono">v5.0</td><td class="mono">2026-07-19</td><td>문성혁 + Claude</td><td><b>M4 검증 라운드 + M6 착수 · 트러블슈팅 섹션 신설</b> — 방어선 3종을 <b>강제 발동 E2E</b>로 검증(기다려서는 검증 불가: 크리틱이 대부분을 막아 매수일이 곧 실거래일이 된다) · <b>halted 생략이 런 전체를 죽이던 버그</b> 수정 · 크리틱 문턱 이중값 정리(0.60→0.70, 문서대로) · <b>tb_order_plan 신설</b>로 방어선 발동 관측 가능화 · <b>유령 설정 전수 감사</b>(선언됐으나 소비자 없는 값) · M6: 계좌 프로비저닝(테스트 2 + 데모 5) · 서킷 3종 배선(max_weight가 POSITION_CAP_FRACTION 리터럴 대체) · <b>자본이 계좌에서 오게 됨</b>(그 전엔 앱 전역 상한이 equity라 $5K와 $150K 계좌가 같은 크기로 주문) · conservative 프로필 도달 가능화 · 계좌 구독 팬아웃 · 계좌별 포트폴리오 · 유닛/웹 676 · 통합 58 green</td></tr>
         <tr><td class="mono">v4.9</td><td class="mono">2026-07-19</td><td>문성혁 + Claude</td><td><b>M4 완료 — 판단 방어선(8건 + 신설 2건)</b> — <b>role_05 CIK 하드코딩 발견·수정</b>(모든 종목이 NVDA 공시로 채점되던 상태 — 4-2 게이트가 거짓 입력 위에서 돌고 있었다) · <b>공시 부재 = 투표 기권</b>(0점이면 hard_negative_max에 걸려 무공시 종목 매수 전면 차단) · 프리마켓 갭 가드(<b>세션 한정 적용</b> — 장중 3%는 평범한 이동) · late_entry(<b>ret_5d 퍼센트/분수 100배 불일치 수정</b>) · halted 사전 조회 · Form 4 오인 차단 커널(<b>ownership XML 필드 부재 확인 → 본체는 알파 항목으로 백로그</b>, T+5 지평 불일치) · consensus 실계산 + CHECK 0~3→0~4 · 대표기사 <b>신뢰가중 랭킹</b>(importance는 LLM 출력이라 선정 시점 부재 → 원안 개정) + peak_importance 실저장 · 유닛/웹 649 green · 통합 30 green · 드라이런 01→11 완주(<b>실행에서만 드러난 SEC/NASDAQ User-Agent 충돌 2건 수정</b>)</td></tr>
         <tr><td class="mono">v4.8</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>M3 완료 — 깔때기 복원(Wave 1 종료)</b> — 유니버스 50→2,000 + <b>시총 정렬로 응답순 버그 수정</b> · 하드 필터(주가 $5·20일 평균 거래대금 $20M) 신설 · 오늘의 픽 10→50 · 폭은 전부 config 소유 · <b>일봉이 종목당 1콜(~3s)이라 가격 조회는 시총 상위 500으로 제한</b>(소스 제약, #logic 카드) · 역할별 타임아웃 오버라이드 신설 · 실행 검증 152초 완주</td></tr>
         <tr><td class="mono">v4.7</td><td class="mono">2026-07-18</td><td>문성혁 + Claude</td><td><b>M2 완료 — 스키마·계약 일괄 확장</b> — reason JSONB ×4(legacy 보존)·공시signal +2·side +sell·07/08 계보 10 ×2·신규 3테이블·tb_account 확장·config mvp2(profiles/gates/screening/exits/budget) · <b>critic <code>source</code>→<code>verdict_source</code> 동명 충돌 해소</b> · 멱등 마이그레이션으로 W0 실데이터 무손실 적용 검증(행수 동일·2회 멱등·신규설치 경로와 카탈로그 일치)</td></tr>
