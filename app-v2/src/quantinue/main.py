@@ -33,6 +33,7 @@ from quantinue.core.contracts import PipelineRequest, PipelineRun, RunStatus
 from quantinue.core.logging import configure_logging
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.contracts import PersistedAttempt
+from quantinue.llm.provider import build_llm_analyzer
 from quantinue.orchestration.factory import (
     build_configured_orchestrator,
     build_default_orchestrator,
@@ -114,7 +115,10 @@ def create_app(  # noqa: C901, PLR0915
         selected_settings,
         mvp2_config,
         store=selected_store,
-        sources=JobSources(market_data=build_market_data(selected_settings)),
+        sources=JobSources(
+            market_data=build_market_data(selected_settings),
+            analyzer=build_llm_analyzer(selected_settings),
+        ),
     )
 
     @asynccontextmanager

@@ -27,7 +27,9 @@ class CriticInput(BaseModel):
     signal_id: int = Field(gt=0)
     ticker: str = Field(min_length=1, max_length=12)
     cycle_ts: datetime
-    side: Literal["buy"] = "buy"
+    # 매도 제안도 검증 대상이다. 패닉 매도를 반박할 자리가 없으면 모델의
+    # 약세 확신이 그대로 집행된다.
+    side: Literal["buy", "sell"] = "buy"
     conviction: float = Field(ge=0, le=1)
     current_price: float = Field(gt=0)
     day_high: float = Field(gt=0)
@@ -143,6 +145,13 @@ class CriticVerdict(BaseModel):
                 confidence=1.0,
                 decided_layer="quality_gate",
             )
+        if source.side == "sell":
+            # 여기부터의 게이트는 전부 "살 만한 근거인가"를 묻는다. 매도에는
+            # 반대로 작동한다 — risk_off는 파는 것을 막을 이유가 아니라 파는
+            # 이유이고, 뉴스·공시가 없다고 해서 이미 든 포지션을 못 팔면
+            # 근거가 조용한 종목만 영원히 남는다. 시세 정합성(위 두 게이트)은
+            # 매도에도 적용된다 — 값을 매길 수 없으면 팔 수도 없기 때문이다.
+            return None
         if source.macro_regime == "risk_off":
             return cls(
                 run_id=source.run_id,

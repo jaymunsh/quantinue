@@ -44,6 +44,9 @@ mvp2:
   profiles:
     aggressive:
       buy_threshold: 0.65
+      # 매도 문턱(약세 확신). 매수보다 낮은 것이 의도다 — 좋은 종목을 안 사면
+      # 기회를 놓칠 뿐이지만, 나쁜 종목을 안 팔면 손실이 계속 자란다.
+      sell_threshold: 0.60
       risk_off_action: penalty
       late_entry_max: 0.15
       max_positions: 10
@@ -52,6 +55,8 @@ mvp2:
       min_cash_ratio: 0.10
     conservative:
       buy_threshold: 0.75
+      # 안전형은 더 빨리 판다 — 확신이 흔들리는 순간 자리를 비운다.
+      sell_threshold: 0.50
       risk_off_action: no_new_buys
       late_entry_max: 0.12
       max_positions: 5
@@ -60,6 +65,9 @@ mvp2:
       min_cash_ratio: 0.30
   gates:
     source_trust_min: 0.55
+    # 증거가 이보다 오래되면 매수를 막는다(매도는 막지 않는다). 일 1회 잡은
+    # 어제 닫힌 세션을 보므로 분 단위 값으로는 매일 전 종목이 걸린다.
+    evidence_max_age_minutes: 2880
     hard_negative_max: 0.15
     macro_penalty_cap: 0.40
     # 1차 동결본 s07 POLICY 이관 — risk_score 구간별 확신도 감점

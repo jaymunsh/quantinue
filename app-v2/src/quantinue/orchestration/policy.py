@@ -194,6 +194,9 @@ class ProfileConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     buy_threshold: float = Field(default=0.65, ge=0, le=1)
+    # 매도 문턱(약세 확신 기준). 매수보다 낮은 것이 의도다 — 좋은 종목을 안 사면
+    # 기회를 놓칠 뿐이지만, 나쁜 종목을 안 팔면 손실이 계속 자란다.
+    sell_threshold: float = Field(default=0.60, ge=0, le=1)
     risk_off_action: Literal["penalty", "no_new_buys"] = "penalty"
     late_entry_max: float = Field(default=0.15, ge=0, le=1)
     max_positions: int = Field(default=10, gt=0, le=100)
@@ -218,6 +221,10 @@ class GatesConfig(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
     source_trust_min: float = Field(default=0.55, ge=0, le=1)
+    # 증거가 이보다 오래되면 매수를 막는다. 같은 코드가 두 케이던스를 도므로
+    # 코드 리터럴이면 안 된다 — 11단계 러너는 분 단위 증거를, 일 1회 잡은
+    # 어제 닫힌 세션을 본다. 기본 5분은 구 경로의 동작을 그대로 보존한다.
+    evidence_max_age_minutes: int = Field(default=5, gt=0, le=20_160)
     hard_negative_max: float = Field(default=0.15, ge=0, le=1)
     macro_penalty_cap: float = Field(default=0.40, ge=0, le=1)
     macro_penalty_table: tuple[tuple[float, float], ...] = DEFAULT_MACRO_PENALTIES

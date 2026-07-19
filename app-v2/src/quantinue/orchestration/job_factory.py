@@ -11,6 +11,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
@@ -23,6 +24,7 @@ from quantinue.db.domain_records import DailyPickWrite
 from quantinue.market_data.alpaca_bars import AlpacaBarSource
 from quantinue.market_data.sec_daily_index import SecDailyIndexSource
 from quantinue.orchestration.job_runner import JobDefinition, JobRunner
+from quantinue.roles.analysis.job import AnalysisJob
 from quantinue.roles.exits.job import ExitJob
 from quantinue.roles.role_01_universe_screener.contracts import (
     UniverseMember,
@@ -35,6 +37,7 @@ if TYPE_CHECKING:
 
     from quantinue.core.config import Settings
     from quantinue.db.domain_records import DailyBarWrite, RawDisclosureWrite
+    from quantinue.llm.provider import LlmAnalyzer
     from quantinue.market_data.models import SecuritySnapshot
     from quantinue.orchestration.policy import Mvp2Config, ScreeningConfig
     from quantinue.roles.exits import DailyObservation
@@ -339,6 +342,43 @@ def build_screening_job(
     return JobDefinition(name=name, run=run)
 
 
+def build_analysis_job(  # noqa: PLR0913 - 각 인자가 교체 가능한 협력자 하나다
+    *,
+    store: object,
+    analyzer: LlmAnalyzer,
+    config: Mvp2Config,
+    profile_name: str,
+    calendar: NyseCalendar,
+    name: str = "analysis",
+) -> JobDefinition:
+    """Analyse today's scope under one persona.
+
+    성향 이름을 인자로 받는 이유: 원장의 유일성 축이 ``inv_type``이라 페르소나
+    하나가 잡 하나다. 2종 팬아웃은 잡 두 개를 등록하는 일이 된다.
+    """
+    job = AnalysisJob(
+        store=store,
+        analyzer=analyzer,
+        gates=config.gates,
+        profile=config.profiles[profile_name],
+        profile_name=profile_name,
+        calendar=calendar,
+    )
+
+    async def run(as_of: date) -> str:
+        session = calendar.previous_trading_day(as_of)
+        outcomes = await job.run(as_of=as_of, session=session)
+        sides = Counter(outcome.side for outcome in outcomes)
+        approved = sum(1 for outcome in outcomes if outcome.approved)
+        return (
+            f"{len(outcomes)} analysed ({profile_name}):"
+            f" buy {sides['buy']} / sell {sides['sell']} / hold {sides['hold']},"
+            f" {approved} approved"
+        )
+
+    return JobDefinition(name=name, run=run)
+
+
 def build_exit_job(
     *,
     domain: _ObservationSource,
@@ -374,6 +414,7 @@ class JobSources:
     market_data: _UniverseSource | None = None
     bars: _BarSource | None = None
     disclosures: _FilingSource | None = None
+    analyzer: LlmAnalyzer | None = None
 
 
 def build_job_runner(
@@ -385,7 +426,7 @@ def build_job_runner(
 ) -> JobRunner | None:
     """Assemble the background job runner for this application, if it can run.
 
-    잡 등록 **순서가 계약이다**: 유니버스 → 일봉 → 공시 → 스크리닝 → 청산. 수집이 청산보다
+    잡 등록 **순서가 계약이다**: 유니버스 → 일봉 → 공시 → 스크리닝 → 분석 → 청산. 수집이 청산보다
     먼저 와야 오늘 시세·공시로 판단하고, 유니버스가 일봉보다 먼저 와야 그 주에
     새로 든 종목이 봉 없이 남지 않는다. 한 틱 안에서 순서대로 돌기 때문에 이
     순서가 그대로 데이터 의존성을 만족시킨다.
@@ -460,6 +501,20 @@ def build_job_runner(
             calendar=calendar,
         )
     )
+    if selected.analyzer is not None:
+        # 성향마다 한 잡. 선언 순서가 곧 실행 순서이고, 두 페르소나는 서로의
+        # 결과를 보지 않는다 — 원장에서 inv_type으로 갈린다.
+        jobs.extend(
+            build_analysis_job(
+                store=store,
+                analyzer=selected.analyzer,
+                config=config,
+                profile_name=profile_name,
+                calendar=calendar,
+                name=f"analysis:{profile_name}",
+            )
+            for profile_name in sorted(config.profiles)
+        )
     # 자격증명이 없어도 청산은 등록한다. 이미 저장된 봉만으로도 판단할 수 있고,
     # 관측이 없는 종목은 ExitJob이 알아서 건너뛴다 — 수집 실패가 매도로
     # 둔갑하지 않는다.

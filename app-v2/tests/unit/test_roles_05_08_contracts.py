@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from quantinue.core.contracts import PipelineContext, PipelineRequest
+from quantinue.orchestration.policy import GatesConfig, ProfileConfig
 from quantinue.roles.role_05_disclosure_analysis.contracts import DisclosureSignal
 from quantinue.roles.role_05_disclosure_analysis.service import FixtureSecDisclosureSource
 from quantinue.roles.role_06_news_analysis.contracts import NewsSignal
@@ -53,24 +54,42 @@ def test_strategy_output_uses_injected_confidence_threshold() -> None:
     assert output.side == "hold"
 
 
-def test_strategy_output_model_rejects_phase_two_sell() -> None:
-    # Given: an otherwise valid strategist result
-    strategy_input = StrategyInput.fixture()
+def test_a_sell_requires_actually_holding_the_position() -> None:
+    """매도의 유일한 하드 게이트는 보유다 — 없는 것을 팔 수는 없다.
 
-    # When / Then: model output requests the phase-two sell action
-    with pytest.raises(ValidationError):
-        _ = StrategyOutput.model_validate(
-            {
-                "run_id": strategy_input.run_id,
-                "ticker": strategy_input.ticker,
-                "cycle_ts": strategy_input.cycle_ts,
-                "side": "sell",
-                "conviction": 0.8,
-                "summary": "phase two",
-                "evidence_ids": strategy_input.evidence_ids,
-                "gate_passed": True,
-            }
-        )
+    이 테스트가 대체한 것: 예전에는 ``side="sell"``이 계약 수준에서 아예
+    구성 불가였다(Phase 2에서는 팔 줄 몰랐기 때문). 이제 팔 줄 알게 됐으므로
+    금지가 아니라 **조건**을 고정한다.
+    """
+    # Given: 약세 확신이 문턱을 넘는 같은 판단, 보유 여부만 다르다.
+    profile = ProfileConfig(sell_threshold=0.6)
+    holder = StrategyInput.fixture(held_quantity=10, entry_price=120.0)
+    stranger = StrategyInput.fixture(held_quantity=0)
+
+    # When: 확신도 0.2 → 약세 확신 0.8
+    sold = StrategyOutput.from_model(holder, 0.2, "thesis gone", profile=profile)
+    ignored = StrategyOutput.from_model(stranger, 0.2, "thesis gone", profile=profile)
+
+    # Then
+    assert sold.side == "sell"
+    assert ignored.side == "hold"
+
+
+def test_a_blocked_holding_can_still_be_sold() -> None:
+    """블로커는 "살 근거가 부족하다"는 뜻이지 파는 것을 막을 이유가 아니다."""
+    # Given: 상류가 하드 블록된 보유 종목.
+    blocked = StrategyInput.fixture(
+        held_quantity=10, disclosure_hard_blocked=True
+    )
+
+    # When
+    output = StrategyOutput.from_model(
+        blocked, 0.1, "blocked", profile=ProfileConfig(sell_threshold=0.6)
+    )
+
+    # Then: 블로커는 기록되지만 매도를 막지는 않는다.
+    assert output.blockers != ()
+    assert output.side == "sell"
 
 
 def test_critic_rejects_contradictory_lineage_without_llm() -> None:
@@ -165,13 +184,22 @@ def test_role07_rejects_cross_run_and_direct_buy_without_gate_proof() -> None:
         _ = StrategyInput.fixture(evidence_ids=("other-run:news",))
 
 
-def test_role07_boundary_rejects_snapshot_older_than_five_minutes() -> None:
-    # Given
-    stale_at = NOW - timedelta(minutes=6)
+def test_a_stale_snapshot_blocks_a_buy_at_the_configured_age() -> None:
+    """이 테스트가 대체한 것: 5분을 넘긴 입력을 **구성 자체가 불가**하게 막던 계약.
 
-    # When / Then
-    with pytest.raises(ValidationError, match="snapshot exceeds five-minute freshness SLA"):
-        _ = StrategyInput.fixture(cycle_ts=NOW, news_snapshot_at=stale_at)
+    그 리터럴이 일 1회 배치 경로를 구조적으로 막고 있었다 — 어제 닫힌 세션을
+    보는 잡은 매일 전 종목이 걸린다. 이제 문턱은 config가 갖고, 낡은 증거는
+    구성 실패가 아니라 **블로커**로 표현된다. 블로커는 매수만 막으므로 보유
+    종목의 매도 판단은 계속 살아 있다.
+    """
+    # Given: 6분 지난 스냅샷 하나.
+    stale = StrategyInput.fixture(cycle_ts=NOW, news_snapshot_at=NOW - timedelta(minutes=6))
+
+    # When / Then: 기본 5분에서는 블로커, 하루로 넓히면 사라진다.
+    assert "stale_news_snapshot" in stale.blockers(GatesConfig())
+    assert "stale_news_snapshot" not in stale.blockers(
+        GatesConfig(evidence_max_age_minutes=1_440)
+    )
 
 
 @pytest.mark.parametrize(
@@ -239,7 +267,6 @@ def test_role06_true_contract_matrix(
     [
         ("valid", {}, None),
         ("missing", {"evidence_ids": ()}, "too_short"),
-        ("stale", {"news_snapshot_at": NOW - timedelta(minutes=6)}, "freshness SLA"),
         ("future", {"news_snapshot_at": NOW + timedelta(seconds=1)}, "after cycle_ts"),
         (
             "contradictory",

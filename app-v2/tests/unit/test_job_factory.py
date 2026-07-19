@@ -13,6 +13,7 @@ from pydantic import SecretStr
 from quantinue.core.config import Settings
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.domain_records import DailyBarWrite
+from quantinue.llm.provider import DeterministicAnalyzer
 from quantinue.market_data.models import Provenance, SecuritySnapshot
 from quantinue.orchestration.job_factory import (
     JobSources,
@@ -447,3 +448,24 @@ def test_the_universe_job_is_registered_first() -> None:
         "screening",
         "exits",
     ]
+
+
+def test_one_analysis_job_is_registered_per_persona() -> None:
+    """원장의 유일성 축이 inv_type이라 페르소나 하나가 잡 하나다.
+
+    한 잡이 두 성향을 함께 돌면 `UNIQUE (ticker, cycle_ts, inv_type)` 위에서
+    둘이 서로를 덮어쓰거나, 한 성향이 실패할 때 다른 성향까지 같이 죽는다.
+    """
+    # Given / When
+    runner = build_job_runner(
+        _settings(),
+        Mvp2Config(),
+        store=_Store(_HoldingDomain(())),
+        sources=JobSources(analyzer=DeterministicAnalyzer()),
+    )
+
+    # Then: 수집 → 스크리닝 → 분석 → 청산. 분석은 범위가 정해진 뒤에만 뜻이 있다.
+    assert runner is not None
+    names = [job.name for job in runner.jobs]
+    assert names[-3:] == ["analysis:aggressive", "analysis:conservative", "exits"]
+    assert names.index("screening") < names.index("analysis:aggressive")

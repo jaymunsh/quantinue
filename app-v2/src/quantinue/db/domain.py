@@ -27,6 +27,7 @@ from quantinue.db.domain_records import (
 )
 from quantinue.db.domain_sources import save_source_records
 from quantinue.db.postgres_accounting import initialize_account, record_completed_fill
+from quantinue.roles.analysis import AnalysisSubject
 from quantinue.roles.exits import DailyObservation, OpenPosition
 from quantinue.roles.role_01_universe_screener.contracts import UniverseScreenerOutput
 from quantinue.roles.role_02_technical_analysis.contracts import TechnicalAnalysisOutput
@@ -159,6 +160,21 @@ WHERE p.trade_date = ANY(:days)
                   WHERE ns.trade_date = p.trade_date AND ns.ticker = p.ticker)
   AND NOT EXISTS (SELECT 1 FROM tb_strategist_signals s
                   WHERE s.trade_date = p.trade_date AND s.ticker = p.ticker)
+""")
+
+
+# 오늘의 분석 대상 한 줄에 필요한 전부: 스크리닝이 정한 순위·점수, 직전 세션의
+# 봉, 그리고 그 전 세션의 종가(크리틱의 급등락 게이트가 요구한다).
+# 종목마다 따로 묻지 않는 이유는 이 잡의 존재 이유와 같다 — 20종목이면 20왕복이다.
+_ANALYSIS_SUBJECTS_SQL = text("""
+SELECT p.ticker, p.rank, p.score, p.bucket,
+       b.close, b.high, b.low,
+       LAG(b.close) OVER (PARTITION BY p.ticker ORDER BY b.trade_date) AS close_prev
+FROM tb_daily_pick p
+JOIN tb_daily_bar b ON b.ticker = p.ticker AND b.trade_date <= :session
+WHERE p.trade_date = :as_of
+  AND b.trade_date > :session - INTERVAL '10 days'
+ORDER BY p.rank, b.trade_date
 """)
 
 
@@ -374,6 +390,64 @@ class PostgresDomainRepository:
                     for pick in picks
                 ],
             )
+
+    async def analysis_subjects(self, as_of: date, session: date) -> tuple[AnalysisSubject, ...]:
+        """Load today's scope together with the prices the gates need.
+
+        봉을 한 세션만 읽지 않는 이유: 크리틱의 급등락 게이트가 **전일 종가**를
+        요구하는데, 거래정지나 휴장으로 직전 세션 바로 앞이 비어 있을 수 있다.
+        10일 창을 읽고 각 종목의 마지막 두 봉만 취한다.
+
+        봉이 없는 종목(거래정지·상장폐지)은 빠진다. 값을 매길 수 없는 종목에
+        판단을 붙이면 그 판단이 무엇을 근거로 하는지 말할 수 없다 — 그런
+        종목의 청산은 하드 이벤트를 보는 청산 잡의 몫이다.
+        """
+        async with self._engine.begin() as connection:
+            rows = (
+                await connection.execute(
+                    _ANALYSIS_SUBJECTS_SQL, {"as_of": as_of, "session": session}
+                )
+            ).all()
+        # 종목별 마지막 행이 곧 가장 최근 봉이다(쿼리가 날짜 오름차순).
+        latest: dict[str, AnalysisSubject] = {}
+        for row in rows:
+            latest[row.ticker] = AnalysisSubject(
+                ticker=row.ticker,
+                rank=int(row.rank),
+                score=float(row.score),
+                bucket=row.bucket,
+                close=Decimal(str(row.close)),
+                high=Decimal(str(row.high)),
+                low=Decimal(str(row.low)),
+                close_prev=(
+                    None if row.close_prev is None else Decimal(str(row.close_prev))
+                ),
+            )
+        return tuple(sorted(latest.values(), key=lambda item: item.rank))
+
+    async def disclosure_evidence(
+        self, session: date, tickers: tuple[str, ...]
+    ) -> dict[str, tuple[str, ...]]:
+        """Return the session's filing form types per ticker, for the analysis prompt.
+
+        원시 원장을 읽는다 — ``tb_disclosure``는 그날 픽에만 행을 넣을 수 있어서
+        범위 밖 종목을 못 담는다(그래서 원시 원장이 따로 있다).
+        """
+        if not tickers:
+            return {}
+        table = self._table("tb_disclosure_raw")
+        async with self._engine.begin() as connection:
+            rows = (
+                await connection.execute(
+                    select(table.c.ticker, table.c.form_type)
+                    .where(table.c.trade_date == session, table.c.ticker.in_(tickers))
+                    .order_by(table.c.ticker, table.c.form_type)
+                )
+            ).all()
+        found: dict[str, list[str]] = {}
+        for row in rows:
+            found.setdefault(row.ticker, []).append(row.form_type)
+        return {ticker: tuple(forms) for ticker, forms in found.items()}
 
     async def bar_coverage(self) -> dict[str, date]:
         """Return the newest stored bar date per ticker.
