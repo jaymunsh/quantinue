@@ -761,13 +761,14 @@ erDiagram
 }</pre></div>
       </details>
 
-      <details class="schema"><summary><code>tb_universe</code><span class="sd">주1회 감시망 스냅샷</span><span class="cnt">5컬럼</span></summary>
+      <details class="schema"><summary><code>tb_universe</code><span class="sd">주1회 거래 가능 범위 스냅샷</span><span class="cnt">6컬럼</span></summary>
               <div class="twrap"><table>
                 <tr><th>컬럼</th><th>타입·제약</th><th>설명</th></tr>
                 <tr><td>as_of_date</td><td>DATE · PK</td><td>스냅샷 주차 날짜 — 매주 앨범처럼 누적 (생존편향 방지)</td></tr>
                 <tr><td>ticker</td><td>TEXT · PK</td><td>종목 코드</td></tr>
                 <tr><td>company_name</td><td>TEXT NOT NULL</td><td>회사명</td></tr>
-                <tr><td>market_cap</td><td>BIGINT ≥ 0</td><td>시가총액 — 상위 2,000 선정 기준</td></tr>
+                <tr><td>market_cap</td><td>BIGINT ≥ 0</td><td>시가총액 — 상위 2,000 선정 기준. 이월분은 마지막 관측값</td></tr>
+                <tr><td>listing_status</td><td>TEXT · CHECK('listed','held_delisted')</td><td>이 행이 어디서 왔나 — 상장 피드(listed) vs 상장폐지됐지만 우리가 보유해서 이월(held_delisted). 이월분은 <code>universe_size</code> 절단 대상이 아니다</td></tr>
                 <tr><td>created_at</td><td>TIMESTAMPTZ DEFAULT now()</td><td>DB 저장 시각 (기록용)</td></tr>
               </table></div>
                     <div class="rowex"><div class="rt">🧾 row 예시 — DB에 실제로 앉는 한 줄 (참고용 가짜 데이터 · NVDA 시나리오)</div><pre>{
@@ -775,6 +776,7 @@ erDiagram
   "ticker": "NVDA",
   "company_name": "NVIDIA Corporation",
   "market_cap": 3210000000000,
+  "listing_status": "listed",
   "created_at": "2026-07-20T12:05:11Z"
 }</pre></div>
       </details>

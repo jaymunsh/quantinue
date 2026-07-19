@@ -12,7 +12,7 @@ from pydantic import SecretStr
 
 from quantinue.core.config import Settings
 from quantinue.core.market_calendar import NyseCalendar
-from quantinue.db.domain_records import DailyBarWrite
+from quantinue.db.domain_records import DailyBarWrite, KnownListing
 from quantinue.llm.provider import DeterministicAnalyzer
 from quantinue.market_data.models import Provenance, SecuritySnapshot
 from quantinue.orchestration.job_factory import (
@@ -306,9 +306,15 @@ class _UniverseDomain(_HoldingDomain):
         self.universes: list[UniverseScreenerOutput] = []
         self.latest: date | None = None
         self.members: dict[date, tuple[str, ...]] = {}
+        self.known: dict[str, KnownListing] = {}
 
     async def save_universe(self, value: UniverseScreenerOutput) -> None:
         self.universes.append(value)
+
+    async def last_known_listings(
+        self, tickers: tuple[str, ...]
+    ) -> dict[str, KnownListing]:
+        return {t: self.known[t] for t in tickers if t in self.known}
 
     async def last_job_success(self, job_name: str) -> date | None:
         return self.latest if job_name == "universe" else None
@@ -341,7 +347,9 @@ async def test_the_universe_job_stamps_the_snapshot_with_the_day_it_ran() -> Non
     # Given
     source = _Screener((_snapshot("AAA", 300), _snapshot("BBB", 200)))
     domain = _UniverseDomain()
-    job = build_universe_job(source=source, domain=domain, config=ScreeningConfig())
+    job = build_universe_job(
+        source=source, domain=domain, held=_held(), config=ScreeningConfig()
+    )
 
     # When
     detail = await job.run(_MONDAY)
@@ -358,7 +366,9 @@ async def test_the_universe_job_ranks_by_market_cap() -> None:
     # Given
     source = _Screener((_snapshot("SMALL", 10), _snapshot("BIG", 900)))
     domain = _UniverseDomain()
-    job = build_universe_job(source=source, domain=domain, config=ScreeningConfig())
+    job = build_universe_job(
+        source=source, domain=domain, held=_held(), config=ScreeningConfig()
+    )
 
     # When
     _ = await job.run(_MONDAY)
@@ -373,7 +383,10 @@ async def test_the_universe_job_honours_the_configured_size() -> None:
     source = _Screener((_snapshot("A", 3), _snapshot("B", 2), _snapshot("C", 1)))
     domain = _UniverseDomain()
     job = build_universe_job(
-        source=source, domain=domain, config=ScreeningConfig(universe_size=2)
+        source=source,
+        domain=domain,
+        held=_held(),
+        config=ScreeningConfig(universe_size=2),
     )
 
     # When
@@ -381,6 +394,106 @@ async def test_the_universe_job_honours_the_configured_size() -> None:
 
     # Then
     assert [m.ticker for m in domain.universes[0].members] == ["A", "B"]
+
+
+@pytest.mark.anyio
+async def test_listing_feed_members_are_labelled_listed() -> None:
+    """이월분과 구분되지 않으면 라벨 자체가 다음 세대의 유령이 된다."""
+    # Given
+    source = _Screener((_snapshot("AAA", 300),))
+    domain = _UniverseDomain()
+    job = build_universe_job(
+        source=source, domain=domain, held=_held(), config=ScreeningConfig()
+    )
+
+    # When
+    _ = await job.run(_MONDAY)
+
+    # Then
+    assert domain.universes[0].members[0].listing_status == "listed"
+
+
+@pytest.mark.anyio
+async def test_a_holding_that_left_the_listing_feed_is_carried_forward() -> None:
+    """상장 피드에서 빠진 보유가 유니버스를 떠나면 청산 경로 전체가 막힌다."""
+    # Given
+    source = _Screener((_snapshot("AAA", 300),))
+    domain = _UniverseDomain(("GONE",))
+    domain.known["GONE"] = KnownListing(company_name="Gone Inc", market_cap=42)
+    job = build_universe_job(
+        source=source, domain=domain, held=_held("GONE"), config=ScreeningConfig()
+    )
+
+    # When
+    detail = await job.run(_MONDAY)
+
+    # Then
+    carried = domain.universes[0].members[-1]
+    assert carried.ticker == "GONE"
+    assert carried.listing_status == "held_delisted"
+    # 마지막 관측값을 옮긴다 — 0으로 두면 시총 정렬의 맨 뒤로 가고,
+    # 나중에 절단 로직이 바뀌면 문제가 조용히 되돌아온다.
+    assert carried.market_cap == 42
+    assert carried.company_name == "Gone Inc"
+    assert detail == "2 members as of 2026-07-20 (1 held, delisted)"
+
+
+@pytest.mark.anyio
+async def test_a_carried_holding_is_exempt_from_the_universe_size_cap() -> None:
+    """캡에 걸려 잘리면 이월의 목적 자체가 사라진다 — 스크리닝의 '보유는 캡 무관'과 같은 원리."""
+    # Given
+    source = _Screener((_snapshot("A", 3), _snapshot("B", 2), _snapshot("C", 1)))
+    domain = _UniverseDomain(("GONE",))
+    domain.known["GONE"] = KnownListing(company_name="Gone Inc", market_cap=1)
+    job = build_universe_job(
+        source=source,
+        domain=domain,
+        held=_held("GONE"),
+        config=ScreeningConfig(universe_size=2),
+    )
+
+    # When
+    _ = await job.run(_MONDAY)
+
+    # Then
+    assert [m.ticker for m in domain.universes[0].members] == ["A", "B", "GONE"]
+
+
+@pytest.mark.anyio
+async def test_a_holding_still_in_the_listing_feed_is_not_carried_twice() -> None:
+    """정상 보유는 상장분이다 — 이월로 중복되면 PK 충돌과 라벨 거짓이 함께 온다."""
+    # Given
+    source = _Screener((_snapshot("AAA", 300),))
+    domain = _UniverseDomain(("AAA",))
+    domain.known["AAA"] = KnownListing(company_name="Stale Inc", market_cap=1)
+    job = build_universe_job(
+        source=source, domain=domain, held=_held("AAA"), config=ScreeningConfig()
+    )
+
+    # When
+    detail = await job.run(_MONDAY)
+
+    # Then
+    assert [m.ticker for m in domain.universes[0].members] == ["AAA"]
+    assert domain.universes[0].members[0].listing_status == "listed"
+    assert detail == "1 members as of 2026-07-20"
+
+
+@pytest.mark.anyio
+async def test_a_holding_never_seen_in_any_universe_is_not_invented() -> None:
+    """유니버스에 한 번도 없던 종목은 살 수 없었다 — 이월할 근거도 없다."""
+    # Given
+    source = _Screener((_snapshot("AAA", 300),))
+    domain = _UniverseDomain(("PHANTOM",))
+    job = build_universe_job(
+        source=source, domain=domain, held=_held("PHANTOM"), config=ScreeningConfig()
+    )
+
+    # When
+    _ = await job.run(_MONDAY)
+
+    # Then
+    assert [m.ticker for m in domain.universes[0].members] == ["AAA"]
 
 
 @pytest.mark.anyio

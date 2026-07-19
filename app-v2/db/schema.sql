@@ -2,7 +2,13 @@
 -- All *_at values are UTC TIMESTAMPTZ; clients control display timezone.
 CREATE TABLE IF NOT EXISTS tb_universe (
   as_of_date DATE NOT NULL, ticker TEXT NOT NULL, company_name TEXT NOT NULL,
-  market_cap BIGINT NOT NULL CHECK (market_cap >= 0), created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  market_cap BIGINT NOT NULL CHECK (market_cap >= 0),
+  -- 거래 가능 범위는 상장 피드가 아니라 "상장 피드 ∪ 우리가 든 것"이다. 상장이
+  -- 폐지된 보유가 여기서 빠지면 tb_daily_pick 행을 못 만들고(FK) → sell 시그널을
+  -- 못 남기고 → close 주문을 못 만든다. 팔아야 할 바로 그 종목이 영구히 열린 채
+  -- 남는다. 불리언이 아닌 이유: suspended·pending_delisting이 생겨도 CHECK만 늘리면 된다.
+  listing_status TEXT NOT NULL DEFAULT 'listed' CHECK (listing_status IN ('listed','held_delisted')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   PRIMARY KEY (as_of_date, ticker)
 );
 CREATE TABLE IF NOT EXISTS tb_daily_pick (

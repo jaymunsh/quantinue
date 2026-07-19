@@ -20,6 +20,7 @@ from quantinue.db.domain_records import (
     CriticVerdictWrite,
     DailyBarWrite,
     DailyPickWrite,
+    KnownListing,
     OrderPlanWrite,
     OrderReconciliation,
     RawDisclosureWrite,
@@ -207,6 +208,36 @@ class PostgresDomainRepository:
                     .on_conflict_do_update(index_elements=["as_of_date", "ticker"], set_=fields)
                 )
                 _ = await connection.execute(statement)
+
+    async def last_known_listings(
+        self, tickers: tuple[str, ...]
+    ) -> dict[str, KnownListing]:
+        """Return each ticker's most recent universe row, if it ever had one.
+
+        상장폐지된 보유를 이월할 때 회사명·시총의 출처다. 시총이 오래된 값인
+        것은 알면서 쓰는 것이다 — 대안은 0이고, 0은 정렬에서 맨 뒤로 보내
+        나중에 절단 로직이 바뀌는 순간 문제를 조용히 되돌린다. 마지막으로
+        시장이 매긴 값이 "모른다"보다 정직하다.
+        """
+        if not tickers:
+            return {}
+        table = self._table("tb_universe")
+        # DISTINCT ON: 티커마다 가장 최신 스냅샷 1행. 상관 서브쿼리보다
+        # 한 번의 정렬로 끝나고, 이월 대상은 많아야 보유 수만큼이다.
+        statement = (
+            select(table.c.ticker, table.c.company_name, table.c.market_cap)
+            .where(table.c.ticker.in_(tickers))
+            .order_by(table.c.ticker, table.c.as_of_date.desc())
+            .distinct(table.c.ticker)
+        )
+        async with self._engine.begin() as connection:
+            rows = (await connection.execute(statement)).all()
+        return {
+            row.ticker: KnownListing(
+                company_name=row.company_name, market_cap=int(row.market_cap)
+            )
+            for row in rows
+        }
 
     async def universe_tickers(self, as_of: date) -> tuple[str, ...]:
         """Return one snapshot's tickers, largest first.

@@ -203,7 +203,11 @@ CHECKS = {
             "quantity = 0",
         ),
     },
-    "tb_universe": {("market_cap",): ("market_cap >= 0",)},
+    "tb_universe": {
+        ("market_cap",): ("market_cap >= 0",),
+        # 거래 가능 범위 = 상장 피드 더하기 보유. 이월분에는 라벨이 붙는다.
+        ("listing_status",): ("'listed'", "'held_delisted'"),
+    },
     "tb_daily_pick": {
         ("bucket",): ("trend_leader", "backfill"),
         # 상한 없음: 범위 크기는 screening.llm_depth + 보유 수가 정한다.

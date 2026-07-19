@@ -216,3 +216,16 @@ class RawDisclosureWrite:
     source_ref: str
     event_type: str | None
     is_hard_event: bool
+
+
+@dataclass(frozen=True, slots=True)
+class KnownListing:
+    """The last thing the ledger ever knew about a ticker's listing.
+
+    상장폐지된 보유를 유니버스로 이월할 때 회사명·시총을 지어내지 않기 위해
+    있다. 한 번도 유니버스에 없던 종목은 살 수도 없었으므로 여기서 안 나오는
+    것이 정상이고, 그런 티커는 이월하지 않는다 — 없는 계보를 만들지 않는다.
+    """
+
+    company_name: str
+    market_cap: int

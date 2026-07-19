@@ -36,7 +36,11 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
 
     from quantinue.core.config import Settings
-    from quantinue.db.domain_records import DailyBarWrite, RawDisclosureWrite
+    from quantinue.db.domain_records import (
+        DailyBarWrite,
+        KnownListing,
+        RawDisclosureWrite,
+    )
     from quantinue.llm.provider import LlmAnalyzer
     from quantinue.market_data.models import SecuritySnapshot
     from quantinue.orchestration.policy import Mvp2Config, ScreeningConfig
@@ -93,11 +97,18 @@ class _UniverseSink(Protocol):
         """Upsert one universe snapshot."""
         ...
 
+    async def last_known_listings(
+        self, tickers: tuple[str, ...]
+    ) -> dict[str, KnownListing]:
+        """Return the newest universe row we ever stored per ticker."""
+        ...
+
 
 def build_universe_job(
     *,
     source: _UniverseSource,
     domain: _UniverseSink,
+    held: TickerSource,
     config: ScreeningConfig,
     name: str = "universe",
 ) -> JobDefinition:
@@ -111,6 +122,12 @@ def build_universe_job(
     ``as_of_date``는 잡이 돈 날이고, 그게 곧 "이번 주 유니버스"를 가리키는
     열쇠가 된다 — 소비자는 오늘 날짜가 아니라 **최신 스냅샷 날짜**를 찾아야
     한다.
+
+    **왜 이 잡이 보유를 알아야 하는가.** 거래 가능 범위의 정의가 "상장 피드"가
+    아니라 **"상장 피드 더하기 우리가 든 것"**이기 때문이다. 그 차이는 상장폐지에서
+    드러난다: 폐지된 종목이 여기서 빠지면 ``tb_daily_pick``(FK) → sell 시그널
+    → close 주문 사슬이 통째로 끊겨 **팔아야 할 바로 그 종목**을 팔 수 없다.
+    아래 세 갈래(픽·시그널·주문)를 고치는 대신 뿌리인 정의를 고친다.
     """
 
     async def run(as_of: date) -> str:
@@ -124,23 +141,49 @@ def build_universe_job(
         if not ranked:
             msg = "screener returned no eligible securities"
             raise ValueError(msg)
+        members = [
+            UniverseMember(
+                as_of_date=as_of,
+                ticker=item.ticker,
+                company_name=item.name,
+                market_cap=int(item.market_cap),
+                evidence_ids=(f"universe:{as_of.isoformat()}:{item.ticker}",),
+            )
+            for item in ranked
+        ]
+        # 이월은 **절단 뒤에** 더한다. 먼저 섞으면 시총이 낮은 폐지 종목이
+        # universe_size에 걸려 잘려나가고 문제가 그대로 되돌아온다 — 스크리닝의
+        # "보유는 캡과 무관"과 같은 원리다.
+        listed = frozenset(member.ticker for member in members)
+        orphans = tuple(t for t in await held(as_of) if t not in listed)
+        # 한 번도 유니버스에 없던 종목은 살 수도 없었다. 안 나오면 지어내지
+        # 않고 그냥 빠진다 — 없는 계보를 만드느니 스크리닝의 unlisted 보고에
+        # 남는 편이 낫다.
+        carried = await domain.last_known_listings(orphans)
+        members.extend(
+            UniverseMember(
+                as_of_date=as_of,
+                ticker=ticker,
+                company_name=carried[ticker].company_name,
+                market_cap=carried[ticker].market_cap,
+                listing_status="held_delisted",
+                evidence_ids=(f"universe:{as_of.isoformat()}:{ticker}:held",),
+            )
+            for ticker in orphans
+            if ticker in carried
+        )
         await domain.save_universe(
             UniverseScreenerOutput(
                 run_id=f"universe:{as_of.isoformat()}",
                 generated_at=datetime.combine(as_of, time(), tzinfo=UTC),
-                members=tuple(
-                    UniverseMember(
-                        as_of_date=as_of,
-                        ticker=item.ticker,
-                        company_name=item.name,
-                        market_cap=int(item.market_cap),
-                        evidence_ids=(f"universe:{as_of.isoformat()}:{item.ticker}",),
-                    )
-                    for item in ranked
-                ),
+                members=tuple(members),
             )
         )
-        return f"{len(ranked)} members as of {as_of.isoformat()}"
+        detail = f"{len(members)} members as of {as_of.isoformat()}"
+        delisted = len(members) - len(ranked)
+        if delisted:
+            detail += f" ({delisted} held, delisted)"
+        return detail
 
     return JobDefinition(name=name, run=run)
 
@@ -466,7 +509,10 @@ def build_job_runner(
     if selected.market_data is not None:
         jobs.append(
             build_universe_job(
-                source=selected.market_data, domain=domain, config=config.screening
+                source=selected.market_data,
+                domain=domain,
+                held=held_tickers,
+                config=config.screening,
             )
         )
     bar_source = selected.bars

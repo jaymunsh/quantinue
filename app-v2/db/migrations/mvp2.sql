@@ -226,3 +226,12 @@ CREATE TABLE IF NOT EXISTS tb_disclosure_raw (
 -- 제약 이름은 신규 설치가 생성하는 것과 같아야 한다(카탈로그 대조).
 ALTER TABLE tb_daily_pick DROP CONSTRAINT IF EXISTS tb_daily_pick_rank_check;
 ALTER TABLE tb_daily_pick ADD CONSTRAINT tb_daily_pick_rank_check CHECK (rank >= 1);
+
+-- Phase 3: 유니버스는 상장 피드가 아니라 거래 가능 범위다. 상장폐지된 보유는
+-- 이월되고 여기에 라벨이 붙는다 — 라벨 없이 union만 하면 "왜 상장 피드에 없는
+-- 종목이 유니버스에 있나"에 답할 수 없고, 그 자체가 다음 세대의 유령이 된다.
+-- 기존 행은 전부 상장 피드에서 온 것이므로 DEFAULT 'listed'가 정확하다.
+ALTER TABLE tb_universe ADD COLUMN IF NOT EXISTS listing_status TEXT NOT NULL DEFAULT 'listed';
+ALTER TABLE tb_universe DROP CONSTRAINT IF EXISTS tb_universe_listing_status_check;
+ALTER TABLE tb_universe ADD CONSTRAINT tb_universe_listing_status_check
+  CHECK (listing_status IN ('listed','held_delisted'));
