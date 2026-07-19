@@ -16,6 +16,7 @@
 | R8 | **Form 4 인사이더 시그널** (기존 백로그 승계) | ownership XML 파서 + 클러스터 시그널 | T+5 지평 정합성 검토 · role_05 최근 N건 윈도우화 동반 | playbook 보완 목록 M7 이후 항목 그대로 |
 | R9 | **거장 렌즈 팬-IN 축** (swarm-trader 방식) | 여러 거장 렌즈가 같은 종목을 각자 판단 → 종합. **렌즈 간 불일치 자체가 신호**가 된다 | 종목당 LLM 콜 ×렌즈수(현재 2콜 → 10콜+), 배분 잡이 불일치를 어떻게 읽을지 설계, **선행 조건: `tb_fundamentals`(SEC EDGAR XBRL — 매출성장·마진·FCF·부채)** | 아래 §거장 페르소나 평가 참조. R3와 LLM 예산 제약을 공유 |
 | R10 | **재무 원장 `tb_fundamentals`** (R9의 선행) | 매출성장률·영업이익률·FCF·부채비율. 거장 렌즈 절반이 이걸 요구한다 | EDGAR XBRL 파서 + 분기 갱신 잡. 지표 자체는 T+5 지평과 정합성 검토 필요(분기 데이터로 5일을 판단하는 것의 의미) | 무키 무료(SEC EDGAR). swarm-trader가 같은 조합(EDGAR + yfinance)으로 돈다 |
+| R11 | **보도자료 와이어 RSS** — businesswire·globenewswire·prnewswire | **뉴스에 투표권이 생긴다.** 셋 다 `news_trust_policy.yaml`에서 `allow`(0.95)라 `gates.source_trust_min`(0.55)을 넘는다. Alpaca(benzinga=gray 0.50)로는 불가능한 것 | RSS 파싱 + 티커 추출. 본문의 `(NASDAQ: AAPL)` 패턴이라 회사명 매칭보다 정확도가 훨씬 높지만 오탐 처리는 여전히 실제 작업 | 전체 피드 무료·무키. 실적·M&A·가이던스 같은 **실제 사건**이 여기서 나온다 |
 
 ## 거장 페르소나 — 검토 결과 (2026-07-19)
 
