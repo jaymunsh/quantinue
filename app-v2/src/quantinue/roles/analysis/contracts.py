@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from datetime import date
     from decimal import Decimal
 
     from quantinue.roles.screening import RankedCandidate
@@ -82,6 +83,17 @@ def indicator_lines(indicators: RankedCandidate | None) -> tuple[str, ...]:
         f"high_252={indicators.high_252:.2f} high_252_ratio={high_252_ratio:.3f}"
         f" rsi={indicators.rsi:.1f} vol_ratio={vol_ratio:.2f}",
     )
+
+
+def analysis_run_id(as_of: date, profile: str) -> str:
+    """Return the deterministic run identity of one analysis job execution.
+
+    잡에는 구 러너의 ``pipeline_runs`` 행 같은 실행 원장이 없다. 그래서 실행
+    정체성은 **다시 계산할 수 있어야** 한다 — 날짜와 성향만 있으면 같은 값이
+    나온다. T+5 리뷰가 판단의 계보를 적을 때 이 값을 쓰므로, 공식이 두 곳에
+    복사되면 어느 날 계보가 조용히 갈린다. 소유자는 여기 하나다.
+    """
+    return f"analysis:{as_of.isoformat()}:{profile}"
 
 
 def analysis_prompt(

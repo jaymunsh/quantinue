@@ -27,6 +27,7 @@ from quantinue.llm.provider import AnalysisTask
 from quantinue.roles.analysis.contracts import (
     HoldingContext,
     analysis_prompt,
+    analysis_run_id,
     critique_prompt,
 )
 from quantinue.roles.exits.contracts import business_days_held
@@ -194,7 +195,7 @@ class AnalysisJob:
     ) -> AnalysisOutcome | None:
         """Run one ticker through evidence synthesis, the gates, and the critic."""
         cycle_ts = datetime.combine(as_of, time(), tzinfo=UTC)
-        run_id = f"analysis:{as_of.isoformat()}:{self.profile_name}"
+        run_id = analysis_run_id(as_of, self.profile_name)
         evidence = await self.analyzer.analyze(
             AnalysisTask.STRATEGY,
             analysis_prompt(subject, holding, filings, headlines, indicators),
