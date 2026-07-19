@@ -24,7 +24,7 @@
 | 테스트 | 유닛/웹 **681 green** · 통합 **63 green** · ruff clean |
 | DB | app-v2 전용 **포트 5445**(`app-v2-db-1`), M2 마이그레이션 적용 완료. 1차 `app-db-1`(5444)은 **다른 작업자 WIP — 불간섭** |
 | 앱 실행 포트 | **8020** (현재 코드로 기동 중) |
-| 무장 | `BROKER_MODE=mock` · `TRADING_ENABLED=true` ⚠️ · exposure `90000` · cap `5` |
+| 무장 | `TRADING_ENABLED=true`(확인됨) · **`BROKER_MODE=mock` ← 이 한 줄이 W0-7의 전부** · exposure `90000` · cap `5` |
 
 ### 완료
 - **W0** 드라이런까지 — 01→11 완주 검증 (실 페이퍼 무장 W0-7·W0-8만 남음)
