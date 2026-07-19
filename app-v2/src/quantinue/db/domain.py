@@ -12,6 +12,17 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_en
 from quantinue.broker.bracket_trigger import DailyRange
 from quantinue.core.contracts import DisclosureSourceRecord, NewsSourceRecord
 from quantinue.db.contracts import AppOrderExposureStatus
+from quantinue.db.control_room_reads import (
+    AccountEquityPoint,
+    JobRunRecord,
+    JudgementRecord,
+    OrderPlanRecord,
+    account_equity_series,
+    job_runs,
+    judgements,
+    latest_job_slot,
+    order_plans,
+)
 from quantinue.db.domain_records import (
     AccountRiskState,
     AccountWrite,
@@ -1379,6 +1390,26 @@ class PostgresDomainRepository:
                     )
                 }
             ).value
+
+    async def latest_job_slot(self) -> date | None:
+        """Delegate the control room's opening question to its read module."""
+        return await latest_job_slot(self._engine)
+
+    async def job_runs(self, slot_date: date) -> tuple[JobRunRecord, ...]:
+        """Delegate one day's job chain read to its focused module."""
+        return await job_runs(self._engine, slot_date)
+
+    async def order_plans(self, trade_date: date) -> tuple[OrderPlanRecord, ...]:
+        """Delegate one day's allocation decisions read to its focused module."""
+        return await order_plans(self._engine, trade_date)
+
+    async def account_equity_series(self, *, days: int) -> tuple[AccountEquityPoint, ...]:
+        """Delegate the account equity curve read to its focused module."""
+        return await account_equity_series(self._engine, days=days)
+
+    async def judgements(self, trade_date: date) -> tuple[JudgementRecord, ...]:
+        """Delegate the judgement-and-rebuttal read to its focused module."""
+        return await judgements(self._engine, trade_date)
 
     async def save_source_records(
         self,
