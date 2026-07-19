@@ -9,79 +9,104 @@
 Quantinue MVP-2 개발 이어서 진행. 나는 문성혁, app-v2/에서 2차 개발 중이다.
 
 먼저 이 셋을 읽고 현재 상태를 파악해라:
-1. docs/mvp2-planning/dev-handoff.md         ← 현재 상태·다음 할 일 (여기부터)
-2. docs/mvp2-planning/pipeline-redesign.md   ← 신 실행 정본. 확정 결정 D1~D8 + Phase 1~5 + 착수점 file:line
-3. docs/mvp2-planning/future-roadmap.md      ← 의도적으로 미룬 것들 — 여기 있는 건 지금 안 만든다
+1. docs/mvp2-planning/dev-handoff.md         ← 현재 상태·Phase별 커밋 대응표 (여기부터)
+2. docs/mvp2-planning/pipeline-redesign.md   ← 실행 정본. 확정 결정 D1~D8 + Phase 1~5
+3. docs/mvp2-planning/future-roadmap.md      ← 의도적으로 미룬 것 — 여기 있는 건 지금 안 만든다
 
-작업 브랜치는 sunghyuk. 2026-07-19 재설계 확정 — 구 M5~M11은 폐기(playbook은 완료 기록용),
-잡 기반 아키텍처로 점진 교체한다. Phase 1a 착수 지점이다.
+작업 브랜치는 sunghyuk. 2026-07-19 재설계 확정 후 Phase 1 완료 · Phase 2 3/5 진행.
+Phase 2 잔여부터 이어간다.
 
 핵심 확정(redesign §0, 되묻지 말 것):
 - 체결은 로컬 시뮬(MockBroker 승격) + 시세는 실물(Alpaca 마켓데이터) — D1
 - 무장(BROKER_MODE=alpaca) 개념 소멸 — 로드맵 R1. mock이 최종 상태다
-- 주기는 전부 config 소유, 기본 일 1회. 아키텍처는 실시간형 유지(M1 스케줄러 재사용) — D3
-- 정규장 전용(D4) · 손절·익절 동시 발동 시 손절 우선(D5) · 점진 교체, 빅뱅 금지(D6)
-- 매도 = 별도 청산 행(order_type='close'+closes_order_id) + 자기 sell 시그널 행 — D7
+- 주기는 전부 config 소유, 기본 일 1회. 아키텍처는 실시간형 유지 — D3
+- 정규장 전용(D4) · 손절·익절 동시 발동 시 손절 우선(D5) · 점진 교체(D6)
+- 매도 = 별도 청산 행(order_type='close'+closes_order_id) + 자기 sell 시그널 — D7
+- 계좌 평가 = 현금 + 보유수량 * 종가 — D8
 
-이어서 Phase 1을 진행해라 (상세·file:line은 redesign §4):
-- 1a 장부 바닥: sell 회계(입금)·오픈 포지션 판정(closes 조인)·포트폴리오 투영 side 인식·
-     Order 계약 확장·캡 order_type 필터·client_order_id 파생 단일화 (a1~a6)
-- 1b 시뮬 체결 엔진 승격: 브래킷 발동 판정(일봉 고저, 손절 우선)·close 체결
-- 1c 청산 잡: 독립 잡 + M1 스케줄러. 시간 청산(exits.time_exit_bdays 첫 소비)·하드 이벤트.
-     soft 논지 붕괴는 Phase 3
+이미 끝난 것(다시 만들지 말 것):
+- Phase 1 전체 — 장부 바닥 6곳 · 시뮬 체결 엔진(브래킷 발동 판정) · 청산 3층 잡
+- Phase 2 — tb_daily_bar 원장 + exit_observations 투영 · Alpaca 배치 일봉 어댑터
+  (src/quantinue/market_data/alpaca_bars.py) · 계좌 시가평가(revalue_accounts)
+
+이어서 Phase 2 잔여 → Phase 3~5를 진행해라:
+- Phase 2 잔여: ① 유니버스 주간 실배선(선언은 원래 weekly —
+  role_01_universe_screener/contracts.py:62 — 코드만 매 런이었다)
+  ② 뉴스·공시 일괄 수집(종목별 폴링 → 그날 피드 통째로 받아 종목 매칭).
+  공시 하드 이벤트가 붙으면 청산 잡의 DailyObservation.has_hard_event가 채워진다
+- Phase 3: 스크리닝 잡(tb_daily_bar 기반 DB 랭킹, 전 유니버스) → 상위
+  screening.llm_depth(20) ∪ 보유 → 분석 잡(종목별 LLM 2~3콜) ·
+  role_07 sell 개방 + 보유 맥락 + 성향 페르소나 2종 · role_08 매도 검증
+- Phase 4: 배분 잡(후보 전체 × 계좌별 선택+사이징) → 구 11단계 러너 폐기
+- Phase 5: 대시보드 잡 상태 기반 · 정본 HTML 미러 · ghost 재감사
 
 진행 방식은 지금까지와 동일하게:
 - TDD (실패 테스트 → 최소 구현 → green → 태스크 단위 1커밋)
 - 문턱·주기·한도는 전부 config/pipeline.yaml 소유, 코드 리터럴 금지
-- 계약이 바뀌면 기존 테스트도 같은 커밋에서 갱신
-- 유령 금지: 새 config 키·DB 컬럼은 소비자와 같은 커밋에 넣는다
-- 스키마를 바꾸면 4곳 전부 반영: db/schema.sql · db/migrations/mvp2.sql ·
-  tests/integration/schema_sql_expectations.py · 정본 HTML(컬럼표+ERD+사전+changelog)
-- Phase 완료 시 handoff + 정본 HTML(#logic·changelog) 미러
+- 유령 금지: 새 config 키·DB 컬럼은 소비자와 같은 커밋에
+- 스키마를 바꾸면 4곳 전부: db/schema.sql · db/migrations/mvp2.sql ·
+  tests/integration/schema_sql_expectations.py · 정본 HTML.
+  그리고 '신규 설치 == 마이그레이션' 제약 정의 비교 + 마이그레이션 2회 멱등 확인
+- 테스트는 고정하는 코드와 함께만 삭제, 대체 테스트 같은 커밋
+- 핵심·에이전트(roles/) 코드에는 '왜'를 설명하는 한국어 인라인 주석
+  (docstring은 영어 한 줄 — 기존 관행)
 
 검증:
-  cd app-v2 && uv run pytest tests/unit tests/test_web.py -q   # 681 green 유지
+  cd app-v2 && uv run pytest tests/unit tests/test_web.py -q   # 721 green 유지
   uv run ruff check src tests scripts
-  통합은 일회용 DB 전제 — 새 컨테이너에 db/schema.sql 적재 후 1회 실행 (63 green)
+  통합(82 green)은 일회용 DB 전제 — 새 컨테이너에 db/schema.sql 적재 후 1회만.
+  같은 DB에 두 번 돌리면 중복키로 실패하는 게 정상이다.
+  통합 테스트는 전용 계좌(broker_account_id)를 쓸 것 — 기본 계좌
+  quantinue-local-simulated는 다른 테스트가 현금 잔고를 정확히 단언하는 공용 자원
 
 주의:
-- app/(1차)은 다른 작업자 WIP — 절대 수정 금지
+- app/(1차)은 다른 작업자 WIP — 절대 수정 금지. git stash도 쓰지 말 것
+  (stash가 app/까지 삼킨다 — 이번 세션에서 실제로 겪음)
 - 앱 실행 포트 8020, DB 5445
 - 재설계 결정 D1~D8·계좌 금액·매도 주문 표현은 확정됨 — 되묻지 말 것
-- Alpaca 마켓데이터 엔드포인트·한도는 Phase 2 착수 시 문서로 확인(추정 금지).
-  실패 시 폴백 체인 확정됨: Alpaca → Stooq(일봉) → Finnhub(호가) → 기존 public 소스 (redesign §5)
-- 테스트는 고정하는 코드와 함께만 삭제, 대체 테스트 같은 커밋 (redesign §3)
-- Phase 4 구 러너 삭제는 동등성 증거 보고 + 사용자 확인 후에만 — 유일한 확인 지점
+- Alpaca 분당 호출 한도는 공식 문서에 없다. 추정해서 박지 말 것
+- Phase 4 구 러너 삭제는 동등성 증거 보고 + 내 확인 후에만 — 유일한 확인 지점
+- push 금지(공유 저장소). 커밋만 쌓을 것
 
 계획 세우고 시작 전에 한 번 짚어줘.
 ```
 
 ---
 
-## 세션 종료 시점 상태 (2026-07-19, 재설계 세션)
+## 세션 종료 시점 상태 (2026-07-19, Phase 1 완료 + Phase 2 3/5)
 
 | 항목 | 값 |
 |---|---|
-| 브랜치 | `sunghyuk` |
-| 테스트 | 유닛/웹 **681** · 통합 **63** · ruff clean |
-| 이번 세션 산출물 | **재설계 정본 확정** — `pipeline-redesign.md`(D1~D8·Phase 1~5) + `future-roadmap.md` 신설, handoff·playbook·본 문서 갱신. 코드 변경 없음 |
-| 브로커 | `BROKER_MODE=mock` — **최종 상태**(D1). 무장 개념 소멸, alpaca 키는 로드맵 R1 대비 보존 |
+| 브랜치 | `sunghyuk` (push 안 함) |
+| 테스트 | 유닛/웹 **721** · 통합 **82** · ruff clean (재설계 착수 기준선 681/63) |
+| 마지막 커밋 | `742a87f` 코드 · `1104943` 문서 |
+| 브로커 | `BROKER_MODE=mock` — **최종 상태**(D1). 무장 개념 소멸 |
 | DB | 5445 (`app-v2-db-1`) · 앱 8020 |
-| 정본 HTML | v5.2 — 파이프라인 흐름도는 아직 구 11단계 기준(코드 확정 Phase부터 미러) |
+| 정본 HTML | v5.2 — ⚠️ **아직 구 11단계 파이프라인 기준.** Phase 5에서 미러 |
+| `app/` | 154개 변경 그대로 — 무손상 확인 |
 
-### 재설계 근거 요약 (상세는 redesign §1)
+### Phase 1 완료 — 시스템이 팔 줄 안다
 
-11단계 선형 런의 구조 결함 4가지: 픽 50개를 05~08이 안 읽는 50→1 절벽 · 스케줄 트리거 NVDA 하드코딩(api/schemas.py:18) · "후보 중 뭘 살까"를 묻는 배분 단계 부재 · 재개가 스테이지 수=역할 인덱스 전제(pipeline.py:123)라 팬아웃 불가. 알맹이(판단 규칙·스키마·원장) 7~8할은 재사용, 배관(오케스트레이션)만 교체.
+통합 테스트로 왕복 확인: 매수 체결 → 손절 발동 → sell 시그널 → close 주문 → 매도 체결 → 현금 +170 → 보유 0.
 
-### 이월된 ⏳ (구 playbook §보완 목록 + ghost 감사 — Phase 귀속은 redesign에 반영)
+문서에 적어둔 결함 6건이 **전부 실패 테스트로 재현된 뒤** 수리됨 — 상세·커밋 대응표는 `dev-handoff.md`.
+
+### Phase 2 진행 3/5
+
+✅ `tb_daily_bar` 원장 + `exit_observations` 투영 · Alpaca 배치 어댑터(500콜 → 1~2콜) · 계좌 시가평가(D8)
+⏳ 유니버스 주간 실배선 · 뉴스·공시 일괄 수집
+
+### 이어받는 사람이 알아야 할 임시 조치 1건
+
+**`domain.ensure_holding_in_scope()`는 Phase 3이 넘겨받아야 한다.** `tb_strategist_signals`가 `(trade_date, ticker) → tb_daily_pick`을 참조하는데, 스크리너에서 탈락한 보유 종목은 청산 시그널을 남길 자리가 없었다. 재설계의 "상위 N ∪ 보유"가 스키마 제약으로 드러난 것이라, 청산 잡이 임시로 `bucket='backfill'` 픽을 만들어 계보를 잇는다. **Phase 3 스크리닝 잡이 보유를 정식으로 범위에 넣으면 이 함수는 사라진다.**
+
+### 이월된 ⏳
 
 | 항목 | 귀속 |
 |---|---|
-| `exits.time_exit_bdays` 소비 | Phase 1c |
-| `screening.llm_depth` 소비 · `risk_off_action` · conservative 도달 · `skipped_rules` 저장 | Phase 3 |
-| `daily_loss_limit` + 당일 시작 equity 스냅샷 | Phase 4 |
-| 캡 기본값 4곳 불일치(1/1/1/5) | Phase 4 |
-| `budget.daily_llm_usd`·`tb_llm_usage` | 구 M8 — 재설계 후 위치 재판단 |
-| `role_05` 공시 신선도 창 | Phase 3 |
-| role_11 계좌별 채점 · 이중 캘린더 정리 | Phase 5 전후 |
+| `screening.llm_depth` 소비 · `risk_off_action` · conservative 도달 · `skipped_rules` 저장 · `role_05` 공시 신선도 창 | Phase 3 |
+| `daily_loss_limit` — 전제 3개 중 **2개 충족**(매도 ✅ · 시가평가 ✅), 남은 것은 당일 시작 equity 스냅샷 | Phase 4 |
+| 캡 기본값 4곳 불일치(config 1 / policy 1 / service 1 / contracts 5, 실효값 env=5) | Phase 4 |
+| Alpaca 분당 호출 한도 실측 · `budget.daily_llm_usd`·`tb_llm_usage` | 미정 / 구 M8 |
+| role_11 계좌별 채점 · 이중 캘린더 정리(role_11 자체 → `core/market_calendar`) | Phase 5 전후 |
 | `QUANTINUE_HTTP_USER_AGENT` 실제 연락처 | 배포 전 |
