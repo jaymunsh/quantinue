@@ -49,7 +49,6 @@ def policy(*, attempts: int = 3, timeout: float = 1.0) -> PipelinePolicy:
         thresholds=ThresholdPolicy(
             minimum_confidence=0.6,
             strategist_buy_score=0.65,
-            critic_approval_score=0.6,
             maximum_risk_score=0.7,
         ),
     )

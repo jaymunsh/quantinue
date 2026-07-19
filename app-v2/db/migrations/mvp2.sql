@@ -149,3 +149,17 @@ BEGIN
     ADD CONSTRAINT tb_strategist_signals_signal_consensus_check
     CHECK (signal_consensus BETWEEN 0 AND 4);
 END $$;
+
+-- M4 관측: 역할 09의 판단(집행/보류·사유)이 어디에도 저장되지 않아
+-- "이번 주에 갭 가드가 몇 번 걸렸나"를 물을 수 없었다. 주문이 생긴 경우만
+-- tb_order에 남았을 뿐, 막힌 경우는 JSONB 요약 문자열이 전부였다.
+-- 문턱 보정(premarket_gap_max 등)이 바로 이 관측에 의존한다.
+CREATE TABLE IF NOT EXISTS tb_order_plan (
+  id BIGSERIAL PRIMARY KEY, run_id TEXT NOT NULL, ticker TEXT NOT NULL, cycle_ts TIMESTAMPTZ NOT NULL,
+  trade_date DATE NOT NULL, account_id BIGINT, signal_id BIGINT,
+  decision TEXT NOT NULL CHECK (decision IN ('planned','skipped')), skipped_reason TEXT,
+  quantity INT NOT NULL CHECK (quantity >= 0), entry_price NUMERIC, stop_price NUMERIC, take_profit_price NUMERIC,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (ticker, cycle_ts, account_id),
+  CHECK ((decision = 'planned' AND skipped_reason IS NULL AND quantity > 0)
+      OR (decision = 'skipped' AND skipped_reason IS NOT NULL AND quantity = 0))
+);

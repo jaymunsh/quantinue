@@ -30,7 +30,6 @@ class ThresholdPolicy(BaseModel):
 
     minimum_confidence: float = Field(ge=0, le=1)
     strategist_buy_score: float = Field(ge=0, le=1)
-    critic_approval_score: float = Field(ge=0, le=1)
     maximum_risk_score: float = Field(ge=0, le=1)
 
 
@@ -137,7 +136,6 @@ DEFAULT_PIPELINE_POLICY = PipelinePolicy(
     thresholds=ThresholdPolicy(
         minimum_confidence=0.6,
         strategist_buy_score=0.65,
-        critic_approval_score=0.6,
         maximum_risk_score=0.7,
     ),
     models=ModelPolicy(mock="deterministic-mock-v1", openai="gpt-4o-mini", local="qwen2.5:7b"),

@@ -13,6 +13,7 @@ from quantinue.db.domain_records import (
     AccountWrite,
     CompletedBuyWrite,
     CriticVerdictWrite,
+    OrderPlanWrite,
     OrderReconciliation,
     StrategistSignalWrite,
 )
@@ -34,6 +35,7 @@ _TABLES = (
     "tb_news_signal",
     "tb_strategist_signals",
     "tb_critic_verdict",
+    "tb_order_plan",
     "tb_account",
     "tb_order",
     "tb_fill",
@@ -110,6 +112,35 @@ class PostgresDomainRepository:
             insert(table)
             .values(**fields)
             .on_conflict_do_update(index_elements=["as_of"], set_=fields)
+        )
+        async with self._engine.begin() as connection:
+            _ = await connection.execute(statement)
+
+    async def save_order_plan(self, value: OrderPlanWrite) -> None:
+        """Record role 09's decision — including the ones that blocked a buy.
+
+        Only orders that exist leave a tb_order row, so without this a guard
+        that fired was invisible to SQL and threshold calibration had nothing
+        to count.
+        """
+        table = self._table("tb_order_plan")
+        statement = (
+            insert(table)
+            .values(
+                run_id=value.run_id,
+                ticker=value.ticker,
+                cycle_ts=value.cycle_ts,
+                trade_date=value.trade_date,
+                account_id=value.account_id,
+                signal_id=value.signal_id,
+                decision=value.decision,
+                skipped_reason=value.skipped_reason,
+                quantity=value.quantity,
+                entry_price=value.entry_price,
+                stop_price=value.stop_price,
+                take_profit_price=value.take_profit_price,
+            )
+            .on_conflict_do_nothing(index_elements=["ticker", "cycle_ts", "account_id"])
         )
         async with self._engine.begin() as connection:
             _ = await connection.execute(statement)

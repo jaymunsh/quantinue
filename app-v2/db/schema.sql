@@ -160,6 +160,15 @@ CREATE TABLE IF NOT EXISTS tb_review (
 );
 
 -- Operational tables are execution logs, never domain FK parents.
+CREATE TABLE IF NOT EXISTS tb_order_plan (
+  id BIGSERIAL PRIMARY KEY, run_id TEXT NOT NULL, ticker TEXT NOT NULL, cycle_ts TIMESTAMPTZ NOT NULL,
+  trade_date DATE NOT NULL, account_id BIGINT, signal_id BIGINT,
+  decision TEXT NOT NULL CHECK (decision IN ('planned','skipped')), skipped_reason TEXT,
+  quantity INT NOT NULL CHECK (quantity >= 0), entry_price NUMERIC, stop_price NUMERIC, take_profit_price NUMERIC,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (ticker, cycle_ts, account_id),
+  CHECK ((decision = 'planned' AND skipped_reason IS NULL AND quantity > 0)
+      OR (decision = 'skipped' AND skipped_reason IS NOT NULL AND quantity = 0))
+);
 CREATE TABLE IF NOT EXISTS pipeline_runs (
   run_id TEXT PRIMARY KEY, idempotency_key TEXT NOT NULL UNIQUE, ticker TEXT NOT NULL,
   cycle_ts TIMESTAMPTZ NOT NULL, status TEXT NOT NULL CHECK (status IN ('pending','running','completed','failed','timed_out')),

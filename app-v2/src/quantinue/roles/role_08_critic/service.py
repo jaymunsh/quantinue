@@ -20,10 +20,21 @@ class Critic:
 
     analyzer: LlmAnalyzer
     minimum_confidence: float = 0.0
-    critic_approval_score: float = 0.70
     gates: GatesConfig = DEFAULT_GATES
     component: ClassVar[str] = "08"
     name: ClassVar[str] = "크리틱 검증"
+
+    def approval_threshold(self, conviction: float) -> float:
+        """Return the score a critique must reach for this proposal.
+
+        `gates.critic_approval` is the single owner. A second, looser value
+        used to live in the legacy mvp block and silently won.
+        """
+        threshold = max(self.minimum_confidence, self.gates.critic_approval)
+        if conviction >= self.gates.overconfidence_conviction:
+            # 과신할수록 반박을 더 세게 통과해야 한다.
+            threshold = max(threshold, self.gates.overconfidence_approval)
+        return threshold
 
     async def execute(self, context: PipelineContext) -> PipelineContext:
         """Approve only buy proposals with a passing structured critique."""
@@ -113,11 +124,7 @@ class Critic:
                 f"크리틱 차단, {hard_verdict.category}",
             )
         result = await self.analyzer.analyze(AnalysisTask.CRITIC, f"proposal={side}")
-        approval_threshold = max(self.minimum_confidence, self.critic_approval_score)
-        conviction = context.conviction or 0.0
-        if conviction >= self.gates.overconfidence_conviction:
-            # 과신할수록 반박을 더 세게 통과해야 한다.
-            approval_threshold = max(approval_threshold, self.gates.overconfidence_approval)
+        approval_threshold = self.approval_threshold(context.conviction or 0.0)
         approved = side == "buy" and result.score >= approval_threshold
         verdict = CriticVerdict(
             run_id=str(context.run_id),

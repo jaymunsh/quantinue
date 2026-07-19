@@ -66,7 +66,9 @@ def test_yaml_decision_policy_is_injected_into_roles_07_through_09() -> None:
     assert isinstance(strategist, Strategist)
     assert strategist.strategist_buy_score == 0.65
     assert isinstance(critic, Critic)
-    assert critic.critic_approval_score == 0.60
+    # 문턱 소유자는 mvp2.gates 하나뿐 — 낡은 mvp.thresholds 값(0.60)은 제거됐다.
+    assert critic.gates.critic_approval == 0.70
+    assert critic.approval_threshold(conviction=0.5) == 0.70
     assert isinstance(risk, RiskPortfolio)
     assert risk.maximum_risk_score == 0.70
     assert risk.stop_loss_ratio == 0.15

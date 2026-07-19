@@ -100,3 +100,21 @@ class InsufficientSimulatedCashError(ValueError):
     def __str__(self) -> str:
         """Return a stable non-sensitive boundary message."""
         return "insufficient simulated cash"
+
+
+@dataclass(frozen=True, slots=True)
+class OrderPlanWrite:
+    """Role 09's decision for one ticker and cycle, blocked or not."""
+
+    run_id: str
+    ticker: str
+    cycle_ts: datetime
+    trade_date: date
+    decision: str
+    quantity: int
+    account_id: int | None = None
+    signal_id: int | None = None
+    skipped_reason: str | None = None
+    entry_price: Decimal | None = None
+    stop_price: Decimal | None = None
+    take_profit_price: Decimal | None = None

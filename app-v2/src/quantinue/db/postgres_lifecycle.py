@@ -10,6 +10,7 @@ from quantinue.db.domain_records import (
     AccountWrite,
     CompletedBuyWrite,
     CriticVerdictWrite,
+    OrderPlanWrite,
     OrderReconciliation,
     StrategistSignalWrite,
 )
@@ -116,6 +117,28 @@ async def persist_domain_stage(
             )
         )
         return replace(result, signal_id=signal_id, account_id=account_id)
+    if component == "09" and result.risk_decision is not None:
+        entry = result.risk_entry_price
+        await domain.save_order_plan(
+            OrderPlanWrite(
+                run_id=str(result.run_id),
+                ticker=result.request.ticker,
+                cycle_ts=result.request.cycle_ts,
+                trade_date=_session_trade_date(result),
+                account_id=result.account_id,
+                signal_id=result.signal_id,
+                decision=result.risk_decision,
+                skipped_reason=result.risk_skipped_reason,
+                quantity=result.quantity or 0,
+                entry_price=Decimal(str(entry)) if entry is not None else None,
+                stop_price=(
+                    Decimal(str(result.stop_loss)) if result.stop_loss is not None else None
+                ),
+                take_profit_price=(
+                    Decimal(str(result.take_profit)) if result.take_profit is not None else None
+                ),
+            )
+        )
     if component == "10" and result.order is not None:
         if result.order.status == "filled":
             _ = await domain.record_completed_buy(

@@ -29,6 +29,7 @@ TABLES = {
     "tb_user",
     "tb_llm_usage",
     "tb_benchmark_price",
+    "tb_order_plan",
 }
 PK = {
     "tb_universe": ("as_of_date", "ticker"),
@@ -46,6 +47,7 @@ PK = {
     "tb_fill": ("id",),
     "tb_review_price_snapshots": ("signal_id", "day_offset"),
     "tb_review": ("signal_id",),
+    "tb_order_plan": ("id",),
     "pipeline_runs": ("run_id",),
     "pipeline_stage_attempts": ("attempt_id",),
     "pipeline_checkpoints": ("checkpoint_id",),
@@ -63,6 +65,7 @@ UNIQUE = {
     "tb_critic_verdict": {("signal_id",)},
     "tb_account": {("broker_account_id",)},
     "tb_user": {("login_id",)},
+    "tb_order_plan": {("ticker", "cycle_ts", "account_id")},
     "tb_order": {
         ("broker_order_id",),
         ("idempotency_key",),
@@ -181,6 +184,17 @@ FK: dict[str, set[ForeignKey]] = {
 }
 # Each tuple is one CHECK constraint and lists every semantic fragment it must contain.
 CHECKS = {
+    "tb_order_plan": {
+        ("decision",): ("'planned'", "'skipped'"),
+        ("quantity",): ("quantity >= 0",),
+        # 집행이면 사유가 없고 수량이 있다; 보류면 사유가 있고 수량이 0이다.
+        ("decision", "skipped_reason", "quantity"): (
+            "skipped_reason is null",
+            "skipped_reason is not null",
+            "quantity > 0",
+            "quantity = 0",
+        ),
+    },
     "tb_universe": {("market_cap",): ("market_cap >= 0",)},
     "tb_daily_pick": {
         ("bucket",): ("trend_leader", "backfill"),

@@ -104,7 +104,6 @@ def build_roles(  # noqa: PLR0913 - one composition seam per replaceable collabo
         Critic(
             analyzer,
             policy.thresholds.minimum_confidence,
-            policy.thresholds.critic_approval_score,
             gates,
         ),
         RiskPortfolio(

@@ -21,7 +21,6 @@ mvp:
   thresholds:
     minimum_confidence: 0.60
     strategist_buy_score: 0.65
-    critic_approval_score: 0.60
     maximum_risk_score: 0.70
   models:
     mock: deterministic-mock-v1
