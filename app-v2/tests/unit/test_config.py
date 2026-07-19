@@ -94,9 +94,36 @@ def test_selected_alpaca_mode_requires_both_credentials(
         )
 
 
-def test_trading_enabled_requires_selected_alpaca_mode_and_credentials() -> None:
-    with pytest.raises(ValidationError, match="broker_mode=alpaca"):
-        _ = Settings.model_validate({"trading_enabled": True})
+def test_trading_enabled_is_legal_with_the_local_simulator(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """체결이 로컬 시뮬로 확정된 뒤(D1)에는 mock이 정상 거래 경로다.
+
+    예전 규칙은 trading_enabled=true면 broker_mode=alpaca를 요구했다. 무장
+    개념이 사라진(D2) 지금 그 규칙은 mock + 거래 활성이라는 **최종 상태를
+    기동 불가로 만든다** — 실제로 이 조합이 .env에 있었고 앱이 뜨지 않았다.
+    """
+    settings = IsolatedSettings(
+        broker_mode=BrokerMode.MOCK,
+        trading_enabled=True,
+        control_room_token=SecretStr("test-token"),
+    )
+
+    assert settings.trading_enabled
+    assert settings.broker_mode is BrokerMode.MOCK
+
+
+def test_alpaca_mode_stays_valid_while_dormant() -> None:
+    """결합을 끊는 것이 휴면 상태(alpaca + 거래 비활성)까지 없애면 안 된다."""
+    settings = IsolatedSettings(
+        broker_mode=BrokerMode.ALPACA,
+        trading_enabled=False,
+        alpaca_api_key=SecretStr("test-key"),
+        alpaca_secret_key=SecretStr("test-secret"),
+    )
+
+    assert not settings.trading_enabled
+    assert settings.broker_mode is BrokerMode.ALPACA
 
 
 def test_trading_enabled_requires_control_room_token(monkeypatch: pytest.MonkeyPatch) -> None:
