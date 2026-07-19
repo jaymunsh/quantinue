@@ -61,8 +61,10 @@ class OrderExecution:
         # 거래정지·상장폐지 종목은 브로커에 닿기 전에 막는다. 제출 후 거부되면
         # 체결될 수 없었던 주문이 원장에 남는다.
         if not await self._is_tradable(context.request.ticker):
+            # 수량도 0으로 내린다 — 남겨두면 역할 11이 "주문이 있어야 한다"로 읽고
+            # 런 전체를 실패시킨다(체결되지 않은 계획은 계획이 아니다).
             return replace(
-                context, order_skipped_reason="not_tradable"
+                context, quantity=0, order_skipped_reason="not_tradable"
             ).add_stage(self.component, self.name, "주문 생략 · 거래 불가 종목(정지·상폐)")
         signal_key = f"{context.request.ticker}:{context.request.cycle_ts.isoformat()}".encode()
         signal_id = context.signal_id or int(sha256(signal_key).hexdigest()[:8], 16) + 1

@@ -73,6 +73,8 @@ async def test_halted_symbol_is_never_submitted() -> None:
     assert broker.asked == ["NVDA"]
     assert broker.submitted == []
     assert updated.order_skipped_reason == "not_tradable"
+    # 수량이 남아 있으면 역할 11이 주문을 요구하다 런을 실패시킨다.
+    assert updated.quantity == 0
 
 
 @pytest.mark.anyio

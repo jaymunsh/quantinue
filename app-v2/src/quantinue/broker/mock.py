@@ -18,9 +18,22 @@ from quantinue.core.errors import TransientFailureError
 class MockBroker:
     """Network-free deterministic fill simulator."""
 
-    def __init__(self, reservations: OrderReservations | None = None) -> None:
+    def __init__(
+        self,
+        reservations: OrderReservations | None = None,
+        halted_tickers: frozenset[str] = frozenset(),
+    ) -> None:
         """Use a private reservation adapter unless one is shared explicitly."""
         self._reservations = reservations or InMemoryOrderReservations()
+        self._halted = frozenset(ticker.upper() for ticker in halted_tickers)
+
+    async def is_tradable(self, ticker: str) -> bool:
+        """Mirror the venue capability so the halted guard is reachable offline.
+
+        Without this the guard cannot fire in any dry run: role 10 asks only
+        brokers that advertise the capability.
+        """
+        return ticker.upper() not in self._halted
 
     async def submit(self, plan: OrderPlan) -> OrderResult:
         """Return and cache an immediate full fill."""
