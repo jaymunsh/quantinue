@@ -14,13 +14,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import UTC, datetime, time
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from sqlalchemy import text
 
 if TYPE_CHECKING:
-    from datetime import date, datetime
+    from datetime import date
     from decimal import Decimal
 
     from sqlalchemy.ext.asyncio import AsyncEngine
@@ -78,6 +79,31 @@ async def latest_job_slot(engine: AsyncEngine) -> date | None:
     """Return the most recent slot the job runner touched, if it ever ran."""
     async with engine.begin() as connection:
         return await connection.scalar(text("SELECT max(slot_date) FROM tb_job_run"))
+
+
+async def recent_job_slots(engine: AsyncEngine, *, limit: int) -> tuple[date, ...]:
+    """Return the days the job runner touched, newest first.
+
+    관제실이 하루만 볼 수 있으면 어제 무엇이 깨졌는지 물을 수 없다. 슬롯
+    목록을 따로 읽는 이유는 잡이 하루도 안 돈 날은 아예 행이 없기 때문이다 —
+    달력에서 뽑으면 빈 날이 선택지로 뜬다.
+    """
+    async with engine.begin() as connection:
+        rows = (
+            await connection.execute(
+                text(
+                    dedent(
+                        """
+                        SELECT DISTINCT slot_date FROM tb_job_run
+                        ORDER BY slot_date DESC
+                        LIMIT :limit
+                        """
+                    )
+                ),
+                {"limit": limit},
+            )
+        ).all()
+    return tuple(row.slot_date for row in rows)
 
 
 async def job_runs(engine: AsyncEngine, slot_date: date) -> tuple[JobRunRecord, ...]:
@@ -194,6 +220,13 @@ async def judgements(engine: AsyncEngine, trade_date: date) -> tuple[JudgementRe
 
     LEFT JOIN인 것이 의도다(모듈 docstring 참조): 평결이 없는 판단은 크리틱
     전에 무언가 끊겼다는 사실이고, 그것이야말로 관제실이 보여야 할 사건이다.
+
+    ``cycle_ts = 자정``은 **프로덕션 경로와 같은 필터다**(``approved_buy_candidates``
+    참조 — 새 분석 잡의 계약). 이걸 빼면 화면이 배분이 소비하지 않은 판단까지
+    세어, 잡 원장이 "22건 분석 · 8 승인"이라고 적은 날에 관제실은 "28건 중 8"을
+    보여준다. 실제로 dev DB에서 그렇게 어긋났다 — 구 러너의 장중 행 하나와
+    마이크로초가 밀린 과거 실험 행 다섯이 섞여 들어왔다. 관제실이 원장과 다른
+    수를 말하면 둘 중 무엇을 믿을지 알 수 없게 된다.
     """
     async with engine.begin() as connection:
         rows = (
@@ -208,11 +241,15 @@ async def judgements(engine: AsyncEngine, trade_date: date) -> tuple[JudgementRe
                         FROM tb_strategist_signals AS s
                         LEFT JOIN tb_critic_verdict AS v ON v.signal_id = s.id
                         WHERE s.trade_date = :trade_date
+                          AND s.cycle_ts = :cycle_ts
                         ORDER BY s.inv_type, s.conviction DESC, s.ticker
                         """
                     )
                 ),
-                {"trade_date": trade_date},
+                {
+                    "trade_date": trade_date,
+                    "cycle_ts": datetime.combine(trade_date, time(), tzinfo=UTC),
+                },
             )
         ).all()
     return tuple(

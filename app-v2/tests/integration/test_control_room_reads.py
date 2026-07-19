@@ -224,6 +224,7 @@ async def _seed_judgement(
     *,
     side: str = "buy",
     verdict: str | None = "pass",
+    cycle_ts: datetime = _MIDNIGHT,
 ) -> None:
     """Write the analysis job's output: a signal, then optionally its verdict."""
     assert DATABASE_URL is not None
@@ -256,7 +257,7 @@ async def _seed_judgement(
                     2,'room fixture','[]','{}',50,50,50,50,50,0,0,50,50)
                 RETURNING id"""
             ),
-            {"day": _DAY, "ticker": ticker, "cycle": _MIDNIGHT, "side": side},
+            {"day": _DAY, "ticker": ticker, "cycle": cycle_ts, "side": side},
         )
         if verdict is not None:
             _ = await connection.execute(
@@ -305,4 +306,24 @@ async def test_an_unjudged_signal_still_appears() -> None:
     unjudged = next(item for item in judgements if item.ticker == "UNJUDGED")
     assert unjudged.verdict_decision is None
     assert unjudged.objection is None
+    await store.close()
+
+
+@pytest.mark.anyio
+async def test_a_judgement_from_another_cycle_is_not_counted() -> None:
+    """관제실이 배분보다 많이 세면 원장과 화면 중 무엇을 믿을지 알 수 없다.
+
+    실 dev DB에서 잡힌 결함이다: 구 러너의 장중 행과 마이크로초가 밀린 과거
+    실험 행이 섞여, 잡 원장이 "22건 분석"이라고 적은 날 화면이 28건을 셌다.
+    자정 필터는 프로덕션 경로(approved_buy_candidates)와 같은 계약이다.
+    """
+    # Given
+    store = await _store()
+    await _seed_judgement("OFFCYCLE", cycle_ts=_MIDNIGHT + timedelta(microseconds=3))
+
+    # When
+    judged = await store.domain.judgements(_DAY)
+
+    # Then
+    assert all(item.ticker != "OFFCYCLE" for item in judged)
     await store.close()

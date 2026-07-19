@@ -22,6 +22,7 @@ from quantinue.db.control_room_reads import (
     judgements,
     latest_job_slot,
     order_plans,
+    recent_job_slots,
 )
 from quantinue.db.domain_records import (
     AccountRiskState,
@@ -1394,6 +1395,10 @@ class PostgresDomainRepository:
     async def latest_job_slot(self) -> date | None:
         """Delegate the control room's opening question to its read module."""
         return await latest_job_slot(self._engine)
+
+    async def recent_job_slots(self, *, limit: int) -> tuple[date, ...]:
+        """Delegate the slot navigation read to its focused module."""
+        return await recent_job_slots(self._engine, limit=limit)
 
     async def job_runs(self, slot_date: date) -> tuple[JobRunRecord, ...]:
         """Delegate one day's job chain read to its focused module."""

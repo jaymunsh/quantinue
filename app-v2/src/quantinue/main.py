@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated
 
@@ -17,6 +17,8 @@ from pydantic import ValidationError
 
 from quantinue.api.access import ControlRoomAccess
 from quantinue.api.live_runtime import LiveRunRuntime
+from quantinue.api.pipeline_day import build_pipeline_day, empty_pipeline_day
+from quantinue.api.pipeline_presentation import PipelineDayView, sparkline_points
 from quantinue.api.presentation import control_room_run, simulated_portfolio_view
 from quantinue.api.review_runtime import ReviewRuntime
 from quantinue.api.reviews import build_review_router
@@ -187,6 +189,34 @@ def create_app(  # noqa: C901, PLR0915
                 reverse=True,
             )
         )
+
+    # 잡 원장은 RunStore 프로토콜 밖에 산다(도메인 저장소 소유). 메모리
+    # 스토어에는 아예 없으므로, 없으면 빈 관제실을 보여준다 — 잡을 아직 안
+    # 켠 설치도 정상 상태이고 그때 화면이 500으로 죽으면 안 된다.
+    control_room_reads = getattr(selected_store, "domain", None)
+
+    async def pipeline_day(slot: date | None = None) -> PipelineDayView:
+        if control_room_reads is None:
+            return empty_pipeline_day()
+        return await build_pipeline_day(control_room_reads, slot_date=slot)
+
+    @app.get("/pipeline", response_class=HTMLResponse)
+    async def pipeline_dashboard(request: Request, slot: date | None = None) -> HTMLResponse:
+        day = await pipeline_day(slot)
+        return templates.TemplateResponse(
+            request=request,
+            name="pipeline.html",
+            context={
+                "day": day,
+                "sparkline": sparkline_points,
+                "dashboard_css": DASHBOARD_CSS,
+                "settings": selected_settings,
+            },
+        )
+
+    @app.get("/api/pipeline/today", response_model=PipelineDayView)
+    async def pipeline_today(slot: date | None = None) -> PipelineDayView:
+        return await pipeline_day(slot)
 
     @app.get("/", response_class=HTMLResponse)
     async def dashboard(request: Request, error: str | None = None) -> HTMLResponse:
