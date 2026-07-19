@@ -96,7 +96,10 @@
   **⚠️ 착수 전 확인된 구조적 제약 (2026-07-19 실사)**
   - **역할 번호가 뒤집혀 있다**: `role_05` = 공시(SEC), `role_06` = 뉴스(RSS).
   - `tb_news`(schema.sql:68)와 `tb_disclosure`(:40) 둘 다 `(trade_date, ticker) → tb_daily_pick` FK를 건다. **그날 픽에 없는 종목은 행을 넣을 수 없다** — 그런데 일괄 수집의 목적이 바로 픽 밖(탈락한 보유) 종목을 덮는 것이다. → `tb_daily_bar`와 같은 패턴으로 **원시 원장 신설**(`tb_news_raw`/`tb_disclosure_raw`, 픽 무관) + 기존 두 테이블은 LLM 채점 결과(분석 대상 한정)로 역할 유지.
-  - 현행 수집은 종목당 2콜: SEC submissions(CIK별, `http_source.py:396`) + Google News RSS 검색(티커별, `:445-476`). **Google News는 전체 피드가 없다** — 뉴스 쪽 종목별 폴링 폐기는 구조적으로 막힐 수 있다. 소스 교체 여부를 착수 시 판단할 것. 공시는 SEC 일일 인덱스로 확실히 1콜화된다(단 URL·형식은 문서 확인 후 확정 — 추정 금지).
+  - **공시는 완료**(커밋 `7563def`). SEC 일일 인덱스 `form.{YYYYMMDD}.idx` 1콜로 그날 전 시장(3000~4100행)을 받아 CIK→티커 매칭 후 `tb_disclosure_raw`에 적재한다.
+  - **뉴스는 소스가 확정됐고 구현만 남았다.** Google News는 전체 피드가 없어 막혔지만, **Alpaca 뉴스 API로 해결된다**(2026-07-19 실 API 확인):
+    `GET https://data.alpaca.markets/v1beta1/news` · `start`/`end` RFC3339 · `limit` · `next_page_token` 페이지네이션 · 심볼 미지정이면 **전 시장**이 오고 기사마다 `symbols` 배열이 붙는다. 우리가 이미 쓰는 자격증명 그대로 200. 소스는 benzinga.
+    → 종목별 폴링이 구조적으로 사라진다. 단 **`tb_news_raw`의 소비자는 Phase 3 분석 잡**이므로(유령 금지) 원장·어댑터·잡을 그 소비자와 **같은 커밋**에 넣을 것. 하드 이벤트는 뉴스가 아니라 SEC 폼이 판정한다(권위 있는 쪽) — 뉴스 헤드라인 키워드로 매도를 발동시키지 말 것.
   - `ontology.EventType`의 `delisting_halt`(ontology.py:17)는 **소비자 0**. 하드 이벤트는 별도 불리언(`is_hard_blocked`)으로만 존재하고 둘을 잇는 다리가 없다.
   - **`exit_observations`에 실제 버그가 있다**(`db/domain.py`): dict를 `bars.items()` 키로만 만든다. 거래정지 종목은 봉이 안 찍히므로 관측에서 조용히 사라진다 — 정확히 `delisting_halt` 케이스가 빠진다. 하드 이벤트를 붙일 때 **두 키 집합 union으로 재구조화**해야 한다.
 - 계좌 시가평가 배선(D8): 평가액 = 현금 + 보유×실호가. 미장 시간엔 직전 종가. `daily_loss_limit` 전제 충족.
