@@ -925,55 +925,55 @@ erDiagram
       </tbody>
     </table></div>
 
-    <h3 id="schema-detail">컬럼 명세 — <code>schema.sql</code> 현행 원문</h3>
-    <p class="small muted">아래 정의는 <code>app-v2/db/schema.sql</code>에서 기계적으로 추출했다(2026-07-20, 커밋 <code>bd287f3</code> 시점). 각 테이블 노트의 한국어 문장은 DDL에 적힌 주석 원문이다.</p>
+    <h3 id="schema-detail">컬럼 명세 — <code>schema.sql</code> 현행 원문 + 컬럼별 설명</h3>
+    <p class="small muted">정의는 <code>app-v2/db/schema.sql</code>에서 기계 추출(2026-07-20, 커밋 <code>bd287f3</code> 시점). 설명은 v5.3 문서의 컬럼 명세를 현행 스키마에 병합하고, 이후 추가된 컬럼만 코드에서 확인해 채웠다.</p>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">세계 — 시장이 어떤 모습인가</h4>
     <details class="schema">
       <summary><code>tb_universe</code> <span class="sd">주간 유니버스 스냅샷 (2,000 + 이월 보유)</span><span class="cnt">6 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">거래 가능 범위는 상장 피드가 아니라 "상장 피드 ∪ 우리가 든 것"이다. 상장이 폐지된 보유가 여기서 빠지면 tb_daily_pick 행을 못 만들고(FK) → sell 시그널을 못 남기고 → close 주문을 못 만든다. 팔아야 할 바로 그 종목이 영구히 열린 채 남는다. 불리언이 아닌 이유: suspended·pending_delisting이 생겨도 CHECK만 늘리면 된다.</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>as_of_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>company_name</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>market_cap</td><td class="mono">BIGINT NOT NULL CHECK (market_cap &gt;= 0)</td></tr>
-        <tr><td>listing_status</td><td class="mono">TEXT NOT NULL DEFAULT 'listed' CHECK (listing_status IN ('listed','held_delisted'))</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (as_of_date, ticker)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>as_of_date</td><td class="mono">DATE NOT NULL</td><td>스냅샷 주차 날짜 — 매주 앨범처럼 누적 (생존편향 방지)</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목 코드</td></tr>
+        <tr><td>company_name</td><td class="mono">TEXT NOT NULL</td><td>회사명</td></tr>
+        <tr><td>market_cap</td><td class="mono">BIGINT NOT NULL CHECK (market_cap &gt;= 0)</td><td>시가총액 — 상위 2,000 선정 기준. 이월분은 마지막 관측값</td></tr>
+        <tr><td>listing_status</td><td class="mono">TEXT NOT NULL DEFAULT 'listed' CHECK (listing_status IN ('listed','held_delisted'))</td><td>'listed'(피드에 있음) / 'held_delisted'(피드에서 사라졌지만 보유 중이라 이월) — 폐지된 보유를 팔 수 있게 하는 열쇠</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>DB 저장 시각 (기록용)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (as_of_date, ticker)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_daily_bar</code> <span class="b b-new">2차 신규</span> <span class="sd">일봉 원장 — 랭킹·청산 판정·시가평가의 원천</span><span class="cnt">9 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">일봉 원장. 스크리닝 랭킹·브래킷 발동 판정·시가평가가 전부 여기서 온다. 종목당 1콜로 받던 것을 배치 1콜로 바꾸는 근거이자, 같은 날을 두 번 받아도 값이 흔들리지 않게 하는 자리다(PK로 하루 1행 고정).</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>open</td><td class="mono">NUMERIC NOT NULL CHECK (open &gt; 0)</td></tr>
-        <tr><td>high</td><td class="mono">NUMERIC NOT NULL CHECK (high &gt; 0)</td></tr>
-        <tr><td>low</td><td class="mono">NUMERIC NOT NULL CHECK (low &gt; 0)</td></tr>
-        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td></tr>
-        <tr><td>volume</td><td class="mono">BIGINT NOT NULL CHECK (volume &gt;= 0)</td></tr>
-        <tr><td>source</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (trade_date, ticker)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CHECK (low &lt;= open AND open &lt;= high)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CHECK (low &lt;= close AND close &lt;= high)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>세션일 — PK가 하루 1행을 고정해 재적재로 값이 흔들리지 않게 한다</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목</td></tr>
+        <tr><td>open</td><td class="mono">NUMERIC NOT NULL CHECK (open &gt; 0)</td><td>시가</td></tr>
+        <tr><td>high</td><td class="mono">NUMERIC NOT NULL CHECK (high &gt; 0)</td><td>고가 — 브래킷(익절선) 발동 판정의 입력</td></tr>
+        <tr><td>low</td><td class="mono">NUMERIC NOT NULL CHECK (low &gt; 0)</td><td>저가 — 브래킷(손절선) 발동 판정의 입력, 동시 발동 시 손절 우선(D5)</td></tr>
+        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td><td>종가 — 랭킹 지표·시가평가(D8)·매도 판단의 기준가</td></tr>
+        <tr><td>volume</td><td class="mono">BIGINT NOT NULL CHECK (volume &gt;= 0)</td><td>거래량</td></tr>
+        <tr><td>source</td><td class="mono">TEXT NOT NULL</td><td>수집 출처(alpaca-iex 등) — 폴백 체인 중 어느 소스가 준 값인지</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>적재 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (trade_date, ticker)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CHECK (low &lt;= open AND open &lt;= high)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CHECK (low &lt;= close AND close &lt;= high)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_macro</code> <span class="sd">시장 국면 (regime · risk_score)</span><span class="cnt">9 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>as_of</td><td class="mono">TIMESTAMPTZ PRIMARY KEY</td></tr>
-        <tr><td>regime</td><td class="mono">TEXT NOT NULL CHECK (regime IN ('risk_on','neutral','risk_off'))</td></tr>
-        <tr><td>risk_score</td><td class="mono">NUMERIC(4,3) NOT NULL CHECK (risk_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>vix</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>nasdaq_ret</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>sp500_ret</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>rate</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>dollar</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>as_of</td><td class="mono">TIMESTAMPTZ PRIMARY KEY</td><td>사이클 슬롯 시각 (cycle_ts 역할 — 규칙 8 위반 아님)</td></tr>
+        <tr><td>regime</td><td class="mono">TEXT NOT NULL CHECK (regime IN ('risk_on','neutral','risk_off'))</td><td>국면 (경계 risk_score 0.30 / 0.70)</td></tr>
+        <tr><td>risk_score</td><td class="mono">NUMERIC(4,3) NOT NULL CHECK (risk_score BETWEEN 0 AND 1)</td><td>위험 점수 — 07 감점표의 입력</td></tr>
+        <tr><td>vix</td><td class="mono">NUMERIC NOT NULL</td><td>변동성 지수</td></tr>
+        <tr><td>nasdaq_ret</td><td class="mono">NUMERIC NOT NULL</td><td>나스닥 수익률</td></tr>
+        <tr><td>sp500_ret</td><td class="mono">NUMERIC NOT NULL</td><td>S&amp;P500 수익률</td></tr>
+        <tr><td>rate</td><td class="mono">NUMERIC NOT NULL</td><td>금리</td></tr>
+        <tr><td>dollar</td><td class="mono">NUMERIC NOT NULL</td><td>달러 인덱스</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">원시 원장 — 전 시장을 통으로</h4>
@@ -981,35 +981,35 @@ erDiagram
       <summary><code>tb_disclosure_raw</code> <span class="b b-new">2차 신규</span> <span class="sd">전 시장 공시 + 하드 이벤트 플래그</span><span class="cnt">10 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">공시 원시 원장. tb_disclosure(채점 결과)와 따로 두는 이유는 FK다 — 그쪽은 (trade_date, ticker) → tb_daily_pick을 걸어 그날 분석 대상이 아닌 종목에는 행을 넣을 수 없는데, 일괄 수집이 노리는 것이 정확히 그 바깥이다(스크리너에서 탈락한 보유 종목의 상장폐지 공시). 그래서 여기엔 FK를 걸지 않는다.</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>filing_no</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>cik</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>form_type</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>company_name</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>event_type</td><td class="mono">TEXT</td></tr>
-        <tr><td>is_hard_event</td><td class="mono">BOOLEAN NOT NULL DEFAULT false</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (filing_no)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CHECK (is_hard_event = false OR event_type IS NOT NULL)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>filing_no</td><td class="mono">TEXT NOT NULL</td><td>EDGAR 접수번호. 같은 날 같은 종목이 여러 건을 낼 수 있어 (날짜,티커)로는 행을 못 가른다</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>제출 세션일</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>공시 주체에 매핑된 종목</td></tr>
+        <tr><td>cik</td><td class="mono">TEXT NOT NULL</td><td>SEC 회사 식별자(CIK) — Form 4 수신(EDGAR 조회)의 열쇠</td></tr>
+        <tr><td>form_type</td><td class="mono">TEXT NOT NULL</td><td>SEC 폼 타입(25-NSE·8-K …)</td></tr>
+        <tr><td>company_name</td><td class="mono">TEXT NOT NULL</td><td>공시 주체 회사명</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td><td>EDGAR 원문 경로 — 증거의 출처를 되짚는 참조</td></tr>
+        <tr><td>event_type</td><td class="mono">TEXT</td><td>ontology.EventType. 규칙 기반 판정 — LLM 없이 폼 타입으로만 정한다</td></tr>
+        <tr><td>is_hard_event</td><td class="mono">BOOLEAN NOT NULL DEFAULT false</td><td>상장폐지·등록말소(25·25-NSE·15-12B/G·15-15D) → 즉시 청산 대상</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>적재 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (filing_no)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CHECK (is_hard_event = false OR event_type IS NOT NULL)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_news_raw</code> <span class="b b-new">2차 신규</span> <span class="sd">전 시장 헤드라인 (Alpaca + 와이어 RSS)</span><span class="cnt">8 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">Phase 3: 뉴스 원시 원장. 공시(tb_disclosure_raw)와 같은 이유로 FK가 없다 — tb_news(채점 결과)는 (trade_date, ticker) → tb_daily_pick을 걸어 그날 분석 대상이 아닌 종목에 행을 넣을 수 없는데, 일괄 수집이 노리는 것이 그 바깥이다. PK가 (기사, 티커)인 이유: 기사 하나가 여러 종목을 언급하고, 소비는 종목 단위다. 겹치는 창을 다시 받아도 이 키가 중복을 흡수한다.</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>article_id</td><td class="mono">BIGINT NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>headline</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>source</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>url</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>published_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (article_id, ticker)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>article_id</td><td class="mono">BIGINT NOT NULL</td><td>기사 식별자(PK 절반) — 기사 하나가 여러 종목을 언급해도 (기사,종목)으로 유일</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>기사가 언급한 종목(PK 절반) — 소비는 종목 단위</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>이 헤드라인이 어느 세션의 증거인가 — 공시와 같은 축으로 읽히기 위한 키</td></tr>
+        <tr><td>headline</td><td class="mono">TEXT NOT NULL</td><td>제목. 분석 잡의 증거 종합 프롬프트에 종목당 news.headlines_per_ticker건까지 들어간다</td></tr>
+        <tr><td>source</td><td class="mono">TEXT NOT NULL</td><td>매체명 (Alpaca 뉴스는 실측 전건 benzinga, 와이어는 GNW·PRN)</td></tr>
+        <tr><td>url</td><td class="mono">TEXT NOT NULL</td><td>기사 원문 링크</td></tr>
+        <tr><td>published_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>발행 시각. 예산(N건)에 걸려 잘리는 것이 오래된 쪽이 되도록 정렬 키</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>적재 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (article_id, ticker)</td></tr>
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">선별·채점</h4>
@@ -1017,391 +1017,391 @@ erDiagram
       <summary><code>tb_daily_pick</code> <span class="sd">오늘의 분석 범위 (랭킹 상위 + 보유)</span><span class="cnt">8 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">상한 없음(의도): 하루의 분석 범위는 상위 screening.llm_depth 에 보유 전부를 더한 크기라 config와 보유 수가 정한다. 50은 구 스크리너가 종목당 1콜을 쓰던 시절의 흔적이고, 상한에 걸리면 보유가 범위 밖으로 밀려 청산이 막힌다.</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>universe_as_of</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>bucket</td><td class="mono">TEXT NOT NULL CHECK (bucket IN ('trend_leader','volume_surge','high_52w_breakout','pullback','squeeze_breakout','backfill'))</td></tr>
-        <tr><td>rank</td><td class="mono">INT NOT NULL CHECK (rank &gt;= 1)</td></tr>
-        <tr><td>sector</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>score</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (trade_date, ticker)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (universe_as_of, ticker) REFERENCES tb_universe(as_of_date, ticker)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일 (뉴욕 영업일)</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목 — FK(universe_as_of, ticker) → tb_universe</td></tr>
+        <tr><td>universe_as_of</td><td class="mono">DATE NOT NULL</td><td>몇 주차 유니버스 출신인지</td></tr>
+        <tr><td>bucket</td><td class="mono">TEXT NOT NULL CHECK (bucket IN ('trend_leader','volume_surge','high_52w_breakout','pullback','squeeze_breakout','backfill'))</td><td>선정 버킷</td></tr>
+        <tr><td>rank</td><td class="mono">INT NOT NULL CHECK (rank &gt;= 1)</td><td>당일 순위</td></tr>
+        <tr><td>sector</td><td class="mono">TEXT NOT NULL</td><td>섹터</td></tr>
+        <tr><td>score</td><td class="mono">NUMERIC NOT NULL</td><td>버킷 스코어 (픽 게이트 0.70)</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (trade_date, ticker)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (universe_as_of, ticker) REFERENCES tb_universe(as_of_date, ticker)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_disclosure</code> <span class="sd">공시 채점 원장 (구 role_05 산출 — 픽 범위 내)</span><span class="cnt">27 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>filing_no</td><td class="mono">TEXT NOT NULL UNIQUE</td></tr>
-        <tr><td>form_type</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>filing_title</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>filed_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>event_type</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>sentiment_score</td><td class="mono">NUMERIC NOT NULL CHECK (sentiment_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>importance</td><td class="mono">NUMERIC NOT NULL CHECK (importance BETWEEN 0 AND 1)</td></tr>
-        <tr><td>risk_score</td><td class="mono">NUMERIC NOT NULL CHECK (risk_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>confidence</td><td class="mono">NUMERIC NOT NULL CHECK (confidence BETWEEN 0 AND 1)</td></tr>
-        <tr><td>reason</td><td class="mono">JSONB NOT NULL DEFAULT '{}'</td></tr>
-        <tr><td>summary</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>source</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>model_name</td><td class="mono">TEXT</td></tr>
-        <tr><td>prompt_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>policy_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>input_hash</td><td class="mono">TEXT</td></tr>
-        <tr><td>keywords</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td></tr>
-        <tr><td>permission</td><td class="mono">TEXT NOT NULL CHECK (permission IN ('block','block_buy','trade_eligible'))</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목 — FK(trade_date, ticker) → tb_daily_pick</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일</td></tr>
+        <tr><td>filing_no</td><td class="mono">TEXT NOT NULL UNIQUE</td><td>공시 고유번호 — 역추적 키</td></tr>
+        <tr><td>form_type</td><td class="mono">TEXT NOT NULL</td><td>공시 종류 (8-K·10-Q·Form 4…)</td></tr>
+        <tr><td>filing_title</td><td class="mono">TEXT NOT NULL</td><td>공시 제목</td></tr>
+        <tr><td>filed_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>공시 발생 시각 (사건 시각)</td></tr>
+        <tr><td>event_type</td><td class="mono">TEXT NOT NULL</td><td>사건 분류 (정본 ontology.py)</td></tr>
+        <tr><td>sentiment_score</td><td class="mono">NUMERIC NOT NULL CHECK (sentiment_score BETWEEN 0 AND 1)</td><td>호·악재 (점수 눈금 가이드 기준)</td></tr>
+        <tr><td>importance</td><td class="mono">NUMERIC NOT NULL CHECK (importance BETWEEN 0 AND 1)</td><td>중요도</td></tr>
+        <tr><td>risk_score</td><td class="mono">NUMERIC NOT NULL CHECK (risk_score BETWEEN 0 AND 1)</td><td>위험</td></tr>
+        <tr><td>confidence</td><td class="mono">NUMERIC NOT NULL CHECK (confidence BETWEEN 0 AND 1)</td><td>확신</td></tr>
+        <tr><td>reason</td><td class="mono">JSONB NOT NULL DEFAULT '{}'</td><td>점수별 근거 객체 — 키=점수 컬럼명 4종</td></tr>
+        <tr><td>summary</td><td class="mono">TEXT NOT NULL</td><td>무슨 일인지 요약 (reason=왜 이 점수)</td></tr>
+        <tr><td>source</td><td class="mono">TEXT NOT NULL</td><td>(계보) 데이터 출처 어댑터 (sec·rss·fixture…)</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td><td>(계보) 출처 상세 참조 — URL·경로</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>(계보) 수집 시각</td></tr>
+        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td><td>(계보) 증거 고유 id — run:역할:종류</td></tr>
+        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>(계보) 상위 증거 연결 (증거 사슬)</td></tr>
+        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td><td>(계보) LLM 제공자</td></tr>
+        <tr><td>model_name</td><td class="mono">TEXT</td><td>(계보) 모델명</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT</td><td>(계보) 프롬프트 버전</td></tr>
+        <tr><td>policy_version</td><td class="mono">TEXT</td><td>(계보) 정책(config) 버전</td></tr>
+        <tr><td>input_hash</td><td class="mono">TEXT</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
+        <tr><td>keywords</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td><td>검색용 키워드</td></tr>
+        <tr><td>permission</td><td class="mono">TEXT NOT NULL CHECK (permission IN ('block','block_buy','trade_eligible'))</td><td>허용 단계</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_disclosure_signal</code> <span class="sd">공시 채점 집계 — 현행은 인사이더 표가 여기 앉는다</span><span class="cnt">30 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>tds_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>has_signal</td><td class="mono">BOOLEAN NOT NULL</td></tr>
-        <tr><td>filing_title</td><td class="mono">TEXT</td></tr>
-        <tr><td>filing_no</td><td class="mono">TEXT</td></tr>
-        <tr><td>filed_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>event_type</td><td class="mono">TEXT</td></tr>
-        <tr><td>importance</td><td class="mono">NUMERIC CHECK (importance BETWEEN 0 AND 1)</td></tr>
-        <tr><td>risk_score</td><td class="mono">NUMERIC CHECK (risk_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>sentiment_score</td><td class="mono">NUMERIC CHECK (sentiment_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>reason</td><td class="mono">JSONB</td></tr>
-        <tr><td>is_hard_blocked</td><td class="mono">BOOLEAN NOT NULL DEFAULT false</td></tr>
-        <tr><td>disclosure_count</td><td class="mono">SMALLINT NOT NULL DEFAULT 0 CHECK (disclosure_count &gt;= 0)</td></tr>
-        <tr><td>top_evidence</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td></tr>
-        <tr><td>hard_block_reason</td><td class="mono">TEXT</td></tr>
-        <tr><td>confidence</td><td class="mono">NUMERIC CHECK (confidence BETWEEN 0 AND 1)</td></tr>
-        <tr><td>summary</td><td class="mono">TEXT</td></tr>
-        <tr><td>source</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>model_name</td><td class="mono">TEXT</td></tr>
-        <tr><td>prompt_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>policy_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>input_hash</td><td class="mono">TEXT</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (ticker, cycle_ts)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (filing_no) REFERENCES tb_disclosure(filing_no)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>tds_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키 (규칙 8)</td></tr>
+        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>슬롯 시각 — UNIQUE(ticker, cycle_ts) 멱등</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일 — FK → tb_daily_pick</td></tr>
+        <tr><td>has_signal</td><td class="mono">BOOLEAN NOT NULL</td><td>이 사이클에 공시 신호가 있는가</td></tr>
+        <tr><td>filing_title</td><td class="mono">TEXT</td><td>대표 공시 제목 (얼굴 필드)</td></tr>
+        <tr><td>filing_no</td><td class="mono">TEXT</td><td>대표 공시 번호 (원본 역추적)</td></tr>
+        <tr><td>filed_at</td><td class="mono">TIMESTAMPTZ</td><td>대표 공시 발생 시각</td></tr>
+        <tr><td>event_type</td><td class="mono">TEXT</td><td>대표 사건 분류</td></tr>
+        <tr><td>importance</td><td class="mono">NUMERIC CHECK (importance BETWEEN 0 AND 1)</td><td>집계 중요도 (최댓값 규칙)</td></tr>
+        <tr><td>risk_score</td><td class="mono">NUMERIC CHECK (risk_score BETWEEN 0 AND 1)</td><td>집계 위험 (최댓값 규칙)</td></tr>
+        <tr><td>sentiment_score</td><td class="mono">NUMERIC CHECK (sentiment_score BETWEEN 0 AND 1)</td><td>집계 호악재 (강악재 ≤0.15는 최솟값 채택)</td></tr>
+        <tr><td>reason</td><td class="mono">JSONB</td><td>집계 근거 — 코드 조립 (LLM 재호출 0)</td></tr>
+        <tr><td>is_hard_blocked</td><td class="mono">BOOLEAN NOT NULL DEFAULT false</td><td>하드 차단 여부</td></tr>
+        <tr><td>disclosure_count</td><td class="mono">SMALLINT NOT NULL DEFAULT 0 CHECK (disclosure_count &gt;= 0)</td><td>이 사이클 집계된 공시 건수</td></tr>
+        <tr><td>top_evidence</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td><td>importance 상위 근거 (뉴스 대칭)</td></tr>
+        <tr><td>hard_block_reason</td><td class="mono">TEXT</td><td>차단 사유</td></tr>
+        <tr><td>confidence</td><td class="mono">NUMERIC CHECK (confidence BETWEEN 0 AND 1)</td><td>집계 확신</td></tr>
+        <tr><td>summary</td><td class="mono">TEXT</td><td>"○○ 외 N건" 코드 조립</td></tr>
+        <tr><td>source</td><td class="mono">TEXT NOT NULL</td><td>(계보) 데이터 출처 어댑터 (sec·rss·fixture…)</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td><td>(계보) 출처 상세 참조 — URL·경로</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>(계보) 수집 시각</td></tr>
+        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td><td>(계보) 증거 고유 id — run:역할:종류</td></tr>
+        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>(계보) 상위 증거 연결 (증거 사슬)</td></tr>
+        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td><td>(계보) LLM 제공자</td></tr>
+        <tr><td>model_name</td><td class="mono">TEXT</td><td>(계보) 모델명</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT</td><td>(계보) 프롬프트 버전</td></tr>
+        <tr><td>policy_version</td><td class="mono">TEXT</td><td>(계보) 정책(config) 버전</td></tr>
+        <tr><td>input_hash</td><td class="mono">TEXT</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (ticker, cycle_ts)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (filing_no) REFERENCES tb_disclosure(filing_no)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_news</code> <span class="sd">뉴스 채점 원장 (픽 범위 내)</span><span class="cnt">32 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>news_key</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>title</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>source</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>url</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>published_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>grade</td><td class="mono">TEXT NOT NULL CHECK (grade IN ('allow','gray','block'))</td></tr>
-        <tr><td>is_dropped</td><td class="mono">BOOLEAN NOT NULL</td></tr>
-        <tr><td>drop_reason</td><td class="mono">TEXT</td></tr>
-        <tr><td>event_type</td><td class="mono">TEXT</td></tr>
-        <tr><td>sentiment_score</td><td class="mono">NUMERIC CHECK (sentiment_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>importance</td><td class="mono">NUMERIC CHECK (importance BETWEEN 0 AND 1)</td></tr>
-        <tr><td>risk_score</td><td class="mono">NUMERIC CHECK (risk_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>source_trust</td><td class="mono">NUMERIC CHECK (source_trust BETWEEN 0 AND 1)</td></tr>
-        <tr><td>confidence</td><td class="mono">NUMERIC CHECK (confidence BETWEEN 0 AND 1)</td></tr>
-        <tr><td>is_confirmed</td><td class="mono">BOOLEAN</td></tr>
-        <tr><td>reason</td><td class="mono">JSONB</td></tr>
-        <tr><td>summary</td><td class="mono">TEXT</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>model_name</td><td class="mono">TEXT</td></tr>
-        <tr><td>prompt_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>policy_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>input_hash</td><td class="mono">TEXT</td></tr>
-        <tr><td>keywords</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td></tr>
-        <tr><td>permission</td><td class="mono">TEXT CHECK (permission IN ('block','block_buy','trade_eligible'))</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (news_key, ticker)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키 — 대표 기사 동률 최종 타이브레이커</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목 — UNIQUE(news_key, ticker)</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일 — FK → tb_daily_pick</td></tr>
+        <tr><td>news_key</td><td class="mono">TEXT NOT NULL</td><td>정규화 URL 키 (중복 수집 방지)</td></tr>
+        <tr><td>title</td><td class="mono">TEXT NOT NULL</td><td>기사 제목</td></tr>
+        <tr><td>source</td><td class="mono">TEXT NOT NULL</td><td>매체명 (계보 source 겸용)</td></tr>
+        <tr><td>url</td><td class="mono">TEXT NOT NULL</td><td>기사 링크</td></tr>
+        <tr><td>published_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>발행 시각 (사건 시각) — 동률 1차 타이브레이커</td></tr>
+        <tr><td>grade</td><td class="mono">TEXT NOT NULL CHECK (grade IN ('allow','gray','block'))</td><td>출처등급 (block = LLM 도달 전 drop)</td></tr>
+        <tr><td>is_dropped</td><td class="mono">BOOLEAN NOT NULL</td><td>사전 차단 여부 (기록은 보존)</td></tr>
+        <tr><td>drop_reason</td><td class="mono">TEXT</td><td>차단 사유</td></tr>
+        <tr><td>event_type</td><td class="mono">TEXT</td><td>사건 분류</td></tr>
+        <tr><td>sentiment_score</td><td class="mono">NUMERIC CHECK (sentiment_score BETWEEN 0 AND 1)</td><td>호·악재</td></tr>
+        <tr><td>importance</td><td class="mono">NUMERIC CHECK (importance BETWEEN 0 AND 1)</td><td>중요도</td></tr>
+        <tr><td>risk_score</td><td class="mono">NUMERIC CHECK (risk_score BETWEEN 0 AND 1)</td><td>위험</td></tr>
+        <tr><td>source_trust</td><td class="mono">NUMERIC CHECK (source_trust BETWEEN 0 AND 1)</td><td>내용 기반 신뢰 (LLM 채점)</td></tr>
+        <tr><td>confidence</td><td class="mono">NUMERIC CHECK (confidence BETWEEN 0 AND 1)</td><td>확신</td></tr>
+        <tr><td>is_confirmed</td><td class="mono">BOOLEAN</td><td>확정 사실 vs 소문 (신뢰무게 확인계수)</td></tr>
+        <tr><td>reason</td><td class="mono">JSONB</td><td>점수별 근거 객체 (+source_trust 키 포함 5종)</td></tr>
+        <tr><td>summary</td><td class="mono">TEXT</td><td>요약</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td><td>(계보) 출처 상세 참조 — URL·경로</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>(계보) 수집 시각</td></tr>
+        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td><td>(계보) 증거 고유 id — run:역할:종류</td></tr>
+        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>(계보) 상위 증거 연결 (증거 사슬)</td></tr>
+        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td><td>(계보) LLM 제공자</td></tr>
+        <tr><td>model_name</td><td class="mono">TEXT</td><td>(계보) 모델명</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT</td><td>(계보) 프롬프트 버전</td></tr>
+        <tr><td>policy_version</td><td class="mono">TEXT</td><td>(계보) 정책(config) 버전</td></tr>
+        <tr><td>input_hash</td><td class="mono">TEXT</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
+        <tr><td>keywords</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td><td>검색용 키워드</td></tr>
+        <tr><td>permission</td><td class="mono">TEXT CHECK (permission IN ('block','block_buy','trade_eligible'))</td><td>허용 단계</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (news_key, ticker)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_news_signal</code> <span class="sd">뉴스 채점 집계 (맥락용 — 투표권 없음)</span><span class="cnt">35 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>tns_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>has_signal</td><td class="mono">BOOLEAN NOT NULL</td></tr>
-        <tr><td>rep_news_id</td><td class="mono">BIGINT</td></tr>
-        <tr><td>news_title</td><td class="mono">TEXT</td></tr>
-        <tr><td>source</td><td class="mono">TEXT</td></tr>
-        <tr><td>published_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>ref</td><td class="mono">TEXT</td></tr>
-        <tr><td>event_type</td><td class="mono">TEXT</td></tr>
-        <tr><td>disclosure_ref</td><td class="mono">TEXT</td></tr>
-        <tr><td>reason</td><td class="mono">JSONB</td></tr>
-        <tr><td>summary</td><td class="mono">TEXT</td></tr>
-        <tr><td>news_count</td><td class="mono">INT NOT NULL DEFAULT 0 CHECK (news_count &gt;= 0)</td></tr>
-        <tr><td>importance</td><td class="mono">NUMERIC CHECK (importance BETWEEN 0 AND 1)</td></tr>
-        <tr><td>peak_importance</td><td class="mono">NUMERIC CHECK (peak_importance BETWEEN 0 AND 1)</td></tr>
-        <tr><td>risk_score</td><td class="mono">NUMERIC CHECK (risk_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>sentiment_score</td><td class="mono">NUMERIC CHECK (sentiment_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>source_trust</td><td class="mono">NUMERIC CHECK (source_trust BETWEEN 0 AND 1)</td></tr>
-        <tr><td>grade_score</td><td class="mono">NUMERIC CHECK (grade_score BETWEEN 0 AND 1)</td></tr>
-        <tr><td>confidence</td><td class="mono">NUMERIC CHECK (confidence BETWEEN 0 AND 1)</td></tr>
-        <tr><td>is_hard_blocked</td><td class="mono">BOOLEAN NOT NULL DEFAULT false</td></tr>
-        <tr><td>hard_block_reason</td><td class="mono">TEXT</td></tr>
-        <tr><td>top_evidence</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>model_name</td><td class="mono">TEXT</td></tr>
-        <tr><td>prompt_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>policy_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>input_hash</td><td class="mono">TEXT</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (ticker, cycle_ts)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (rep_news_id) REFERENCES tb_news(id)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (disclosure_ref) REFERENCES tb_disclosure(filing_no)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>tns_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키 — UNIQUE(ticker, cycle_ts) 멱등</td></tr>
+        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>슬롯 시각</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일 — FK → tb_daily_pick</td></tr>
+        <tr><td>has_signal</td><td class="mono">BOOLEAN NOT NULL</td><td>이 사이클 뉴스 신호 유무</td></tr>
+        <tr><td>rep_news_id</td><td class="mono">BIGINT</td><td>대표 기사 역추적 (관련성 필터 → importance×신뢰무게 최상위 1건)</td></tr>
+        <tr><td>news_title</td><td class="mono">TEXT</td><td>대표 기사 제목 (얼굴 필드)</td></tr>
+        <tr><td>source</td><td class="mono">TEXT</td><td>대표 기사 매체</td></tr>
+        <tr><td>published_at</td><td class="mono">TIMESTAMPTZ</td><td>대표 기사 발행 시각 — Critic 신선도 기준</td></tr>
+        <tr><td>ref</td><td class="mono">TEXT</td><td>대표 기사 참조 (URL)</td></tr>
+        <tr><td>event_type</td><td class="mono">TEXT</td><td>대표 사건 분류</td></tr>
+        <tr><td>disclosure_ref</td><td class="mono">TEXT</td><td>연관 공시 매칭 — 같은 ticker·event_type·|filed_at−published_at|≤72h 중 최신</td></tr>
+        <tr><td>reason</td><td class="mono">JSONB</td><td>집계 근거 — 코드 조립</td></tr>
+        <tr><td>summary</td><td class="mono">TEXT</td><td>집계 요약</td></tr>
+        <tr><td>news_count</td><td class="mono">INT NOT NULL DEFAULT 0 CHECK (news_count &gt;= 0)</td><td>집계된 기사 수</td></tr>
+        <tr><td>importance</td><td class="mono">NUMERIC CHECK (importance BETWEEN 0 AND 1)</td><td>신뢰가중 평균 (대세)</td></tr>
+        <tr><td>peak_importance</td><td class="mono">NUMERIC CHECK (peak_importance BETWEEN 0 AND 1)</td><td>신뢰 검증분 최댓값 (한 방) — 해석 가이드 v3.7</td></tr>
+        <tr><td>risk_score</td><td class="mono">NUMERIC CHECK (risk_score BETWEEN 0 AND 1)</td><td>집계 위험</td></tr>
+        <tr><td>sentiment_score</td><td class="mono">NUMERIC CHECK (sentiment_score BETWEEN 0 AND 1)</td><td>집계 호악재</td></tr>
+        <tr><td>source_trust</td><td class="mono">NUMERIC CHECK (source_trust BETWEEN 0 AND 1)</td><td>내용 기반 신뢰 — 07 게이트 0.55의 입력</td></tr>
+        <tr><td>grade_score</td><td class="mono">NUMERIC CHECK (grade_score BETWEEN 0 AND 1)</td><td>매체 등급 기반 신뢰 (allow 1.0 · gray 0.6)</td></tr>
+        <tr><td>confidence</td><td class="mono">NUMERIC CHECK (confidence BETWEEN 0 AND 1)</td><td>집계 확신</td></tr>
+        <tr><td>is_hard_blocked</td><td class="mono">BOOLEAN NOT NULL DEFAULT false</td><td>하드 차단 여부</td></tr>
+        <tr><td>hard_block_reason</td><td class="mono">TEXT</td><td>차단 사유</td></tr>
+        <tr><td>top_evidence</td><td class="mono">TEXT[] NOT NULL DEFAULT '{}'</td><td>상위 근거 기사 3건</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td><td>(계보) 출처 상세 참조 — URL·경로</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>(계보) 수집 시각</td></tr>
+        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td><td>(계보) 증거 고유 id — run:역할:종류</td></tr>
+        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>(계보) 상위 증거 연결 (증거 사슬)</td></tr>
+        <tr><td>model_provider</td><td class="mono">TEXT NOT NULL</td><td>(계보) LLM 제공자</td></tr>
+        <tr><td>model_name</td><td class="mono">TEXT</td><td>(계보) 모델명</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT</td><td>(계보) 프롬프트 버전</td></tr>
+        <tr><td>policy_version</td><td class="mono">TEXT</td><td>(계보) 정책(config) 버전</td></tr>
+        <tr><td>input_hash</td><td class="mono">TEXT</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (ticker, cycle_ts)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (rep_news_id) REFERENCES tb_news(id)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (disclosure_ref) REFERENCES tb_disclosure(filing_no)</td></tr>
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">판단</h4>
     <details class="schema">
       <summary><code>tb_strategist_signals</code> <span class="sd">성향별 판단 — 계보 FK 4개의 주인</span><span class="cnt">39 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>src_disclosure_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>src_news_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>src_macro_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>inv_type</td><td class="mono">TEXT NOT NULL CHECK (inv_type IN ('aggressive','conservative'))</td></tr>
-        <tr><td>side</td><td class="mono">TEXT NOT NULL CHECK (side IN ('buy','hold','sell'))</td></tr>
-        <tr><td>conviction</td><td class="mono">NUMERIC(4,3) NOT NULL CHECK (conviction BETWEEN 0 AND 1)</td></tr>
-        <tr><td>signal_consensus</td><td class="mono">SMALLINT NOT NULL CHECK (signal_consensus BETWEEN 0 AND 4)</td></tr>
-        <tr><td>summary</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>bull_case</td><td class="mono">TEXT</td></tr>
-        <tr><td>key_risk</td><td class="mono">TEXT</td></tr>
-        <tr><td>risk_rebuttal</td><td class="mono">TEXT</td></tr>
-        <tr><td>counter_scenarios</td><td class="mono">JSONB</td></tr>
-        <tr><td>evidence</td><td class="mono">JSONB NOT NULL</td></tr>
-        <tr><td>sizing_hint</td><td class="mono">JSONB NOT NULL</td></tr>
-        <tr><td>persona_notes</td><td class="mono">TEXT</td></tr>
-        <tr><td>decision_close</td><td class="mono">NUMERIC NOT NULL CHECK (decision_close &gt; 0)</td></tr>
-        <tr><td>current_price</td><td class="mono">NUMERIC NOT NULL CHECK (current_price &gt; 0)</td></tr>
-        <tr><td>day_high</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>day_low</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>close_prev</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>volume</td><td class="mono">BIGINT NOT NULL</td></tr>
-        <tr><td>turnover</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>high_52w</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>low_52w</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>source</td><td class="mono">TEXT</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT</td></tr>
-        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>evidence_id</td><td class="mono">TEXT</td></tr>
-        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>model_provider</td><td class="mono">TEXT</td></tr>
-        <tr><td>model_name</td><td class="mono">TEXT</td></tr>
-        <tr><td>prompt_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>policy_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>input_hash</td><td class="mono">TEXT</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (ticker, cycle_ts, inv_type)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (ticker, src_disclosure_at) REFERENCES tb_disclosure_signal(ticker, cycle_ts)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (ticker, src_news_at) REFERENCES tb_news_signal(ticker, cycle_ts)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (src_macro_at) REFERENCES tb_macro(as_of)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키 — UNIQUE(ticker, cycle_ts, inv_type)</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일 — FK → tb_daily_pick</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목</td></tr>
+        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>슬롯 시각</td></tr>
+        <tr><td>src_disclosure_at</td><td class="mono">TIMESTAMPTZ</td><td>읽은 공시 스냅샷의 cycle_ts 복사 (시점 참조)</td></tr>
+        <tr><td>src_news_at</td><td class="mono">TIMESTAMPTZ</td><td>읽은 뉴스 스냅샷의 cycle_ts 복사</td></tr>
+        <tr><td>src_macro_at</td><td class="mono">TIMESTAMPTZ</td><td>읽은 매크로 스냅샷 시각</td></tr>
+        <tr><td>inv_type</td><td class="mono">TEXT NOT NULL CHECK (inv_type IN ('aggressive','conservative'))</td><td>투자 성향</td></tr>
+        <tr><td>side</td><td class="mono">TEXT NOT NULL CHECK (side IN ('buy','hold','sell'))</td><td>판단 방향</td></tr>
+        <tr><td>conviction</td><td class="mono">NUMERIC(4,3) NOT NULL CHECK (conviction BETWEEN 0 AND 1)</td><td>확신도 — 매수 문턱 0.65/0.75 · 과신 0.90</td></tr>
+        <tr><td>signal_consensus</td><td class="mono">SMALLINT NOT NULL CHECK (signal_consensus BETWEEN 0 AND 4)</td><td>방향이 일치한 신호원 수(0~4) — 설명용이며 게이트가 아니다(결정 로그: 게이트화는 '좁은 깔때기' 재발)</td></tr>
+        <tr><td>summary</td><td class="mono">TEXT NOT NULL</td><td>판단 요약</td></tr>
+        <tr><td>bull_case</td><td class="mono">TEXT</td><td>매수 논리</td></tr>
+        <tr><td>key_risk</td><td class="mono">TEXT</td><td>핵심 위험 1개 — buy면 필수 (Critic 통과 조건)</td></tr>
+        <tr><td>risk_rebuttal</td><td class="mono">TEXT</td><td>위험 반박</td></tr>
+        <tr><td>counter_scenarios</td><td class="mono">JSONB</td><td>반대 시나리오</td></tr>
+        <tr><td>evidence</td><td class="mono">JSONB NOT NULL</td><td>근거 목록</td></tr>
+        <tr><td>sizing_hint</td><td class="mono">JSONB NOT NULL</td><td>비중 힌트</td></tr>
+        <tr><td>persona_notes</td><td class="mono">TEXT</td><td>성향 페르소나 메모</td></tr>
+        <tr><td>decision_close</td><td class="mono">NUMERIC NOT NULL CHECK (decision_close &gt; 0)</td><td>판단 기준가 — 회고 수익률의 기준</td></tr>
+        <tr><td>current_price</td><td class="mono">NUMERIC NOT NULL CHECK (current_price &gt; 0)</td><td>판단 시점 현재가 (박제 snapshot)</td></tr>
+        <tr><td>day_high</td><td class="mono">NUMERIC NOT NULL</td><td>당일 고가 (박제)</td></tr>
+        <tr><td>day_low</td><td class="mono">NUMERIC NOT NULL</td><td>당일 저가 (박제)</td></tr>
+        <tr><td>close_prev</td><td class="mono">NUMERIC NOT NULL</td><td>전일 종가 (박제) — 08 허용오차 2% 검증 기준</td></tr>
+        <tr><td>volume</td><td class="mono">BIGINT NOT NULL</td><td>거래량</td></tr>
+        <tr><td>turnover</td><td class="mono">NUMERIC NOT NULL</td><td>거래대금</td></tr>
+        <tr><td>high_52w</td><td class="mono">NUMERIC NOT NULL</td><td>52주 고가</td></tr>
+        <tr><td>low_52w</td><td class="mono">NUMERIC NOT NULL</td><td>52주 저가</td></tr>
+        <tr><td>source</td><td class="mono">TEXT</td><td>(계보) 판단 실행 컨텍스트 출처</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT</td><td>(계보) 실행 참조 (run_id 등)</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ</td><td>(계보) 판단 생성 시각</td></tr>
+        <tr><td>evidence_id</td><td class="mono">TEXT</td><td>(계보) 증거 고유 id</td></tr>
+        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>(계보) 읽은 신호 증거 연결 (증거 사슬)</td></tr>
+        <tr><td>model_provider</td><td class="mono">TEXT</td><td>(계보) 이 판단을 만든 LLM 제공자</td></tr>
+        <tr><td>model_name</td><td class="mono">TEXT</td><td>(계보) 모델명 (07만 상위 모델 가능)</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT</td><td>(계보) 판단 프롬프트 버전 — 회고 귀책 구분의 핵심</td></tr>
+        <tr><td>policy_version</td><td class="mono">TEXT</td><td>(계보) 게이트·문턱 config 버전</td></tr>
+        <tr><td>input_hash</td><td class="mono">TEXT</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (ticker, cycle_ts, inv_type)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (ticker, src_disclosure_at) REFERENCES tb_disclosure_signal(ticker, cycle_ts)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (ticker, src_news_at) REFERENCES tb_news_signal(ticker, cycle_ts)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (src_macro_at) REFERENCES tb_macro(as_of)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_critic_verdict</code> <span class="sd">크리틱 평결 (pass·reject + 반박문)</span><span class="cnt">22 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>signal_id</td><td class="mono">BIGINT NOT NULL UNIQUE REFERENCES tb_strategist_signals(id)</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>decision</td><td class="mono">TEXT NOT NULL CHECK (decision IN ('pass','reject','hold'))</td></tr>
-        <tr><td>is_agreed</td><td class="mono">BOOLEAN</td></tr>
-        <tr><td>category</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>objection</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>confidence</td><td class="mono">NUMERIC(4,3) NOT NULL CHECK (confidence BETWEEN 0 AND 1)</td></tr>
-        <tr><td>decided_layer</td><td class="mono">TEXT NOT NULL CHECK (decided_layer IN ('quality_gate','hard_rule','llm','gate'))</td></tr>
-        <tr><td>verdict_source</td><td class="mono">TEXT NOT NULL CHECK (verdict_source IN ('fresh','cache','cooldown'))</td></tr>
-        <tr><td>skipped_rules</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>source</td><td class="mono">TEXT</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT</td></tr>
-        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>evidence_id</td><td class="mono">TEXT</td></tr>
-        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>model_provider</td><td class="mono">TEXT</td></tr>
-        <tr><td>model_name</td><td class="mono">TEXT</td></tr>
-        <tr><td>prompt_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>policy_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>input_hash</td><td class="mono">TEXT</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
+        <tr><td>signal_id</td><td class="mono">BIGINT NOT NULL UNIQUE REFERENCES tb_strategist_signals(id)</td><td>판단당 판정 1개</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목</td></tr>
+        <tr><td>decision</td><td class="mono">TEXT NOT NULL CHECK (decision IN ('pass','reject','hold'))</td><td>판정</td></tr>
+        <tr><td>is_agreed</td><td class="mono">BOOLEAN</td><td>전략과 동의 여부</td></tr>
+        <tr><td>category</td><td class="mono">TEXT NOT NULL</td><td>반박 분류</td></tr>
+        <tr><td>objection</td><td class="mono">TEXT NOT NULL</td><td>반박 내용</td></tr>
+        <tr><td>confidence</td><td class="mono">NUMERIC(4,3) NOT NULL CHECK (confidence BETWEEN 0 AND 1)</td><td>판정 확신 (승인 문턱 0.70 · 과신 시 0.80)</td></tr>
+        <tr><td>decided_layer</td><td class="mono">TEXT NOT NULL CHECK (decided_layer IN ('quality_gate','hard_rule','llm','gate'))</td><td>어느 층에서 결정됐나</td></tr>
+        <tr><td>verdict_source</td><td class="mono">TEXT NOT NULL CHECK (verdict_source IN ('fresh','cache','cooldown'))</td><td>평결의 출처 — fresh(새 평결) / cache(캐시 재사용) / cooldown(쿨다운 중 재사용)</td></tr>
+        <tr><td>skipped_rules</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>건너뛴 규칙 기록</td></tr>
+        <tr><td>source</td><td class="mono">TEXT</td><td>(계보) 판단 실행 컨텍스트 출처</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT</td><td>(계보) 실행 참조 (run_id 등)</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ</td><td>(계보) 판단 생성 시각</td></tr>
+        <tr><td>evidence_id</td><td class="mono">TEXT</td><td>(계보) 증거 고유 id</td></tr>
+        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>(계보) 읽은 신호 증거 연결 (증거 사슬)</td></tr>
+        <tr><td>model_provider</td><td class="mono">TEXT</td><td>(계보) 이 판단을 만든 LLM 제공자</td></tr>
+        <tr><td>model_name</td><td class="mono">TEXT</td><td>(계보) 모델명 (07만 상위 모델 가능)</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT</td><td>(계보) 판단 프롬프트 버전 — 회고 귀책 구분의 핵심</td></tr>
+        <tr><td>policy_version</td><td class="mono">TEXT</td><td>(계보) 게이트·문턱 config 버전</td></tr>
+        <tr><td>input_hash</td><td class="mono">TEXT</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">집행</h4>
     <details class="schema">
       <summary><code>tb_account</code> <span class="sd">모의 계좌 (성향·현금·평가액)</span><span class="cnt">12 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>broker_account_id</td><td class="mono">TEXT NOT NULL UNIQUE</td></tr>
-        <tr><td>currency</td><td class="mono">TEXT NOT NULL DEFAULT 'USD'</td></tr>
-        <tr><td>cash</td><td class="mono">NUMERIC NOT NULL CHECK (cash &gt;= 0)</td></tr>
-        <tr><td>equity</td><td class="mono">NUMERIC NOT NULL CHECK (equity &gt;= 0)</td></tr>
-        <tr><td>buying_power</td><td class="mono">NUMERIC NOT NULL CHECK (buying_power &gt;= 0)</td></tr>
-        <tr><td>is_paper</td><td class="mono">BOOLEAN NOT NULL DEFAULT true</td></tr>
-        <tr><td>user_id</td><td class="mono">BIGINT REFERENCES tb_user(user_id)</td></tr>
-        <tr><td>inv_type</td><td class="mono">TEXT CHECK (inv_type IN ('aggressive','conservative'))</td></tr>
-        <tr><td>status</td><td class="mono">TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused','closed'))</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
+        <tr><td>broker_account_id</td><td class="mono">TEXT NOT NULL UNIQUE</td><td>브로커/시뮬 계좌 id</td></tr>
+        <tr><td>currency</td><td class="mono">TEXT NOT NULL DEFAULT 'USD'</td><td>통화</td></tr>
+        <tr><td>cash</td><td class="mono">NUMERIC NOT NULL CHECK (cash &gt;= 0)</td><td>현금</td></tr>
+        <tr><td>equity</td><td class="mono">NUMERIC NOT NULL CHECK (equity &gt;= 0)</td><td>평가액</td></tr>
+        <tr><td>buying_power</td><td class="mono">NUMERIC NOT NULL CHECK (buying_power &gt;= 0)</td><td>주문 가능 금액</td></tr>
+        <tr><td>is_paper</td><td class="mono">BOOLEAN NOT NULL DEFAULT true</td><td>페이퍼 여부 (2차는 전부 true)</td></tr>
+        <tr><td>user_id</td><td class="mono">BIGINT REFERENCES tb_user(user_id)</td><td>1유저=1계좌</td></tr>
+        <tr><td>inv_type</td><td class="mono">TEXT CHECK (inv_type IN ('aggressive','conservative'))</td><td>계좌 성향</td></tr>
+        <tr><td>status</td><td class="mono">TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','paused','closed'))</td><td>계좌 상태</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>생성 시각</td></tr>
+        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>갱신 시각 (upsert 테이블)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_order</code> <span class="sd">주문 — 매수(bracket)와 청산(close)이 별도 행</span><span class="cnt">18 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">두 제약에 이름을 명시하는 이유: 익명 CHECK는 Postgres가 tb_order_check, tb_order_check1처럼 **선언 순서로** 이름을 짓는다. 마이그레이션은 ALTER ... ADD CONSTRAINT라 이름을 직접 대므로, 신규 설치와 마이그레이션의 카탈로그가 정의는 같은데 이름만 갈렸다. 순서에 기대지 않게 못 박는다.  브래킷 삼중 제약은 매수에만 해당한다. 청산에는 손절·익절이 없으므로 더미 값을 채우는 대신 컬럼을 비운다. 청산은 반드시 어느 매수를 닫는지 가리켜야 한다(실현손익의 짝).</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>signal_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_strategist_signals(id)</td></tr>
-        <tr><td>account_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_account(id)</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>quantity</td><td class="mono">INT NOT NULL CHECK (quantity &gt; 0)</td></tr>
-        <tr><td>entry_price</td><td class="mono">NUMERIC NOT NULL CHECK (entry_price &gt; 0)</td></tr>
-        <tr><td>stop_price</td><td class="mono">NUMERIC CHECK (stop_price &gt; 0)</td></tr>
-        <tr><td>take_profit_price</td><td class="mono">NUMERIC CHECK (take_profit_price &gt; 0)</td></tr>
-        <tr><td>order_type</td><td class="mono">TEXT NOT NULL DEFAULT 'bracket' CHECK (order_type IN ('bracket','close'))</td></tr>
-        <tr><td>closes_order_id</td><td class="mono">BIGINT REFERENCES tb_order(id)</td></tr>
-        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('planned','submitted','filled','failed','canceled'))</td></tr>
-        <tr><td>idempotency_key</td><td class="mono">TEXT NOT NULL UNIQUE</td></tr>
-        <tr><td>broker_order_id</td><td class="mono">TEXT UNIQUE</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>parent_order_id</td><td class="mono">TEXT</td></tr>
-        <tr><td>stop_leg_order_id</td><td class="mono">TEXT</td></tr>
-        <tr><td>take_profit_leg_order_id</td><td class="mono">TEXT</td></tr>
-        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (account_id, signal_id)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CONSTRAINT tb_order_check CHECK (order_type &lt;&gt; 'bracket' OR ( stop_price IS NOT NULL AND take_profit_price IS NOT NULL AND stop_price &lt; entry_price AND entry_price &lt; take_profit_price))</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CONSTRAINT tb_order_close_target_check CHECK (order_type &lt;&gt; 'close' OR closes_order_id IS NOT NULL)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키 — UNIQUE(account_id, signal_id)</td></tr>
+        <tr><td>signal_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_strategist_signals(id)</td><td>어느 판단의 주문인지 (재현 사슬)</td></tr>
+        <tr><td>account_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_account(id)</td><td>어느 계좌의 주문인지</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목</td></tr>
+        <tr><td>quantity</td><td class="mono">INT NOT NULL CHECK (quantity &gt; 0)</td><td>수량</td></tr>
+        <tr><td>entry_price</td><td class="mono">NUMERIC NOT NULL CHECK (entry_price &gt; 0)</td><td>진입가 — MockBroker는 이 지정가 그대로 체결(슬리피지 0, 한계는 R7)</td></tr>
+        <tr><td>stop_price</td><td class="mono">NUMERIC CHECK (stop_price &gt; 0)</td><td>손절가(진입가 −15%) — bracket이면 필수, close면 NULL</td></tr>
+        <tr><td>take_profit_price</td><td class="mono">NUMERIC CHECK (take_profit_price &gt; 0)</td><td>익절가(진입가 +20%) — bracket이면 필수, close면 NULL</td></tr>
+        <tr><td>order_type</td><td class="mono">TEXT NOT NULL DEFAULT 'bracket' CHECK (order_type IN ('bracket','close'))</td><td>'bracket'(매수·3중 가격 필수) / 'close'(청산·가격 레그 없음) — D7</td></tr>
+        <tr><td>closes_order_id</td><td class="mono">BIGINT REFERENCES tb_order(id)</td><td>청산이 닫는 매수 행(자기참조) — 실현손익의 짝, close면 필수(CHECK)</td></tr>
+        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('planned','submitted','filled','failed','canceled'))</td><td>주문 상태</td></tr>
+        <tr><td>idempotency_key</td><td class="mono">TEXT NOT NULL UNIQUE</td><td>중복 주문 차단 멱등키</td></tr>
+        <tr><td>broker_order_id</td><td class="mono">TEXT UNIQUE</td><td>브로커 측 주문 id</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>생성 시각</td></tr>
+        <tr><td>parent_order_id</td><td class="mono">TEXT</td><td>브로커 측 부모 주문 id (Alpaca 브래킷 대비 — mock에선 미사용)</td></tr>
+        <tr><td>stop_leg_order_id</td><td class="mono">TEXT</td><td>브로커 측 손절 레그 주문 id</td></tr>
+        <tr><td>take_profit_leg_order_id</td><td class="mono">TEXT</td><td>브로커 측 익절 레그 주문 id</td></tr>
+        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>상태 갱신 시각(UTC)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (account_id, signal_id)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CONSTRAINT tb_order_check CHECK (order_type &lt;&gt; 'bracket' OR ( stop_price IS NOT NULL AND take_profit_price IS NOT NULL AND stop_price &lt; entry_price AND entry_price &lt; take_profit_price))</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CONSTRAINT tb_order_close_target_check CHECK (order_type &lt;&gt; 'close' OR closes_order_id IS NOT NULL)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_fill</code> <span class="sd">체결</span><span class="cnt">8 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>order_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_order(id)</td></tr>
-        <tr><td>side</td><td class="mono">TEXT NOT NULL CHECK (side IN ('buy','sell'))</td></tr>
-        <tr><td>quantity</td><td class="mono">INT NOT NULL CHECK (quantity &gt; 0)</td></tr>
-        <tr><td>price</td><td class="mono">NUMERIC NOT NULL CHECK (price &gt; 0)</td></tr>
-        <tr><td>filled_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>broker_fill_id</td><td class="mono">TEXT UNIQUE</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
+        <tr><td>order_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_order(id)</td><td>주문 연결 (signal→order→fill 재현 사슬)</td></tr>
+        <tr><td>side</td><td class="mono">TEXT NOT NULL CHECK (side IN ('buy','sell'))</td><td>체결 방향</td></tr>
+        <tr><td>quantity</td><td class="mono">INT NOT NULL CHECK (quantity &gt; 0)</td><td>체결 수량</td></tr>
+        <tr><td>price</td><td class="mono">NUMERIC NOT NULL CHECK (price &gt; 0)</td><td>체결 가격</td></tr>
+        <tr><td>filled_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>체결 시각</td></tr>
+        <tr><td>broker_fill_id</td><td class="mono">TEXT UNIQUE</td><td>브로커 체결 id (중복 수신 방지)</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_order_plan</code> <span class="b b-new">2차 신규</span> <span class="sd">배분의 관측 로그 — 샀으면 수량, 못 샀으면 사유</span><span class="cnt">14 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">Operational tables are execution logs, never domain FK parents.</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>run_id</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>account_id</td><td class="mono">BIGINT</td></tr>
-        <tr><td>signal_id</td><td class="mono">BIGINT</td></tr>
-        <tr><td>decision</td><td class="mono">TEXT NOT NULL CHECK (decision IN ('planned','skipped'))</td></tr>
-        <tr><td>skipped_reason</td><td class="mono">TEXT</td></tr>
-        <tr><td>quantity</td><td class="mono">INT NOT NULL CHECK (quantity &gt;= 0)</td></tr>
-        <tr><td>entry_price</td><td class="mono">NUMERIC</td></tr>
-        <tr><td>stop_price</td><td class="mono">NUMERIC</td></tr>
-        <tr><td>take_profit_price</td><td class="mono">NUMERIC</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (ticker, cycle_ts, account_id)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CHECK ((decision = 'planned' AND skipped_reason IS NULL AND quantity &gt; 0) OR (decision = 'skipped' AND skipped_reason IS NOT NULL AND quantity = 0))</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>행 식별자</td></tr>
+        <tr><td>run_id</td><td class="mono">TEXT NOT NULL</td><td>배분 실행 묶음 식별자 — 같은 날 배분이 남긴 행들을 한 줄로 꿴다</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>어느 종목의 계획인가</td></tr>
+        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>어느 슬롯의 계획인가</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일</td></tr>
+        <tr><td>account_id</td><td class="mono">BIGINT</td><td>어느 계좌 앞에 놓았나 (운영 로그라 FK 없음)</td></tr>
+        <tr><td>signal_id</td><td class="mono">BIGINT</td><td>근거가 된 판단 (운영 로그라 FK 없음)</td></tr>
+        <tr><td>decision</td><td class="mono">TEXT NOT NULL CHECK (decision IN ('planned','skipped'))</td><td>planned(샀다) / skipped(못 샀다)</td></tr>
+        <tr><td>skipped_reason</td><td class="mono">TEXT</td><td>못 산 사유(min_cash·daily_order_cap…) — 관제실 보류 순위의 원천. skipped면 필수</td></tr>
+        <tr><td>quantity</td><td class="mono">INT NOT NULL CHECK (quantity &gt;= 0)</td><td>계획 수량 — skipped면 0 (CHECK로 강제)</td></tr>
+        <tr><td>entry_price</td><td class="mono">NUMERIC</td><td>계획 진입가</td></tr>
+        <tr><td>stop_price</td><td class="mono">NUMERIC</td><td>계획 손절가</td></tr>
+        <tr><td>take_profit_price</td><td class="mono">NUMERIC</td><td>계획 익절가</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각(UTC)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (ticker, cycle_ts, account_id)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CHECK ((decision = 'planned' AND skipped_reason IS NULL AND quantity &gt; 0) OR (decision = 'skipped' AND skipped_reason IS NOT NULL AND quantity = 0))</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_account_equity_daily</code> <span class="b b-new">2차 신규</span> <span class="sd">당일 시작 평가액 — daily_loss_limit의 분모</span><span class="cnt">4 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">Phase 4: 당일 시작 equity 스냅샷 — daily_loss_limit의 분모. 하루 첫 기록이 이긴다(잡의 INSERT는 ON CONFLICT DO NOTHING). 재실행이 아침 값을 덮으면 '당일 시작 대비'라는 정의 자체가 거짓이 된다.</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>account_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_account(id)</td></tr>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>equity</td><td class="mono">NUMERIC NOT NULL CHECK (equity &gt;= 0)</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (account_id, trade_date)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>account_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_account(id)</td><td>계좌(PK 절반)</td></tr>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일(PK 절반) — 하루 첫 기록이 이긴다</td></tr>
+        <tr><td>equity</td><td class="mono">NUMERIC NOT NULL CHECK (equity &gt;= 0)</td><td>그날 첫 배분 잡이 관측한 시가평가(D8: 현금 + 보유×직전 종가). 첫 기록이 이긴다 — INSERT가 ON CONFLICT DO NOTHING이라 재실행이 아침 값을 덮지 않는다. 덮으면 '당일 시작 대비'라는 정의가 거짓이 된다</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>적재 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (account_id, trade_date)</td></tr>
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">회고</h4>
     <details class="schema">
       <summary><code>tb_review_price_snapshots</code> <span class="sd">판단 후 T+1~5 가격 추적</span><span class="cnt">18 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>signal_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_strategist_signals(id)</td></tr>
-        <tr><td>day_offset</td><td class="mono">SMALLINT NOT NULL CHECK (day_offset BETWEEN 1 AND 5)</td></tr>
-        <tr><td>price_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td></tr>
-        <tr><td>source</td><td class="mono">TEXT NOT NULL CHECK (source IN ('fixture','market_data'))</td></tr>
-        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>observed_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>confidence</td><td class="mono">NUMERIC NOT NULL CHECK (confidence BETWEEN 0 AND 1)</td></tr>
-        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td></tr>
-        <tr><td>model_provider</td><td class="mono">TEXT</td></tr>
-        <tr><td>model_name</td><td class="mono">TEXT</td></tr>
-        <tr><td>prompt_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>policy_version</td><td class="mono">TEXT</td></tr>
-        <tr><td>input_hash</td><td class="mono">TEXT</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (signal_id, day_offset)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>signal_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_strategist_signals(id)</td><td>판단 연결</td></tr>
+        <tr><td>day_offset</td><td class="mono">SMALLINT NOT NULL CHECK (day_offset BETWEEN 1 AND 5)</td><td>T+며칠인지</td></tr>
+        <tr><td>price_date</td><td class="mono">DATE NOT NULL</td><td>기준일</td></tr>
+        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td><td>종가</td></tr>
+        <tr><td>source</td><td class="mono">TEXT NOT NULL CHECK (source IN ('fixture','market_data'))</td><td>가격 출처</td></tr>
+        <tr><td>source_ref</td><td class="mono">TEXT NOT NULL</td><td>(계보) 출처 상세 참조 — URL·경로</td></tr>
+        <tr><td>observed_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>(계보) 관측 시각</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>(계보) 수집 시각</td></tr>
+        <tr><td>confidence</td><td class="mono">NUMERIC NOT NULL CHECK (confidence BETWEEN 0 AND 1)</td><td>관측 신뢰</td></tr>
+        <tr><td>evidence_id</td><td class="mono">TEXT NOT NULL</td><td>(계보) 증거 고유 id — run:역할:종류</td></tr>
+        <tr><td>parent_evidence_ids</td><td class="mono">JSONB NOT NULL DEFAULT '[]'</td><td>(계보) 상위 증거 연결 (증거 사슬)</td></tr>
+        <tr><td>model_provider</td><td class="mono">TEXT</td><td>(계보) LLM 제공자</td></tr>
+        <tr><td>model_name</td><td class="mono">TEXT</td><td>(계보) 모델명</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT</td><td>(계보) 프롬프트 버전</td></tr>
+        <tr><td>policy_version</td><td class="mono">TEXT</td><td>(계보) 정책(config) 버전</td></tr>
+        <tr><td>input_hash</td><td class="mono">TEXT</td><td>(계보) 입력 해시 — 같은 입력 재현 검증</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>생성 시각</td></tr>
+        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>갱신 시각 (upsert)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (signal_id, day_offset)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_review</code> <span class="sd">판단 채점 (적중 여부 · 교훈)</span><span class="cnt">9 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>signal_id</td><td class="mono">BIGINT PRIMARY KEY REFERENCES tb_strategist_signals(id)</td></tr>
-        <tr><td>ret_1d</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>ret_3d</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>ret_5d</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>is_hit</td><td class="mono">BOOLEAN NOT NULL</td></tr>
-        <tr><td>max_drawdown</td><td class="mono">NUMERIC NOT NULL CHECK (max_drawdown &lt;= 0)</td></tr>
-        <tr><td>lesson</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>signal_id</td><td class="mono">BIGINT PRIMARY KEY REFERENCES tb_strategist_signals(id)</td><td>판단당 회고 1개</td></tr>
+        <tr><td>ret_1d</td><td class="mono">NUMERIC NOT NULL</td><td>T+1 수익률 (기준가 decision_close 대비)</td></tr>
+        <tr><td>ret_3d</td><td class="mono">NUMERIC NOT NULL</td><td>T+3 수익률</td></tr>
+        <tr><td>ret_5d</td><td class="mono">NUMERIC NOT NULL</td><td>T+5 수익률</td></tr>
+        <tr><td>is_hit</td><td class="mono">BOOLEAN NOT NULL</td><td>판단 적중 여부</td></tr>
+        <tr><td>max_drawdown</td><td class="mono">NUMERIC NOT NULL CHECK (max_drawdown &lt;= 0)</td><td>보유 중 최대 낙폭</td></tr>
+        <tr><td>lesson</td><td class="mono">TEXT NOT NULL</td><td>교훈 1~2문장 — 07 프롬프트로 되먹임 (메모리)</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>생성 시각</td></tr>
+        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>갱신 시각 (upsert)</td></tr>
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">운영</h4>
@@ -1409,143 +1409,143 @@ erDiagram
       <summary><code>tb_job_run</code> <span class="b b-new">2차 신규</span> <span class="sd">JOB 실행 원장 — 멱등의 근거</span><span class="cnt">6 컬럼</span></summary>
       <div class="inner"><p class="small" style="margin:6px 0">잡 실행 원장. PK가 "잡 하나는 하루 한 번"을 DB 수준에서 강제한다 — 스케줄러가 60초마다 깨어나도 잡 본문은 예약에 성공한 틱에서만 돈다. 예약(running)과 성공(succeeded)을 구분하는 이유: 예약만 하고 죽은 실행을 성공으로 세면 그 주기를 통째로 잃는다(주간 잡이면 한 주).</p></div>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>job_name</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>slot_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('running','succeeded','failed'))</td></tr>
-        <tr><td>detail</td><td class="mono">TEXT</td></tr>
-        <tr><td>started_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>finished_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (job_name, slot_date)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CHECK ((status = 'running') = (finished_at IS NULL))</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>job_name</td><td class="mono">TEXT NOT NULL</td><td>잡 이름(universe·daily_bars·exits …)</td></tr>
+        <tr><td>slot_date</td><td class="mono">DATE NOT NULL</td><td>실행 슬롯(하루). 스케줄러가 60초마다 깨어나도 예약에 성공한 틱에서만 본문이 돈다</td></tr>
+        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('running','succeeded','failed'))</td><td>running·succeeded·failed. 예약만 하고 죽은 실행을 성공으로 세면 그 주기를 통째로 잃는다</td></tr>
+        <tr><td>detail</td><td class="mono">TEXT</td><td>실패 사유 또는 실행 요약</td></tr>
+        <tr><td>started_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>실행 시작 시각</td></tr>
+        <tr><td>finished_at</td><td class="mono">TIMESTAMPTZ</td><td>실행 종료 시각 — running이면 NULL(CHECK로 강제)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (job_name, slot_date)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CHECK ((status = 'running') = (finished_at IS NULL))</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_llm_usage</code> <span class="b b-new">2차 신규</span> <span class="sd">LLM 호출 기록 (소비자 0 — 배선 미착수)</span><span class="cnt">8 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>called_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>task</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>model</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>prompt_tokens</td><td class="mono">INT NOT NULL CHECK (prompt_tokens &gt;= 0)</td></tr>
-        <tr><td>completion_tokens</td><td class="mono">INT NOT NULL CHECK (completion_tokens &gt;= 0)</td></tr>
-        <tr><td>est_cost_usd</td><td class="mono">NUMERIC NOT NULL CHECK (est_cost_usd &gt;= 0)</td></tr>
-        <tr><td>run_id</td><td class="mono">TEXT</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
+        <tr><td>called_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>호출 시각</td></tr>
+        <tr><td>task</td><td class="mono">TEXT NOT NULL</td><td>호출처 (disclosure·news·strategy·critic·review)</td></tr>
+        <tr><td>model</td><td class="mono">TEXT NOT NULL</td><td>모델명</td></tr>
+        <tr><td>prompt_tokens</td><td class="mono">INT NOT NULL CHECK (prompt_tokens &gt;= 0)</td><td>입력 토큰</td></tr>
+        <tr><td>completion_tokens</td><td class="mono">INT NOT NULL CHECK (completion_tokens &gt;= 0)</td><td>출력 토큰</td></tr>
+        <tr><td>est_cost_usd</td><td class="mono">NUMERIC NOT NULL CHECK (est_cost_usd &gt;= 0)</td><td>추정 비용 — 대시보드·일일 예산 가드의 데이터원</td></tr>
+        <tr><td>run_id</td><td class="mono">TEXT</td><td>실행 연결</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_benchmark_price</code> <span class="b b-new">2차 신규</span> <span class="sd">벤치마크(SPY) 종가</span><span class="cnt">3 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>price_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (price_date, ticker)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>price_date</td><td class="mono">DATE NOT NULL</td><td>기준일</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>벤치마크 티커 (SPY)</td></tr>
+        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td><td>종가 — 상대 성과 기준</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (price_date, ticker)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>tb_user</code> <span class="b b-new">2차 신규</span> <span class="sd">사용자 (소비자 0)</span><span class="cnt">7 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>user_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>login_id</td><td class="mono">TEXT NOT NULL UNIQUE</td></tr>
-        <tr><td>display_name</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>role</td><td class="mono">TEXT NOT NULL CHECK (role IN ('admin','user'))</td></tr>
-        <tr><td>otp_secret</td><td class="mono">TEXT</td></tr>
-        <tr><td>is_active</td><td class="mono">BOOLEAN NOT NULL DEFAULT true</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>user_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
+        <tr><td>login_id</td><td class="mono">TEXT NOT NULL UNIQUE</td><td>로그인 id</td></tr>
+        <tr><td>display_name</td><td class="mono">TEXT NOT NULL</td><td>표시 이름</td></tr>
+        <tr><td>role</td><td class="mono">TEXT NOT NULL CHECK (role IN ('admin','user'))</td><td>권한</td></tr>
+        <tr><td>otp_secret</td><td class="mono">TEXT</td><td>OTP(TOTP) 시크릿</td></tr>
+        <tr><td>is_active</td><td class="mono">BOOLEAN NOT NULL DEFAULT true</td><td>활성 여부</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>생성 시각 — 계정은 관리자만 생성</td></tr>
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">구 러너 유물 — 현행 미사용</h4>
     <details class="schema">
       <summary><code>tb_technical</code> <span class="b b-gray">유물</span> <span class="sd">구 스크리너 지표 — 현행 랭킹과 컬럼 불일치로 미사용</span><span class="cnt">16 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td></tr>
-        <tr><td>rs_20</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>vol_ratio</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>ret_5d</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>ret_20d</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>atr_pct</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>high_252_ratio</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>rsi</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>macd</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>ma20</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>ma50</td><td class="mono">NUMERIC NOT NULL</td></tr>
-        <tr><td>trend</td><td class="mono">TEXT NOT NULL CHECK (trend IN ('up','mixed','down','no_data'))</td></tr>
-        <tr><td>ml_probs</td><td class="mono">JSONB NOT NULL DEFAULT '{}'</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">PRIMARY KEY (trade_date, ticker)</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>trade_date</td><td class="mono">DATE NOT NULL</td><td>거래일 — FK(trade_date, ticker) → tb_daily_pick</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>종목</td></tr>
+        <tr><td>close</td><td class="mono">NUMERIC NOT NULL CHECK (close &gt; 0)</td><td>종가</td></tr>
+        <tr><td>rs_20</td><td class="mono">NUMERIC NOT NULL</td><td>20일 상대강도</td></tr>
+        <tr><td>vol_ratio</td><td class="mono">NUMERIC NOT NULL</td><td>거래량 비율 (평균 대비)</td></tr>
+        <tr><td>ret_5d</td><td class="mono">NUMERIC NOT NULL</td><td>5일 수익률 — late_entry 컷 재료</td></tr>
+        <tr><td>ret_20d</td><td class="mono">NUMERIC NOT NULL</td><td>20일 수익률</td></tr>
+        <tr><td>atr_pct</td><td class="mono">NUMERIC NOT NULL</td><td>변동폭(ATR) 비율</td></tr>
+        <tr><td>high_252_ratio</td><td class="mono">NUMERIC NOT NULL</td><td>52주 고가 대비 현재가</td></tr>
+        <tr><td>rsi</td><td class="mono">NUMERIC NOT NULL</td><td>RSI 모멘텀</td></tr>
+        <tr><td>macd</td><td class="mono">NUMERIC NOT NULL</td><td>MACD</td></tr>
+        <tr><td>ma20</td><td class="mono">NUMERIC NOT NULL</td><td>20일 이동평균</td></tr>
+        <tr><td>ma50</td><td class="mono">NUMERIC NOT NULL</td><td>50일 이동평균</td></tr>
+        <tr><td>trend</td><td class="mono">TEXT NOT NULL CHECK (trend IN ('up','mixed','down','no_data'))</td><td>추세 분류</td></tr>
+        <tr><td>ml_probs</td><td class="mono">JSONB NOT NULL DEFAULT '{}'</td><td>ML 확률 (확장용)</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">PRIMARY KEY (trade_date, ticker)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FOREIGN KEY (trade_date, ticker) REFERENCES tb_daily_pick(trade_date, ticker)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>pipeline_runs</code> <span class="b b-gray">유물</span> <span class="sd">구 11단계 러너의 런 로그</span><span class="cnt">10 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>run_id</td><td class="mono">TEXT PRIMARY KEY</td></tr>
-        <tr><td>idempotency_key</td><td class="mono">TEXT NOT NULL UNIQUE</td></tr>
-        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('pending','running','completed','failed','timed_out'))</td></tr>
-        <tr><td>payload</td><td class="mono">JSONB NOT NULL DEFAULT '{}'</td></tr>
-        <tr><td>started_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>finished_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>run_id</td><td class="mono">TEXT PRIMARY KEY</td><td>실행 고유 id</td></tr>
+        <tr><td>idempotency_key</td><td class="mono">TEXT NOT NULL UNIQUE</td><td>실행 멱등키</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL</td><td>대상 종목</td></tr>
+        <tr><td>cycle_ts</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>슬롯 시각 — 인덱스 (ticker, cycle_ts DESC)</td></tr>
+        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('pending','running','completed','failed','timed_out'))</td><td>실행 상태</td></tr>
+        <tr><td>payload</td><td class="mono">JSONB NOT NULL DEFAULT '{}'</td><td>실행 컨텍스트</td></tr>
+        <tr><td>started_at</td><td class="mono">TIMESTAMPTZ</td><td>시작 시각</td></tr>
+        <tr><td>finished_at</td><td class="mono">TIMESTAMPTZ</td><td>종료 시각</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>생성 시각</td></tr>
+        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>갱신 시각</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>pipeline_stage_attempts</code> <span class="b b-gray">유물</span> <span class="sd">구 러너의 단계 시도 로그</span><span class="cnt">10 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>attempt_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>run_id</td><td class="mono">TEXT NOT NULL REFERENCES pipeline_runs(run_id)</td></tr>
-        <tr><td>component</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>attempt_no</td><td class="mono">INT NOT NULL CHECK (attempt_no &gt; 0)</td></tr>
-        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('pending','running','retrying','completed','failed','timed_out'))</td></tr>
-        <tr><td>started_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>finished_at</td><td class="mono">TIMESTAMPTZ</td></tr>
-        <tr><td>error_code</td><td class="mono">TEXT</td></tr>
-        <tr><td>error_message</td><td class="mono">TEXT</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (run_id, component, attempt_no)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>attempt_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키 — UNIQUE(run_id, component, attempt_no)</td></tr>
+        <tr><td>run_id</td><td class="mono">TEXT NOT NULL REFERENCES pipeline_runs(run_id)</td><td>실행 연결</td></tr>
+        <tr><td>component</td><td class="mono">TEXT NOT NULL</td><td>역할 (01~11)</td></tr>
+        <tr><td>attempt_no</td><td class="mono">INT NOT NULL CHECK (attempt_no &gt; 0)</td><td>시도 번호</td></tr>
+        <tr><td>status</td><td class="mono">TEXT NOT NULL CHECK (status IN ('pending','running','retrying','completed','failed','timed_out'))</td><td>시도 상태</td></tr>
+        <tr><td>started_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>시작 시각</td></tr>
+        <tr><td>finished_at</td><td class="mono">TIMESTAMPTZ</td><td>종료 시각</td></tr>
+        <tr><td>error_code</td><td class="mono">TEXT</td><td>오류 코드</td></tr>
+        <tr><td>error_message</td><td class="mono">TEXT</td><td>오류 메시지</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (run_id, component, attempt_no)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>pipeline_checkpoints</code> <span class="b b-gray">유물</span> <span class="sd">구 러너의 체크포인트</span><span class="cnt">6 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>checkpoint_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>run_id</td><td class="mono">TEXT NOT NULL REFERENCES pipeline_runs(run_id)</td></tr>
-        <tr><td>component</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>payload</td><td class="mono">JSONB NOT NULL</td></tr>
-        <tr><td>payload_hash</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">UNIQUE (run_id, component)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>checkpoint_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키 — UNIQUE(run_id, component)</td></tr>
+        <tr><td>run_id</td><td class="mono">TEXT NOT NULL REFERENCES pipeline_runs(run_id)</td><td>실행 연결</td></tr>
+        <tr><td>component</td><td class="mono">TEXT NOT NULL</td><td>역할</td></tr>
+        <tr><td>payload</td><td class="mono">JSONB NOT NULL</td><td>저장점 데이터 — 실패 지점부터 재개</td></tr>
+        <tr><td>payload_hash</td><td class="mono">TEXT NOT NULL</td><td>저장점 무결성 해시</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>기록 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE (run_id, component)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
       <summary><code>order_submissions</code> <span class="b b-gray">유물</span> <span class="sd">구 러너의 주문 제출 상태기계</span><span class="cnt">13 컬럼</span></summary>
       <div class="twrap"><table>
-        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th></tr></thead><tbody>
-        <tr><td>submission_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td></tr>
-        <tr><td>client_order_id</td><td class="mono">TEXT NOT NULL UNIQUE</td></tr>
-        <tr><td>state</td><td class="mono">TEXT NOT NULL CHECK (state IN ('claimed','submitted','completed','failed'))</td></tr>
-        <tr><td>owner_token</td><td class="mono">TEXT NOT NULL</td></tr>
-        <tr><td>claimed_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>stale_after</td><td class="mono">TIMESTAMPTZ NOT NULL</td></tr>
-        <tr><td>run_id</td><td class="mono">TEXT REFERENCES pipeline_runs(run_id)</td></tr>
-        <tr><td>order_id</td><td class="mono">BIGINT REFERENCES tb_order(id)</td></tr>
-        <tr><td>broker_order_id</td><td class="mono">TEXT</td></tr>
-        <tr><td>result_payload</td><td class="mono">JSONB</td></tr>
-        <tr><td>last_error</td><td class="mono">TEXT</td></tr>
-        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td></tr>
-        <tr><td class="muted">제약</td><td class="mono">CHECK (stale_after &gt; claimed_at)</td></tr>
+        <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
+        <tr><td>submission_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
+        <tr><td>client_order_id</td><td class="mono">TEXT NOT NULL UNIQUE</td><td>결정적 주문 id — q-a{계좌}-s{신호}</td></tr>
+        <tr><td>state</td><td class="mono">TEXT NOT NULL CHECK (state IN ('claimed','submitted','completed','failed'))</td><td>제출 상태</td></tr>
+        <tr><td>owner_token</td><td class="mono">TEXT NOT NULL</td><td>claim 소유 토큰</td></tr>
+        <tr><td>claimed_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>claim 시각 — CHECK stale_after &gt; claimed_at</td></tr>
+        <tr><td>stale_after</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>claim 만료 시각</td></tr>
+        <tr><td>run_id</td><td class="mono">TEXT REFERENCES pipeline_runs(run_id)</td><td>실행 연결</td></tr>
+        <tr><td>order_id</td><td class="mono">BIGINT REFERENCES tb_order(id)</td><td>주문 연결</td></tr>
+        <tr><td>broker_order_id</td><td class="mono">TEXT</td><td>브로커 주문 id</td></tr>
+        <tr><td>result_payload</td><td class="mono">JSONB</td><td>제출 결과</td></tr>
+        <tr><td>last_error</td><td class="mono">TEXT</td><td>마지막 오류</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>생성 시각</td></tr>
+        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>갱신 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">CHECK (stale_after &gt; claimed_at)</td></tr>
         </tbody></table></div>
     </details>
     <details class="schema">
