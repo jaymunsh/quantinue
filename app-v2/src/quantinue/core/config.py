@@ -106,6 +106,10 @@ class Settings(BaseSettings):
     alpaca_base_url: AnyHttpUrl = AnyHttpUrl("https://paper-api.alpaca.markets")
     trading_enabled: bool = False
     control_room_token: SecretStr = SecretStr("")
+    # 세션 쿠키 서명 키. 기본값을 상수로 두면 그 상수가 그대로 배포되므로
+    # 두지 않는다 — 없으면 기동 시 무작위로 만들고 경고를 남긴다(그 대가는
+    # 재시작 때 세션이 전부 만료되는 것뿐이다). resolve_session_secret 참조.
+    session_secret: SecretStr | None = None
     simulated_account_opening_cash_usd: SimulatedAccountOpeningCashUsd = Decimal("1000000.00")
 
     @field_validator("alpaca_base_url")
