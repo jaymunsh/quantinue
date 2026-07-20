@@ -99,7 +99,7 @@ def test_control_room_opens_while_no_account_exists() -> None:
     """
     # Given / When
     with _client(_StubDomain(users=())) as client:
-        response = client.get("/")
+        response = client.get("/admin")
 
     # Then
     assert response.status_code == 200
@@ -122,9 +122,12 @@ def test_admin_reaches_the_control_room() -> None:
         _login(client, "admin")
 
         # When
-        response = client.get("/")
+        landing = client.get("/")
+        response = client.get("/admin")
 
-    # Then
+    # Then: 최상위는 갈림길이고, 관제실은 /admin에 산다 (W3-1)
+    assert landing.status_code == 303
+    assert landing.headers["location"] == "/admin"
     assert response.status_code == 200
 
 
@@ -135,11 +138,14 @@ def test_user_cannot_learn_that_the_admin_zone_exists() -> None:
         _login(client, "user1")
 
         # When
-        page = client.get("/")
+        landing = client.get("/")
+        page = client.get("/admin")
         api = client.get("/api/pipeline/today")
         accounts = client.get("/api/accounts")
 
-    # Then
+    # Then: 갈림길은 자기 화면으로 보내고, 관리자 구역은 존재조차 안 알린다
+    assert landing.status_code == 303
+    assert landing.headers["location"] == "/me"
     assert {page.status_code, api.status_code, accounts.status_code} == {404}
 
 

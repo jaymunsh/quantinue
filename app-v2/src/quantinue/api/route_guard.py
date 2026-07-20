@@ -37,6 +37,11 @@ OPEN_PREFIXES = ("/static/",)
 # 새 관리자 화면을 추가할 때 아무것도 안 해도 막혀 있다.
 USER_PREFIX = "/me"
 
+# 두 역할 모두가 지나가는 갈림길. ``/``는 화면이 아니라 **역할별 리다이렉트**라
+# 관리자 구역에 두면 유저가 최상위 주소에서 404를 맞는다 — 자기 계좌로 가는
+# 길을 막는 셈이다. 여기 있는 경로는 로그인만 요구하고 역할은 묻지 않는다.
+ROLE_ROUTER_PATHS = frozenset({"/"})
+
 # 헤더 **이름**이지 값이 아니다 — 토큰 자체는 설정에서 온다.
 CONTROL_TOKEN_HEADER = "X-Quantinue-Control-Token"  # noqa: S105
 
@@ -99,8 +104,15 @@ class RoleZoneGuard(BaseHTTPMiddleware):
                 return await call_next(request)
             return self._refuse_anonymous(path)
 
-        in_user_zone = path == USER_PREFIX or path.startswith(f"{USER_PREFIX}/")
-        if not in_user_zone and not current.is_admin:
+        # 갈림길(``/``)과 유저 구역은 역할을 묻지 않는다. 나머지 전부가
+        # 관리자 구역이다 — 안전한 쪽이 기본이라 새 관리자 화면은 아무것도
+        # 안 해도 막혀 있다.
+        in_open_zone = (
+            path in ROLE_ROUTER_PATHS
+            or path == USER_PREFIX
+            or path.startswith(f"{USER_PREFIX}/")
+        )
+        if not in_open_zone and not current.is_admin:
             # 403이 아니라 404다. "권한이 없다"는 거절은 그 경로가 존재한다는
             # 것을 확인해 준다.
             return self._not_found(path)

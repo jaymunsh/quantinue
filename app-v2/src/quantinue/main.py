@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import anyio
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.sessions import SessionMiddleware
@@ -94,6 +94,27 @@ def _lifespan_factory(
         await store.close()
 
     return lifespan
+
+
+def _mount_reviews(
+    app: FastAPI, review_runtime: ReviewRuntime | None, access: ControlRoomAccess | None
+) -> None:
+    """Mount the T+5 review router when a durable store backs it."""
+    if review_runtime is not None:
+        app.include_router(build_review_router(review_runtime.processor, access=access))
+
+
+async def _owned_account(reads: object | None, current: object | None) -> UserAccount | None:
+    """Look up the caller's own account, if the store and the session both allow it."""
+    reader = getattr(reads, "account_for_user", None)
+    if current is None or reader is None:
+        return None
+    return await reader(current.user_id)
+
+
+def _landing_target(current: object | None) -> str:
+    """Pick the screen this role owns. 부트스트랩(세션 없음)은 관제실로 보낸다."""
+    return "/me" if current is not None and not current.is_admin else "/admin"
 
 
 async def _account_roster(reads: object | None) -> AccountRosterView:
@@ -211,15 +232,13 @@ def create_app(settings: Settings | None = None, *, store: RunStore | None = Non
         https_only=False,
     )
     app.mount("/static", StaticFiles(directory=PACKAGE_DIR / "web" / "static"), name="static")
-    if review_runtime is not None:
-        app.include_router(build_review_router(review_runtime.processor, access=access))
+    _mount_reviews(app, review_runtime, access)
     app.include_router(build_auth_router(control_room_reads, templates))
 
     @app.get("/me", response_class=HTMLResponse)
     async def my_account(request: Request) -> HTMLResponse:
         current = session_user(request)
-        reader = getattr(control_room_reads, "account_for_user", None)
-        account = None if current is None or reader is None else await reader(current.user_id)
+        account = await _owned_account(control_room_reads, current)
         if account is None:
             # 계좌 없는 로그인(관리자·부트스트랩)에 빈 계좌를 그리지 않는다.
             # 없는 것을 0으로 그리면 화면이 원장에 없는 사실을 지어낸다.
@@ -238,7 +257,18 @@ def create_app(settings: Settings | None = None, *, store: RunStore | None = Non
             return empty_pipeline_day()
         return await build_pipeline_day(control_room_reads, slot_date=slot)
 
-    @app.get("/", response_class=HTMLResponse)
+    @app.get("/")
+    async def role_landing(request: Request) -> RedirectResponse:
+        """Send each signed-in role to the screen that belongs to it.
+
+        최상위 주소를 관제실로 두면 유저가 여기서 404를 맞는다. 화면이 아니라
+        갈림길로 만들어 두면 역할이 늘어도 이 한 곳만 고치면 된다.
+        """
+        return RedirectResponse(
+            _landing_target(session_user(request)), status_code=status.HTTP_303_SEE_OTHER
+        )
+
+    @app.get("/admin", response_class=HTMLResponse)
     async def control_room(request: Request, slot: date | None = None) -> HTMLResponse:
         day = await pipeline_day(slot)
         return templates.TemplateResponse(
