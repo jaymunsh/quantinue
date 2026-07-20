@@ -349,6 +349,36 @@ class PostgresDomainRepository:
         async with self._engine.begin() as connection:
             _ = await connection.execute(statement)
 
+    async def insider_filings(
+        self, session: date, tickers: tuple[str, ...]
+    ) -> dict[str, tuple[str, ...]]:
+        """Return the session's Form 4 submission paths per ticker.
+
+        원시 원장을 읽는다(``tb_disclosure_raw``) — 채점 결과 표는 그날 픽에만
+        행을 넣을 수 있어서 수집 범위를 못 담는다. 폼을 ``4``로 좁히는 이유는
+        비용이다: 내부자 거래만 문서를 받아오고, 나머지 폼은 받아도 읽을 수 없다
+        (10-Q는 실측 13.7MB라 애초에 이 경로가 성립하지 않는다).
+        """
+        if not tickers:
+            return {}
+        table = self._table("tb_disclosure_raw")
+        async with self._engine.begin() as connection:
+            rows = (
+                await connection.execute(
+                    select(table.c.ticker, table.c.source_ref)
+                    .where(
+                        table.c.trade_date == session,
+                        table.c.ticker.in_(tickers),
+                        table.c.form_type == "4",
+                    )
+                    .order_by(table.c.ticker, table.c.source_ref)
+                )
+            ).all()
+        found: dict[str, list[str]] = {}
+        for row in rows:
+            found.setdefault(row.ticker, []).append(row.source_ref)
+        return {ticker: tuple(refs) for ticker, refs in found.items()}
+
     async def save_disclosure_signal(self, value: DisclosureSignalWrite) -> None:
         """Record one ticker's scored filings for this slot, first write winning.
 

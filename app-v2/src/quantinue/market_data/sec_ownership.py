@@ -13,9 +13,15 @@
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Final
+
+import httpx as httpx2
+
+from quantinue.market_data.http_client import sec_user_agent
+
+_ARCHIVES: Final = "https://www.sec.gov/Archives/{ref}"
 
 _DOCUMENT: Final = re.compile(r"<ownershipDocument>.*?</ownershipDocument>", re.DOTALL)
 _TRANSACTION: Final = re.compile(
@@ -104,3 +110,42 @@ def parse_ownership_form4(document: str) -> tuple[InsiderTransaction, ...]:
             )
         )
     return tuple(transactions)
+
+
+@dataclass(frozen=True, slots=True)
+class SecOwnershipSource:
+    """Fetch Form 4 submissions and read the insider transactions inside them.
+
+    문서를 통째로 받는 것이 낭비가 아닌 이유는 규모다 — 채점 대상은 그날 픽 중
+    Form 4를 낸 종목뿐이라 실측 하루 3~7건이고, 한 건이 36KB다. 같은 방식이
+    10-Q에는 불가능했다(13.7MB).
+
+    한 문서의 실패가 나머지를 죽이지 않는다. 내부자 거래는 종목마다 독립적인
+    사실이라, 하나를 못 읽었다고 다른 종목의 표까지 잃을 이유가 없다.
+    """
+
+    transport: httpx2.AsyncBaseTransport | None = field(default=None)
+    timeout_seconds: float = 30.0
+
+    async def transactions(
+        self, source_refs: tuple[str, ...]
+    ) -> tuple[InsiderTransaction, ...]:
+        """Return every insider transaction across the requested filings."""
+        if not source_refs:
+            return ()
+        collected: list[InsiderTransaction] = []
+        async with httpx2.AsyncClient(
+            transport=self.transport,
+            timeout=self.timeout_seconds,
+            headers={"User-Agent": sec_user_agent()},
+        ) as client:
+            for ref in source_refs:
+                try:
+                    response = await client.get(_ARCHIVES.format(ref=ref.lstrip("/")))
+                    _ = response.raise_for_status()
+                except httpx2.HTTPError:
+                    # 못 읽은 제출은 없는 것으로 둔다. 지어내지 않고, 다른
+                    # 종목의 사실을 인질로 잡지도 않는다.
+                    continue
+                collected.extend(parse_ownership_form4(response.text))
+        return tuple(collected)

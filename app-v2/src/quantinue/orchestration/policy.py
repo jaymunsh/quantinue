@@ -8,6 +8,8 @@ from zoneinfo import ZoneInfo
 import yaml
 from pydantic import BaseModel, ConfigDict, Field
 
+from quantinue.roles.disclosure.insider import InsiderPolicy
+
 UTC_ZONE = ZoneInfo("UTC")
 
 if TYPE_CHECKING:
@@ -231,6 +233,7 @@ class Mvp2Config(BaseModel):
     jobs: JobsConfig = JobsConfig()
     market_data: MarketDataConfig = MarketDataConfig()
     budget: BudgetConfig = BudgetConfig()
+    insider: InsiderPolicy = InsiderPolicy()
 
 
 def load_mvp2_config(path: Path) -> Mvp2Config:

@@ -264,6 +264,7 @@ def test_without_alpaca_credentials_only_the_exit_job_is_registered() -> None:
         "disclosures",
         "news_wire",
         "screening",
+        "insider_scoring",
         "exits",
         "allocation",
     ]
@@ -287,6 +288,7 @@ def test_with_credentials_collection_is_registered_before_the_exit_job() -> None
         "news",
         "news_wire",
         "screening",
+        "insider_scoring",
         "exits",
         "allocation",
     ]
@@ -581,6 +583,7 @@ def test_the_universe_job_is_registered_first() -> None:
         "news",
         "news_wire",
         "screening",
+        "insider_scoring",
         "exits",
         "allocation",
     ]
@@ -611,6 +614,43 @@ def test_one_analysis_job_is_registered_per_persona() -> None:
         "allocation",
     ]
     assert names.index("screening") < names.index("analysis:aggressive")
+
+
+def test_insider_scoring_sits_between_screening_and_analysis() -> None:
+    """채점은 범위가 정해진 뒤에, 판단이 그 표를 읽기 전에 끝나야 한다.
+
+    스크리닝 앞이면 채점할 픽이 없고(FK가 tb_daily_pick을 요구한다), 분석 뒤면
+    표가 그날 판단에 못 들어간다 — 한 슬롯 늦게 도착하는 증거는 증거가 아니다.
+    성향 축이 없으므로 페르소나마다가 아니라 **한 번만** 돈다.
+    """
+    # Given / When
+    runner = build_job_runner(
+        _settings(),
+        Mvp2Config(),
+        store=_Store(_HoldingDomain(())),
+        sources=JobSources(analyzer=DeterministicAnalyzer()),
+    )
+
+    # Then
+    assert runner is not None
+    names = [job.name for job in runner.jobs]
+    assert names.count("insider_scoring") == 1
+    assert names.index("screening") < names.index("insider_scoring")
+    assert names.index("insider_scoring") < names.index("analysis:aggressive")
+
+
+def test_insider_scoring_needs_no_credentials() -> None:
+    """SEC는 무키다 — 분석기가 없어도(=LLM 없이) 이 표는 세울 수 있다.
+
+    채점이 결정론이 된 순간 자격증명 조건이 사라졌다. 폼 종류를 모델에게
+    묻던 시절에는 분석기가 있어야 등록됐다.
+    """
+    # Given / When
+    runner = build_job_runner(_settings(), Mvp2Config(), store=_Store(_HoldingDomain(())))
+
+    # Then
+    assert runner is not None
+    assert "insider_scoring" in [job.name for job in runner.jobs]
 
 
 

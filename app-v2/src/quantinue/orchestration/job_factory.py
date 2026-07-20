@@ -24,10 +24,12 @@ from quantinue.db.domain_records import DailyPickWrite
 from quantinue.market_data.alpaca_bars import AlpacaBarSource
 from quantinue.market_data.alpaca_news import AlpacaNewsSource
 from quantinue.market_data.sec_daily_index import SecDailyIndexSource
+from quantinue.market_data.sec_ownership import SecOwnershipSource
 from quantinue.market_data.wire_news import WireRssSource, default_wire_feeds
 from quantinue.orchestration.job_runner import JobDefinition, JobRunner
 from quantinue.roles.allocation.job import AllocationJob
 from quantinue.roles.analysis.job import AnalysisJob
+from quantinue.roles.disclosure.job import InsiderScoringJob
 from quantinue.roles.exits.job import ExitJob
 from quantinue.roles.role_01_universe_screener.contracts import (
     UniverseMember,
@@ -56,6 +58,7 @@ if TYPE_CHECKING:
     from quantinue.llm.provider import LlmAnalyzer
     from quantinue.market_data.models import MacroObservation, SecuritySnapshot
     from quantinue.orchestration.policy import Mvp2Config, ScreeningConfig
+    from quantinue.roles.disclosure.insider import InsiderPolicy
     from quantinue.roles.exits import DailyObservation
     from quantinue.roles.screening import RankedCandidate
 
@@ -511,6 +514,34 @@ def build_screening_job(
     return JobDefinition(name=name, run=run)
 
 
+def build_insider_scoring_job(
+    *,
+    store: object,
+    source: object,
+    policy: InsiderPolicy,
+    calendar: NyseCalendar,
+    name: str = "insider_scoring",
+) -> JobDefinition:
+    """Turn today's Form 4 filings into the vote role_07 counts.
+
+    성향 인자가 없는 것이 요점이다 — 채점은 "무엇이 사실인가"를 묻고 답이 성향과
+    무관하다. 그래서 페르소나 수만큼 반복하지 않고 한 번만 돌며, 두 분석 잡이
+    같은 표를 읽는다.
+    """
+    job = InsiderScoringJob(store=store, source=source, policy=policy)  # pyright: ignore[reportArgumentType]
+
+    async def run(as_of: date) -> str:
+        session = calendar.previous_trading_day(as_of)
+        result = await job.run(as_of=as_of, session=session)
+        detail = f"{len(result.scores)} insider votes"
+        if result.abstained:
+            # 기권 수를 적지 않으면 "2건 채점"이 "대상이 2건이었다"로 읽힌다.
+            detail = f"{detail}, {result.abstained} abstained (no discretionary trade)"
+        return detail
+
+    return JobDefinition(name=name, run=run)
+
+
 def build_analysis_job(  # noqa: PLR0913 - 각 인자가 교체 가능한 협력자 하나다
     *,
     store: object,
@@ -609,6 +640,8 @@ class JobSources:
     # 와이어 RSS(R11). None이면 기본 피드 2종(GNW·PRN)으로 항상 등록된다 —
     # 자격증명이 없는 소스라 등록을 조건에 걸 이유가 없다(SEC와 같은 원리).
     wire_news: _NewsSource | None = None
+    # Form 4 수신(R8). None이면 실 EDGAR로 선다 — 무키라 조건이 없다.
+    ownership: object | None = None
 
 
 def _collection_jobs(  # noqa: PLR0913 - 협력자 목록이지 옵션 스프롤이 아니다
@@ -751,6 +784,17 @@ def build_job_runner(
             domain=domain,
             held=held_tickers,
             config=config.screening,
+            calendar=calendar,
+        )
+    )
+    # 인사이더 채점은 스크리닝 **뒤**(픽이 있어야 FK가 선다)이면서 분석 **앞**이다
+    # — 한 슬롯 늦게 도착하는 증거는 증거가 아니다. SEC는 무키라 자격증명 조건이
+    # 없고, 채점이 결정론이라 분석기도 필요 없다.
+    jobs.append(
+        build_insider_scoring_job(
+            store=store,
+            source=selected.ownership or SecOwnershipSource(),
+            policy=config.insider,
             calendar=calendar,
         )
     )
