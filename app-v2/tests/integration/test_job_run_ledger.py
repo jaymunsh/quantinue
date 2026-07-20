@@ -195,3 +195,31 @@ async def test_a_running_slot_is_never_reclaimed() -> None:
     # Then
     assert again is False
     await store.close()
+
+
+@pytest.mark.anyio
+async def test_only_a_stuck_run_can_be_released() -> None:
+    """수동 운영에서 앱을 잡 도중에 끄면 슬롯이 running으로 굳는다.
+
+    재시도 갈래가 ``failed``만 집으므로 그 슬롯은 그날 영영 안 돈다. 해제는
+    잡을 실행하지 않고 잠금만 푼다 — 러너가 다음 틱에 스스로 다시 집는다.
+    """
+    # Given
+    assert DATABASE_URL is not None
+    store = PostgresRunStore(DATABASE_URL)
+    await store.initialize()
+    _ = await store.domain.reserve_job_run("ledger-stuck", _DAY)
+    _ = await store.domain.reserve_job_run("ledger-finished", _DAY)
+    await store.domain.finish_job_run("ledger-finished", _DAY, succeeded=True)
+
+    # When
+    released = await store.domain.release_job_slot("ledger-stuck", _DAY)
+    refused = await store.domain.release_job_slot("ledger-finished", _DAY)
+    reclaimed = await store.domain.reserve_job_run("ledger-stuck", _DAY)
+
+    # Then
+    assert released is True
+    # 성공한 슬롯을 다시 열면 같은 날 두 번 돈다 — 배분에는 같은 후보를 두 번 사는 길이다.
+    assert refused is False
+    assert reclaimed is True
+    await store.close()

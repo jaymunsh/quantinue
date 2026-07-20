@@ -1069,6 +1069,41 @@ class PostgresDomainRepository:
         async with self._engine.begin() as connection:
             _ = await connection.execute(statement)
 
+    async def release_job_slot(self, job_name: str, slot_date: date) -> bool:
+        """Unlock a slot that died mid-run so the runner can pick it up again.
+
+        **버튼은 잡을 실행하지 않는다. 잠금만 푼다.** 러너가 다음 틱에 스스로
+        다시 집는다 — 화면이 잡을 직접 돌리면 실행 경로가 둘이 되고, 둘 중
+        하나에만 있는 순서 계약(유니버스 → 일봉 → …)이 조용히 깨진다.
+
+        ``running``만 푼다. ``succeeded``를 다시 열면 같은 날 두 번 도는데,
+        배분 잡에는 그것이 같은 후보를 두 번 사는 길이다. ``failed``는 이미
+        러너가 알아서 재시도하므로 손댈 이유가 없다.
+
+        이 잠금은 수동 운영에서 실제로 생긴다: 잡이 도는 중에 앱을 끄면 예약
+        행이 ``running``으로 남고, 재시도 갈래가 ``failed``만 집으므로 그
+        슬롯은 그날 영영 안 돈다.
+        """
+        table = self._table("tb_job_run")
+        statement = (
+            table.update()
+            .where(
+                table.c.job_name == job_name,
+                table.c.slot_date == slot_date,
+                table.c.status == "running",
+            )
+            .values(
+                status="failed",
+                # 원장에 사람이 개입했다는 사실을 남긴다. 그냥 failed로 두면
+                # 잡이 스스로 실패한 것과 구별되지 않는다.
+                detail="released by an operator after the run was interrupted",
+                finished_at=func.now(),
+            )
+        )
+        async with self._engine.begin() as connection:
+            result = await connection.execute(statement)
+        return result.rowcount == 1
+
     async def last_job_success(self, job_name: str) -> date | None:
         """Return the last slot this job actually completed, if any.
 

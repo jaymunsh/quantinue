@@ -112,6 +112,15 @@
           {% if job.detail %}<small class="job-detail">{{ job.detail }}</small>{% endif %}
         </div>
         <time class="job-duration">{% if job.duration_ms is not none %}{{ (job.duration_ms / 1000) | round(1) }}s{% else %}진행 중{% endif %}</time>
+        {# running으로 굳은 슬롯은 그날 영영 안 돈다(재시도가 failed만 집는다).
+           버튼은 잡을 실행하지 않고 잠금만 푼다 — 러너가 다음 틱에 다시 집는다. #}
+        {% if job.status == 'running' %}
+        <form method="post" action="/admin/jobs/release" class="slot-release">
+          <input type="hidden" name="job_name" value="{{ job.job_name }}">
+          <input type="hidden" name="slot_date" value="{{ day.chain.slot_date }}">
+          <button type="submit" title="중단된 실행의 잠금을 풉니다. 러너가 다음 틱에 다시 시도합니다.">잠금 해제</button>
+        </form>
+        {% endif %}
       </li>
       {% endfor %}
     </ol>
