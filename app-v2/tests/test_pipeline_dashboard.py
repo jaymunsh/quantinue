@@ -181,7 +181,8 @@ def test_an_older_slot_can_be_opened_from_the_navigation() -> None:
         picked = client.get(f"/api/pipeline/today?slot={yesterday}").json()
 
     # Then
-    assert f'href="/?slot={yesterday}"' in body
+    # W3-1: 관제실이 /admin으로 갔다. /는 리다이렉트라 여기 걸면 슬롯이 사라진다.
+    assert f'href="/admin?slot={yesterday}"' in body
     assert picked["chain"]["slot_date"] == yesterday.isoformat()
 
 

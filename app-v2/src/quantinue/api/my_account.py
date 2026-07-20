@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
+from quantinue.api.pipeline_presentation import equity_sparkline
+
 if TYPE_CHECKING:
     from quantinue.db.control_room_reads import AccountEquityPoint
     from quantinue.db.domain_records import (
@@ -111,6 +113,9 @@ class MyAccountView(BaseModel):
     curve: tuple[CurvePointView, ...] = ()
     timeline: tuple[TimelineEntryView, ...] = ()
     regime: RegimeView | None = None
+    # 곡선의 SVG 좌표. 기하를 템플릿에서 계산할 수 없어(0으로 나누기·점 하나)
+    # 관제실과 **같은 함수**로 만든다.
+    curve_points: str = ""
 
 
 def _holding_view(record: AccountHoldingRecord) -> HoldingView:
@@ -170,6 +175,7 @@ def my_account_view(
             CurvePointView(trade_date=point.trade_date, equity=point.equity) for point in ordered
         ),
         timeline=tuple(_timeline_view(record) for record in timeline),
+        curve_points=equity_sparkline([point.equity for point in ordered]),
         regime=(
             None
             if macro is None

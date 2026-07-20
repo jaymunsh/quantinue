@@ -112,6 +112,8 @@ class AccountCurveView(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     account_id: int
+    # 원장이 이름을 못 주면(구 행) id로 부른다. 지어내지는 않는다.
+    label: str
     points: tuple[EquityPointView, ...]
     opening_equity: Decimal
     latest_equity: Decimal
@@ -250,6 +252,7 @@ def equity_curve_views(points: tuple[AccountEquityPoint, ...]) -> tuple[AccountC
         curves.append(
             AccountCurveView(
                 account_id=account_id,
+                label=series[0].broker_account_id or f"계좌 #{account_id}",
                 points=tuple(
                     EquityPointView(trade_date=item.trade_date, equity=item.equity)
                     for item in series
@@ -268,7 +271,19 @@ def sparkline_points(curve: AccountCurveView, *, width: int = 160, height: int =
     기하를 템플릿이 아니라 여기서 계산하는 이유는 테스트다 — 평평한 곡선의
     0으로 나누기나 점 하나짜리 계좌를 Jinja 안에서 고정할 방법이 없다.
     """
-    values = [point.equity for point in curve.points]
+    return equity_sparkline(
+        [point.equity for point in curve.points], width=width, height=height
+    )
+
+
+def equity_sparkline(
+    values: list[Decimal], *, width: int = 160, height: int = 32
+) -> str:
+    """Return SVG polyline coordinates for a series of equity values.
+
+    관제실 곡선과 유저 계좌 곡선이 **같은 기하**를 쓴다. 복사하면 한쪽만
+    고쳐지는 날이 오고, 그때 같은 계좌가 두 화면에서 다른 모양으로 그려진다.
+    """
     if len(values) < 2:  # noqa: PLR2004 - 점 하나로는 선분이 성립하지 않는다
         return ""
     low = min(values)

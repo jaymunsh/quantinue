@@ -12,9 +12,11 @@
 {% endblock %}
 
 {% block nav %}
-{# 내비는 이 페이지 안의 섹션 앵커다. 아직 없는 화면 이름을 걸면 유령이 된다 —
-   W3에서 계좌 총람·운영 콘솔이 실제 경로로 생기면 그때 바뀐다. #}
+{# 진짜 경로와 페이지 안 앵커가 섞여 있다. 계좌 관리는 W3-3에서 실제
+   화면이 됐고, 나머지는 아직 이 페이지의 섹션이다. #}
 <nav class="nav-group" aria-label="섹션">
+  <p class="nav-label">운영</p>
+  <a class="nav-link" href="/admin/accounts">계좌 관리</a>
   <p class="nav-label">운영 개요</p>
   <a class="nav-link" href="#chain" aria-current="page"><b>{{ day.chain.jobs | length }}</b>잡 체인</a>
   <a class="nav-link" href="#allocation"><b>{{ day.allocation.bought }}</b>배분</a>
@@ -93,7 +95,7 @@
       </div>
       <nav class="slot-nav" aria-label="잡 슬롯 선택">
         {% for slot in day.slots %}
-        <a href="/?slot={{ slot }}"
+        <a href="/admin?slot={{ slot }}"
            class="slot-link{% if slot == day.chain.slot_date %} slot-current{% endif %}"
            {% if slot == day.chain.slot_date %}aria-current="page"{% endif %}>{{ slot }}</a>
         {% endfor %}
@@ -223,7 +225,7 @@
     <div class="equity-grid">
       {% for curve in day.curves %}
       <article class="equity-card">
-        <h3>계좌 #{{ curve.account_id }}</h3>
+        <h3>{{ curve.label }}</h3>
         {% set plotted = sparkline(curve) %}
         {% if plotted %}
         <svg class="sparkline" viewBox="0 0 160 32" width="160" height="32" role="img"

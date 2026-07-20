@@ -61,6 +61,18 @@
       <strong class="metric__value">{{ view.curve | length }}</strong>
     </article>
   </div>
+  {# 점이 둘 미만이면 좌표가 빈 문자열이다 — 선분이 성립하지 않는 것을
+     한 점짜리 그래프로 그리면 "평평했다"로 읽힌다. #}
+  {% if view.curve_points %}
+  <figure class="chart">
+    <figcaption>계좌 평가액 추이 · {{ view.curve[0].trade_date }} ~ {{ view.curve[-1].trade_date }}</figcaption>
+    <svg viewBox="0 0 160 32" preserveAspectRatio="none" role="img" aria-label="계좌 평가액 추이">
+      <polyline points="{{ view.curve_points }}" fill="none" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/>
+    </svg>
+  </figure>
+  {% elif view.curve %}
+  <p class="ledger-empty">곡선은 기록이 이틀 이상 쌓이면 그려집니다 (현재 {{ view.curve | length }}일).</p>
+  {% endif %}
 </section>
 
 <section class="panel" id="holdings" style="margin-top:18px" aria-labelledby="holdings-title">

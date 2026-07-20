@@ -694,3 +694,25 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
 .job-chain-item .job-name { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 13px; }
 .job-chain-item .job-detail { display: block; margin: 3px 0 0; color: var(--muted); font-size: 11px; }
 .job-chain-item .job-duration { color: var(--muted); font: 11px var(--font-mono); white-space: nowrap; }
+
+/* 계좌 평가액 곡선. 시안(styles.css)의 .chart를 옮긴 것으로, 좌표는
+   equity_sparkline이 계산한다 — 템플릿에서는 0으로 나누기를 막을 수 없다. */
+.chart {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-card);
+  background: var(--surface);
+  color: var(--accent);
+}
+.chart figcaption {
+  margin-bottom: 10px;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.chart svg {
+  display: block;
+  width: 100%;
+  height: 96px;
+}

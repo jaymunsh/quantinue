@@ -59,6 +59,10 @@ class AccountEquityPoint:
     account_id: int
     trade_date: date
     equity: Decimal
+    # 화면이 계좌를 부르는 이름. 내부 id로 부르면 같은 페이지의 총람이
+    # ``DEMO-AGGRESSIVE-01``이라 부르는 계좌를 곡선은 ``#20``이라 부른다 —
+    # 한 화면이 같은 계좌를 두 이름으로 말하게 된다.
+    broker_account_id: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -216,9 +220,11 @@ async def account_equity_series(
                 text(
                     dedent(
                         """
-                        SELECT account_id, trade_date, equity
-                        FROM tb_account_equity_daily
-                        WHERE trade_date > (SELECT max(trade_date) FROM tb_account_equity_daily)
+                        SELECT e.account_id, e.trade_date, e.equity,
+                               a.broker_account_id
+                        FROM tb_account_equity_daily AS e
+                        JOIN tb_account AS a ON a.id = e.account_id
+                        WHERE e.trade_date > (SELECT max(trade_date) FROM tb_account_equity_daily)
                                             - make_interval(days => :days)
                         ORDER BY account_id, trade_date
                         """
@@ -232,6 +238,7 @@ async def account_equity_series(
             account_id=row.account_id,
             trade_date=row.trade_date,
             equity=row.equity,
+            broker_account_id=row.broker_account_id,
         )
         for row in rows
     )
