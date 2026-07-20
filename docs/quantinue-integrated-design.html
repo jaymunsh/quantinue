@@ -1445,7 +1445,7 @@ erDiagram
         </tbody></table></div>
     </details>
     <details class="schema">
-      <summary><code>tb_user</code> <span class="b b-new">2차 신규</span> <span class="sd">사용자 (아직 소비자 0 — 웹 W1에서 배선 중)</span><span class="cnt">8 컬럼</span></summary>
+      <summary><code>tb_user</code> <span class="b b-new">2차 신규</span> <span class="sd">사용자 — 웹 W1이 첫 소비자</span><span class="cnt">8 컬럼</span></summary>
       <div class="twrap"><table>
         <thead><tr><th>컬럼</th><th>정의 (DDL 원문)</th><th>설명</th></tr></thead><tbody>
         <tr><td>user_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>대리키</td></tr>
@@ -1591,7 +1591,7 @@ erDiagram
           런 모양 저장소의 죽은 절반도 분리됐다(<code>aa15d74</code>). 리뷰 화면의 레거시 외부 조인 1개만 남아 무해.</li>
           <li><code>tb_technical</code> — 구 스크리너의 지표 테이블. 현행 랭킹이 계산하지 않는 컬럼(<code>atr_pct</code>·<code>macd</code> 등)이
           NOT NULL이라 재사용하면 값을 지어내야 한다. 그래서 안 쓴다.</li>
-          <li><code>tb_user</code> · <code>tb_llm_usage</code> — 소비자 0. LLM 예산 상한(<code>budget.daily_llm_usd</code> 3.0)은
+          <li><code>tb_llm_usage</code> — 소비자 0 (<code>tb_user</code>는 웹 W1에서 해소). LLM 예산 상한(<code>budget.daily_llm_usd</code> 3.0)은
           선언만 있고 기록·강제 배선은 미착수다(<a href="#limits">§한계</a>).</li>
         </ul>
       </div>

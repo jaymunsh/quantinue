@@ -53,20 +53,35 @@
 lesson인데 lesson 생성(LLM) 배선이 아직 없다. 1차 유저 포털 범위는
 홈 + 거래 타임라인 + 리스크 상태 3장이다.
 
-## Phase W1 — 인증과 뼈대
+## Phase W1 — 인증과 뼈대 — ✅ **완료 (2026-07-20)**
 
 > **착수 실사(2026-07-20)로 계획서가 세 군데 틀렸던 것이 드러났다.** 아래 표는
 > 실사 후 확정본이다. 원안과 다른 곳에 ⚠️를 붙였다.
+>
+> **기준선: 유닛/웹 523 → 558 green · 통합 105 → 106 green · ruff clean.**
 
-| # | 태스크 | 상세 |
+| # | 태스크 | 상세 | 커밋 |
+|---|---|---|---|
+| **W1-0** | ⚠️ **스키마** | `tb_user`에 **비밀번호 컬럼이 없었다**(자격증명 필드는 `otp_secret` 하나). `password_hash TEXT` nullable · 4곳 미러 · 마이그레이션 2회 멱등 | ✅ `556ec35` |
+| W1-1 | 의존성·해시 | `argon2-cffi`(해시) + Starlette `SessionMiddleware`(`itsdangerous` 서명 쿠키). `QUANTINUE_SESSION_SECRET` | ✅ `b04d5a3` |
+| W1-2+3 | tb_user 배선 + 로그인 | **첫 소비자 탄생** — open-items §2의 `tb_user` 항목이 닫혔다. 저장소와 소비자를 같은 커밋에(유령 금지). 공통 셸 `base.html` 추출 동반 | ✅ `14fac9d` |
+| W1-4 | role 가드 | 미들웨어 기본 차단 + allowlist. 부트스트랩 예외(W-D2) + ⚠️ **리뷰 POST 구멍 차단** + `/me` 뼈대 | ✅ `d4311cb` |
+| W1-5 | 관리자 시드 | `provision_accounts.py` 확장 — 관리자 1 + `user1`~`user5`를 **DEMO 계좌 5개**에 연결 | ✅ `0b0b158` |
+| **W1-6** | 라우트 감사 | 완료 기준(아래) | ✅ `3e22376` |
+
+### W1에서 실행·검증으로만 잡힌 것 3건
+
+| # | 증상 | 어디서 |
 |---|---|---|
-| **W1-0** | ⚠️ **스키마** | `tb_user`에 **비밀번호 컬럼이 없다**(`schema.sql:125-129` — 자격증명 필드는 `otp_secret` 하나). `password_hash TEXT` nullable 추가 · 4곳 미러 · 마이그레이션 2회 멱등 |
-| W1-1 | 의존성·해시 | `argon2-cffi`(해시) + Starlette `SessionMiddleware`(`itsdangerous` 서명 쿠키). `QUANTINUE_SESSION_SECRET` |
-| W1-2 | tb_user 배선 | 스토어에 유저 읽기·검증 경로. **첫 소비자 탄생** — open-items §2의 `tb_user` 항목이 여기서 닫힌다 |
-| W1-3 | 로그인/로그아웃 | `GET/POST /login` · `POST /logout`. 실패는 균일 메시지(계정 존재 여부 비노출) |
-| W1-4 | role 가드 | admin 구역 / user 구역 가드. 부트스트랩 예외(W-D2) + ⚠️ **리뷰 POST 구멍 차단** + `/me` 뼈대 |
-| W1-5 | 관리자 시드 | `provision_accounts.py` 확장 — 관리자 1 + `user1`~`user5`를 **DEMO 계좌 5개**에 연결 |
-| **W1-6** | 라우트 감사 | 완료 기준(아래) |
+| 21 | **리뷰 POST가 `trading_enabled=false`면 인증 없이 열렸다.** 토큰 게이트가 그 조건일 때만 만들어졌다(`main.py:93-97`) | 착수 실사 |
+| 22 | **테스트가 개발자의 `.env`를 읽고 있었다.** `.env`에 세션 키를 넣자 "미설정이면 무작위 생성" 테스트가 그 값을 읽어 실패. `Settings(session_secret=None)`로 명시해 환경이 아니라 테스트가 전제를 정하게 고쳤다 | W1-1 직후 |
+| 23 | **라우트 감사가 아무것도 안 보고 통과할 뻔했다.** `include_router`로 붙인 라우트는 `app.routes`에서 `APIRoute`로 평탄화되지 않는다 — `isinstance(APIRoute)`로 훑으면 **유일한 쓰기 엔드포인트(리뷰 POST)가 표에서 사라진다.** "쓰기 라우트가 0개면 이 테스트는 아무것도 증명하지 않는다"는 방어 assert가 잡았다 | W1-6 |
+
+부수로 전역 CSS `input { text-transform: uppercase }`(티커 입력용)가 로그인
+아이디를 대문자로 보이게 만들던 것도 잡아 로그인 폼에서만 껐다.
+
+**감사가 실제로 잡는지 변이로 확인했다**: 가드 구역 판정 무력화 → 동적 2건
+실패 · allowlist에 `/api/reviews/` 몰래 추가 → 정적 2건 + 동적 1건 실패.
 
 **완료 기준**: 라우트 감사 테스트 — 유저 role의 쓰기 엔드포인트 0을
 테스트가 강제(M10 원문 "라우트 감사로 검증"). 미로그인 → 로그인 리다이렉트.

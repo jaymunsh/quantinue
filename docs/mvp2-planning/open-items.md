@@ -6,7 +6,7 @@
 > **막는 작업은 없다.** Phase 1~5와 잔여 작업 A~E가 끝났고, 시스템은 JOB
 > 12종으로 매일 돈다. 아래는 전부 "판단이 필요한 것"과 "며칠 관찰할 것"이다.
 
-기준선: 유닛/웹 **523 green** · 통합 **105 green** · ruff clean.
+기준선: 유닛/웹 **558 green** · 통합 **106 green** · ruff clean. (웹 W1 이후)
 
 ---
 
@@ -49,7 +49,7 @@
 | `risk_rebuttal` · `counter_scenarios` · `persona_notes` | `tb_strategist_signals` | **채우는 쪽**. 프롬프트는 이미 비슷한 내용을 만든다 — 07 출력 계약에 얹으면 된다 |
 | `keywords` · `top_evidence` · `disclosure_count` · `tds_id`/`tns_id` | `tb_disclosure(_signal)` · `tb_news(_signal)` | 보류. 공시 채점이 기각됐고(폼 종류로는 채점 불가) 뉴스는 투표권이 없다 — 채울 주체가 없다 |
 | 전체 | `tb_llm_usage` | **R3의 전제**. 아래 3-1 참조 |
-| 전체 | `tb_user` | 인증·다중 사용자를 실제로 할 때. 지금은 관제실이 읽기 전용 |
+| ~~전체~~ | ~~`tb_user`~~ | ✅ **해소 (2026-07-20, 웹 W1)**. 소비자가 생겼다 — 로그인 검증(`db/users.py`)·role 가드·시드. `password_hash` 컬럼도 그때 신설됐다(스키마만 있고 비밀번호 담을 자리가 없었다) |
 
 **원칙**: 스키마 파괴는 판단이 필요하므로 임의로 하지 않는다. 방향은
 "안 쓰니 지운다"가 아니라 "왜 안 채우고 있나"를 먼저 답하는 것이다.
