@@ -46,7 +46,7 @@ async def test_headlines_are_stored_without_needing_the_ticker_to_be_a_daily_pic
     found = await store.domain.news_evidence(_DAY, ("NEWSNOPICK",), 5)
 
     # Then
-    assert found["NEWSNOPICK"] == ("something happened",)
+    assert found["NEWSNOPICK"] == ("[benzinga] something happened",)
     await store.close()
 
 
@@ -86,7 +86,7 @@ async def test_recollecting_the_same_window_does_not_duplicate() -> None:
     found = await store.domain.news_evidence(_DAY, ("NEWSDUP",), 5)
 
     # Then
-    assert found["NEWSDUP"] == ("something happened",)
+    assert found["NEWSDUP"] == ("[benzinga] something happened",)
     await store.close()
 
 
@@ -109,7 +109,7 @@ async def test_the_newest_headlines_are_the_ones_that_fit_the_budget() -> None:
     found = await store.domain.news_evidence(_DAY, ("NEWSCAP",), 2)
 
     # Then
-    assert found["NEWSCAP"] == ("newest", "middle")
+    assert found["NEWSCAP"] == ("[benzinga] newest", "[benzinga] middle")
     await store.close()
 
 

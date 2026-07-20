@@ -566,7 +566,7 @@ class PostgresDomainRepository:
         async with self._engine.begin() as connection:
             rows = (
                 await connection.execute(
-                    select(table.c.ticker, table.c.headline)
+                    select(table.c.ticker, table.c.headline, table.c.source)
                     .where(table.c.trade_date == session, table.c.ticker.in_(tickers))
                     .order_by(table.c.ticker, table.c.published_at.desc())
                 )
@@ -575,7 +575,11 @@ class PostgresDomainRepository:
         for row in rows:
             headlines = found.setdefault(row.ticker, [])
             if len(headlines) < limit:
-                headlines.append(row.headline)
+                # 출처를 함께 싣는다(R11). 와이어(allow 0.95)와 benzinga(gray
+                # 0.50)가 같은 목록에 섞이는데, 모델이 무게를 달리 두려면 어느
+                # 쪽에서 온 문장인지 보여야 한다 — 등급 숫자가 아니라 출처
+                # 이름을 준다. 숫자는 정책 파일의 소유물이다.
+                headlines.append(f"[{row.source}] {row.headline}")
         return {ticker: tuple(headlines) for ticker, headlines in found.items()}
 
     async def save_raw_news(self, articles: tuple[RawNewsWrite, ...]) -> None:

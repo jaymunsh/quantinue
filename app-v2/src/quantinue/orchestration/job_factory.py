@@ -24,6 +24,7 @@ from quantinue.db.domain_records import DailyPickWrite
 from quantinue.market_data.alpaca_bars import AlpacaBarSource
 from quantinue.market_data.alpaca_news import AlpacaNewsSource
 from quantinue.market_data.sec_daily_index import SecDailyIndexSource
+from quantinue.market_data.wire_news import WireRssSource, default_wire_feeds
 from quantinue.orchestration.job_runner import JobDefinition, JobRunner
 from quantinue.roles.allocation.job import AllocationJob
 from quantinue.roles.analysis.job import AnalysisJob
@@ -605,6 +606,9 @@ class JobSources:
     # 유니버스만 주는 테스트 조립이 macro 없는 잡을 받아 런타임에 죽으면 안 된다.
     macro: _MacroSource | None = None
     analyzer: LlmAnalyzer | None = None
+    # 와이어 RSS(R11). None이면 기본 피드 2종(GNW·PRN)으로 항상 등록된다 —
+    # 자격증명이 없는 소스라 등록을 조건에 걸 이유가 없다(SEC와 같은 원리).
+    wire_news: _NewsSource | None = None
 
 
 def _collection_jobs(  # noqa: PLR0913 - 협력자 목록이지 옵션 스프롤이 아니다
@@ -670,6 +674,17 @@ def _collection_jobs(  # noqa: PLR0913 - 협력자 목록이지 옵션 스프롤
         jobs.append(
             build_news_job(source=news_source, domain=domain, calendar=calendar)
         )
+    # 와이어 보도자료(R11)는 **별도 잡**이다 — Alpaca에 합성하지 않는다. 잡
+    # 격리가 이 시스템의 실패 경계라서다: 실측으로 Alpaca 키가 죽은 날에도
+    # allow 등급 헤드라인 수집은 계속되어야 한다. SEC처럼 무키라 항상 선다.
+    jobs.append(
+        build_news_job(
+            source=selected.wire_news or WireRssSource(feeds=default_wire_feeds()),
+            domain=domain,
+            calendar=calendar,
+            name="news_wire",
+        )
+    )
     if selected.macro is not None:
         # 매크로는 스크리닝·분석 **앞**이다 — 분석 잡이 latest_macro로 오늘의
         # 국면을 읽으므로, 그 전에 행이 놓여 있어야 같은 틱 안에서 닿는다.

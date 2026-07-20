@@ -259,8 +259,10 @@ def test_without_alpaca_credentials_only_the_exit_job_is_registered() -> None:
 
     # Then
     assert runner is not None
+    # news_wire는 자격증명 없이도 선다 — SEC와 같은 원리(무키 소스).
     assert [job.name for job in runner.jobs] == [
         "disclosures",
+        "news_wire",
         "screening",
         "exits",
         "allocation",
@@ -283,6 +285,7 @@ def test_with_credentials_collection_is_registered_before_the_exit_job() -> None
         "daily_bars",
         "disclosures",
         "news",
+        "news_wire",
         "screening",
         "exits",
         "allocation",
@@ -576,6 +579,7 @@ def test_the_universe_job_is_registered_first() -> None:
         "daily_bars",
         "disclosures",
         "news",
+        "news_wire",
         "screening",
         "exits",
         "allocation",
