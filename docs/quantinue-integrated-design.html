@@ -133,9 +133,9 @@
   /* 카드·박스 */
   .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin:18px 0}
   .grid{display:grid;gap:14px}
-  .grid.c2{grid-template-columns:repeat(2,1fr)}
-  .grid.c3{grid-template-columns:repeat(3,1fr)}
-  .grid.c4{grid-template-columns:repeat(4,1fr)}
+  .grid.c2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid.c3{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .grid.c4{grid-template-columns:repeat(4,minmax(0,1fr))}
   .stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-sm);padding:16px 18px}
   .stat .k{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
   .stat .v{font-size:22px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
@@ -301,6 +301,7 @@
       <div class="nav-group">부록</div>
       <a href="#ops"><span class="nnum">●</span> 운영·검증</a>
       <a href="#changelog"><span class="nnum">●</span> 변경 이력</a>
+      <a href="quantinue-engineering.html"><span class="nnum">↗</span> 기술 부록 — 개발기·코드·결함</a>
     </nav>
   </aside>
 
@@ -1833,6 +1834,11 @@ erDiagram
     <div class="note warn">
       통합 테스트에 <code>-p no:unraisableexception</code>이 필요한 이유: asyncpg의 GC 경고가
       에러로 승격돼 가짜 실패 15건을 만든다. 테스트가 깨지면 코드보다 이 플래그부터 확인.
+    </div>
+    <div class="note">
+      개발을 이어받는 사람은 <a href="quantinue-engineering.html"><b>기술 부록</b></a>을 함께 읽을 것 —
+      프로젝트 연대기(9일·219커밋), 결함 통산 20건의 전체 기록, 코드 구조 맵, 28테이블 전체 ERD,
+      운영 함정 목록이 거기 있다.
     </div>
   </section>
 
