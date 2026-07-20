@@ -40,6 +40,74 @@ class UserAccount:
     status: str
 
 
+@dataclass(frozen=True, slots=True)
+class UserWrite:
+    """One account holder to create or refresh, with an already-hashed secret."""
+
+    login_id: str
+    display_name: str
+    role: str
+    password_hash: str
+
+
+async def save_user(engine: AsyncEngine, write: UserWrite, *, reset_password: bool) -> int:
+    """Create or refresh one login and return its id, keeping the password by default.
+
+    재실행이 비밀번호를 되돌리지 않는다 — 계좌 프로비저닝이 잔고를 안 건드리는
+    것과 같은 규칙이다. 다만 잊었을 때 복구할 길이 하나는 있어야 해서
+    ``reset_password``로 명시할 때만 덮어쓴다(계좌 CRUD 화면은 W3-3).
+    """
+    password_clause = (
+        ":password_hash" if reset_password else "COALESCE(tb_user.password_hash, :password_hash)"
+    )
+    statement = text(
+        dedent(
+            f"""
+            INSERT INTO tb_user (login_id, display_name, role, password_hash)
+            VALUES (:login_id, :display_name, :role, :password_hash)
+            ON CONFLICT (login_id) DO UPDATE SET
+                display_name = EXCLUDED.display_name,
+                role = EXCLUDED.role,
+                password_hash = {password_clause}
+            RETURNING user_id
+            """  # noqa: S608 - password_clause is one of two literals above
+        )
+    )
+    async with engine.begin() as connection:
+        user_id = await connection.scalar(
+            statement,
+            {
+                "login_id": write.login_id,
+                "display_name": write.display_name,
+                "role": write.role,
+                "password_hash": write.password_hash,
+            },
+        )
+    return int(user_id or 0)
+
+
+async def set_account_owner(engine: AsyncEngine, broker_account_id: str, user_id: int) -> bool:
+    """Attach one account to its owner, reporting whether such an account exists.
+
+    없는 계좌를 조용히 넘기지 않고 False로 알린다 — 시드가 계좌 명부보다
+    앞서거나 이름이 어긋나면 "유저는 생겼는데 계좌가 없는" 상태가 되고,
+    그 상태의 유저는 로그인해서 404만 본다.
+    """
+    async with engine.begin() as connection:
+        result = await connection.execute(
+            text(
+                dedent(
+                    """
+                    UPDATE tb_account SET user_id = :user_id, updated_at = now()
+                    WHERE broker_account_id = :broker_account_id
+                    """
+                )
+            ),
+            {"user_id": user_id, "broker_account_id": broker_account_id},
+        )
+    return result.rowcount > 0
+
+
 async def count_users(engine: AsyncEngine) -> int:
     """Count rows so an installation with no accounts can still open its console.
 

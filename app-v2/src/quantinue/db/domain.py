@@ -47,9 +47,12 @@ from quantinue.db.postgres_accounting import initialize_account, record_complete
 from quantinue.db.users import (
     UserAccount,
     UserRecord,
+    UserWrite,
     account_for_user,
     count_users,
     find_user_by_login,
+    save_user,
+    set_account_owner,
 )
 from quantinue.roles.analysis import AnalysisSubject
 from quantinue.roles.exits import DailyObservation, OpenPosition
@@ -1533,6 +1536,14 @@ class PostgresDomainRepository:
     async def account_for_user(self, user_id: int) -> UserAccount | None:
         """Delegate the ownership-scoped account read to the user read module."""
         return await account_for_user(self._engine, user_id)
+
+    async def save_user(self, write: UserWrite, *, reset_password: bool = False) -> int:
+        """Delegate the seeded-login upsert to the user module."""
+        return await save_user(self._engine, write, reset_password=reset_password)
+
+    async def set_account_owner(self, broker_account_id: str, user_id: int) -> bool:
+        """Delegate the ownership attachment to the user module."""
+        return await set_account_owner(self._engine, broker_account_id, user_id)
 
     async def save_source_records(
         self,
