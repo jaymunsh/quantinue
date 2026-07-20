@@ -17,6 +17,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from quantinue.api.access import ControlRoomAccess
 from quantinue.api.account_roster import AccountRosterView, account_roster_view
+from quantinue.api.admin_accounts import build_admin_accounts_router
 from quantinue.api.auth import session_user
 from quantinue.api.login_routes import build_auth_router
 from quantinue.api.my_account import MyAccountView, my_account_view
@@ -234,6 +235,7 @@ def create_app(settings: Settings | None = None, *, store: RunStore | None = Non
     app.mount("/static", StaticFiles(directory=PACKAGE_DIR / "web" / "static"), name="static")
     _mount_reviews(app, review_runtime, access)
     app.include_router(build_auth_router(control_room_reads, templates))
+    app.include_router(build_admin_accounts_router(control_room_reads, templates))
 
     @app.get("/me", response_class=HTMLResponse)
     async def my_account(request: Request) -> HTMLResponse:

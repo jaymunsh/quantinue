@@ -193,3 +193,43 @@ async def account_for_user(engine: AsyncEngine, user_id: int) -> UserAccount | N
         cash=Decimal(str(row.cash)),
         equity=Decimal(str(row.equity)),
     )
+
+
+async def set_account_profile(
+    engine: AsyncEngine, broker_account_id: str, inv_type: str
+) -> bool:
+    """Assign one account's investment profile, returning whether it existed.
+
+    성향은 매수 문턱과 종목당 비중을 정하므로(배분 잡), 바꾸는 순간 다음
+    슬롯의 판단이 달라진다. 존재하지 않는 계좌에 조용히 성공을 돌려주지
+    않는다 — 오타 하나가 "바꿨다"로 보이면 안 바뀐 계좌를 계속 믿게 된다.
+    """
+    async with engine.begin() as connection:
+        result = await connection.execute(
+            text(
+                """UPDATE tb_account SET inv_type = :inv_type, updated_at = now()
+                WHERE broker_account_id = :bid"""
+            ),
+            {"inv_type": inv_type, "bid": broker_account_id},
+        )
+    return result.rowcount == 1
+
+
+async def set_account_status(
+    engine: AsyncEngine, broker_account_id: str, status: str
+) -> bool:
+    """Pause, close, or reactivate one account, returning whether it existed.
+
+    ``paused``/``closed``는 잔고를 건드리지 않는다. 배분 잡이 ``active``만
+    보므로(``active_accounts``) 신규 매수가 멎을 뿐이고, **보유의 자동 청산은
+    계속 돈다** — 멈춘 계좌의 손절을 함께 끄면 정지가 방치가 된다.
+    """
+    async with engine.begin() as connection:
+        result = await connection.execute(
+            text(
+                """UPDATE tb_account SET status = :status, updated_at = now()
+                WHERE broker_account_id = :bid"""
+            ),
+            {"status": status, "bid": broker_account_id},
+        )
+    return result.rowcount == 1

@@ -57,6 +57,8 @@ from quantinue.db.users import (
     find_user_by_login,
     save_user,
     set_account_owner,
+    set_account_profile,
+    set_account_status,
 )
 from quantinue.roles.analysis import AnalysisSubject
 from quantinue.roles.exits import DailyObservation, OpenPosition
@@ -1783,6 +1785,14 @@ class PostgresDomainRepository:
     async def set_account_owner(self, broker_account_id: str, user_id: int) -> bool:
         """Delegate the ownership attachment to the user module."""
         return await set_account_owner(self._engine, broker_account_id, user_id)
+
+    async def set_account_profile(self, broker_account_id: str, inv_type: str) -> bool:
+        """Delegate the profile assignment to the user module."""
+        return await set_account_profile(self._engine, broker_account_id, inv_type)
+
+    async def set_account_status(self, broker_account_id: str, status: str) -> bool:
+        """Delegate the account lifecycle change to the user module."""
+        return await set_account_status(self._engine, broker_account_id, status)
 
     async def save_source_records(
         self,
