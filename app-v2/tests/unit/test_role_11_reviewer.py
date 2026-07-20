@@ -5,7 +5,10 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from quantinue.roles.role_11_reviewer.calendar import UsEquityTradingCalendar
+from quantinue.roles.role_11_reviewer.calendar import (
+    CalendarHorizonError,
+    UsEquityTradingCalendar,
+)
 from quantinue.roles.role_11_reviewer.contracts import (
     ReviewInput,
     ReviewOutput,
@@ -140,3 +143,28 @@ def test_snapshot_rejects_observation_after_capture() -> None:
             observed_at=datetime(2026, 7, 14, 21, 0, tzinfo=UTC),
             captured_at=datetime(2026, 7, 14, 20, 0, tzinfo=UTC),
         )
+
+
+def test_a_question_beyond_the_calendar_horizon_fails_loudly() -> None:
+    """수제 규칙은 무한히 답했다 — 실물 달력은 모르는 날짜를 지어내지 않는다.
+
+    잔여 작업 D의 대체 테스트다: 두 캘린더의 어긋남 감시(test_calendar_agreement)
+    는 구현이 하나가 되면서 대상을 잃었고, 남는 위험은 XNYS 데이터 경계다.
+    """
+    calendar = UsEquityTradingCalendar()
+
+    with pytest.raises(CalendarHorizonError):
+        _ = calendar.offset(date(2027, 7, 19), trading_days=5)
+
+
+def test_a_half_day_session_closes_early_not_at_four() -> None:
+    """반일 세션의 실제 마감 — 수제 16:00 고정 규칙이 틀리던 지점이다.
+
+    2026-11-27(추수감사절 다음 금요일)은 13:00 뉴욕 마감이다. 리뷰는 "종가가
+    확정된 시각"을 묻는 자리라 세 시간 이르게 여는 것이 정확성이다.
+    """
+    calendar = UsEquityTradingCalendar()
+
+    close = calendar.session_close(date(2026, 11, 27))
+
+    assert close == datetime(2026, 11, 27, 18, 0, tzinfo=UTC)  # 13:00 New York

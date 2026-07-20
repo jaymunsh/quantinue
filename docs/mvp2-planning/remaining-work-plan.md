@@ -132,7 +132,21 @@ task group이 run_forever를 기다린다. 구 코드는 LiveRunRuntime.cancel()
 **완료 기준.** 유닛/통합 green · 실 기동 · `pipeline_runs`에 쓰는 코드 0 ·
 런 타입 import 0.
 
-- [ ] 미착수
+**실행 결과 (2026-07-20).** -3,667줄. RunStore 12메서드 삭제 · postgres.py를
+mixin 3개 없이 재작성 · memory.py 런 상태 제거 · core/contracts 668→63줄
+(공시·뉴스 원본 레코드만) · api/schemas 런 뷰 20종 삭제 · OrderResult는
+broker/contracts로 이주(브로커가 산 소비자다) · codec/postgres_read/
+postgres_run_reads/postgres_lifecycle/active_snapshot/context_detail/
+terminal_detail/terminal_run_types/orchestration.lifecycle 삭제 ·
+Mvp2ScheduleConfig 유령 동반 정리(CycleScheduler와 함께 소비자 소멸).
+
+**살려낸 것 — 포트폴리오 mark가 런에 묶여 있었다.** read_simulated_portfolio가
+mark를 pipeline_runs(완료된 런의 판단 시점 시세)에서 읽었다 — 러너가 죽어 다시
+갱신될 수 없는 소스다. tb_daily_bar 최신 종가로 갈아탔다(D8 계좌 평가와 같은
+소스 — 웹 포트폴리오와 계좌 곡선이 같은 숫자를 말한다). 보유 종목의 봉만
+조회한다(원장에는 2000종목 봉이 있다).
+
+- [x] 완료
 
 ## D. 이중 캘린더 통합 — 감시를 소유로
 
@@ -151,7 +165,16 @@ task group이 run_forever를 기다린다. 구 코드는 LiveRunRuntime.cancel()
 
 **완료 기준.** 캘린더 구현 1개 · 리뷰 유닛/통합 green.
 
-- [ ] 미착수
+**실행 결과 (2026-07-20).** 수제 휴장일 규칙(부활절 산술 포함 ~70줄)을 지우고
+role_11 캘린더를 core NyseCalendar(XNYS) 어댑터로 재작성. 기존 캘린더 테스트
+6건(독립기념일 스킵·DST 마감·T+5 산술)이 어댑터에서 그대로 통과 — 동작 보존.
+덤으로 정확성이 늘었다: 반일 세션의 실제 마감(11/27 13:00 뉴욕)을 안다 —
+수제 규칙은 16:00 고정이었다. XNYS 경계(2027-07) 밖 질문은
+CalendarHorizonError로 명시적으로 실패한다(지어내지 않음). 감시 테스트
+(test_calendar_agreement)는 구현이 하나가 되며 대상을 잃어 같은 커밋에서
+삭제, 대체는 경계·반일 테스트 2건.
+
+- [x] 완료
 
 ## E. 로드맵 R11 — 보도자료 와이어 RSS
 
