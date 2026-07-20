@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 import os
-from datetime import date
+from datetime import date, datetime
 
 import pytest
 
+from quantinue.db.control_room_reads import job_runs
 from quantinue.db.postgres import PostgresRunStore
 
 DATABASE_URL = os.getenv("QUANTINUE_TEST_DATABASE_URL")
@@ -128,6 +129,37 @@ async def test_a_failed_slot_can_be_reclaimed_the_same_day() -> None:
     assert retried is True
     assert await store.domain.last_job_success("ledger-retry") == _DAY
     await store.close()
+
+
+@pytest.mark.anyio
+async def test_a_reclaimed_slot_restarts_its_clock() -> None:
+    """재시도한 잡의 시계는 다시 0에서 출발해야 한다.
+
+    ``started_at``이 첫 시도 값으로 남으면 관제실이 두 가지를 동시에 잃는다:
+    소요시간이 실패와 재시도 사이의 공백을 포함해 부풀고(실측 14.5초짜리
+    뉴스 잡이 9.8시간으로 찍혔다), 체인을 ``started_at``으로 정렬하는
+    관제실이 등록 순서를 잘못 그린다 — 어느 단계에서 끊겼는지 못 읽는다.
+    """
+    # Given
+    assert DATABASE_URL is not None
+    store = PostgresRunStore(DATABASE_URL)
+    await store.initialize()
+    _ = await store.domain.reserve_job_run("ledger-clock", _DAY)
+    first_started = (await _started_at(store, "ledger-clock"))
+    await store.domain.finish_job_run("ledger-clock", _DAY, succeeded=False)
+
+    # When
+    _ = await store.domain.reserve_job_run("ledger-clock", _DAY)
+
+    # Then
+    assert await _started_at(store, "ledger-clock") > first_started
+    await store.close()
+
+
+async def _started_at(store: PostgresRunStore, job_name: str) -> datetime:
+    """Read one job's clock through the control room's own reader."""
+    runs = await job_runs(store.engine, _DAY)
+    return next(run.started_at for run in runs if run.job_name == job_name)
 
 
 @pytest.mark.anyio

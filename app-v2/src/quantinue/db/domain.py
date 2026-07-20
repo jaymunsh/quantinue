@@ -1016,6 +1016,11 @@ class PostgresDomainRepository:
         청산 판단을 하게 된다 — 일시적 장애가 하루짜리 눈감기로 번진다.
         ``running``과 ``succeeded``는 그대로 잠긴다: 도는 중인 걸 다시 집으면
         같은 날 두 번 돌고, 끝난 걸 다시 집으면 주기가 무의미해진다.
+
+        재시도는 ``started_at``도 다시 찍는다. ``DEFAULT now()``는 INSERT에만
+        걸리므로 그냥 두면 첫 시도 시각이 남아, 관제실이 실패와 재시도 사이의
+        공백까지 소요시간으로 읽고(뉴스 14.5초 → 9.8시간) ``started_at``으로
+        정렬하는 잡 체인의 순서도 무너진다.
         """
         table = self._table("tb_job_run")
         statement = (
@@ -1023,7 +1028,12 @@ class PostgresDomainRepository:
             .values(job_name=job_name, slot_date=slot_date, status="running")
             .on_conflict_do_update(
                 index_elements=["job_name", "slot_date"],
-                set_={"status": "running", "detail": None, "finished_at": None},
+                set_={
+                    "status": "running",
+                    "detail": None,
+                    "started_at": func.now(),
+                    "finished_at": None,
+                },
                 where=table.c.status == "failed",
             )
         )
