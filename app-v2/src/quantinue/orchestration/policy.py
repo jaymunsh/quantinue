@@ -14,21 +14,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-class Mvp2ScheduleConfig(BaseModel):
-    """Automatic cycle trigger cadence and gates; disabled until armed."""
-
-    model_config = ConfigDict(frozen=True, extra="forbid")
-
-    enabled: bool = False
-    tick_seconds: int = Field(default=60, gt=0, le=3_600)
-    cycle_slot_minutes: int = Field(default=30, gt=0, le=1_440)
-    trigger_sessions: tuple[Literal["pre", "regular", "after"], ...] = (
-        "pre",
-        "regular",
-        "after",
-    )
-
-
 class ProfileConfig(BaseModel):
     """Per-investment-type thresholds, sizing limits, and circuit breakers."""
 
@@ -236,7 +221,6 @@ class Mvp2Config(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    schedule: Mvp2ScheduleConfig = Mvp2ScheduleConfig()
     profiles: dict[str, ProfileConfig] = Field(default_factory=_default_profiles)
     gates: GatesConfig = GatesConfig()
     screening: ScreeningConfig = ScreeningConfig()

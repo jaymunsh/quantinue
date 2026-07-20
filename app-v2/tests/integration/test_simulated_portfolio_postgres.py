@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 
 import anyio
@@ -75,53 +75,29 @@ async def _seed_reserved_order(database_url: str, account_id: int, identity: str
     await engine.dispose()
 
 
-async def _complete_mark_run(database_url: str, ticker: str) -> None:
-    engine = create_async_engine(database_url)
-    async with engine.begin() as connection:
-        _ = await connection.execute(
-            text(
-                """INSERT INTO pipeline_runs(
-                run_id,idempotency_key,ticker,cycle_ts,status,payload)
-                VALUES ('restart-mark-run','restart-mark-key',:ticker,:cycle,'completed','{}')"""
-            ),
-            {"ticker": ticker, "cycle": NOW},
-        )
-    await engine.dispose()
+async def _seed_mark_bars(database_url: str, ticker: str) -> None:
+    """Seed daily bars so the latest close is the mark.
 
-
-async def _seed_nonterminal_mark_candidates(database_url: str, ticker: str) -> None:
+    구 픽스처는 완료된 pipeline_runs 행을 mark 소스로 심었다 — 그 소스는
+    러너와 함께 죽었고, 지금 mark는 tb_daily_bar의 최신 종가다. 옛 규칙
+    "미완료 런은 mark가 아니다"의 후계는 "최신 봉만 mark다"이므로, 더 오래된
+    봉 하나를 함께 심어 최신 선택을 고정한다.
+    """
     engine = create_async_engine(database_url)
-    candidates = (
-        (NOW.replace(hour=13), Decimal("90.00"), "completed", "older"),
-        (NOW.replace(hour=15), Decimal("150.00"), "failed", "failed"),
-        (NOW.replace(hour=16), Decimal("200.00"), "running", "running"),
+    bars = (
+        (NOW.date() - timedelta(days=1), Decimal("90.00")),
+        (NOW.date(), Decimal("100.00")),
     )
     async with engine.begin() as connection:
-        for cycle, price, status, suffix in candidates:
+        for session, close in bars:
             _ = await connection.execute(
                 text(
-                    """INSERT INTO tb_strategist_signals(
-                    trade_date,ticker,cycle_ts,inv_type,side,conviction,signal_consensus,
-                    summary,evidence,sizing_hint,decision_close,current_price,day_high,
-                    day_low,close_prev,volume,turnover,high_52w,low_52w)
-                    VALUES (:day,:ticker,:cycle,'conservative','buy',0.8,2,'mark',
-                    '[]','{}',:price,:price,:price,:price,:price,0,0,:price,:price)"""
+                    """INSERT INTO tb_daily_bar(
+                    trade_date,ticker,open,high,low,close,volume,source)
+                    VALUES (:day,:ticker,:close,:close,:close,:close,0,'test')
+                    ON CONFLICT DO NOTHING"""
                 ),
-                {"day": NOW.date(), "ticker": ticker, "cycle": cycle, "price": price},
-            )
-            _ = await connection.execute(
-                text(
-                    """INSERT INTO pipeline_runs(
-                    run_id,idempotency_key,ticker,cycle_ts,status,payload)
-                    VALUES (:run_id,:key,:ticker,:cycle,:status,'{}')"""
-                ),
-                {
-                    "run_id": f"mark-{suffix}-run",
-                    "key": f"mark-{suffix}-key",
-                    "ticker": ticker,
-                    "cycle": cycle,
-                    "status": status,
-                },
+                {"day": session, "ticker": ticker, "close": close},
             )
     await engine.dispose()
 
@@ -206,8 +182,7 @@ async def test_unique_buy_fill_debits_once_and_survives_store_reopen() -> None:
     async with anyio.create_task_group() as group:
         _ = group.start_soon(record_once, repository)
         _ = group.start_soon(record_once, concurrent)
-    await _complete_mark_run(DATABASE_URL, "RESTART")
-    await _seed_nonterminal_mark_candidates(DATABASE_URL, "RESTART")
+    await _seed_mark_bars(DATABASE_URL, "RESTART")
     before_reopen = PostgresRunStore(DATABASE_URL)
     await before_reopen.initialize()
     before = await before_reopen.simulated_portfolio(OPENING_CASH)
@@ -230,9 +205,9 @@ async def test_unique_buy_fill_debits_once_and_survives_store_reopen() -> None:
         tuple(position.mark for position in after.positions),
     )
     assert after == memory_projection
-    assert persisted_position.mark.source is MarkSource.COMPLETED_RUN
+    assert persisted_position.mark.source is MarkSource.DAILY_BAR_CLOSE
     assert persisted_position.mark.price == Decimal("100.00")
-    assert persisted_position.mark.as_of == NOW
+    assert persisted_position.mark.as_of == datetime.combine(NOW.date(), time(), tzinfo=UTC)
     assert sum(fill.fill_id == "fill-restart" for fill in after.fills) == 1
     await reopened.close()
     await concurrent.close()

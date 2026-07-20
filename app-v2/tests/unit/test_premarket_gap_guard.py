@@ -10,9 +10,6 @@ The guard is session-scoped on purpose: a 3% move at 2pm is an ordinary day, a
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
-
-from quantinue.core.contracts import PriceSnapshot
 from quantinue.core.ontology import EvidenceKind
 from quantinue.core.schemas import Evidence
 from quantinue.orchestration.policy import GatesConfig
@@ -83,27 +80,6 @@ def test_no_reference_gap_leaves_the_plan_untouched() -> None:
 
     assert plan.quantity > 0
     assert plan.skipped_reason is None
-
-
-@pytest.mark.parametrize(
-    ("current", "close_prev", "expected"),
-    [
-        (103.0, 100.0, 0.03),
-        (97.0, 100.0, 0.03),
-        (100.0, 100.0, 0.0),
-    ],
-)
-def test_snapshot_gap_is_the_absolute_move_from_the_reference_close(
-    current: float, close_prev: float, expected: float
-) -> None:
-    snapshot = PriceSnapshot(
-        current_price=current,
-        day_high=max(current, close_prev),
-        day_low=min(current, close_prev),
-        close_prev=close_prev,
-    )
-
-    assert round(snapshot.gap_from_reference(), 6) == expected
 
 
 def test_guard_window_covers_premarket_and_the_opening_stretch() -> None:

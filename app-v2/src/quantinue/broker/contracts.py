@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
-if TYPE_CHECKING:
-    from quantinue.core.contracts import OrderResult
 
 
 class OrderPlan(BaseModel):
@@ -82,3 +79,20 @@ class TradabilityBroker(Protocol):
     async def is_tradable(self, ticker: str) -> bool:
         """Return whether the venue currently accepts orders for this symbol."""
         ...
+
+
+# 구 core/terminal_run_types에서 이주했다 — 그 모듈은 11단계 런의 표현이라
+# 러너와 함께 죽었지만, 주문 결과 계약은 브로커의 것이라 여기 산다.
+class OrderResult(BaseModel):
+    """Normalized order result independent of broker implementation."""
+
+    model_config = ConfigDict(frozen=True)
+
+    order_id: str
+    client_order_id: str
+    status: str
+    quantity: int
+    filled_avg_price: float
+    parent_order_id: str | None = None
+    stop_leg_order_id: str | None = None
+    take_profit_leg_order_id: str | None = None

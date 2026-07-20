@@ -5,7 +5,6 @@ from decimal import Decimal
 import anyio
 import pytest
 
-from quantinue.core.contracts import PipelineRequest
 from quantinue.db.domain_records import InsufficientSimulatedCashError
 from quantinue.db.memory import InMemoryRunStore
 from quantinue.db.simulated_portfolio import (
@@ -91,30 +90,6 @@ async def test_memory_ledger_concurrent_same_fill_identity_is_atomic() -> None:
     assert snapshot.account.current_cash == Decimal("999800.00")
     assert len(snapshot.orders) == 1
     assert len(snapshot.fills) == 1
-
-
-@pytest.mark.anyio
-async def test_memory_portfolio_uses_latest_completed_run_mark() -> None:
-    # Given
-    store = InMemoryRunStore()
-    await store.record_simulated_order(_order(), _fill())
-    for hour, price in ((2, 110.0), (3, 125.0)):
-        cycle_ts = datetime(2026, 7, 14, hour, tzinfo=UTC)
-        request = PipelineRequest(ticker="NVDA", cycle_ts=cycle_ts)
-        key = f"run-{hour}"
-        claim = await store.claim(key, request)
-        assert claim.context is not None
-        context = replace(claim.context, last_price=price)
-        attempt = await store.start_attempt(key, "01", cycle_ts)
-        await store.complete_stage(key, context, attempt)
-        await store.finish_run(key, context.to_run())
-
-    # When
-    snapshot = await store.simulated_portfolio(OPENING_CASH)
-
-    # Then
-    assert snapshot.positions[0].mark.price == Decimal("125.0")
-    assert snapshot.positions[0].mark.as_of == datetime(2026, 7, 14, 3, tzinfo=UTC)
 
 
 @pytest.mark.anyio

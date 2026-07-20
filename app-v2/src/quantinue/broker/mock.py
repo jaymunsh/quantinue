@@ -3,7 +3,7 @@
 from hashlib import sha256
 from typing import assert_never
 
-from quantinue.broker.contracts import ClosePlan, OrderPlan
+from quantinue.broker.contracts import ClosePlan, OrderPlan, OrderResult
 from quantinue.broker.reservations import (
     CompletedClaim,
     InFlightClaim,
@@ -11,7 +11,6 @@ from quantinue.broker.reservations import (
     OrderReservations,
     OwnerClaim,
 )
-from quantinue.core.contracts import OrderResult
 from quantinue.core.errors import TransientFailureError
 
 

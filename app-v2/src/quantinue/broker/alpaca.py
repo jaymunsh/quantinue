@@ -9,6 +9,7 @@ import anyio
 import httpx2
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from quantinue.broker.contracts import OrderResult
 from quantinue.broker.reservations import (
     CompletedClaim,
     InFlightClaim,
@@ -18,7 +19,6 @@ from quantinue.broker.reservations import (
     ReservationOwnerToken,
 )
 from quantinue.core.config import BrokerMode, Settings
-from quantinue.core.contracts import OrderResult
 from quantinue.core.errors import (
     AuthenticationFailureError,
     HttpFailureError,

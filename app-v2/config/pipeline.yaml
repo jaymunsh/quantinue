@@ -1,11 +1,6 @@
 version: 1
 timezone: America/New_York
 mvp2:
-  schedule:
-    enabled: false
-    tick_seconds: 60
-    cycle_slot_minutes: 30
-    trigger_sessions: [pre, regular, after]
   profiles:
     aggressive:
       buy_threshold: 0.65

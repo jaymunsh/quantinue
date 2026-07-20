@@ -12,8 +12,6 @@ from pydantic import Field, TypeAdapter
 if TYPE_CHECKING:
     from datetime import date, datetime
 
-    from quantinue.core.contracts import PipelineContext, PipelineRequest, PipelineRun, RunId
-    from quantinue.db.active_snapshot import ActivePipelineSnapshot
     from quantinue.db.domain_records import CompletedFillWrite
     from quantinue.db.simulated_portfolio import SimulatedPortfolioSnapshot
 
@@ -67,15 +65,6 @@ class AttemptFailure:
     status: str
     error_code: str
     error_message: str
-
-
-@dataclass(frozen=True, slots=True)
-class RunClaim:
-    """Atomic claim outcome with the last durable context, when acquired."""
-
-    acquired: bool
-    terminal_run: PipelineRun | None = None
-    context: PipelineContext | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -174,80 +163,20 @@ class AppOrderExposureReservationResult:
 
 
 class RunStore(Protocol):
-    """Persistence boundary used by orchestration and operational views."""
+    """Persistence boundary used by the jobs and the control room.
+
+    Phase 5까지는 런 생명주기(claim·stage·finish)의 프로토콜이기도 했다.
+    그 절반은 구 11단계 러너와 함께 죽었고, 남은 것은 잡과 웹이 실제로
+    부르는 여섯 개다. 잡의 도메인 읽기·쓰기는 이 프로토콜이 아니라
+    ``PostgresRunStore.domain``(도메인 저장소)을 탄다.
+    """
 
     async def initialize(self) -> None:
         """Prepare storage."""
         ...
 
-    async def latest_cycle_ts(self) -> datetime | None:
-        """Return the newest cycle timestamp not lost to failure."""
-        ...
-
     async def close(self) -> None:
         """Release storage resources."""
-        ...
-
-    async def claim(
-        self, key: str, request: PipelineRequest, *, resume_failed: bool = False
-    ) -> RunClaim:
-        """Atomically claim a run key."""
-        ...
-
-    async def wait_for_release(self, key: str) -> PipelineRun | None:
-        """Wait for the current claimant."""
-        ...
-
-    async def complete_stage(
-        self,
-        key: str,
-        context: PipelineContext,
-        attempt: PersistedAttempt,
-    ) -> None:
-        """Commit an attempt and checkpoint atomically."""
-        ...
-
-    async def start_attempt(
-        self,
-        key: str,
-        component: str,
-        started_at: datetime,
-    ) -> PersistedAttempt:
-        """Persist a running attempt."""
-        ...
-
-    async def fail_attempt(
-        self,
-        key: str,
-        attempt: PersistedAttempt,
-        finished_at: datetime,
-        failure: AttemptFailure,
-    ) -> None:
-        """Persist a failed attempt."""
-        ...
-
-    async def finish_run(self, key: str, run: PipelineRun, *, resumable: bool = False) -> None:
-        """Publish a terminal run."""
-        ...
-
-    async def abandon(self, key: str) -> None:
-        """Release a nonterminal claim."""
-        ...
-
-    async def get_by_key(self, key: str) -> PipelineRun | None:
-        """Get a terminal run by key."""
-        ...
-
-    async def list_attempts(self, run_id: RunId) -> tuple[PersistedAttempt, ...]:
-        """List attempts in insertion order."""
-        ...
-
-    async def list_recent(self, limit: int = 20) -> tuple[PipelineRun, ...]:
-        """List recent terminal runs."""
-        ...
-
-    async def list_active(self, limit: int = 20) -> tuple[ActivePipelineSnapshot, ...]:
-        """List safe snapshots for nonterminal runs only."""
         ...
 
     async def simulated_portfolio(self, opening_cash: Decimal) -> SimulatedPortfolioSnapshot:
