@@ -5,6 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
+from quantinue.core.order_identity import derive_client_order_id
 from quantinue.roles.role_09_risk_portfolio.evidence import LateStageEvidenceInput
 
 
@@ -24,7 +25,7 @@ class OrderExecutionInput(LateStageEvidenceInput):
     @property
     def client_order_id(self) -> str:
         """Derive an Alpaca-safe stable ID from the two uniqueness dimensions."""
-        return f"q-a{self.account_id}-s{self.signal_id}"
+        return derive_client_order_id(account_id=self.account_id, signal_id=self.signal_id)
 
     @computed_field
     @property

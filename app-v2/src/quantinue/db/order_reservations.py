@@ -11,6 +11,7 @@ from sqlalchemy import MetaData, Table, and_, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
+from quantinue.broker.contracts import OrderResult
 from quantinue.broker.reservations import (
     CompletedClaim,
     InFlightClaim,
@@ -18,7 +19,6 @@ from quantinue.broker.reservations import (
     ReservationClaim,
     ReservationOwnerToken,
 )
-from quantinue.core.contracts import OrderResult
 
 _INT_ADAPTER = TypeAdapter(int)
 _STRING_ADAPTER = TypeAdapter(str)

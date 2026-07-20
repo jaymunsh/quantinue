@@ -78,7 +78,16 @@ async def test_mock_build_path_returns_the_common_schema_and_metadata() -> None:
 
     result = await analyzer.analyze(AnalysisTask.DISCLOSURE, "same contract input")
 
-    assert result.model_dump().keys() == {"score", "label", "reason", "metadata"}
+    # bull_case·key_risk는 전략 태스크만 채우는 서사 필드다(잔여 작업 B) —
+    # 스키마에는 있되 서사 없는 태스크에서는 None이어야 한다.
+    assert result.model_dump().keys() == {
+        "score",
+        "label",
+        "reason",
+        "bull_case",
+        "key_risk",
+        "metadata",
+    }
     assert result.metadata.input_hash == sha256(b"same contract input").hexdigest()
     assert result.metadata.prompt_version
     assert result.metadata.policy_version
@@ -201,7 +210,16 @@ async def test_remote_build_paths_share_schema_and_metadata_contract(mode: LlmMo
         analyzer = build_llm_analyzer(Settings.model_validate(values), openai_client=sdk)
         result = await analyzer.analyze(AnalysisTask.DISCLOSURE, "same contract input")
 
-    assert result.model_dump().keys() == {"score", "label", "reason", "metadata"}
+    # bull_case·key_risk는 전략 태스크만 채우는 서사 필드다(잔여 작업 B) —
+    # 스키마에는 있되 서사 없는 태스크에서는 None이어야 한다.
+    assert result.model_dump().keys() == {
+        "score",
+        "label",
+        "reason",
+        "bull_case",
+        "key_risk",
+        "metadata",
+    }
     assert result.metadata.model == "contract-model"
     assert result.metadata.input_hash == sha256(b"same contract input").hexdigest()
     assert result.metadata.prompt_version
@@ -269,7 +287,10 @@ async def test_local_mode_disables_reasoning_and_caps_structured_output() -> Non
         _ = await analyzer.analyze(AnalysisTask.DISCLOSURE, "same contract input")
 
     assert observed_requests[0].reasoning_effort == "none"
-    assert observed_requests[0].max_tokens == 256
+    # 512는 실측으로 정한 기본값이다 — 256은 이유 문장을 잘라 구조화 출력을
+    # 죽였다(성향당 2건). test_the_local_output_budget_is_config_owned가
+    # 배선을, 여기는 기본값을 고정한다.
+    assert observed_requests[0].max_tokens == 512
     # Local reasoning models (Qwen3.6 via omlx) ignore reasoning_effort and emit
     # chain-of-thought prose into content, breaking structured JSON output. The
     # omlx server honours chat_template_kwargs.enable_thinking=false instead.
@@ -367,3 +388,95 @@ async def test_local_transport_timeout_becomes_safe_transient_failure() -> None:
     assert captured.value.provider == "local"
     assert captured.value.reason == "model transport unavailable"
     assert raw_transport_detail not in str(captured.value)
+
+
+@pytest.mark.anyio
+async def test_the_local_output_budget_is_config_owned() -> None:
+    """`max_tokens=256`이 리터럴로 박혀 있었다 — 문턱은 config 소유가 규칙이다.
+
+    이유 문장이 길어지면 256에서 잘려 구조화 출력 실패 → 재시도 소진으로
+    이어질 수 있다(2026-07-20 가설, A/B 실측으로 판정). 값이 무엇이든 그것을
+    코드에 굳히면 다음 조정이 배포가 된다 — 설정이 와이어까지 흘러야 한다.
+    """
+    observed_requests: list[WireModelSettingsRequest] = []
+
+    async def respond(request: httpx.Request) -> httpx.Response:
+        observed_requests.append(WireModelSettingsRequest.model_validate_json(request.content))
+        return httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-local-budget",
+                "object": "chat.completion",
+                "created": 1,
+                "model": "contract-model",
+                "choices": [
+                    {
+                        "index": 0,
+                        "finish_reason": "tool_calls",
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "call-result",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "final_result",
+                                        "arguments": json.dumps(
+                                            {
+                                                "score": 0.55,
+                                                "label": "neutral",
+                                                "reason": "계약 응답",
+                                            }
+                                        ),
+                                    },
+                                }
+                            ],
+                        },
+                    }
+                ],
+                "usage": {"prompt_tokens": 5, "completion_tokens": 3, "total_tokens": 8},
+            },
+        )
+
+    values = {
+        "llm_mode": LlmMode.LOCAL,
+        "local_llm_api_key": "wire-placeholder",
+        "local_llm_model": "contract-model",
+        "local_llm_base_url": "http://local.test/v1",
+        "llm_max_output_tokens": 512,
+    }
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as http_client:
+        sdk = AsyncOpenAI(
+            api_key="wire-placeholder",
+            base_url="http://local.test/v1",
+            http_client=http_client,
+        )
+        analyzer = build_llm_analyzer(Settings.model_validate(values), openai_client=sdk)
+
+        _ = await analyzer.analyze(AnalysisTask.DISCLOSURE, "same contract input")
+
+    assert observed_requests[0].max_tokens == 512
+
+
+def test_the_local_path_honours_the_configured_retry_budget() -> None:
+    """`retries=0`이 코드에 굳어 있어서 성향 하나가 통째로 죽었다(실측).
+
+    구조화 출력을 한 번 놓치면 그 잡의 남은 종목 전부가 날아간다 —
+    2026-07-20 실행에서 conservative 22종목이 그렇게 사라졌다. 재시도 예산은
+    openai 경로처럼 config 소유여야 한다.
+    """
+    # Given
+    values = {
+        "llm_mode": LlmMode.LOCAL,
+        "local_llm_api_key": "wire-placeholder",
+        "local_llm_model": "contract-model",
+        "local_llm_base_url": "http://local.test/v1",
+        "llm_max_retries": 3,
+    }
+
+    # When
+    analyzer = build_llm_analyzer(Settings.model_validate(values))
+
+    # Then
+    assert getattr(analyzer, "_retries", None) == 3

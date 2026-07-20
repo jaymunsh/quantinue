@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Quantinue 잡 파이프라인이 오늘 무엇을 했는가">
+  <title>Quantinue 파이프라인 관제실</title>
+  <link rel="icon" href="data:,">
+  <style>{{ dashboard_css | safe }}</style>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="topbar">
+    <div>
+      <p class="product-label">QUANTINUE</p>
+      <h1>파이프라인 관제실</h1>
+    </div>
+    <div class="mode-list" aria-label="현재 안전 모드">
+      <span>LLM {{ settings.llm_mode.value }}</span>
+      <span>Broker {{ settings.broker_mode.value }}</span>
+      <span>Trading {% if settings.trading_enabled %}enabled{% else %}locked{% endif %}</span>
+    </div>
+  </header>
+
+  <main id="main" class="layout">
+    <section class="runtime-contract" aria-label="현재 실행 계약">
+      <strong>{{ settings.database_mode.value | upper }} + 로컬 모의 계좌</strong>
+      <span>체결 로컬 시뮬</span>
+      <span>시세 실물</span>
+      <p>표시 금액은 Quantinue가 계산한 로컬 모의 원장이며 브로커 잔고가 아닙니다.</p>
+    </section>
+
+    <section id="simulated-portfolio" class="portfolio-panel" aria-labelledby="portfolio-title">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="section-label">로컬 모의 계좌</p>
+          <h2 id="portfolio-title">자산·보유·주문 원장</h2>
+        </div>
+        <p>실제 공개 가격을 mark로 사용할 수 있지만, 모든 현금과 체결은 Quantinue 내부 모의 기록입니다.</p>
+      </div>
+      <dl class="portfolio-totals">
+        <div><dt>초기 자산</dt><dd>${{ '{:,.2f}'.format(portfolio.account.opening_cash) }}</dd></div>
+        <div><dt>현재 현금</dt><dd>${{ '{:,.2f}'.format(portfolio.account.current_cash) }}</dd></div>
+        <div class="portfolio-equity"><dt>총 자산</dt><dd>${{ '{:,.2f}'.format(portfolio.account.equity) }}</dd></div>
+        <div><dt>매수 가능액</dt><dd>${{ '{:,.2f}'.format(portfolio.account.buying_power) }}</dd></div>
+      </dl>
+      <div class="portfolio-section-heading">
+        <h3>보유 종목</h3>
+        <span>{{ portfolio.positions | length }}개</span>
+      </div>
+      {% if portfolio.positions %}
+      <div class="portfolio-table-wrap" role="region" aria-label="보유 종목 상세 표" tabindex="-1">
+        <table class="portfolio-table">
+          <caption>로컬 모의 계좌 보유 종목과 평가 현황</caption>
+          <thead><tr><th scope="col">종목</th><th scope="col">수량</th><th scope="col">평균 매입가</th><th scope="col">현재가</th><th scope="col">평가액</th><th scope="col">평가손익</th><th scope="col">비중</th></tr></thead>
+          <tbody>{% for position in portfolio.positions %}<tr>
+            <td data-label="종목"><strong>{{ position.ticker }}</strong><small>{{ position.mark_source }} · <time datetime="{{ position.mark_as_of.isoformat() }}">{{ position.mark_as_of.strftime('%Y-%m-%d %H:%M UTC') }}</time></small></td>
+            <td data-label="수량">{{ position.quantity }}주</td>
+            <td data-label="평균 매입가">${{ '{:,.2f}'.format(position.average_cost) }}</td>
+            <td data-label="현재가">${{ '{:,.2f}'.format(position.mark_price) }}</td>
+            <td data-label="평가액">${{ '{:,.2f}'.format(position.market_value) }}</td>
+            <td data-label="평가손익" class="{% if position.unrealized_pnl > 0 %}value-positive{% elif position.unrealized_pnl < 0 %}value-negative{% endif %}">${{ '{:,.2f}'.format(position.unrealized_pnl) }}</td>
+            <td data-label="비중">{{ '%.2f' | format(position.allocation * 100) }}%</td>
+          </tr>{% endfor %}</tbody>
+        </table>
+      </div>
+      <script>
+        (() => {
+          const region = document.querySelector(".portfolio-table-wrap");
+          if (!region) return;
+          const updateFocusability = () => {
+            region.tabIndex = region.scrollWidth > region.clientWidth ? 0 : -1;
+          };
+          updateFocusability();
+          window.addEventListener("resize", updateFocusability, { passive: true });
+        })();
+      </script>
+      {% else %}<div class="portfolio-empty"><strong>아직 보유 종목이 없습니다</strong><p>mock 주문이 실제로 로컬 체결된 뒤 수량·평단·평가손익이 표시됩니다.</p></div>{% endif %}
+      <p class="realized-pnl"><span>실현손익</span><strong>{{ portfolio.realized_pnl_label }}</strong></p>
+      <div class="ledger-grid">
+        <section aria-labelledby="local-orders-title"><div class="portfolio-section-heading"><h3 id="local-orders-title">주문 내역</h3><span>{{ portfolio.orders | length }}건</span></div>
+          {% if portfolio.orders %}<ol class="ledger-list">{% for order in portfolio.orders %}<li><div><strong>{{ order.ticker }} {{ order.quantity }}주</strong><span>{{ order.status }}</span></div><p>${{ '{:,.2f}'.format(order.reference_price) }} · <time datetime="{{ order.created_at.isoformat() }}">{{ order.created_at.strftime('%Y-%m-%d %H:%M UTC') }}</time></p><code>{{ order.order_id }}</code></li>{% endfor %}</ol>{% else %}<p class="ledger-empty">로컬 주문 기록 없음</p>{% endif %}
+        </section>
+        <section aria-labelledby="local-fills-title"><div class="portfolio-section-heading"><h3 id="local-fills-title">체결 내역</h3><span>{{ portfolio.fills | length }}건</span></div>
+          {% if portfolio.fills %}<ol class="ledger-list">{% for fill in portfolio.fills %}<li><div><strong>{{ fill.ticker }} {{ fill.quantity }}주</strong><span>로컬 체결</span></div><p>${{ '{:,.2f}'.format(fill.price) }} · <time datetime="{{ fill.filled_at.isoformat() }}">{{ fill.filled_at.strftime('%Y-%m-%d %H:%M UTC') }}</time></p><code>{{ fill.fill_id }}</code></li>{% endfor %}</ol>{% else %}<p class="ledger-empty">로컬 체결 기록 없음</p>{% endif %}
+        </section>
+      </div>
+    </section>
+
+    {% if day.chain.slot_date is none %}
+    <section class="job-chain-panel" aria-labelledby="chain-title">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="section-label">잡 체인</p>
+          <h2 id="chain-title">아직 돌지 않았습니다</h2>
+        </div>
+      </div>
+      <p class="empty-state">
+        잡 원장(<code>tb_job_run</code>)에 기록이 없습니다. 잡 루프가 꺼져 있거나
+        (<code>mvp2.jobs.enabled</code>), 이 설치가 잡 원장을 갖지 않는 메모리
+        모드입니다.
+      </p>
+    </section>
+    {% else %}
+
+    <section class="job-chain-panel" aria-labelledby="chain-title">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="section-label">잡 체인 · {{ day.chain.slot_date }}</p>
+          {# 실패가 없다고 "완주"라고 쓰지 않는다 — 등록된 잡 중 몇 개가 실제로
+             돌았는지는 원장이 모른다(자격증명에 따라 등록 자체가 갈린다).
+             돈 개수를 세는 것이 지어낸 분모보다 정직하다. #}
+          <h2 id="chain-title">
+            {% if day.chain.broke_at %}체인이 {{ day.chain.broke_at }}에서 끊겼습니다{% else %}잡 {{ day.chain.jobs | length }}개 실행{% endif %}
+          </h2>
+        </div>
+        <nav class="slot-nav" aria-label="잡 슬롯 선택">
+          {% for slot in day.slots %}
+          <a href="/?slot={{ slot }}"
+             class="slot-link{% if slot == day.chain.slot_date %} slot-current{% endif %}"
+             {% if slot == day.chain.slot_date %}aria-current="page"{% endif %}>{{ slot }}</a>
+          {% endfor %}
+        </nav>
+        <div class="chain-tally" aria-label="잡 상태 집계">
+          <span class="chain-count chain-succeeded">성공 {{ day.chain.succeeded }}</span>
+          <span class="chain-count chain-failed">실패 {{ day.chain.failed }}</span>
+          <span class="chain-count chain-running">진행 {{ day.chain.running }}</span>
+        </div>
+      </div>
+      <ol class="job-chain-list">
+        {% for job in day.chain.jobs %}
+        <li class="job-chain-item job-{{ job.status }}">
+          <div class="job-chain-head">
+            <span class="job-name">{{ job.job_name }}</span>
+            <span class="job-status" aria-label="상태">{{ job.status }}</span>
+            <span class="job-duration muted">
+              {% if job.duration_ms is not none %}{{ (job.duration_ms / 1000) | round(1) }}s{% else %}진행 중{% endif %}
+            </span>
+          </div>
+          {% if job.detail %}<p class="job-detail">{{ job.detail }}</p>{% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+    </section>
+
+    <section class="allocation-panel" aria-labelledby="allocation-title">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="section-label">배분</p>
+          <h2 id="allocation-title">{{ day.allocation.bought }} 매수 · {{ day.allocation.skipped }} 보류</h2>
+        </div>
+      </div>
+      {% if day.allocation.reasons %}
+      <div class="skip-reason-grid" aria-label="보류 사유 순위">
+        {% for item in day.allocation.reasons %}
+        <div class="skip-reason">
+          <span class="skip-reason-name">{{ item.reason }}</span>
+          <span class="skip-reason-count">{{ item.count }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if day.allocation.plans %}
+      <div class="portfolio-table-wrap">
+        <table class="portfolio-table">
+          <caption class="visually-hidden">계좌별 배분 판단</caption>
+          <thead>
+            <tr><th scope="col">종목</th><th scope="col">계좌</th><th scope="col">판단</th><th scope="col">수량</th><th scope="col">진입가</th><th scope="col">보류 사유</th></tr>
+          </thead>
+          <tbody>
+            {% for plan in day.allocation.plans %}
+            <tr>
+              <td data-label="종목">{{ plan.ticker }}</td>
+              <td data-label="계좌">{% if plan.account_id is not none %}#{{ plan.account_id }}{% else %}—{% endif %}</td>
+              <td data-label="판단">{{ plan.decision }}</td>
+              <td data-label="수량" class="money-value">{{ plan.quantity }}</td>
+              <td data-label="진입가" class="money-value">{% if plan.entry_price is not none %}{{ plan.entry_price }}{% else %}—{% endif %}</td>
+              <td data-label="보류 사유" class="muted">{{ plan.skipped_reason or "—" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty-state">이 슬롯에는 배분 판단 기록이 없습니다.</p>
+      {% endif %}
+    </section>
+
+    <section class="equity-panel" aria-labelledby="equity-title">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="section-label">계좌 곡선</p>
+          <h2 id="equity-title">시가평가 추이</h2>
+        </div>
+      </div>
+      {% if day.curves %}
+      <div class="equity-grid">
+        {% for curve in day.curves %}
+        <article class="equity-card">
+          <h3>계좌 #{{ curve.account_id }}</h3>
+          {% set plotted = sparkline(curve) %}
+          {% if plotted %}
+          <svg class="sparkline" viewBox="0 0 160 32" width="160" height="32" role="img"
+               aria-label="계좌 {{ curve.account_id }} 자본 추이 {{ curve.change_pct }}%">
+            <polyline points="{{ plotted }}" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          {% endif %}
+          <dl class="equity-facts">
+            <dt>시작</dt><dd class="money-value">{{ curve.opening_equity }}</dd>
+            <dt>현재</dt><dd class="money-value">{{ curve.latest_equity }}</dd>
+            <dt>변화</dt><dd class="money-value">{{ curve.change_pct }}%</dd>
+          </dl>
+        </article>
+        {% endfor %}
+      </div>
+      {% else %}
+      <p class="empty-state">계좌 시가평가 기록이 아직 없습니다.</p>
+      {% endif %}
+    </section>
+
+    <section class="judgement-panel" aria-labelledby="judgement-title">
+      <div class="section-heading compact-heading">
+        <div>
+          <p class="section-label">판단과 반박</p>
+          <h2 id="judgement-title">성향별 승인 현황</h2>
+        </div>
+      </div>
+      {% if day.profiles %}
+      {% for profile in day.profiles %}
+      <article class="profile-block">
+        <h3>
+          {{ profile.inv_type }}
+          <span class="muted">{{ profile.approved }}/{{ profile.total }} 승인{% if profile.unjudged %} · 평결 없음 {{ profile.unjudged }}{% endif %}</span>
+        </h3>
+        <ul class="judgement-list">
+          {% for item in profile.judgements %}
+          <li class="judgement-item {% if item.approved %}judgement-approved{% endif %}">
+            <div class="judgement-head">
+              <span class="judgement-ticker">{{ item.ticker }}</span>
+              <span class="judgement-side">{{ item.side }}</span>
+              <span class="judgement-conviction muted">확신 {{ item.conviction }}</span>
+              <span class="judgement-verdict">{{ item.verdict_decision or "평결 없음" }}</span>
+            </div>
+            <p class="judgement-summary">{{ item.summary }}</p>
+            {% if item.bull_case %}<p class="judgement-bull">근거: {{ item.bull_case }}</p>{% endif %}
+            {% if item.key_risk %}<p class="judgement-risk">리스크: {{ item.key_risk }}</p>{% endif %}
+            {% if item.objection %}<p class="judgement-objection">반박: {{ item.objection }}</p>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+      </article>
+      {% endfor %}
+      {% else %}
+      <p class="empty-state">이 슬롯에는 분석 판단 기록이 없습니다.</p>
+      {% endif %}
+    </section>
+    {% endif %}
+  </main>
+</body>
+</html>

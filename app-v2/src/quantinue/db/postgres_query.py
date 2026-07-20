@@ -1,26 +1,24 @@
-"""Typed reflected-table query helpers."""
+"""Order-budget and exposure queries over reflected canonical tables.
 
-from datetime import datetime
+런 재개(resume)·시도(attempt) 쿼리들이 같이 살던 파일이었다 — 그 절반은 구
+러너와 함께 죽었고, 남은 것은 배분 잡이 타는 일일 주문 예약과 노출 게이트다.
+"""
+
 from decimal import Decimal
 from typing import Final
 
 from pydantic import TypeAdapter
-from pydantic_core import to_json
-from sqlalchemy import Table, and_, desc, func, select
+from sqlalchemy import Table, and_, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.engine import RowMapping
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy.ext.asyncio import AsyncConnection
 
-from quantinue.core.contracts import PipelineContext, PipelineRequest, PipelineRun, RunId
-from quantinue.db.active_snapshot import ActivePipelineSnapshot, active_pipeline_snapshot
-from quantinue.db.codec import CONTEXT_ADAPTER, AttemptRow
 from quantinue.db.contracts import (
     AppOrderExposureReservationOutcome,
     AppOrderExposureReservationResult,
     AppOrderExposureStatus,
     AppOrderExposureSummary,
     DailyOrderReservation,
-    PersistedAttempt,
 )
 
 _STRING_ADAPTER = TypeAdapter(str)
@@ -37,129 +35,6 @@ _TERMINAL_APP_ORDER_STATUSES: Final = (
     AppOrderExposureStatus.FAILED.value,
     AppOrderExposureStatus.CANCELED.value,
 )
-
-
-async def run_id_for(connection: AsyncConnection, runs: Table, key: str) -> str:
-    """Resolve a deterministic key to its textual run identity."""
-    value = await connection.scalar(select(runs.c.run_id).where(runs.c.idempotency_key == key))
-    return _STRING_ADAPTER.validate_python(value)
-
-
-async def failed_run_is_resumable(
-    connection: AsyncConnection, runs: Table, attempts: Table, key: str
-) -> bool:
-    """Return whether the latest failed attempt has an explicitly transient code."""
-    run_id = await run_id_for(connection, runs, key)
-    last_code = await connection.scalar(
-        select(attempts.c.error_code)
-        .where(attempts.c.run_id == run_id)
-        .order_by(desc(attempts.c.attempt_id))
-        .limit(1)
-    )
-    return last_code in {
-        "ROLE_TIMEOUT",
-        "TRANSIENT_FAILURE",
-        "TRANSIENT_HTTP_FAILURE",
-        "TRANSPORT_FAILURE",
-        "CONNECTION_FAILURE",
-        "PERSISTENCE_UNAVAILABLE",
-    }
-
-
-async def resume_context(
-    connection: AsyncConnection,
-    runs: Table,
-    checkpoints: Table,
-    key: str,
-    request: PipelineRequest,
-) -> PipelineContext:
-    """Restore the latest internal checkpoint, never a terminal run projection."""
-    run_id = await run_id_for(connection, runs, key)
-    payload = await connection.scalar(
-        select(checkpoints.c.payload)
-        .where(checkpoints.c.run_id == run_id)
-        .order_by(desc(checkpoints.c.checkpoint_id))
-        .limit(1)
-    )
-    if payload is None:
-        return PipelineContext(request=request, run_id=RunId(run_id))
-    return CONTEXT_ADAPTER.validate_json(to_json(payload))
-
-
-async def close_stale_attempts(connection: AsyncConnection, attempts: Table, run_id: str) -> None:
-    """Finalize attempts abandoned by a prior claim owner."""
-    _ = await connection.execute(
-        attempts.update()
-        .where(attempts.c.run_id == run_id, attempts.c.status == "running")
-        .values(
-            status="failed",
-            finished_at=func.now(),
-            error_code="ABANDONED_ATTEMPT",
-            error_message="prior owner exited before attempt finalization",
-        )
-    )
-
-
-async def terminal_run_by_key(engine: AsyncEngine, runs: Table, key: str) -> PipelineRun | None:
-    """Read a published terminal run, excluding active state."""
-    async with engine.connect() as connection:
-        row = (
-            (await connection.execute(select(runs).where(runs.c.idempotency_key == key)))
-            .mappings()
-            .one_or_none()
-        )
-    if row is None or row["status"] not in {"completed", "failed"}:
-        return None
-    return PipelineRun.model_validate_json(to_json(row["payload"]))
-
-
-async def latest_useful_cycle_ts(engine: AsyncEngine, runs: Table) -> datetime | None:
-    """Read the newest cycle timestamp among runs not lost to failure."""
-    async with engine.connect() as connection:
-        return (
-            await connection.execute(
-                select(func.max(runs.c.cycle_ts)).where(
-                    runs.c.status.in_(("pending", "running", "completed"))
-                )
-            )
-        ).scalar()
-
-
-async def recent_terminal_runs(
-    engine: AsyncEngine, runs: Table, limit: int
-) -> tuple[PipelineRun, ...]:
-    """Read recent terminal runs in reverse cycle order."""
-    async with engine.connect() as connection:
-        rows = (
-            await connection.execute(
-                select(runs)
-                .where(runs.c.status.in_(("completed", "failed")))
-                .order_by(runs.c.cycle_ts.desc())
-                .limit(limit)
-            )
-        ).mappings()
-    return tuple(PipelineRun.model_validate_json(to_json(row["payload"])) for row in rows)
-
-
-async def active_run_snapshots(
-    engine: AsyncEngine, runs: Table, attempts: Table, limit: int
-) -> tuple[ActivePipelineSnapshot, ...]:
-    """Read in-progress checkpoint contexts with redacted attempts."""
-    async with engine.connect() as connection:
-        rows = (
-            await connection.execute(
-                select(runs)
-                .where(runs.c.status == "running")
-                .order_by(runs.c.cycle_ts.desc())
-                .limit(limit)
-            )
-        ).mappings()
-    snapshots: list[ActivePipelineSnapshot] = []
-    for row in rows:
-        context = CONTEXT_ADAPTER.validate_json(to_json(row["payload"]))
-        run_attempts = await persisted_attempts(engine, attempts, context.run_id)
-        snapshots.append(active_pipeline_snapshot(context, run_attempts))
-    return tuple(snapshots)
 
 
 async def reserve_daily_order(
@@ -203,6 +78,11 @@ async def reserve_daily_order(
             and_(
                 orders.c.account_id == request.account_id,
                 signals.c.trade_date == request.trade_date,
+                # 청산은 이 한도의 대상이 아니다. 이 캡은 "하루에 새로 여는
+                # 포지션 수"를 제한하려는 것인데, 청산까지 세면 그날 판 만큼
+                # 살 수 있는 칸이 사라진다 — 리스크를 줄이는 행동이 리스크를
+                # 줄이는 다음 행동을 막는 셈이라 방향이 거꾸로다.
+                orders.c.order_type == "bracket",
             )
         )
     )
@@ -332,28 +212,3 @@ def _same_order_reservation(row: RowMapping, request: DailyOrderReservation) -> 
     )
 
 
-async def persisted_attempts(
-    engine: AsyncEngine, attempts: Table, run_id: RunId
-) -> tuple[PersistedAttempt, ...]:
-    """Read durable attempts in insertion order."""
-    async with engine.connect() as connection:
-        rows = (
-            await connection.execute(
-                select(attempts)
-                .where(attempts.c.run_id == str(run_id))
-                .order_by(attempts.c.attempt_id)
-            )
-        ).mappings()
-    parsed = (AttemptRow.model_validate(dict(row)) for row in rows)
-    return tuple(
-        PersistedAttempt(
-            component=row.component,
-            attempt_no=row.attempt_no,
-            status=row.status,
-            started_at=row.started_at,
-            finished_at=row.finished_at,
-            error_code=row.error_code,
-            error_message=row.error_message,
-        )
-        for row in parsed
-    )

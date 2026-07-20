@@ -138,3 +138,126 @@ CREATE UNIQUE INDEX IF NOT EXISTS tb_account_user_id_key
   ON tb_account(user_id) WHERE user_id IS NOT NULL;
 
 COMMIT;
+
+-- M4-7a: 투표원은 technical·disclosure·news·model 4개인데 CHECK가 0~3이라
+-- 만장일치 4에서 INSERT가 깨진다. 실계산을 켜기 전에 범위를 넓힌다.
+DO $$
+BEGIN
+  ALTER TABLE tb_strategist_signals
+    DROP CONSTRAINT IF EXISTS tb_strategist_signals_signal_consensus_check;
+  ALTER TABLE tb_strategist_signals
+    ADD CONSTRAINT tb_strategist_signals_signal_consensus_check
+    CHECK (signal_consensus BETWEEN 0 AND 4);
+END $$;
+
+-- M4 관측: 역할 09의 판단(집행/보류·사유)이 어디에도 저장되지 않아
+-- "이번 주에 갭 가드가 몇 번 걸렸나"를 물을 수 없었다. 주문이 생긴 경우만
+-- tb_order에 남았을 뿐, 막힌 경우는 JSONB 요약 문자열이 전부였다.
+-- 문턱 보정(premarket_gap_max 등)이 바로 이 관측에 의존한다.
+CREATE TABLE IF NOT EXISTS tb_order_plan (
+  id BIGSERIAL PRIMARY KEY, run_id TEXT NOT NULL, ticker TEXT NOT NULL, cycle_ts TIMESTAMPTZ NOT NULL,
+  trade_date DATE NOT NULL, account_id BIGINT, signal_id BIGINT,
+  decision TEXT NOT NULL CHECK (decision IN ('planned','skipped')), skipped_reason TEXT,
+  quantity INT NOT NULL CHECK (quantity >= 0), entry_price NUMERIC, stop_price NUMERIC, take_profit_price NUMERIC,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(), UNIQUE (ticker, cycle_ts, account_id),
+  CHECK ((decision = 'planned' AND skipped_reason IS NULL AND quantity > 0)
+      OR (decision = 'skipped' AND skipped_reason IS NOT NULL AND quantity = 0))
+);
+
+-- M5: 매도(청산) 주문 표현. tb_order는 브래킷 매수 전용이었다 —
+-- order_type CHECK가 'bracket'만 받고, 손절·익절이 NOT NULL이며,
+-- stop < entry < take_profit 삼중 제약이 매도에서는 만족될 수 없다.
+-- 청산에 더미 손절·익절을 채우는 대신 컬럼을 비우고 제약을 조건부로 만든다.
+DO $$
+BEGIN
+  ALTER TABLE tb_order ALTER COLUMN stop_price DROP NOT NULL;
+  ALTER TABLE tb_order ALTER COLUMN take_profit_price DROP NOT NULL;
+  ALTER TABLE tb_order ADD COLUMN IF NOT EXISTS closes_order_id BIGINT REFERENCES tb_order(id);
+
+  ALTER TABLE tb_order DROP CONSTRAINT IF EXISTS tb_order_order_type_check;
+  ALTER TABLE tb_order ADD CONSTRAINT tb_order_order_type_check
+    CHECK (order_type IN ('bracket','close'));
+
+  ALTER TABLE tb_order DROP CONSTRAINT IF EXISTS tb_order_check;
+  ALTER TABLE tb_order ADD CONSTRAINT tb_order_check
+    CHECK (order_type <> 'bracket' OR (
+      stop_price IS NOT NULL AND take_profit_price IS NOT NULL
+      AND stop_price < entry_price AND entry_price < take_profit_price));
+
+  ALTER TABLE tb_order DROP CONSTRAINT IF EXISTS tb_order_close_target_check;
+  ALTER TABLE tb_order ADD CONSTRAINT tb_order_close_target_check
+    CHECK (order_type <> 'close' OR closes_order_id IS NOT NULL);
+END $$;
+
+
+-- Phase 2: 일봉 원장. 신규 테이블이라 무손실 — 기존 행에 손대지 않는다.
+CREATE TABLE IF NOT EXISTS tb_daily_bar (
+  trade_date DATE NOT NULL, ticker TEXT NOT NULL,
+  open NUMERIC NOT NULL CHECK (open > 0), high NUMERIC NOT NULL CHECK (high > 0),
+  low NUMERIC NOT NULL CHECK (low > 0), close NUMERIC NOT NULL CHECK (close > 0),
+  volume BIGINT NOT NULL CHECK (volume >= 0), source TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (trade_date, ticker),
+  CHECK (low <= open AND open <= high), CHECK (low <= close AND close <= high)
+);
+
+-- Phase 2: 잡 실행 원장. 신규 테이블이라 무손실 — 기존 행에 손대지 않는다.
+CREATE TABLE IF NOT EXISTS tb_job_run (
+  job_name TEXT NOT NULL, slot_date DATE NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed')),
+  detail TEXT, started_at TIMESTAMPTZ NOT NULL DEFAULT now(), finished_at TIMESTAMPTZ,
+  PRIMARY KEY (job_name, slot_date),
+  CHECK ((status = 'running') = (finished_at IS NULL))
+);
+
+-- Phase 2: 공시 원시 원장. 신규 테이블이라 무손실.
+CREATE TABLE IF NOT EXISTS tb_disclosure_raw (
+  filing_no TEXT NOT NULL, trade_date DATE NOT NULL, ticker TEXT NOT NULL,
+  cik TEXT NOT NULL, form_type TEXT NOT NULL, company_name TEXT NOT NULL,
+  source_ref TEXT NOT NULL, event_type TEXT, is_hard_event BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (filing_no),
+  CHECK (is_hard_event = false OR event_type IS NOT NULL)
+);
+
+-- Phase 3: 분석 범위의 크기는 config(screening.llm_depth)와 보유 수가 정한다.
+-- 50 상한은 구 스크리너가 종목당 1콜을 쓰던 시절의 흔적이고, 걸리는 순간
+-- 보유가 범위 밖으로 밀려 청산 시그널을 남길 자리가 없어진다.
+-- 제약 이름은 신규 설치가 생성하는 것과 같아야 한다(카탈로그 대조).
+ALTER TABLE tb_daily_pick DROP CONSTRAINT IF EXISTS tb_daily_pick_rank_check;
+ALTER TABLE tb_daily_pick ADD CONSTRAINT tb_daily_pick_rank_check CHECK (rank >= 1);
+
+-- Phase 3: 유니버스는 상장 피드가 아니라 거래 가능 범위다. 상장폐지된 보유는
+-- 이월되고 여기에 라벨이 붙는다 — 라벨 없이 union만 하면 "왜 상장 피드에 없는
+-- 종목이 유니버스에 있나"에 답할 수 없고, 그 자체가 다음 세대의 유령이 된다.
+-- 기존 행은 전부 상장 피드에서 온 것이므로 DEFAULT 'listed'가 정확하다.
+ALTER TABLE tb_universe ADD COLUMN IF NOT EXISTS listing_status TEXT NOT NULL DEFAULT 'listed';
+ALTER TABLE tb_universe DROP CONSTRAINT IF EXISTS tb_universe_listing_status_check;
+ALTER TABLE tb_universe ADD CONSTRAINT tb_universe_listing_status_check
+  CHECK (listing_status IN ('listed','held_delisted'));
+
+-- Phase 3: 뉴스 원시 원장. 공시(tb_disclosure_raw)와 같은 이유로 FK가 없다 —
+-- tb_news(채점 결과)는 (trade_date, ticker) → tb_daily_pick을 걸어 그날 분석
+-- 대상이 아닌 종목에 행을 넣을 수 없는데, 일괄 수집이 노리는 것이 그 바깥이다.
+-- PK가 (기사, 티커)인 이유: 기사 하나가 여러 종목을 언급하고, 소비는 종목
+-- 단위다. 겹치는 창을 다시 받아도 이 키가 중복을 흡수한다.
+CREATE TABLE IF NOT EXISTS tb_news_raw (
+  article_id BIGINT NOT NULL, ticker TEXT NOT NULL, trade_date DATE NOT NULL,
+  headline TEXT NOT NULL, source TEXT NOT NULL, url TEXT NOT NULL,
+  published_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (article_id, ticker)
+);
+-- 분석 잡이 매 실행 던지는 유일한 질문의 모양이다: 그 세션 · 이 종목들 ·
+-- 최신순 N건. 원장이 하루 1400행씩 자라므로 순차 스캔으로 두면 곧 비싸진다.
+CREATE INDEX IF NOT EXISTS ix_news_raw_session ON tb_news_raw (trade_date, ticker, published_at DESC);
+
+-- Phase 4: 당일 시작 equity 스냅샷 — daily_loss_limit의 분모. 소비자는 배분
+-- 잡의 계좌 게이트(같은 커밋). 하루 첫 기록이 이긴다 — 잡의 INSERT가
+-- ON CONFLICT DO NOTHING이라 재실행이 아침 값을 덮지 않는다.
+CREATE TABLE IF NOT EXISTS tb_account_equity_daily (
+  account_id BIGINT NOT NULL REFERENCES tb_account(id), trade_date DATE NOT NULL,
+  equity NUMERIC NOT NULL CHECK (equity >= 0),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (account_id, trade_date)
+);

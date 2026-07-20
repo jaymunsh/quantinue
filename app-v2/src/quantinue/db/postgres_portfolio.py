@@ -1,12 +1,12 @@
-"""Typed durable reads for the PostgreSQL simulated buy-only portfolio."""
+"""Typed durable reads for the PostgreSQL simulated portfolio."""
 
 from dataclasses import replace
-from datetime import datetime
+from datetime import UTC, date, datetime, time
 from decimal import Decimal
 from typing import Final
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import MetaData, Table, and_, func, select
+from sqlalchemy import MetaData, Table, func, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from quantinue.db.simulated_portfolio import (
@@ -17,7 +17,7 @@ from quantinue.db.simulated_portfolio import (
     SimulatedOrder,
     SimulatedOrderStatus,
     SimulatedPortfolioSnapshot,
-    project_buy_only_portfolio,
+    project_portfolio,
 )
 
 LOCAL_SIMULATED_ACCOUNT_ID: Final = "quantinue-local-simulated"
@@ -57,7 +57,12 @@ class _MarkRow(BaseModel):
 
     ticker: str
     price: Decimal
-    as_of: datetime
+    # 일봉의 사실은 세션 날짜다 — 시각을 지어내지 않고 자정 UTC로 승격만 한다.
+    as_of: date
+
+    @property
+    def as_of_datetime(self) -> datetime:
+        return datetime.combine(self.as_of, time(), tzinfo=UTC)
 
 
 async def read_simulated_portfolio(
@@ -66,12 +71,12 @@ async def read_simulated_portfolio(
     opening_cash: Decimal,
     account_identity: str = LOCAL_SIMULATED_ACCOUNT_ID,
 ) -> SimulatedPortfolioSnapshot:
-    """Project canonical account, order, fill, and completed-run mark rows."""
+    """Project canonical account, order, fill, and daily-bar mark rows."""
     accounts = _table(metadata, "tb_account")
     orders = _table(metadata, "tb_order")
     fills = _table(metadata, "tb_fill")
     signals = _table(metadata, "tb_strategist_signals")
-    runs = _table(metadata, "pipeline_runs")
+    bars = _table(metadata, "tb_daily_bar")
     async with engine.connect() as connection:
         account = _AccountRow.model_validate(
             dict(
@@ -128,30 +133,35 @@ async def read_simulated_portfolio(
                 .order_by(fills.c.filled_at, fills.c.id)
             )
         ).mappings()
+        # mark는 일봉 종가다. 구 코드는 완료된 런의 판단 시점 시세를 썼는데
+        # (pipeline_runs 조인) 러너가 죽어 그 소스는 더 이상 갱신되지 않는다.
+        # 일봉은 잡이 매일 채우는 원장이고, D8 계좌 평가와 같은 값이라 웹
+        # 포트폴리오와 계좌 곡선이 서로 다른 숫자를 말하지 않는다.
+        # 이 계좌가 거래한 종목의 봉만 본다 — 원장에는 유니버스 전체(2000종목,
+        # 수십만 봉)가 있고 mark가 필요한 것은 보유 몇 개뿐이다.
+        traded = (
+            select(orders.c.ticker)
+            .join(accounts, orders.c.account_id == accounts.c.id)
+            .where(accounts.c.broker_account_id == account_identity)
+            .distinct()
+            .scalar_subquery()
+        )
         mark_rows = (
             await connection.execute(
                 select(
-                    signals.c.ticker,
-                    signals.c.decision_close.label("price"),
-                    signals.c.cycle_ts.label("as_of"),
+                    bars.c.ticker,
+                    bars.c.close.label("price"),
+                    bars.c.trade_date.label("as_of"),
                 )
-                .select_from(
-                    signals.join(
-                        runs,
-                        and_(
-                            signals.c.ticker == runs.c.ticker,
-                            signals.c.cycle_ts == runs.c.cycle_ts,
-                        ),
-                    )
-                )
-                .where(runs.c.status == "completed")
-                .order_by(signals.c.cycle_ts)
+                .where(bars.c.ticker.in_(traded))
+                .distinct(bars.c.ticker)
+                .order_by(bars.c.ticker, bars.c.trade_date.desc())
             )
         ).mappings()
     parsed_orders = tuple(_OrderRow.model_validate(dict(row)) for row in order_rows)
     parsed_fills = tuple(_FillRow.model_validate(dict(row)) for row in fill_rows)
     parsed_marks = tuple(_MarkRow.model_validate(dict(row)) for row in mark_rows)
-    projected = project_buy_only_portfolio(
+    projected = project_portfolio(
         opening_cash,
         tuple(
             SimulatedOrder(
@@ -179,8 +189,8 @@ async def read_simulated_portfolio(
             PortfolioMark(
                 ticker=row.ticker,
                 price=row.price,
-                source=MarkSource.COMPLETED_RUN,
-                as_of=row.as_of,
+                source=MarkSource.DAILY_BAR_CLOSE,
+                as_of=row.as_of_datetime,
             )
             for row in parsed_marks
         ),

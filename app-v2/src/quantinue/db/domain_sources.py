@@ -1,15 +1,21 @@
 """Atomic persistence for consumed disclosure and news source records."""
 
 from decimal import Decimal
+from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import Table, select
+from sqlalchemy import Table, func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from quantinue.core.contracts import DisclosureSourceRecord, NewsSourceRecord
+from quantinue.core.news_trust import load_news_trust_policy
 from quantinue.db.domain_records import StrategistSignalWrite
 from quantinue.db.reason import reason_payload
+
+NEWS_TRUST_POLICY = load_news_trust_policy(
+    Path(__file__).parents[3] / "config" / "news_trust_policy.yaml"
+)
 
 
 class _IdentifierRow(BaseModel):
@@ -63,6 +69,9 @@ async def save_source_records(
         )
         .on_conflict_do_nothing(index_elements=["filing_no"])
     )
+    grade = NEWS_TRUST_POLICY.grade_for(news_source.url)
+    source_trust = NEWS_TRUST_POLICY.trust_for(news_source.url)
+    is_dropped = grade == "block"
     raw_news_write = (
         insert(raw_news)
         .values(
@@ -73,13 +82,14 @@ async def save_source_records(
             source=news_source.source,
             url=news_source.url,
             published_at=news_source.published_at,
-            grade="allow",
-            is_dropped=False,
+            grade=grade,
+            is_dropped=is_dropped,
+            drop_reason="blocked_source" if is_dropped else None,
             event_type="other",
             sentiment_score=value.news_score,
             importance=value.news_score,
             risk_score=0,
-            source_trust=1,
+            source_trust=source_trust,
             confidence=_db_confidence(news_source.confidence),
             is_confirmed=True,
             reason=reason_payload(),
@@ -93,7 +103,7 @@ async def save_source_records(
             prompt_version=news_source.prompt_version,
             policy_version=news_source.policy_version,
             input_hash=news_source.input_hash,
-            permission="trade_eligible",
+            permission="block" if is_dropped else "trade_eligible",
         )
         .on_conflict_do_nothing(index_elements=["news_key", "ticker"])
     )
@@ -139,6 +149,23 @@ async def save_source_records(
             reason=reason_payload(),
             summary=news_source.summary,
             news_count=1,
+            importance=value.news_score,
+            # 오늘 이 종목 뉴스 중 최고 중요도. 사이클마다 새 행이라 GREATEST를
+            # 기존 최댓값과 직접 겨룬다 — 장중에 식은 뉴스가 최고치를 지우지 않게.
+            peak_importance=func.greatest(
+                value.news_score,
+                func.coalesce(
+                    select(func.max(news.c.importance))
+                    .where(news.c.ticker == value.ticker)
+                    .where(news.c.trade_date == value.trade_date)
+                    .scalar_subquery(),
+                    0,
+                ),
+            ),
+            sentiment_score=value.news_score,
+            risk_score=0,
+            source_trust=source_trust,
+            grade_score=source_trust,
             confidence=_db_confidence(news_source.confidence),
             is_hard_blocked=False,
             source_ref=news_source.url,

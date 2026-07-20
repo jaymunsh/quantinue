@@ -1,18 +1,24 @@
-"""US equity trading dates and close instants used by role 11."""
+"""US equity trading dates and close instants used by the T+5 review path.
 
-from dataclasses import dataclass
-from datetime import UTC, date, datetime, time, timedelta
+수제 휴장일 규칙(부활절 산술·이관 규칙 아홉 개)이 살던 파일이다. 잔여 작업 D
+에서 그 구현을 지우고 ``core/market_calendar``(exchange_calendars XNYS)에
+어댑터로 올라탔다 — 이제 시스템의 달력 구현은 하나다. 얻은 것은 단순화만이
+아니다: 수제 규칙은 마감을 16:00 고정으로 알았지만 실물 달력은 반일
+세션(7/3 조기 마감 등)의 실제 마감을 안다. 리뷰가 "그날 종가가 확정된
+시각"을 묻는 자리라 이 차이는 정확성이다.
+
+XNYS 데이터는 유한하다(현재 2027-07까지). 그 경계를 넘는 T+5를 물으면
+``CalendarHorizonError``로 명시적으로 실패한다 — 수제 규칙처럼 무한히 답하는
+대신, 모르는 날짜를 지어내지 않는다.
+"""
+
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
 from typing import Protocol
-from zoneinfo import ZoneInfo
 
 from typing_extensions import override
 
-_NEW_YORK = ZoneInfo("America/New_York")
-_DECEMBER = 12
-_WEEKDAYS = 5
-_JUNETEENTH_MARKET_START = 2022
-_SATURDAY = 5
-_SUNDAY = 6
+from quantinue.core.market_calendar import NyseCalendar
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,6 +31,22 @@ class InvalidTradingOffsetError(ValueError):
     def __str__(self) -> str:
         """Describe the invalid offset."""
         return f"trading_days must be positive, got {self.trading_days}"
+
+
+@dataclass(frozen=True, slots=True)
+class CalendarHorizonError(ValueError):
+    """A date fell beyond the exchange calendar's loaded horizon."""
+
+    start: date
+    trading_days: int
+
+    @override
+    def __str__(self) -> str:
+        """Describe the unanswerable question instead of inventing a date."""
+        return (
+            f"T+{self.trading_days} from {self.start.isoformat()} is beyond the "
+            "loaded XNYS calendar horizon"
+        )
 
 
 class Clock(Protocol):
@@ -56,82 +78,23 @@ class SystemClock:
         return datetime.now(UTC)
 
 
-def _observed(day: date) -> date:
-    weekday = day.weekday()
-    if weekday == _SATURDAY:
-        return day - timedelta(days=1)
-    if weekday == _SUNDAY:
-        return day + timedelta(days=1)
-    return day
-
-
-def _nth_weekday(year: int, month: int, weekday: int, occurrence: int) -> date:
-    first = date(year, month, 1)
-    delta = (weekday - first.weekday()) % 7
-    return first + timedelta(days=delta + 7 * (occurrence - 1))
-
-
-def _last_weekday(year: int, month: int, weekday: int) -> date:
-    next_month = date(year + (month == _DECEMBER), month % _DECEMBER + 1, 1)
-    last = next_month - timedelta(days=1)
-    return last - timedelta(days=(last.weekday() - weekday) % 7)
-
-
-def _easter_sunday(year: int) -> date:
-    """Compute Gregorian Easter using the Meeus/Jones/Butcher algorithm."""
-    a = year % 19
-    b, c = divmod(year, 100)
-    d, e = divmod(b, 4)
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
-    i, k = divmod(c, 4)
-    ell = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * ell) // 451
-    month, day = divmod(h + ell - 7 * m + 114, 31)
-    return date(year, month, day + 1)
-
-
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True)
 class UsEquityTradingCalendar:
-    """Regular NYSE sessions required by the first MVP."""
+    """The review path's calendar, answered by the shared XNYS calendar."""
 
-    def holidays(self, year: int) -> frozenset[date]:
-        """Return regular full-day US equity market holidays."""
-        days = {
-            _observed(date(year, 1, 1)),
-            _nth_weekday(year, 1, 0, 3),
-            _nth_weekday(year, 2, 0, 3),
-            _easter_sunday(year) - timedelta(days=2),
-            _last_weekday(year, 5, 0),
-            _observed(date(year, 7, 4)),
-            _nth_weekday(year, 9, 0, 1),
-            _nth_weekday(year, 11, 3, 4),
-            _observed(date(year, 12, 25)),
-        }
-        if year >= _JUNETEENTH_MARKET_START:
-            days.add(_observed(date(year, 6, 19)))
-        return frozenset(days)
-
-    def is_trading_day(self, day: date) -> bool:
-        """Return whether a regular trading session exists on the date."""
-        adjacent_holidays = self.holidays(day.year - 1) | self.holidays(day.year)
-        adjacent_holidays |= self.holidays(day.year + 1)
-        return day.weekday() < _WEEKDAYS and day not in adjacent_holidays
+    exchange: NyseCalendar = field(default_factory=NyseCalendar)
 
     def offset(self, start: date, *, trading_days: int) -> date:
         """Move forward by an exact positive count of trading sessions."""
         if trading_days < 1:
             raise InvalidTradingOffsetError(trading_days)
-        candidate = start
-        remaining = trading_days
-        while remaining:
-            candidate += timedelta(days=1)
-            if self.is_trading_day(candidate):
-                remaining -= 1
-        return candidate
+        try:
+            return self.exchange.add_business_days(start, trading_days)
+        except Exception as error:
+            # exchange_calendars는 경계 밖에서 자체 예외를 던진다. 그대로
+            # 흘리면 호출자가 "달력이 모르는 날짜"와 "버그"를 구별할 수 없다.
+            raise CalendarHorizonError(start, trading_days) from error
 
     def session_close(self, session_date: date) -> datetime:
-        """Return the regular 16:00 New York close converted to UTC."""
-        local_close = datetime.combine(session_date, time(16), tzinfo=_NEW_YORK)
-        return local_close.astimezone(UTC)
+        """Return the actual session close in UTC — half days included."""
+        return self.exchange.session_close(session_date)

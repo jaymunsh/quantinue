@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import anyio
 
-from quantinue.core.contracts import OrderResult
+from quantinue.broker.contracts import OrderResult
 
 
 @unique

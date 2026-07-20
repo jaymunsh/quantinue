@@ -1,4 +1,4 @@
-"""Pure contracts and accounting for the phase-one simulated buy-only account."""
+"""Pure contracts and accounting for the local simulated account ledger."""
 
 from __future__ import annotations
 
@@ -7,7 +7,25 @@ from decimal import ROUND_HALF_UP, Decimal
 from enum import StrEnum, unique
 from typing import TYPE_CHECKING, Final, Protocol, runtime_checkable
 
-from quantinue.db.domain_records import CompletedBuyWrite, InsufficientSimulatedCashError
+from quantinue.core.ontology import FillSide
+from quantinue.db.domain_records import CompletedFillWrite, InsufficientSimulatedCashError
+
+__all__ = [
+    "AccountPortfolio",
+    "FillSide",
+    "MarkSource",
+    "PortfolioMark",
+    "RealizedPnlStatus",
+    "SimulatedAccount",
+    "SimulatedFill",
+    "SimulatedOrder",
+    "SimulatedOrderStatus",
+    "SimulatedPortfolioSnapshot",
+    "SimulatedPosition",
+    "completed_fill_records",
+    "ensure_fill_is_affordable",
+    "project_portfolio",
+]
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -20,15 +38,22 @@ _ALLOCATION: Final = Decimal("0.0001")
 class MarkSource(StrEnum):
     """Truthful source used to value one simulated position."""
 
+    # 잡 시대의 mark: 마지막으로 닫힌 세션의 일봉 종가(tb_daily_bar).
+    # D8(계좌 평가 = 현금 + 보유 x 종가)과 같은 소스라 계좌 곡선과 웹
+    # 포트폴리오가 같은 값을 말한다.
+    DAILY_BAR_CLOSE = "daily_bar_close"
+    # 구 러너의 mark였다 — 완료된 런의 판단 시점 시세. 러너가 죽어 새로
+    # 만들어지지 않지만, 투영 규칙(최신 관측 우선)은 소스와 무관하게 같다.
     COMPLETED_RUN = "completed_run"
     LATEST_FILL = "latest_fill"
 
 
 @unique
 class RealizedPnlStatus(StrEnum):
-    """Supported realized-profit state for the phase-one buy-only ledger."""
+    """Whether the ledger has closed anything to realize profit against."""
 
-    NOT_APPLICABLE_BUY_ONLY = "not_applicable_buy_only"
+    NOT_APPLICABLE_NO_CLOSES = "not_applicable_no_closes"
+    AVAILABLE = "available"
 
 
 @unique
@@ -58,7 +83,11 @@ class SimulatedOrder:
 
 @dataclass(frozen=True, slots=True)
 class SimulatedFill:
-    """Unique local buy fill used by simulated-account accounting."""
+    """Unique local fill used by simulated-account accounting.
+
+    ``side`` defaults to a buy so that every pre-close call site keeps its
+    meaning; a close order is the only writer that must state it.
+    """
 
     fill_id: str
     order_id: str
@@ -66,6 +95,7 @@ class SimulatedFill:
     quantity: int
     price: Decimal
     filled_at: datetime
+    side: FillSide = FillSide.BUY
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,7 +121,7 @@ class SimulatedAccount:
 
 @dataclass(frozen=True, slots=True)
 class SimulatedPosition:
-    """Derived buy-only holding valued with an observable mark."""
+    """Derived net holding valued with an observable mark."""
 
     ticker: str
     quantity: int
@@ -111,8 +141,18 @@ class SimulatedPortfolioSnapshot:
     positions: tuple[SimulatedPosition, ...]
     orders: tuple[SimulatedOrder, ...]
     fills: tuple[SimulatedFill, ...]
-    realized_pnl: None = None
-    realized_pnl_status: RealizedPnlStatus = RealizedPnlStatus.NOT_APPLICABLE_BUY_ONLY
+    realized_pnl: Decimal | None = None
+    realized_pnl_status: RealizedPnlStatus = RealizedPnlStatus.NOT_APPLICABLE_NO_CLOSES
+
+
+@dataclass(frozen=True, slots=True)
+class AccountPortfolio:
+    """One account's identity paired with its portfolio snapshot."""
+
+    account_id: int
+    broker_account_id: str
+    inv_type: str | None
+    snapshot: SimulatedPortfolioSnapshot
 
 
 @runtime_checkable
@@ -132,6 +172,36 @@ def _money(value: Decimal) -> Decimal:
     return value.quantize(_CENT, rounding=ROUND_HALF_UP)
 
 
+def _signed_notional(fill: SimulatedFill) -> Decimal:
+    """Return cash consumed by one fill: a buy spends it, a sell returns it."""
+    notional = Decimal(fill.quantity) * fill.price
+    return -notional if fill.side is FillSide.SELL else notional
+
+
+def _realized_pnl(fills: tuple[SimulatedFill, ...]) -> Decimal | None:
+    """Book each sale against its ticker's average buy cost, or None if unsold."""
+    realized = Decimal(0)
+    sold_anything = False
+    for ticker in sorted({fill.ticker for fill in fills}):
+        ticker_fills = tuple(fill for fill in fills if fill.ticker == ticker)
+        bought = tuple(fill for fill in ticker_fills if fill.side is FillSide.BUY)
+        sold = tuple(fill for fill in ticker_fills if fill.side is FillSide.SELL)
+        bought_quantity = sum(fill.quantity for fill in bought)
+        if not sold or bought_quantity == 0:
+            continue
+        sold_anything = True
+        bought_cost = sum(
+            (Decimal(fill.quantity) * fill.price for fill in bought),
+            start=Decimal(0),
+        )
+        average_cost = bought_cost / Decimal(bought_quantity)
+        realized += sum(
+            (Decimal(fill.quantity) * (fill.price - average_cost) for fill in sold),
+            start=Decimal(0),
+        )
+    return _money(realized) if sold_anything else None
+
+
 def ensure_fill_is_affordable(
     opening_cash: Decimal,
     existing_fills: tuple[SimulatedFill, ...],
@@ -147,10 +217,10 @@ def ensure_fill_is_affordable(
         raise InsufficientSimulatedCashError(available=available, required=required)
 
 
-def completed_buy_records(
+def completed_fill_records(
     ticker: str,
     reference_price: Decimal,
-    value: CompletedBuyWrite,
+    value: CompletedFillWrite,
 ) -> tuple[SimulatedOrder, SimulatedFill]:
     """Map the shared completed-buy contract to local immutable records."""
     return (
@@ -169,11 +239,12 @@ def completed_buy_records(
             quantity=value.quantity,
             price=value.price,
             filled_at=value.filled_at,
+            side=value.side,
         ),
     )
 
 
-def project_buy_only_portfolio(
+def project_portfolio(
     opening_cash: Decimal,
     orders: tuple[SimulatedOrder, ...],
     fills: tuple[SimulatedFill, ...],
@@ -185,7 +256,7 @@ def project_buy_only_portfolio(
         _ = unique_fills_by_id.setdefault(fill.fill_id, fill)
     unique_fills = tuple(unique_fills_by_id.values())
     total_cost = sum(
-        (Decimal(fill.quantity) * fill.price for fill in unique_fills),
+        (_signed_notional(fill) for fill in unique_fills),
         start=Decimal(0),
     )
     if total_cost > opening_cash:
@@ -193,7 +264,7 @@ def project_buy_only_portfolio(
     completed_marks: dict[str, PortfolioMark] = {}
     for mark in marks:
         match mark.source:
-            case MarkSource.COMPLETED_RUN:
+            case MarkSource.DAILY_BAR_CLOSE | MarkSource.COMPLETED_RUN:
                 current = completed_marks.get(mark.ticker)
                 if current is None or mark.as_of > current.as_of:
                     completed_marks[mark.ticker] = mark
@@ -202,11 +273,23 @@ def project_buy_only_portfolio(
     positions_without_allocation: list[tuple[str, int, Decimal, PortfolioMark]] = []
     for ticker in sorted({fill.ticker for fill in unique_fills}):
         ticker_fills = tuple(fill for fill in unique_fills if fill.ticker == ticker)
-        quantity = sum(fill.quantity for fill in ticker_fills)
-        cost_basis = sum(
-            (Decimal(fill.quantity) * fill.price for fill in ticker_fills),
+        bought = tuple(fill for fill in ticker_fills if fill.side is FillSide.BUY)
+        bought_quantity = sum(fill.quantity for fill in bought)
+        sold_quantity = sum(
+            fill.quantity for fill in ticker_fills if fill.side is FillSide.SELL
+        )
+        quantity = bought_quantity - sold_quantity
+        if quantity <= 0:
+            continue
+        bought_cost = sum(
+            (Decimal(fill.quantity) * fill.price for fill in bought),
             start=Decimal(0),
         )
+        # 평균원가법 — 매도분이 자기 몫의 원가를 들고 나가므로 남은 수량은
+        # 산 값 그대로 평가된다. 선입선출(FIFO)이 아닌 이유: T+5 회전이라
+        # 같은 종목을 여러 번 나눠 담는 경우가 드물어 차이가 거의 없고,
+        # 로트 단위 추적을 안 해도 되어 원장이 단순해진다.
+        cost_basis = bought_cost * Decimal(quantity) / Decimal(bought_quantity)
         latest_fill = max(ticker_fills, key=lambda fill: fill.filled_at)
         mark = completed_marks.get(
             ticker,
@@ -247,9 +330,16 @@ def project_buy_only_portfolio(
         equity=equity,
         buying_power=current_cash,
     )
+    realized = _realized_pnl(unique_fills)
     return SimulatedPortfolioSnapshot(
         account=account,
         positions=positions,
         orders=orders,
         fills=unique_fills,
+        realized_pnl=realized,
+        realized_pnl_status=(
+            RealizedPnlStatus.NOT_APPLICABLE_NO_CLOSES
+            if realized is None
+            else RealizedPnlStatus.AVAILABLE
+        ),
     )

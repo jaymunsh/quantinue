@@ -1,5 +1,6 @@
 """Optimized HTTP/2 client construction for public market feeds."""
 
+import os
 import socket
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
@@ -23,6 +24,22 @@ class HttpClientPolicy:
     pool_timeout: float = 10.0
     tcp_nodelay: int = 1
     user_agent: str = "quantinue/0.1"
+
+
+# SEC 공정접근 정책은 연락처가 담긴 User-Agent를 요구한다. 제품 토큰만 보내면
+# www.sec.gov가 403을 준다(data.sec.gov는 강제하지 않아 한동안 드러나지 않았다).
+#
+# 이 값은 SEC 요청에만 붙인다 — 전역으로 쓰면 NASDAQ이 연결을 끊는다.
+# 두 소스의 요구가 정면으로 충돌하므로 호스트별로 분리한다.
+#
+# 배포 시 실제 연락 가능한 주소로 바꿀 것 — 기본값은 동작하지만 응답받을 수 없다.
+DEFAULT_USER_AGENT = "quantinue/0.1 admin@quantinue.local"
+USER_AGENT_ENV = "QUANTINUE_HTTP_USER_AGENT"
+
+
+def sec_user_agent() -> str:
+    """Return the contact-bearing User-Agent required by SEC fair access."""
+    return os.environ.get(USER_AGENT_ENV) or DEFAULT_USER_AGENT
 
 
 HTTP_CLIENT_POLICY = HttpClientPolicy()

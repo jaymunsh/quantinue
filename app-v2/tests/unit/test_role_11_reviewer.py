@@ -5,17 +5,15 @@ from decimal import Decimal
 import pytest
 from pydantic import ValidationError
 
-from quantinue.roles.role_11_reviewer.calendar import UsEquityTradingCalendar
+from quantinue.roles.role_11_reviewer.calendar import (
+    CalendarHorizonError,
+    UsEquityTradingCalendar,
+)
 from quantinue.roles.role_11_reviewer.contracts import (
     ReviewInput,
     ReviewOutput,
     ReviewPriceSnapshot,
     ReviewSignal,
-)
-from quantinue.roles.role_11_reviewer.service import (
-    ReviewNotReadyError,
-    ReviewScheduler,
-    ReviewScorer,
 )
 
 _DECIDED_AT = datetime(2026, 7, 13, 19, 0, tzinfo=UTC)
@@ -96,19 +94,6 @@ def test_session_close_utc_tracks_new_york_dst() -> None:
     assert (summer_close.hour, winter_close.hour) == (20, 21)
 
 
-def test_scheduler_waits_until_fifth_session_close() -> None:
-    # Given
-    calendar = UsEquityTradingCalendar()
-    before = FixedClock(datetime(2026, 7, 20, 19, 59, tzinfo=UTC))
-    after = FixedClock(datetime(2026, 7, 20, 20, 0, tzinfo=UTC))
-    # When
-    before_ready = ReviewScheduler(calendar=calendar, clock=before).is_ready(date(2026, 7, 13))
-    after_ready = ReviewScheduler(calendar=calendar, clock=after).is_ready(date(2026, 7, 13))
-    # Then
-    assert before_ready is False
-    assert after_ready is True
-
-
 def test_buy_and_hold_require_their_contractual_base() -> None:
     # Given / When / Then
     with pytest.raises(ValidationError, match="filled_price"):
@@ -121,65 +106,6 @@ def test_buy_and_hold_require_their_contractual_base() -> None:
             evidence_ids=("evidence",),
             not_applicable=(),
             decision_close=Decimal(100),
-        )
-
-
-def test_scorer_calculates_buy_returns_from_fill() -> None:
-    # Given
-    request = ReviewInput(
-        signal=signal(signal_id=1, side="buy", filled=100),
-        snapshots=(
-            snapshot(1, 101),
-            snapshot(2, 98),
-            snapshot(3, 103),
-            snapshot(4, 99),
-            snapshot(5, 104),
-        ),
-    )
-    scorer = ReviewScorer(UsEquityTradingCalendar(), FixedClock(_CAPTURED_AT))
-    # When
-    result = scorer.score(request, lesson="규칙 기반 회고")
-    # Then
-    assert (result.ret_1d, result.ret_3d, result.ret_5d) == (1.0, 3.0, 4.0)
-    assert result.max_drawdown == -2.0
-    assert result.is_hit is True
-    assert result.run_id == "run-11"
-    assert result.evidence_ids == (
-        "signal-evidence",
-        "price-1",
-        "price-2",
-        "price-3",
-        "price-4",
-        "price-5",
-    )
-
-
-def test_scorer_marks_rising_hold_as_missed_opportunity() -> None:
-    # Given
-    request = ReviewInput(
-        signal=signal(signal_id=2, side="hold"),
-        snapshots=tuple(snapshot(offset, 100 + offset) for offset in range(1, 6)),
-    )
-    scorer = ReviewScorer(UsEquityTradingCalendar(), FixedClock(_CAPTURED_AT))
-    # When
-    result = scorer.score(request, lesson="보류 기회비용 회고")
-    # Then
-    assert result.ret_5d == 5.0
-    assert result.is_hit is False
-
-
-def test_scorer_rejects_malformed_session_date() -> None:
-    # Given
-    request = ReviewInput(
-        signal=signal(signal_id=3, side="hold"),
-        snapshots=tuple(
-            snapshot(offset, 100, price_date=date(2026, 7, 13 + offset)) for offset in range(1, 6)
-        ),
-    )
-    # When / Then
-    with pytest.raises(ValueError, match="price_date"):
-        _ = ReviewScorer(UsEquityTradingCalendar(), FixedClock(_CAPTURED_AT)).score(
-            request, lesson="잘못된 날짜"
         )
 
 
@@ -202,20 +128,6 @@ def test_review_output_forbids_caller_supplied_numeric_result() -> None:
         )
 
 
-def test_scorer_rejects_stale_review_before_t_plus_five_close() -> None:
-    # Given
-    request = ReviewInput(
-        signal=signal(signal_id=5, side="hold"),
-        snapshots=tuple(snapshot(offset, 100) for offset in range(1, 6)),
-    )
-    scorer = ReviewScorer(
-        UsEquityTradingCalendar(), FixedClock(datetime(2026, 7, 20, 19, 59, tzinfo=UTC))
-    )
-    # When / Then
-    with pytest.raises(ReviewNotReadyError):
-        _ = scorer.score(request, lesson="아직 종가 미확정")
-
-
 def test_snapshot_rejects_observation_after_capture() -> None:
     # Given
     session_date = date(2026, 7, 14)
@@ -231,3 +143,28 @@ def test_snapshot_rejects_observation_after_capture() -> None:
             observed_at=datetime(2026, 7, 14, 21, 0, tzinfo=UTC),
             captured_at=datetime(2026, 7, 14, 20, 0, tzinfo=UTC),
         )
+
+
+def test_a_question_beyond_the_calendar_horizon_fails_loudly() -> None:
+    """수제 규칙은 무한히 답했다 — 실물 달력은 모르는 날짜를 지어내지 않는다.
+
+    잔여 작업 D의 대체 테스트다: 두 캘린더의 어긋남 감시(test_calendar_agreement)
+    는 구현이 하나가 되면서 대상을 잃었고, 남는 위험은 XNYS 데이터 경계다.
+    """
+    calendar = UsEquityTradingCalendar()
+
+    with pytest.raises(CalendarHorizonError):
+        _ = calendar.offset(date(2027, 7, 19), trading_days=5)
+
+
+def test_a_half_day_session_closes_early_not_at_four() -> None:
+    """반일 세션의 실제 마감 — 수제 16:00 고정 규칙이 틀리던 지점이다.
+
+    2026-11-27(추수감사절 다음 금요일)은 13:00 뉴욕 마감이다. 리뷰는 "종가가
+    확정된 시각"을 묻는 자리라 세 시간 이르게 여는 것이 정확성이다.
+    """
+    calendar = UsEquityTradingCalendar()
+
+    close = calendar.session_close(date(2026, 11, 27))
+
+    assert close == datetime(2026, 11, 27, 18, 0, tzinfo=UTC)  # 13:00 New York

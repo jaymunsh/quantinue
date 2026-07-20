@@ -1,5 +1,7 @@
 # MVP-2 실행 플레이북 — Wave 0 ~ M11 전체 상세
 
+> ⚠️ **2026-07-19 재설계로 부분 superseded.** M5 착수 실사에서 구조 결함이 확인되어 **M5~M11 계획은 `pipeline-redesign.md`(신 정본)로 대체**됐다 — 잡 기반 아키텍처·로컬 시뮬 체결(D1)·무장 소멸(D2, 로드맵 `future-roadmap.md` R1로 이동). **이 문서에서 계속 유효한 것**: W0~M4·M6 완료 기록, §보완 목록(⏳), 공통 규칙(§0). W0-7/W0-8(무장·스모크)은 실행하지 않는다.
+
 > 작성 2026-07-18 · 문성혁 + Claude. **이 문서만 열면 어느 세션이든 이어서 실행 가능한** 태스크 레벨 완결판.
 > 입력: `phase0-asbuilt-audit.md`(코드 현실·file:line) · `phase1-decisions.md`(R1~R10) · `phase2-dev-plan.md`(마스터 계획).
 > **⏳ 표시** = 착수 시점에 확인·전개해야 할 보완 항목(맨 아래 §보완 목록에 집계). 실제 TDD 스텝(테스트 코드·구현 코드)은 각 태스크 착수 직전 그 자리에서 전개한다 — 후반 마일스톤 코드는 선행 마일스톤이 바꾼 코드 위에 써야 하므로 여기 미리 쓰지 않는다(이중 지출 방지).
@@ -7,7 +9,8 @@
 ## 0. 공통 규칙 (모든 세션·모든 태스크)
 
 - **작업 위치**: `app-v2/` 전용. `app/`(1차)은 다른 작업자 WIP — 절대 수정 금지.
-- **브랜치**: dev 통합 브랜치 **`sunghyuk`** 생성 후 거기서 M1~M8 순차 진행, Wave 단위로 `main` merge. M9~M10은 필요 시 worktree 병렬. 완성 후 담당자 핸드오프 브랜치(`eunmi`·`changwook`·`miyeon`·`jihyun`) 컷.
+- **브랜치**: dev 통합 브랜치 **`sunghyuk`** 생성 후 거기서 M1~M8 순차 진행, Wave 단위로 `main` merge.
+  - ✅ **Wave 0~1 병합 완료**(2026-07-19, 커밋 `818416e`, `--no-ff`). ⚠️ **push는 보류** — 공유 원격이고 `app/`에 다른 작업자 WIP가 있어 사용자 확인 후에만. 다음 병합 지점은 Wave 2(M4~M6) 완료 시. M9~M10은 필요 시 worktree 병렬. 완성 후 담당자 핸드오프 브랜치(`eunmi`·`changwook`·`miyeon`·`jihyun`) 컷.
 - **커밋**: 태스크 단위 1커밋, 메시지 `feat|fix|test(mN): 요약`. 문서(docs/)와 코드(app-v2/) 커밋 분리.
 - **TDD**: 실패 테스트 → 최소 구현 → green → 커밋. 기존 **491개** 유닛 테스트는 항상 green 유지(계약 변경 시 테스트도 같은 커밋에서 수정). ※ baseline 실측 2026-07-18: `uv run pytest tests/unit -q` → 491 passed.
 - **config 소유**: 문턱·주기·한도 하드코딩 금지 — `config/pipeline.yaml` + Settings. 리터럴 발견 시 즉시 config로 승격.
@@ -110,7 +113,38 @@
 
 **완료 기준**: public 1회 실행 → tb_universe 2,000행·tb_daily_pick ≤50행 · 장전 창 내(≤30분) 완료 · 레이트리밋 백오프 0 · LLM 호출 종목 ≤ 20+보유.
 
-## M4. 판단 방어선 (R3·R5) — Wave 2
+## M4. 판단 방어선 (R3·R5) — Wave 2 ✅ **완료 (2026-07-19)**
+
+> **완료분** (커밋 `163e594`·`33e854f`·`691d68d`·`51190d2`):
+> - **4-2 ✅ 07 게이트 3종** — ① `source_trust < gates.source_trust_min`(0.55) → 뉴스 점수를 **투표에서 제외**(가중 하향이 아니라 투표권 박탈) ② 매크로 감점표 적용 ③ `disclosure_score ≤ hard_negative_max`(0.15) → 매수 차단. 매수 문턱을 `MIN_CONVICTION` 상수 → **`profiles[성향].buy_threshold`**로 이동. `from_model`의 gates/profile을 **키워드 전용**으로 만들어 위치인자 오배치를 구조적으로 차단.
+> - **⏳4-2 해소** — 매크로 감점표를 1차 동결본 s07 POLICY에서 이관: `0.5→−0.05 · 0.6→−0.10 · 0.7→−0.15 · 0.8→−0.20 · 0.9→−0.30 · 1.0→−0.40`(cap 0.40). config `gates.macro_penalty_table` 소유.
+> - **4-1 ✅ 08 합성 시세 제거** — role_02가 일봉 경계에서 `PriceSnapshot`(현재가·고가·저가·**실제 전일종가**)을 박제해 전달. 기존 `close_prev=현재가` 합성은 급등 가드를 조용히 무력화하고 있었음. 스냅샷 부재 시 합성하지 않고 `missing_snapshot`(quality_gate) 보류. 괴리 > `snapshot_tolerance`(2%) → `stale_snapshot` 보류.
+> - **4-3 ✅ 과신 에스컬레이션** — `conviction ≥ 0.90` → 승인 문턱 0.70→0.80.
+> - **4-4 ✅ 출처등급** — 신규 `config/news_trust_policy.yaml`(도메인→allow/gray/block + 등급별 신뢰점수, 미등록 기본 gray) · `core/news_trust.py`(서브도메인 상속 매칭) · role_06에서 **block 매체를 select 전에 제거**(LLM 토큰·프레이밍 차단, 차단 건수 요약 노출) · `domain_sources.py`의 `grade="allow"`·`source_trust=1`·`permission` 상수 제거 → 정책 실값 기록. gray(0.50)가 07의 문턱(0.55)을 못 넘어 투표권을 잃는 **두 층의 맞물림을 테스트로 고정**.
+> - 완료 기준 대조: 08 합성 코드 grep **0** ✅ · 역할 코드 문턱 리터럴 **0** ✅ · 게이트 경계 테스트 **23개 green**(±0.001 포함) ✅ · 전체 **592 green** · ruff clean.
+>
+> **후반 완료분** (커밋 `baf33e9`~`2cd392a` · 범위 결정 근거는 **`m4-scope-decisions.md`**)
+> - **4-0 ✅ (신설) role_05 CIK 실배선** — live 경로가 CIK를 하드코딩(`1045810`=NVDA)해 **모든 종목이 NVDA 공시로 채점**되고 있었다. 4-2 게이트(`hard_negative_max`)와 07의 4표 중 1표가 거짓 입력 위에서 돌던 상태. `SecCikMarketData` seam + SEC `company_tickers.json`(프로세스당 1회 캐시)로 종목별 조회. **미해결·무공시 → 기권**(LLM 미호출).
+>   - 파생: `role_07`의 `require_value(disclosure_score)`가 **공시 부재 시 파이프라인을 죽이던** 경로 제거. 부재는 **투표 기권**(0점 아님) — 0점은 `hard_negative_max`에 걸려 무공시 종목 매수를 전부 차단한다. 저신뢰 뉴스 투표권 박탈과 동형.
+> - **4-9 ✅ (신설) role_09 배선** — profile·technical_output·price_snapshot·gates·calendar 주입. 독립 커밋으로 두면 소비자 없는 필드가 생기므로 **4-8·4-7b에 흡수**해 커밋.
+> - **4-8 ✅ 프리마켓 갭 가드** — `PriceSnapshot.gap_from_reference()`(직전 종가 대비 절대 이동, 방향 무관) · `skipped_reason=premarket_gap`. **세션 한정 적용**(프리마켓 전체 + 개장 후 `gap_guard_open_minutes` 30분) — 계획 원문은 종일 적용이었으나 **장중 3%는 평범한 이동**이라 정상 매수를 계속 막는다. 3%가 의미를 갖는 건 밤사이 갭일 때뿐.
+> - **4-7c ✅ halted** — `TradabilityBroker` 옵셔널 프로토콜 + `AlpacaBroker.is_tradable`(GET `/v2/assets/{symbol}`, `tradable && status=active`). 조회 실패는 **True**(불안정한 엔드포인트가 전체 거래 중단이 되면 안 됨 — 진짜 정지 종목은 제출 시점에 거부된다). 미지원 브로커도 True.
+> - **4-7b ✅ late_entry** — `ret_5d`는 **퍼센트**(`*100`)인데 문턱은 분수라 **100배 어긋나 게이트가 영원히 안 걸리던** 상태. `_recent_return()`에서 정규화. 공격 0.15 / 안전 0.12.
+> - **4-6 ✅ Form 4 커널(범위 축소)** — `filings[0]`은 '가장 최근'일 뿐이라 **대형주가 상시 제출하는 소유권 신고서가 실질 8-K를 일상적으로 밀어내고** 있었고, `form_type`은 `"8-K"`로 하드코딩돼 무엇이 오든 실질 이벤트로 라벨링됐다. config `mvp2.disclosure.llm_bypass_forms`(3/4/4-A/5) 제외 후 실질 공시 채점, 전부 소유권 신고서면 기권. **ownership XML 본체는 백로그**(아래).
+> - **4-7a ✅ consensus** — 스키마 생긴 이래 리터럴 0. `vote_consensus` = 살아남은 표 중 매수 문턱을 넘은 수(상류에서 박탈된 표는 동의 불가 — 침묵은 동의가 아님). role_07이 계산해 하향 전달. **CHECK 0~3 → 0~4**(투표원이 실제로 4개라 만장일치에서 INSERT가 깨졌다). 게이트 아님, 저장 전용.
+> - **4-5 ✅ 대표기사 + peak_importance** — 원 계획의 `importance × 신뢰무게`는 **구현 불가**: importance는 LLM 출력인데 선정은 LLM 호출보다 먼저다. → 선정 키를 **신뢰가중 → 관련성 → 최신**으로 개정(관련성을 완전히 빼면 같은 매체 두 기사가 동률이 되어 URL 알파벳순으로 뽑히는 문제를 기존 계약 테스트가 잡아냈다). `tb_news_signal`의 유령 컬럼(importance·sentiment_score·source_trust·grade_score·peak_importance) 전부 채움. `peak_importance = GREATEST(현재, 당일 해당 종목 최댓값)`.
+> - **부수 수정**: 갭 가드가 거래소 캘린더 구간 밖 날짜에서 `DateOutOfBounds`로 **파이프라인을 죽이던** 문제 — 통합 테스트가 잡음. 판정 불가 시 측정 생략.
+>
+> **최종 검증**: 유닛/웹 **649 green**(592 → 649, 신규 57) · 통합 **30 green**(신규 DB 1회) · ruff clean · **드라이런 HTTP 201**(AAPL, 01→11 완주).
+> **⏳ 이월 2건**(코드 아님, 관측):
+> - `gates.premarket_gap_max` 3%는 **잠정값** — 실 갭 분포 1~2주 관측 후 조정. 발동 사유는 기록된다.
+> - **block 매체 LLM 호출 0** 실측 — 드라이런 실행됨(`차단매체 0건 제외`)이나 **표본(AAPL 100건)에 차단 도메인이 없어 차단 자체는 미관측**. 필터가 돌았다는 것만 확인. ⏳ 유지.
+> - **갭 가드·late_entry·halted 실발동 미확인** — 크리틱이 먼저 차단(확신도 0.218)해 게이트 체인이 `critic_rejected`에서 끊겼고 mock 브로커는 `is_tradable` 미구현. **유닛 검증만 된 상태**. 실 페이퍼 매수가 성사되는 사이클에서 확인할 것.
+> - ⚠️ **배포 전 필수**: `QUANTINUE_HTTP_USER_AGENT`를 실제 연락 가능한 주소로 설정(SEC 공정접근 — 기본값 `admin@quantinue.local`은 동작하지만 응답받을 수 없다).
+>
+> **⏳ 신규 발견(미해소)**: `role_05`가 `filings[0]`을 **날짜 무관하게** 사용 — 3개월 전 공시가 오늘의 시그널로 채점될 수 있다. 신선도 창(`gates.disclosure_lookback_days`) 신설 필요, 문턱은 실측 후. → §보완 목록 이관.
+>
+> **신규 백로그**: **Form 4 인사이더 시그널(ownership XML 파서 + 클러스터 판정)** — M7 이후. 방어선이 아니라 **알파** 항목이고, ⏳ 착수 전 **T+5 채점 지평과의 정합성 검토** 필요(인사이더 매수 초과수익은 수 주~수 개월에 걸쳐 나오는데 이 시스템은 T+5 채점 — 지평이 안 맞는 시그널은 M7 학습 루프를 오염시킨다). `role_05`를 "최근 1건" → "최근 N건 윈도우"로 바꾸는 구조 변경 동반.
 
 | # | 태스크 | 파일 | 상세 |
 |---|---|---|---|
@@ -118,16 +152,32 @@
 | 4-2 | 07 게이트 3종 | `roles/role_07_strategist/contracts.py:131` | `can_buy` 재작성: ① news signal의 `source_trust < gates.source_trust_min`(0.55) → 뉴스 점수 투표 제외 ② conviction −= 매크로 감점표(risk_score 구간→감점, cap `macro_penalty_cap` 0.40) ⏳ 감점표 구간 수치는 1차 동결본 s07 POLICY에서 이관 ③ sentiment ≤ `hard_negative_max`(0.15) → 매수 차단. 문턱 = `profiles[inv_type].buy_threshold` |
 | 4-3 | 과신 에스컬레이션 | `roles/role_08_critic/service.py:20,83` | `conviction ≥ 0.90` → 승인 문턱 0.70→`overconfidence_approval`(0.80) |
 | 4-4 | 출처등급 | `roles/role_06.../selection.py` + 신규 `config/news_trust_policy.yaml` | yaml: 도메인→grade 매핑(allow 목록·gray 목록·기본 block) + 화이트리스트. 파이프라인: block → LLM 도달 전 drop(`is_dropped=true, drop_reason` 기록·행은 보존). `db/domain_sources.py:61-95` 하드코딩(`grade="allow"`·`source_trust=1`·`permission` 상수) 제거 — 실값 기록 |
-| 4-5 | 대표기사 하이브리드 | `selection.py:141-147` | 1단계 관련성 필터(기존 relevance ≥ `MINIMUM_RELEVANCE_SCORE` — 통과/탈락으로만) → 2단계 `importance × w` 최상위(w = confidence × (is_confirmed?1.0:0.5) × grade가중) · 동률 published_at 최신→id. `peak_importance` 실계산(신뢰 검증분 max) + 저장 배선(`domain_sources.py` insert에 누락 중) |
-| 4-6 | Form 4 정책 | 신규 `roles/role_05.../form4.py` | LLM 우회 분기: form_type='4' → 템플릿 조립(reason 객체 포함). 정책: 코드 P(공개시장 매수)+임원·$문턱 → importance 정상 / 매도 기본 저평가 / 클러스터(2인+) 가산·클러스터 매도 리스크. ⏳ SEC Form 4 파싱 필드(transactionCode·officerTitle) 소스 확인 |
-| 4-7 | 잔여 3건 | role_07·09·10 | consensus 실계산(4신호 동의 수, 저장만 — 게이트 아님·`domain.py:129` 하드코딩 제거) · late_entry(ret_5d ≥ profiles별 0.15/0.12 → 매수 금지, role_09) · halted 체크(role_10 주문 직전 Alpaca asset tradable 조회 → skip+사유) |
-| 4-8 | 프리마켓 갭 가드 | role_09 또는 role_10 진입 직전 | (세션 정책 2026-07-18 파급) 분석 기준가(직전 종가) 대비 현재가 갭 ≥ config `gates.premarket_gap_max` 초과 시 신규 매수 skip(사유 기록) — 금요일 종가 기준 픽이 월요일 갭업이면 진입가·손절·익절이 무의미해지는 문제. 문턱값은 M4 착수 시 실측 보고 확정 |
+| 4-5 ✅ | 대표기사 하이브리드 | `selection.py:141-147` | 1단계 관련성 필터(기존 relevance ≥ `MINIMUM_RELEVANCE_SCORE` — 통과/탈락으로만) → 2단계 `importance × w` 최상위(w = confidence × (is_confirmed?1.0:0.5) × grade가중) · 동률 published_at 최신→id. `peak_importance` 실계산(신뢰 검증분 max) + 저장 배선(`domain_sources.py` insert에 누락 중) — **⚠️ 이 칸은 원안. 실제 구현은 위 완료 요약대로 개정됨**(importance는 LLM 출력이라 선정 시점 부재) |
+| 4-6 ✅ | Form 4 커널(범위 축소) | `role_05.../service.py` + config `mvp2.disclosure` | LLM 우회 분기: form_type='4' → 템플릿 조립(reason 객체 포함). 정책: 코드 P(공개시장 매수)+임원·$문턱 → importance 정상 / 매도 기본 저평가 / 클러스터(2인+) 가산·클러스터 매도 리스크. ⏳ SEC Form 4 파싱 필드 — **⚠️ 이 칸은 원안. 파싱 필드가 없어 커널만 M4, 본체는 백로그**(위 완료 요약) |
+| 4-7 ✅ | 잔여 3건 | role_07·09·10 | consensus 실계산(4신호 동의 수, 저장만 — 게이트 아님·`domain.py:129` 하드코딩 제거) · late_entry(ret_5d ≥ profiles별 0.15/0.12 → 매수 금지, role_09) · halted 체크(role_10 주문 직전 Alpaca asset tradable 조회 → skip+사유) |
+| 4-8 ✅ | 프리마켓 갭 가드 | role_09 진입 직전 | (세션 정책 2026-07-18 파급) 분석 기준가(직전 종가) 대비 현재가 갭 ≥ config `gates.premarket_gap_max` 초과 시 신규 매수 skip(사유 기록) — 금요일 종가 기준 픽이 월요일 갭업이면 진입가·손절·익절이 무의미해지는 문제. 문턱값은 M4 착수 시 실측 보고 확정 — **개정: 세션 한정 적용**(위 완료 요약) |
 
 **완료 기준**: 게이트 경계값 단위 테스트(±0.001) · block 매체 LLM 호출 0 · 08 합성 코드 부재(grep) · 문턱 전부 yaml로만 변경 가능(코드 리터럴 grep 0).
 
-## M5. 매도·보유 재평가 (R7-1) — Wave 2 · **최대 설계 작업**
+> ⚠️ **M5~M8 착수 전 `ghost-config-audit.md` 확인** — 선언만 되고 소비자가 없는 값 전수 조사(2026-07-19). 각 마일스톤이 배선해야 할 유령이 정리돼 있다: M5 = `exits.time_exit_bdays` · M6 = 성향별 리스크 한도 5종 + `conservative` 프로필 도달 불가 · M8 = `budget.daily_llm_usd`·`tb_llm_usage`.
 
-⏳ **착수 시 첫 태스크 = 매도 주문 표현 설계 확정**: tb_order는 브래킷 매수 전용(CHECK order_type IN ('bracket')) — 매도(청산)는 ① order_type 'close' 추가 ② 브래킷 leg 취소 후 시장가 매도 ③ tb_fill side='sell' 활용. 스키마 영향 있으면 M2 마이그레이션에 추가.
+## M5. 매도·보유 재평가 (R7-1) — Wave 2 · ⚠️ **superseded → `pipeline-redesign.md` Phase 1·3** (매도 주문 표현 확정 기록은 유효)
+
+✅ **매도 주문 표현 확정 (2026-07-19, 커밋 `6cd1ae2`)** — **①안 채택: 별도 청산 주문 행**.
+
+②(브래킷 leg 취소 후 시장가)는 표현이 아니라 **브로커 동작**이라 어느 안과도 병행한다. ③(기존 매수 행에 sell 체결만)은 매도의 `broker_order_id`를 둘 자리가 없고(매수가 이미 점유·UNIQUE) 상태 전이·멱등 재시도를 추적할 수 없어 탈락 — **있는 값을 버리는** 선택이다.
+
+**스키마 변경**(`db/schema.sql` + `db/migrations/mvp2.sql`):
+- `order_type CHECK IN ('bracket','close')`
+- `stop_price`·`take_profit_price` **NULL 허용** — 청산에 더미 값을 채우지 않는다
+- 브래킷 삼중 제약(`stop < entry < take_profit`)은 `order_type='bracket'`일 때만. 매수 보호는 그대로(테스트로 고정)
+- `closes_order_id BIGINT REFERENCES tb_order(id)` — 어느 매수를 닫는가. **실현손익의 짝**. 청산은 필수
+
+**전제(함께 확정)**: 시간 청산·논지 붕괴 같은 **기계적 청산도 `side='sell'` 시그널 행을 남긴다.** 계보가 균일해지고 role_11이 매도도 채점할 수 있으며 `signal_id NOT NULL`·`UNIQUE(account_id,signal_id)`가 유지된다.
+
+**검증**: 신규 설치 경로 == 마이그레이션 경로(컬럼·제약 정의 해시 일치) · 마이그레이션 2회 멱등 · 청산↔매수 조인으로 실현손익 실계산 확인 · 통합 63 green.
+
+⚠️ **알려진 어색함**: `entry_price` 이름이 매도에선 어색하다(실제 의미는 "판단 시점 기준가"). 리네임 파급이 커서 이름은 두고 정본 `#logic`에 의미를 명시했다.
 
 | # | 태스크 | 파일 | 상세 |
 |---|---|---|---|
@@ -141,14 +191,32 @@
 
 **완료 기준**: E2E-4(보유 종목 하드 악재 fixture → 자동 청산+사유) · 스크리너 탈락 보유 종목이 05~07 분석에 포함(로그).
 
-## M6. 계좌 구조·서킷브레이커 (R1-5·R7-2) — Wave 2
+## M6. 계좌 구조·서킷브레이커 (R1-5·R7-2) — Wave 2 🔶 **거의 완료 (2026-07-19)**
+
+> **진행 요약** (커밋 `54c5925`~`3a0fbd8`): 6-1 ✅ · 6-2 🔶 3/4(`daily_loss_limit`만 M5 이후) · 6-3 ✅ · 6-4 ✅
+
+> 🔺 **M5보다 먼저 착수 권장 (2026-07-19)**. 근거는 학습 데이터 품질 같은 간접 논거가 아니라 **산출물 자체**다: 확정된 데모 계좌 구성(공격형 $150K·$100K·$5K / 안전형 $100K·$5K)은 M6 없이는 **물리적으로 만들 수 없다**. 현재 `max_app_order_exposure_usd` 하나가 앱 전체의 자본 겸 노출 천장 역할을 하므로 자본이 다른 계좌 5개를 동시에 표현할 방법이 없고, 안전형 문턱을 쓰려면 `conservative` 프로필 도달 경로(6-1)가 필요하다. M5(매도)는 필요하지만 이 산출물을 막고 있지 않다.
 
 | # | 태스크 | 파일 | 상세 |
 |---|---|---|---|
-| 6-1 | 계좌 구독 루프 | `orchestration/pipeline.py`·role_09 | 09~10을 `for account in active_accounts:` 루프로 — 계좌의 inv_type → profiles 파라미터 적용(문턱·사이징·한도). 리서치(01~08)는 루프 밖 1회 |
-| 6-2 | 서킷 4종 | role_09 확장(기존 노출 한도 예약 구조 위) | max_positions(10/5) · max_weight(20%/10%) · daily_loss_limit(−4%/−2%: 당일 시작 equity 대비 실현+평가 손실 → 도달 시 당일 신규 매수 중단 플래그, 익영업일 자동 해제) · min_cash(10%/30%). 발동 기록(사유)+알림 훅(M8) ⏳ 당일 시작 equity 기준 저장 위치 설계(간단: 일별 equity 스냅샷) |
-| 6-3 | 시뮬 멀티계좌 | `db/` simulated portfolio 계열 | 단일 계좌 가정 제거 — 계좌별 현금·보유·손익 |
-| 6-4 | 계좌 프로비저닝 | 신규 스크립트 `scripts/provision_accounts.py` | 데모 5(aggressive $1M·$50K / conservative $150K·$100K·$50K) + 테스트 2($100K×2, is_test 라벨 = broker_account_id 접두 `TEST-`) + tb_user 연결(관리자 생성) |
+| 6-1 ✅ | 계좌 구독 루프 | role_09(역할 내부 순회) | 09~10을 계좌 순회로 — 계좌의 inv_type → profiles 적용. 리서치(01~08)는 1회.
+
+**⚠️ 설계 변경**: 오케스트레이터 레벨 루프가 아니라 **역할 내부 순회**로 구현했다. 오케스트레이터가 `self._roles[len(context.stages):]`로 재개하므로 스테이지 수와 역할 인덱스가 1:1이라는 전제가 있고, 팬아웃을 오케스트레이터에 넣으면 재개·claim 기계가 깨진다.
+
+**✅ 완료**: `domain.active_accounts()`(status=active, id 오름차순 고정 — 순서가 흔들리면 실행마다 다른 계좌가 일일 한도를 먼저 소진한다) · role_09가 계좌별 `AccountOrderPlan` 생성 · 영속화가 계좌별로 전부 기록(`tb_order_plan`) · 스칼라 필드는 대표 계좌 미러로 기존 계약 보존.
+**해소한 충돌**: 앱 전역 노출 천장이 계좌별 사이징과 충돌 → 천장을 **계좌 자본**으로. 자본이 다른 계좌들이 천장 하나를 나눠 쓰면 큰 계좌가 먼저 소진한다.
+**✅ 집행도 완료**: role_10이 계좌별로 제출하고 계좌별 체결을 원장에 기록한다. 계좌마다 별도 멱등키(겹치면 한 건으로 합쳐져 나머지 계좌가 조용히 체결된 것처럼 보인다).
+
+**🔒 안전 제약(계약으로 고정)**: **실 브로커는 팬아웃하지 않는다.** 실 브로커 뒤에는 외부 계좌가 하나뿐이라 내부 7계좌를 순회하면 **의도한 포지션의 7배**가 그 하나에 쌓인다. 팬아웃은 시뮬 브로커 한정, 실 브로커는 대표 계좌 1건만. → 계좌별 브로커 라우팅이 필요해지면 그때 설계할 것(현재는 데모/테스트 7계좌 = 시뮬, Alpaca 페이퍼 = 1계좌로 분리돼 있어 문제 없음).
+
+**⏳ 잔여**: 스칼라 `order`가 대표 계좌를 미러하므로 **role_11(T+5 리뷰)은 아직 대표 계좌만 채점**한다. 계좌별 성과 채점은 **M7**에서 리뷰 구조와 함께. |
+| 6-2 🔶 | 서킷 4종 → **3/4 완료** | role_09 확장(기존 노출 한도 예약 구조 위) | max_positions(10/5) · max_weight(20%/10%) · daily_loss_limit(−4%/−2%: 당일 시작 equity 대비 실현+평가 손실 → 도달 시 당일 신규 매수 중단 플래그, 익영업일 자동 해제) · min_cash(10%/30%). 발동 기록(사유)+알림 훅(M8)
+
+**✅ 완료 (2026-07-19)**: `max_positions`·`max_weight`·`min_cash_ratio` 배선. `max_weight`가 `POSITION_CAP_FRACTION` 0.25 리터럴을 대체(같은 개념의 이중 표현 해소). 자본이 계좌에서 오게 됨 + `inv_type`이 프로필 선택. 발동 사유는 `tb_order_plan`에 기록(M4에서 신설). E2E-5 green(같은 신호 → 공격 200주/안전 100주).
+
+**⏳ `daily_loss_limit`만 잔존 — M5 이후.** 지금 구현하면 **발동할 수 없다**: ① 매도 경로가 없어 실현손실이 구조적으로 0 ② `tb_account.equity`가 체결 시 갱신되지 않아(현금만 차감) 미실현손실을 잴 수 없다. 전제: M5 매도 · 보유 시가평가(M7-4 가격 수집 재사용 가능) · **당일 시작 equity 스냅샷**(설계안 `tb_account_equity_daily(account_id, trade_date, opening_equity)` — ⚠️ **소비자와 같은 커밋에 만들 것**, 먼저 만들면 유령이 된다) · 익영업일 자동 해제(M1 `add_business_days`). **판정은 E2E-3** — 그게 green이 되기 전엔 "적용됨"으로 기록 금지. 상세: `ghost-config-audit.md` §2 |
+| 6-3 ✅ | 시뮬 멀티계좌 | `db/` simulated portfolio 계열 | **완료**. 주문·체결 조회는 이미 계좌 분할돼 있었고, 남은 가정은 ① `opening_cash`가 앱 전역 env ② 하드코딩된 `quantinue-local-simulated` 계좌였다. `account_portfolio(broker_account_id)`(개시 자본을 계좌 행에서) · `account_portfolios()`(활성 전부, 순서 고정) 추가. 기존 `simulated_portfolio(opening_cash)`는 화면이 쓰고 있어 존치 — 전환은 M9 |
+| 6-4 ✅ | 계좌 프로비저닝 | 신규 스크립트 `scripts/provision_accounts.py` | **금액 개정 2026-07-19(문성혁)**: 데모 5 = **공격형 $150K·$100K·$5K / 안전형 $100K·$5K** (기존 $1M·$50K 안 폐기) · 테스트 2 = **$100K×2**(공격형·안전형 각 1, is_test 라벨 = broker_account_id 접두 `TEST-`) + tb_user 연결(관리자 생성). ⚠️ **이 구성이 M6의 하드 전제** — 앱 전체에 값이 하나뿐인 현재 구조로는 자본이 다른 계좌 5개를 표현할 수 없고, `conservative` 프로필은 도달 자체가 불가능하다(§ghost-config-audit 2·3) |
 
 **완료 기준**: E2E-5(동일 신호 → 공격 매수/안전 보류) · E2E-3(일손실 초과 → skip·익영업일 해제) · LLM 호출 수가 계좌 수와 무관(로그 검증).
 
@@ -223,7 +291,15 @@
 | M2-4 | side CHECK 제약명 확인 |
 | M2-8·M8-3 | budget.daily_llm_usd — 첫 주 실측 후 확정(임시 $3) |
 | M4-2 | 매크로 감점표 구간 수치 — 1차 동결본 s07 POLICY에서 이관 |
-| M4-6 | Form 4 파싱 필드(transactionCode 등) 소스 확인 |
+| M4-6 | ✅해소: **필드 없음** — `SecSubmission`은 form·accession·filed_at·primary_document(파일명)만 담고 ownership XML은 fetch하지 않는다. 커널만 M4, 본체는 백로그 이관 |
+| M4-5 | ✅해소: importance는 LLM 출력이라 선정 시점 부재 → 신뢰가중 랭킹 + `peak_importance=GREATEST(현재, 당일 최댓값)`로 개정 |
+| M4-8 | ⏳ `gates.premarket_gap_max` 3%는 잠정값 — 실 갭 분포 1~2주 관측 후 확정 |
+| M4 | ⏳ block 매체 LLM 호출 0 — 드라이런에서 필터는 돌았으나 표본에 차단 도메인 없음(차단 자체 미관측) |
+| M4 | ⏳ 갭 가드·late_entry·halted 실발동 미확인 — 크리틱 선차단·mock 브로커. 실 매수 성사 사이클에서 확인 |
+| M4 | ⚠️ 배포 전 `QUANTINUE_HTTP_USER_AGENT`를 실제 연락처로 설정(SEC 공정접근) |
+| 전반 | ⚠️ **유령 설정 감사 결과** — `ghost-config-audit.md`. 성향별 리스크 한도 5종·LLM 예산 상한·`llm_depth`·`time_exit_bdays`가 전부 미적용. 마일스톤별 귀속 정리됨 |
+| M4 신규 | ⏳ `role_05`가 `filings[0]`을 날짜 무관하게 사용 — 3개월 전 공시가 오늘 시그널로 채점될 수 있다. 신선도 창(`gates.disclosure_lookback_days`) 신설 필요 |
+| M7 이후 | Form 4 인사이더 시그널(ownership XML 파서 + 클러스터) — ⏳ 착수 전 T+5 지평 정합성 검토 · role_05 최근 N건 윈도우화 동반 |
 | M5 착수 시 | **매도 주문 표현 설계 확정**(order_type/leg 취소 방식) — 스키마 영향 시 M2에 추가 |
 | M6-2 | 당일 시작 equity 스냅샷 저장 설계 |
 | M8-1 | 텔레그램 봇 토큰 생성(사용자·BotFather) |

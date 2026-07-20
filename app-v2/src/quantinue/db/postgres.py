@@ -1,42 +1,55 @@
-"""PostgreSQL repository using canonical operational tables."""
+"""PostgreSQL repository using canonical operational tables.
+
+Phase 5까지는 런 생명주기(advisory lock claim·stage checkpoint·terminal
+publish)의 소유자이기도 했다 — 그 절반은 구 11단계 러너와 함께 죽었고, 남은
+것은 잡과 웹이 실제로 부르는 표면이다: 계좌 부트스트랩 · 모의 포트폴리오
+읽기 · 일일 주문 예약(노출 게이트) · ``.domain``(도메인 저장소) ·
+``.order_reservations``(브로커 멱등 축).
+"""
 
 from __future__ import annotations
 
-import hashlib
-from datetime import datetime
 from decimal import Decimal
-from typing import Final
+from typing import TYPE_CHECKING, Final
 
-import anyio
-from pydantic_core import to_json
-from sqlalchemy import MetaData, Table, and_, func, select
-from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
-from typing_extensions import override
+from sqlalchemy import MetaData
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from quantinue.core.contracts import PipelineContext, PipelineRequest, PipelineRun
-from quantinue.db.codec import CONTEXT_ADAPTER, encode_context
-from quantinue.db.contracts import AttemptFailure, PersistedAttempt, RunClaim
+from quantinue.db import postgres_query
 from quantinue.db.domain import PostgresDomainRepository
+from quantinue.db.domain_records import AccountWrite
 from quantinue.db.order_reservations import PostgresOrderReservations
-from quantinue.db.postgres_lifecycle import PostgresDomainLifecycleMixin
-from quantinue.db.postgres_lock import try_lock, unlock
-from quantinue.db.postgres_portfolio import LOCAL_SIMULATED_ACCOUNT_ID
-from quantinue.db.postgres_query import (
-    close_stale_attempts,
-    failed_run_is_resumable,
-    resume_context,
-    run_id_for,
-)
-from quantinue.db.postgres_run_reads import PostgresRunReadMixin
-from quantinue.db.postgres_tables import RUN_STORE_TABLES
+from quantinue.db.postgres_portfolio import LOCAL_SIMULATED_ACCOUNT_ID, read_simulated_portfolio
+
+if TYPE_CHECKING:
+    from sqlalchemy import Table
+
+    from quantinue.db.contracts import (
+        AppOrderExposureReservationResult,
+        AppOrderExposureStatus,
+        AppOrderExposureSummary,
+        DailyOrderReservation,
+    )
+    from quantinue.db.domain_records import CompletedFillWrite
+    from quantinue.db.simulated_portfolio import SimulatedPortfolioSnapshot
 
 _METADATA = MetaData()
 _DEFAULT_OPENING_CASH: Final = Decimal("1000000.00")
 
+# 살아 있는 읽기·예약 경로가 반사하는 테이블만 남았다. pipeline_runs 계열은
+# 구 러너의 것이라 여기서 빠졌다 — 테이블 자체는 역사(그리고 리뷰의 레거시
+# 조인)를 위해 DB에 남지만, 이 스토어는 더 이상 그것을 모른다.
+_TABLES: Final = (
+    "tb_order",
+    "tb_account",
+    "tb_fill",
+    "tb_strategist_signals",
+    "tb_daily_bar",
+)
 
-class PostgresRunStore(PostgresDomainLifecycleMixin, PostgresRunReadMixin):
-    """Durable repository with session advisory locks as crash-safe claims."""
+
+class PostgresRunStore:
+    """Durable store for the simulated account, order budget, and domain ledger."""
 
     def __init__(
         self,
@@ -51,217 +64,85 @@ class PostgresRunStore(PostgresDomainLifecycleMixin, PostgresRunReadMixin):
             pool_size=5,
             max_overflow=10,
         )
-        self._claims: dict[str, AsyncConnection] = {}
         self.order_reservations = PostgresOrderReservations(database_url)
         self.domain = PostgresDomainRepository(database_url)
-        PostgresDomainLifecycleMixin.__init__(self, self.domain, account_identity, opening_cash)
+        self._account_identity = account_identity
+        # 로컬 모의 계좌의 부트스트랩 행. initialize()가 멱등 저장한다 — 이
+        # 행이 없으면 첫 체결이 착지할 계좌가 없다.
+        self._account = AccountWrite(account_identity, opening_cash, opening_cash, opening_cash)
 
     async def initialize(self) -> None:
         """Reflect canonical tables created by schema bootstrap."""
         async with self._engine.begin() as connection:
-            await connection.run_sync(_METADATA.reflect, only=RUN_STORE_TABLES)
+            await connection.run_sync(_METADATA.reflect, only=_TABLES)
         await self.order_reservations.initialize()
         await self.domain.initialize()
         _ = await self.domain.save_account(self._account)
 
     async def close(self) -> None:
-        """Release live claims and dispose the pool."""
-        for key in tuple(self._claims):
-            await self.abandon(key)
+        """Dispose every connection pool this store owns."""
         await self.order_reservations.close()
         await self.domain.close()
         await self._engine.dispose()
 
-    async def claim(
-        self, key: str, request: PipelineRequest, *, resume_failed: bool = False
-    ) -> RunClaim:
-        """Try the per-key advisory lock and load or create durable state."""
-        connection = await self._engine.connect()
-        locked = await try_lock(connection, key)
-        if not locked:
-            await connection.close()
-            return RunClaim(acquired=False)
-        runs = self._table("pipeline_runs")
-        row = (
-            (await connection.execute(select(runs).where(runs.c.idempotency_key == key)))
-            .mappings()
-            .one_or_none()
-        )
-        is_resumable = False
-        if row is not None and row["status"] == "failed" and resume_failed:
-            is_resumable = await failed_run_is_resumable(
-                connection,
-                runs,
-                self._table("pipeline_stage_attempts"),
-                key,
-            )
-        if row is not None and row["status"] in {"completed", "failed"} and not is_resumable:
-            await unlock(connection, key)
-            return RunClaim(
-                acquired=False,
-                terminal_run=PipelineRun.model_validate_json(to_json(row["payload"])),
-            )
-        if row is None:
-            context = PipelineContext(request=request)
-            _ = await connection.execute(
-                insert(runs).values(
-                    run_id=str(context.run_id),
-                    idempotency_key=key,
-                    ticker=request.ticker,
-                    cycle_ts=request.cycle_ts,
-                    status="running",
-                    payload=encode_context(context),
-                    started_at=datetime.now().astimezone(),
-                )
-            )
-            await connection.commit()
-        else:
-            run_id = await run_id_for(connection, runs, key)
-            await close_stale_attempts(connection, self._table("pipeline_stage_attempts"), run_id)
-            context = await resume_context(
-                connection,
-                runs,
-                self._table("pipeline_checkpoints"),
-                key,
-                request,
-            )
-            _ = await connection.execute(
-                runs.update()
-                .where(runs.c.idempotency_key == key)
-                .values(status="running", finished_at=None)
-            )
-            await connection.commit()
-        self._claims[key] = connection
-        return RunClaim(acquired=True, context=context)
-
-    async def wait_for_release(self, key: str) -> PipelineRun | None:
-        """Yield briefly, then observe a terminal owner outcome when available."""
-        await anyio.sleep(0.01)
-        return await self.get_by_key(key)
-
-    async def start_attempt(
-        self, key: str, component: str, started_at: datetime
-    ) -> PersistedAttempt:
-        """Insert the next attempt while holding the run claim."""
-        connection = self._claims[key]
-        attempts = self._table("pipeline_stage_attempts")
-        run_id = await run_id_for(connection, self._table("pipeline_runs"), key)
-        count = await connection.scalar(
-            select(func.count())
-            .select_from(attempts)
-            .where(and_(attempts.c.run_id == run_id, attempts.c.component == component))
-        )
-        number = int(count or 0) + 1
-        _ = await connection.execute(
-            insert(attempts).values(
-                run_id=run_id,
-                component=component,
-                attempt_no=number,
-                status="running",
-                started_at=started_at,
-            )
-        )
-        await connection.commit()
-        return PersistedAttempt(component, number, "running", started_at)
-
-    async def complete_stage(
-        self, key: str, context: PipelineContext, attempt: PersistedAttempt
-    ) -> None:
-        """Commit completed attempt, checkpoint, and run payload atomically."""
-        connection = self._claims[key]
-        attempts = self._table("pipeline_stage_attempts")
-        checkpoints = self._table("pipeline_checkpoints")
-        runs = self._table("pipeline_runs")
-        run_id = str(context.run_id)
-        payload = encode_context(context)
-        now = datetime.now().astimezone()
-        async with connection.begin():
-            _ = await connection.execute(
-                attempts.update()
-                .where(
-                    and_(
-                        attempts.c.run_id == run_id,
-                        attempts.c.component == attempt.component,
-                        attempts.c.attempt_no == attempt.attempt_no,
-                    )
-                )
-                .values(status="completed", finished_at=now)
-            )
-            _ = await connection.execute(
-                insert(checkpoints)
-                .values(
-                    run_id=run_id,
-                    component=attempt.component,
-                    payload=payload,
-                    payload_hash=hashlib.sha256(CONTEXT_ADAPTER.dump_json(context)).hexdigest(),
-                )
-                .on_conflict_do_nothing(index_elements=["run_id", "component"])
-            )
-            _ = await connection.execute(
-                runs.update().where(runs.c.run_id == run_id).values(payload=payload)
-            )
-
-    async def fail_attempt(
-        self,
-        key: str,
-        attempt: PersistedAttempt,
-        finished_at: datetime,
-        failure: AttemptFailure,
-    ) -> None:
-        """Persist an observable failed attempt."""
-        connection = self._claims[key]
-        attempts = self._table("pipeline_stage_attempts")
-        run_id = await run_id_for(connection, self._table("pipeline_runs"), key)
-        _ = await connection.execute(
-            attempts.update()
-            .where(
-                and_(
-                    attempts.c.run_id == run_id,
-                    attempts.c.component == attempt.component,
-                    attempts.c.attempt_no == attempt.attempt_no,
-                )
-            )
-            .values(
-                status=failure.status,
-                finished_at=finished_at,
-                error_code=failure.error_code,
-                error_message=failure.error_message,
-            )
-        )
-        await connection.commit()
-
-    async def finish_run(self, key: str, run: PipelineRun, *, resumable: bool = False) -> None:
-        """Publish the terminal payload and release the advisory lock."""
-        del resumable
-        connection = self._claims[key]
-        runs = self._table("pipeline_runs")
-        _ = await connection.execute(
-            runs.update()
-            .where(runs.c.idempotency_key == key)
-            .values(
-                status=run.status.value,
-                payload=run.model_dump(mode="json"),
-                finished_at=datetime.now().astimezone(),
-                updated_at=datetime.now().astimezone(),
-            )
-        )
-        await connection.commit()
-        await unlock(connection, key)
-        _ = self._claims.pop(key, None)
-
-    async def abandon(self, key: str) -> None:
-        """Release an interrupted claim without deleting its checkpoint."""
-        connection = self._claims.get(key)
-        if connection is not None:
-            await unlock(connection, key)
-            _ = self._claims.pop(key, None)
-
     @property
-    @override
     def engine(self) -> AsyncEngine:
         """Return the engine used by safe read-boundary operations."""
         return self._engine
 
-    @override
+    @property
+    def account_identity(self) -> str:
+        """Return the isolated app-owned account selected at composition time."""
+        return self._account_identity
+
+    async def record_completed_fill(self, value: CompletedFillWrite) -> int:
+        """Apply the shared completed-fill contract through atomic accounting."""
+        return await self.domain.record_completed_fill(value)
+
+    async def simulated_portfolio(self, opening_cash: Decimal) -> SimulatedPortfolioSnapshot:
+        """Return the durable simulated portfolio read model."""
+        return await read_simulated_portfolio(
+            self._engine,
+            _METADATA,
+            opening_cash,
+            self._account_identity,
+        )
+
+    async def reserve_daily_new_order(
+        self, request: DailyOrderReservation
+    ) -> AppOrderExposureReservationResult:
+        """Atomically reserve a canonical planned order under both app limits."""
+        async with self._engine.begin() as connection:
+            return await postgres_query.reserve_daily_order(
+                connection,
+                self._table("tb_order"),
+                self._table("tb_strategist_signals"),
+                request,
+            )
+
+    async def app_order_exposure_summary(
+        self, account_id: int, cap: Decimal
+    ) -> AppOrderExposureSummary:
+        """Read this account's app-owned eligible planned-order exposure."""
+        async with self._engine.begin() as connection:
+            return await postgres_query.app_order_exposure_summary(
+                connection,
+                self._table("tb_order"),
+                account_id,
+                cap,
+            )
+
+    async def reconcile_app_order_exposure(
+        self, idempotency_key: str, status: AppOrderExposureStatus
+    ) -> AppOrderExposureSummary | None:
+        """Apply one terminal-safe app-order exposure state transition."""
+        async with self._engine.begin() as connection:
+            return await postgres_query.reconcile_app_order_exposure(
+                connection,
+                self._table("tb_order"),
+                idempotency_key,
+                status,
+            )
+
     def _table(self, name: str) -> Table:
         return _METADATA.tables[name]

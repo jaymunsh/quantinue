@@ -1,50 +1,12 @@
 version: 1
 timezone: America/New_York
-mvp:
-  data_mode: fixture
-  ticker: NVDA
-  accounts: 1
-  integer_quantity_only: true
-  stop_loss_ratio: 0.15
-  take_profit_ratio: 0.20
-  evidence_max_age_seconds: 300
-  role_timeout_seconds: 120
-  # 02는 수백 종목 일봉을 종목당 1콜로 받아야 해 기본 한도로는 못 끝낸다.
-  role_timeout_overrides:
-    "02": 900
-  role_max_retries: 2
-  retry_base_delay_seconds: 0.25
-  resume_failed: true
-  checkpoint_after_each_role: true
-  duplicate_order_policy: reject
-  policy_profile: aggressive
-  thresholds:
-    minimum_confidence: 0.60
-    strategist_buy_score: 0.65
-    critic_approval_score: 0.60
-    maximum_risk_score: 0.70
-  models:
-    mock: deterministic-mock-v1
-    openai: gpt-4o-mini
-    local: qwen2.5:7b
-  schedule:
-    role_04:
-      interval_minutes: 60
-    role_05:
-      interval_minutes: 60
-    role_06:
-      interval_minutes: 30
-    role_07:
-      interval_minutes: 120
 mvp2:
-  schedule:
-    enabled: false
-    tick_seconds: 60
-    cycle_slot_minutes: 30
-    trigger_sessions: [pre, regular, after]
   profiles:
     aggressive:
       buy_threshold: 0.65
+      # 매도 문턱(약세 확신). 매수보다 낮은 것이 의도다 — 좋은 종목을 안 사면
+      # 기회를 놓칠 뿐이지만, 나쁜 종목을 안 팔면 손실이 계속 자란다.
+      sell_threshold: 0.60
       risk_off_action: penalty
       late_entry_max: 0.15
       max_positions: 10
@@ -53,6 +15,8 @@ mvp2:
       min_cash_ratio: 0.10
     conservative:
       buy_threshold: 0.75
+      # 안전형은 더 빨리 판다 — 확신이 흔들리는 순간 자리를 비운다.
+      sell_threshold: 0.50
       risk_off_action: no_new_buys
       late_entry_max: 0.12
       max_positions: 5
@@ -61,12 +25,42 @@ mvp2:
       min_cash_ratio: 0.30
   gates:
     source_trust_min: 0.55
+    # 증거가 이보다 오래되면 매수를 막는다(매도는 막지 않는다). 일 1회 잡은
+    # 어제 닫힌 세션을 보므로 분 단위 값으로는 매일 전 종목이 걸린다.
+    evidence_max_age_minutes: 2880
     hard_negative_max: 0.15
     macro_penalty_cap: 0.40
+    # 1차 동결본 s07 POLICY 이관 — risk_score 구간별 확신도 감점
+    macro_penalty_table:
+      - [0.50, 0.05]
+      - [0.60, 0.10]
+      - [0.70, 0.15]
+      - [0.80, 0.20]
+      - [0.90, 0.30]
+      - [1.00, 0.40]
     snapshot_tolerance: 0.02
     critic_approval: 0.70
     overconfidence_conviction: 0.90
     overconfidence_approval: 0.80
+    # 분석 기준가(직전 종가) 대비 갭이 이보다 크면 신규 매수 보류.
+    # ⏳ 잠정값 — 실제 갭 분포 1~2주 관측 후 조정(발동 사유는 tb_order_plan에 기록된다)
+    premarket_gap_max: 0.03
+    # 갭 가드 적용 창: 프리마켓 전체 + 개장 후 이 분(分)까지.
+    # 장중 3% 이동은 평범하므로 종일 적용하면 정상 매수까지 막는다.
+    gap_guard_open_minutes: 30
+  disclosure:
+    # 정형 소유권 신고서 — 소유권 XML 없이는 매수/매도 구분이 불가하므로
+    # LLM에 태우지 않는다. 대형주는 Form 4를 상시 제출해 최신 1건이 실질 공시를
+    # 밀어내므로, 후보에서 제외하고 다음 실질 공시를 채점한다.
+    llm_bypass_forms: ["4", "4/A", "3", "5"]
+  news:
+    # 뉴스는 **투표가 아니라 증거 종합의 맥락**으로 들어간다. Alpaca 뉴스는
+    # 전 기사가 benzinga이고(실측) news_trust_policy.yaml에서 benzinga는
+    # gray(0.50)라 gates.source_trust_min(0.55)을 못 넘는다 — 투표로 넣으면
+    # role_07이 그 표를 통째로 박탈한다. 문턱을 데이터 소스에 맞춰 내리는 것은
+    # 정책 오염이므로 하지 않는다. 투표권이 필요해지면 보도자료 와이어(로드맵 R11).
+    page_size: 50
+    headlines_per_ticker: 5
   screening:
     universe_size: 2000
     min_price_usd: 5
@@ -77,14 +71,63 @@ mvp2:
     technical_concurrency: 10
     dollar_volume_window: 20
     daily_picks: 50
+    # 하루에 LLM으로 깊이 보는 종목 수. 여기에 보유 전부가 캡과 무관하게 더해진다
+    # — 탈락한 보유가 범위 밖이면 청산 시그널을 남길 자리가 없기 때문이다.
     llm_depth: 20
+    # 랭킹에 올리기 위해 필요한 최소 봉 개수. ma50이 의미를 가지려면 50세션은
+    # 있어야 하고, 신규 상장은 52주 고가가 곧 자기 최고가라 돌파로 오인된다.
+    min_history_sessions: 60
   exits:
     time_exit_bdays: 10
+  # 배분 잡(Phase 4)의 사이징 브래킷과 상한. 값은 구 러너의 mvp 블록과 같다 —
+  # 소유권을 여기로 옮기는 중이고, 구 러너가 죽으면 mvp 블록이 함께 죽는다.
+  allocation:
+    stop_loss_ratio: 0.15
+    take_profit_ratio: 0.20
+    maximum_risk_score: 0.70
+    # 하루 신규 포지션 계좌당 상한. redesign §7의 실효 의도값(5).
+    # 코드 4곳 리터럴(1·1·1·5)이 서로 달랐다 — 이제 이 키가 단일 소유자다.
+    daily_new_order_cap: 5
+  # 배경 잡 루프. 주기는 전부 여기 소유이고 기본은 느슨하다(D3) — 30분으로
+  # 조이는 건 아래 숫자를 바꾸는 일이지 코드를 고치는 일이 아니어야 한다.
+  # 선언이 없는 잡은 기본 일 1회로 돈다.
+  jobs:
+    # 2026-07-20 켬(잔여 작업 C, 문성혁 지시로 5건 일괄 진행). 잡 9종이 매일
+    # 뉴욕 세션일에 한 번씩 돈다. 끄면 수동 스모크 전용으로 돌아간다.
+    enabled: true
+    tick_seconds: 60
+    cadences:
+      # 상장 목록은 하루 단위로 의미 있게 변하지 않는다 — 매일 2000행 파티션을
+      # 새로 쓰면 비용만 늘고 정보는 안 는다. 선언은 원래부터 주간이었다.
+      universe:
+        interval_days: 7
+      daily_bars:
+        interval_days: 1
+      exits:
+        interval_days: 1
+  market_data:
+    # 한 요청에 넣을 종목 수(요청 수가 아니라 **한 요청의 크기**다). URL 길이가
+    # 안전한 값에서 잡았다.
+    #
+    # Alpaca 분당 한도는 확인됐다(2026-07-20): Basic 무료 플랜 **200 req/분**,
+    # 초과 시 429. 우리 최악 피크는 일봉 최초 백필의 ~75~88/분이라 2.3배 여유가
+    # 있고, 잡이 한 틱 안에서 순차로 돌아 겹치지도 않는다. 그래서 레이트
+    # 리미터를 넣지 않았다 — 안 터지는 것에 방어를 붙이면 그게 유령이다.
+    # ⚠️ 인트라데이 다회 사이클(로드맵 R3)이나 잡 병렬화를 하면 이 여유가
+    # 사라진다. 그때 한도를 먼저 볼 것.
+    symbols_per_request: 200
+    # 봉이 없는 종목을 처음 볼 때 소급해 받는 달력일 수. 스크리닝 랭킹의
+    # 가장 긴 창이 52주(high_252_ratio)라 그보다 넉넉해야 한다 — 260 거래일은
+    # 달력으로 1년이 조금 넘으므로 여유를 둔 값이다.
+    history_days: 400
   budget:
     daily_llm_usd: 3.0
-phase_2:
-  accounts: 5
-  news_interval_minutes: 5
-  strategist_interval_minutes: 10
-  add_job_run_audit: true
-  add_prompt_and_model_versions: true
+  insider:
+    # 내부자의 재량 거래가 07 게이트에서 갖는 표의 값. 방향만 있고 크기가 없는
+    # 이유는 정직함이다 — "얼마부터 큰 거래인가"를 재본 데이터가 우리에게 없고,
+    # 실측 없는 정밀도는 정밀도가 아니다.
+    #
+    # 매수가 매도보다 강한 근거: 내부자가 파는 이유는 분산·세금·주택 구입 등
+    # 여러 가지지만, 자기 돈으로 시장에서 사는 이유는 사실상 하나다.
+    buy_score: 0.80
+    sell_score: 0.30

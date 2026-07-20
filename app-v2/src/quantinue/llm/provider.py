@@ -52,6 +52,11 @@ class AnalysisResult(BaseModel):
     score: float = Field(ge=0, le=1)
     label: str
     reason: str
+    # 전략 태스크만 채우는 판단 서사. None 기본값이 설계다 — 서사는 부가물이라
+    # 모델이 빼먹어도 분석이 죽으면 안 되고(구조화 출력 실패 = 종목 skip의
+    # 전례), 서사가 없는 태스크(공시·뉴스·크리틱)는 애초에 만들지 않는다.
+    bull_case: str | None = None
+    key_risk: str | None = None
     metadata: AnalysisMetadata
 
 
@@ -65,11 +70,42 @@ class ModelOutput(BaseModel):
     reason: str
 
 
+class StrategyModelOutput(ModelOutput):
+    """The strategy task's extended schema: the judgement plus its narrative.
+
+    전략 태스크에만 이 스키마를 쓴다. ModelOutput에 필드를 더하면 크리틱·공시
+    채점까지 다섯 태스크 전부가 서사 필드를 보게 되는데, 그건 관계없는 콜의
+    토큰을 낭비하고 구조화 출력 실패 표면만 넓힌다. 길이 상한은 스키마가
+    강제한다 — 프롬프트의 부탁만으로는 장문이 온다(max_tokens 512 실측 근거).
+    """
+
+    bull_case: str = Field(default="", max_length=200)
+    key_risk: str = Field(default="", max_length=200)
+
+
+def _output_type_for(task: AnalysisTask) -> type[ModelOutput]:
+    """Return the structured-output schema this task is allowed to fill."""
+    return StrategyModelOutput if task is AnalysisTask.STRATEGY else ModelOutput
+
+
+def _narrative(field: str) -> str | None:
+    """Map an absent narrative to None so the ledger stays NULL, not ""."""
+    return field.strip() or None
+
+
 class LlmAnalyzer(Protocol):
     """Narrow analysis capability used by LLM-backed roles."""
 
-    async def analyze(self, task: AnalysisTask, prompt: str) -> AnalysisResult:
-        """Return a schema-validated analysis with lineage metadata."""
+    async def analyze(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> AnalysisResult:
+        """Return a schema-validated analysis with lineage metadata.
+
+        ``profile``은 판단을 내리는 성향이다. 기본값이 None인 이유는 성향이
+        없는 태스크(공시 요약·뉴스 채점)가 대부분이기 때문이고, 성향별 프롬프트가
+        없는 태스크에서는 무시된다 — 어느 파일이 실제로 쓰였는지는
+        ``SystemPrompt.variant``가 기록한다.
+        """
         ...
 
 
@@ -92,9 +128,11 @@ class DeterministicAnalyzer:
         """Configure the model identifier recorded in result lineage."""
         self._model_name = model_name
 
-    async def analyze(self, task: AnalysisTask, prompt: str) -> AnalysisResult:
+    async def analyze(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> AnalysisResult:
         """Map each task to a deterministic, fully traced result."""
-        system_prompt = load_system_prompt(task.value)
+        system_prompt = load_system_prompt(task.value, profile=profile)
         metadata = _metadata(self._model_name, ModelProvider.MOCK, system_prompt, prompt)
         match task:
             case AnalysisTask.DISCLOSURE:
@@ -106,7 +144,14 @@ class DeterministicAnalyzer:
                     score=0.74, label="positive", reason="AI 수요 관련 긍정 기사 흐름"
                 )
             case AnalysisTask.STRATEGY:
-                output = ModelOutput(score=0.76, label="buy", reason="기술·공시·뉴스 합의")
+                # mock도 서사를 채운다 — 배선이 mock 스모크에서 이미 검증되게.
+                output = StrategyModelOutput(
+                    score=0.76,
+                    label="buy",
+                    reason="기술·공시·뉴스 합의",
+                    bull_case="상대강도와 거래량이 돌파를 확인",
+                    key_risk="시장 국면 반전 시 모멘텀 소멸",
+                )
             case AnalysisTask.CRITIC:
                 output = ModelOutput(
                     score=0.82, label="approved", reason="강한 반증과 하드 블로커 없음"
@@ -121,6 +166,12 @@ class DeterministicAnalyzer:
             score=output.score,
             label=output.label,
             reason=output.reason,
+            bull_case=_narrative(output.bull_case)
+            if isinstance(output, StrategyModelOutput)
+            else None,
+            key_risk=_narrative(output.key_risk)
+            if isinstance(output, StrategyModelOutput)
+            else None,
             metadata=metadata,
         )
 
@@ -141,12 +192,14 @@ class PydanticAiAnalyzer:
         self._retries = retries
         self._provider = provider
 
-    async def analyze(self, task: AnalysisTask, prompt: str) -> AnalysisResult:
+    async def analyze(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> AnalysisResult:
         """Run one schema-constrained call with external text isolated as data."""
-        system_prompt = load_system_prompt(task.value)
+        system_prompt = load_system_prompt(task.value, profile=profile)
         agent = Agent(
             self._model,
-            output_type=ModelOutput,
+            output_type=_output_type_for(task),
             instructions=system_prompt.content,
             retries=self._retries,
         )
@@ -159,10 +212,17 @@ class PydanticAiAnalyzer:
                     reason="model transport unavailable",
                 ) from error
             raise
+        output = result.output
         return AnalysisResult(
-            score=result.output.score,
-            label=result.output.label,
-            reason=result.output.reason,
+            score=output.score,
+            label=output.label,
+            reason=output.reason,
+            bull_case=_narrative(output.bull_case)
+            if isinstance(output, StrategyModelOutput)
+            else None,
+            key_risk=_narrative(output.key_risk)
+            if isinstance(output, StrategyModelOutput)
+            else None,
             metadata=_metadata(self._model_name, self._provider, system_prompt, prompt),
         )
 
@@ -216,7 +276,7 @@ def build_llm_analyzer(settings: Settings, openai_client: AsyncOpenAI | None = N
                 max_retries=0,
             )
             model_settings = OpenAIChatModelSettings(
-                max_tokens=256,
+                max_tokens=settings.llm_max_output_tokens,
                 temperature=0,
                 parallel_tool_calls=False,
                 openai_reasoning_effort="none",
@@ -234,7 +294,13 @@ def build_llm_analyzer(settings: Settings, openai_client: AsyncOpenAI | None = N
                 ),
                 settings=model_settings,
             )
-            return PydanticAiAnalyzer(model, model_name, 0, provider)
+            # 재시도 예산은 openai 경로와 같이 config 소유다. 여기 0이 굳어
+            # 있어서, 모델이 구조화 출력을 **한 번** 놓친 순간 그 성향의 남은
+            # 종목이 전부 날아갔다(2026-07-20 실행: conservative 22종목).
+            # 로컬이라 재시도가 공짜에 가깝다는 점에서도 0을 고집할 이유가 없다.
+            return PydanticAiAnalyzer(
+                model, model_name, settings.llm_max_retries, provider
+            )
         case unreachable:
             assert_never(unreachable)
     return PydanticAiAnalyzer(

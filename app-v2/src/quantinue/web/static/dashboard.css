@@ -352,3 +352,57 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; }
 }
+
+/* Phase 5 — 잡 기반 관제실. 구 런 화면과 같은 토큰을 쓴다: 화면이 둘이어도
+   시각 언어가 갈리면 같은 시스템으로 안 읽힌다. */
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+
+.job-chain-panel, .allocation-panel, .equity-panel, .judgement-panel {
+  padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-panel, 12px); background: var(--panel, transparent);
+}
+.chain-tally { display: flex; gap: 8px; flex-wrap: wrap; }
+.chain-count { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-variant-numeric: tabular-nums; }
+.chain-failed { color: var(--danger, #b4232a); border-color: currentColor; }
+.chain-running { color: var(--sub); }
+
+.job-chain-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
+.job-chain-item { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); border-left-width: 3px; }
+/* 왼쪽 테두리 하나로 상태를 읽게 한다 — 체인이 길어지면 배지를 일일이 읽지 않는다. */
+.job-succeeded { border-left-color: var(--ok, #2f7d5b); }
+.job-failed { border-left-color: var(--danger, #b4232a); }
+.job-running { border-left-color: var(--sub); }
+.job-chain-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.job-name { font-weight: 700; }
+.job-status { font-size: 12px; color: var(--sub); text-transform: uppercase; letter-spacing: .04em; }
+.job-duration { margin-left: auto; font-variant-numeric: tabular-nums; }
+.job-detail { margin: 6px 0 0; color: var(--sub); font-size: 13px; overflow-wrap: anywhere; }
+
+.skip-reason-grid { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0; }
+.skip-reason { display: flex; gap: 8px; align-items: baseline; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; }
+.skip-reason-name { font-size: 13px; }
+.skip-reason-count { font-variant-numeric: tabular-nums; font-weight: 700; }
+
+.equity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-top: 16px; }
+.equity-card { padding: 12px; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.equity-card h3 { margin: 0 0 8px; font-size: 14px; }
+.sparkline { display: block; color: var(--accent, currentColor); }
+.equity-facts { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 8px 0 0; font-size: 13px; }
+.equity-facts dt { color: var(--sub); }
+.equity-facts dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+.profile-block { margin-top: 16px; }
+.profile-block h3 { display: flex; gap: 10px; align-items: baseline; margin: 0 0 8px; font-size: 14px; text-transform: capitalize; }
+.judgement-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.judgement-item { padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius-control); }
+.judgement-approved { border-color: var(--ok, #2f7d5b); }
+.judgement-head { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+.judgement-ticker { font-weight: 700; }
+.judgement-side { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.judgement-verdict { margin-left: auto; font-size: 12px; }
+.judgement-summary { margin: 6px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+.judgement-objection { margin: 4px 0 0; color: var(--sub); font-size: 13px; overflow-wrap: anywhere; }
+.slot-nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.slot-link { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-variant-numeric: tabular-nums; text-decoration: none; color: var(--sub); }
+.slot-current { color: var(--ink); border-color: currentColor; font-weight: 700; }
+.judgement-bull { margin: 4px 0 0; font-size: 13px; color: var(--ok, #2f7d5b); overflow-wrap: anywhere; }
+.judgement-risk { margin: 2px 0 0; font-size: 13px; color: var(--danger, #b4232a); overflow-wrap: anywhere; }

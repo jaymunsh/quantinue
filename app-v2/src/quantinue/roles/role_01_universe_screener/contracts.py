@@ -1,6 +1,7 @@
 """Immutable input and output contracts for role 01."""
 
 from datetime import date, timedelta
+from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_core import PydanticCustomError
@@ -71,7 +72,14 @@ class UniverseMember(ContractModel):
     as_of_date: date
     ticker: str = Field(min_length=1, max_length=12)
     company_name: str = Field(min_length=1)
-    market_cap: int = Field(gt=0)
+    # ge=0인 이유: 상장폐지된 보유를 이월할 때 마지막 관측 시총이 없으면 0이
+    # 된다. 시총 0인 상장 종목은 데이터 오류지만, 시총 0인 이월분은 "더 이상
+    # 시장이 값을 매기지 않는다"는 사실 그대로다.
+    market_cap: int = Field(ge=0)
+    # 이 행이 어디서 왔는지 — 상장 피드인가, 우리가 들고 있어서 이월했는가.
+    # 라벨 없이 union만 하면 "왜 상장 피드에 없는 종목이 유니버스에 있나"에
+    # 답할 수 없고, 그 자체가 다음 세대의 유령이 된다.
+    listing_status: Literal["listed", "held_delisted"] = "listed"
     evidence_ids: tuple[str, ...] = Field(min_length=1)
 
 
@@ -80,4 +88,6 @@ class UniverseScreenerOutput(ContractModel):
 
     run_id: str = Field(min_length=1)
     generated_at: AwareDateTime
-    members: tuple[UniverseMember, ...] = Field(max_length=2000)
+    # 상한이 universe_size(2000)와 같으면 상장폐지 보유 이월분이 계약 위반으로
+    # 튄다 — 이월분은 캡 **밖에서** 더해지기 때문이다. 여유를 준다.
+    members: tuple[UniverseMember, ...] = Field(max_length=2500)
