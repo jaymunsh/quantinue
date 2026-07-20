@@ -1,26 +1,63 @@
-{% extends "base.html" %}
-{% block description %}Quantinue 로그인{% endblock %}
-{% block title %}Quantinue 로그인{% endblock %}
-{% block heading %}로그인{% endblock %}
-{% block main %}
-<section class="login-panel" aria-labelledby="login-title">
-  <h2 id="login-title">계정으로 접속</h2>
-  {% if error %}
-  <p class="login-error" role="alert">{{ error }}</p>
-  {% endif %}
-  <form method="post" action="/login" class="login-form">
-    <div>
-      <label for="login_id">아이디</label>
-      <input id="login_id" name="login_id" type="text" autocomplete="username" required autofocus>
-    </div>
-    <div>
-      <label for="password">비밀번호</label>
-      <input id="password" name="password" type="password" autocomplete="current-password" required>
-    </div>
-    <button type="submit">로그인</button>
-  </form>
-  {# 셀프 가입이 없다는 확정 결정을 화면이 직접 말한다. 가입 링크가 그냥
-     없으면 사용자는 "못 찾은 것"으로 읽고 관리자에게 묻지 않는다. #}
-  <p class="login-note">계정은 관리자가 발급합니다.</p>
-</section>
-{% endblock %}
+{# 로그인은 공통 셸(base.html)을 쓰지 않는다. 상단바에 로그아웃·모드 칩이
+   앉을 자리가 없고, 시안의 2단 구성이 화면 전체를 소유한다. #}
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Quantinue 로그인">
+  <title>로그인 · Quantinue</title>
+  <link rel="icon" href="/static/quantinue-mark.png">
+  <style>{{ dashboard_css | safe }}</style>
+</head>
+<body>
+  <main class="login-page">
+    <section class="login-story">
+      <span class="brand">
+        <img src="/static/quantinue-mark.png" alt="">
+        <span>Quantinue<small>FINANCIAL AUTOMATION</small></span>
+      </span>
+      <h1>운용을<br>명확하게.</h1>
+      <p>전략은 자동으로. 판단은 투명하게. 모든 매수·매도에 근거가 남습니다.</p>
+      {# 시안의 "AA 보안 인증 / 24/7 운영 모니터링"은 뺐다 — 우리는 인증이
+         없고 24/7로 돌지도 않는다(D3 일 1회 · D4 정규장 전용). 대신 원장이
+         실제로 답할 수 있는 세 가지를 적는다. #}
+      <div class="login-story__meta">
+        <div><strong>12</strong><span>매일 도는 작업</span></div>
+        <div><strong>2</strong><span>투자 성향</span></div>
+        <div><strong>0</strong><span>사람 개입</span></div>
+      </div>
+    </section>
+
+    <section class="login-card-wrap">
+      <form class="login-card" method="post" action="/login">
+        <span class="brand">
+          <img src="/static/quantinue-mark.png" alt="">
+          <span>Quantinue<small>FINANCIAL AUTOMATION</small></span>
+        </span>
+        <h2>계정으로 접속</h2>
+        <p>관리자에게 받은 아이디로 로그인하세요.</p>
+        {% if error %}
+        {# 실패 화면은 제출된 아이디를 되돌려 적지 않는다 — 공용 화면에서
+           그 한 줄이 곧 "이 아이디를 시도했다"는 공개다. #}
+        <p class="login-error" role="alert">{{ error }}</p>
+        {% endif %}
+        <div class="field">
+          <label for="login_id">아이디</label>
+          <input id="login_id" name="login_id" type="text" autocomplete="username"
+                 placeholder="예: user1" required autofocus>
+        </div>
+        <div class="field">
+          <label for="password">비밀번호</label>
+          <input id="password" name="password" type="password"
+                 autocomplete="current-password" placeholder="비밀번호를 입력하세요" required>
+        </div>
+        <button class="button button--primary login-submit" type="submit">로그인</button>
+        {# 셀프 가입이 없다는 확정 결정을 화면이 직접 말한다. 가입 링크가 그냥
+           없으면 사용자는 "못 찾은 것"으로 읽고 관리자에게 묻지 않는다. #}
+        <p class="login-footnote">계정은 관리자가 발급합니다.</p>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

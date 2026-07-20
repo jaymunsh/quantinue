@@ -1,22 +1,31 @@
 {% extends "base.html" %}
 {% block description %}내 계좌{% endblock %}
-{% block title %}Quantinue 내 계좌{% endblock %}
+{% block title %}내 계좌 · Quantinue{% endblock %}
 {% block heading %}내 계좌{% endblock %}
 {% block main %}
-<section class="account-panel" aria-labelledby="account-title">
-  <div class="section-heading compact-heading">
-    <div>
-      <p class="section-label">계좌</p>
-      <h2 id="account-title">{{ account.broker_account_id }}</h2>
-    </div>
-    <p>
-      성향 {% if account.inv_type == 'aggressive' %}공격형{% elif account.inv_type == 'conservative' %}안전형{% else %}미지정{% endif %}
-      · 상태 {{ account.status }}
-    </p>
-  </div>
-  {# 자산·수익률·곡선·보유는 W2-1이 붙인다. 지금 자리만 잡아두고 숫자를
-     비워두는 대신, 아직 없다는 것을 화면이 말하게 한다 — 빈 0원은 "돈이
-     없다"로 읽히고 그건 거짓이다. #}
-  <p class="empty-state">자산·수익률·보유 종목은 다음 단계에서 표시됩니다.</p>
+<section class="panel account-panel" aria-labelledby="account-title">
+  <p class="eyebrow">Account</p>
+  <h2 id="account-title" class="account-id">{{ account.broker_account_id }}</h2>
+  <ul class="account-facts">
+    {# 성향과 상태를 색으로만 말하지 않고 글자로도 적는다 — 색만으로 뜻을
+       전하면 못 읽는 사람이 생기고, 그건 화면이 정보를 감춘 것이다. #}
+    {% if account.inv_type == 'aggressive' %}
+    <li class="badge badge--warning">공격형</li>
+    {% elif account.inv_type == 'conservative' %}
+    <li class="badge badge--info">안전형</li>
+    {% else %}
+    <li class="badge">성향 미지정</li>
+    {% endif %}
+    {% if account.status == 'active' %}
+    <li class="badge badge--success">운용 중</li>
+    {% elif account.status == 'paused' %}
+    <li class="badge badge--warning">일시 정지</li>
+    {% else %}
+    <li class="badge badge--danger">종료</li>
+    {% endif %}
+  </ul>
+  {# 자산·수익률·곡선·보유는 W2-1이 붙인다. 숫자 자리에 0을 그려두지 않는
+     이유는 "돈이 없다"로 읽히기 때문이다 — 아직 없는 것은 없다고 적는다. #}
+  <p class="account-pending">총자산·수익률·계좌 곡선·보유 종목은 다음 단계에서 표시됩니다.</p>
 </section>
 {% endblock %}

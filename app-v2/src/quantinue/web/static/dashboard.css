@@ -1,27 +1,124 @@
+/* Quantinue 디자인 시스템 — 2026-07-20 도입.
+ *
+ * 팔레트·타이포·컴포넌트는 문성혁이 외부에서 잡은 시안(brand-spec.md ·
+ * DESIGN.md)을 그대로 옮긴 것이다. 시안이 함께 들고 온 화면 문구와 숫자는
+ * 채택하지 않았다 — 암호화폐·원화·"24/7 모니터링"·계정 1,284 같은 것들이
+ * 우리 원장에 없는 사실이라서다(결함 15·16이 잡았던 바로 그 형태).
+ *
+ * 폰트는 CDN이 아니라 /static/fonts에 있다. 이 앱은 인터넷 없이도 떠야 한다.
+ * 라틴 서브셋만 받았고 한글은 시스템 폰트가 받는다.
+ */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/static/fonts/manrope-a96cafd6.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/static/fonts/manrope-a96cafd6.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/static/fonts/manrope-a96cafd6.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/static/fonts/manrope-a96cafd6.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/static/fonts/plexmono-bc87d8e0.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/static/fonts/plexmono-a80b2cab.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'IBM Plex Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/static/fonts/plexmono-2137a53a.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 :root {
-  --bg: #f6f8fa;
-  --card: #ffffff;
-  --white: #ffffff;
-  --ink: #1f2328;
-  --sub: #57606a;
-  --line: #d0d7de;
-  --blue: #0969da;
-  --blue-strong: #0550ae;
-  --blue-bg: #ddf4ff;
-  --green: #1a7f37;
-  --green-bg: #dafbe1;
-  --amber: #9a6700;
-  --amber-bg: #fff8c5;
-  --red: #cf222e;
-  --red-bg: #ffebe9;
-  --slate-bg: #eaeef2;
-  --button-hover: #033d8b;
-  --blue-depth: #0b3a6b;
-  --blue-soft-ink: #dbe9ff;
-  --focus-input: rgb(9 105 218 / .25);
-  --focus-button: rgb(9 105 218 / .28);
-  --radius-card: 12px;
-  --radius-control: 8px;
+  /* ── 시안 토큰 (정본) ─────────────────────────────────── */
+  --bg: oklch(97% .008 250);
+  --surface: oklch(100% 0 0);
+  --elevated: oklch(100% 0 0);
+  --fg: oklch(23% .035 250);
+  --muted: oklch(51% .035 250);
+  --border: oklch(89% .02 250);
+  --border-strong: oklch(81% .035 250);
+  --accent: oklch(51% .19 262);
+  --accent-ink: oklch(35% .17 262);
+  --accent-soft: oklch(94% .035 262);
+  --success: oklch(48% .16 150);
+  --success-soft: oklch(94% .04 150);
+  --warning: oklch(48% .14 80);
+  --warning-soft: oklch(95% .045 80);
+  --danger: oklch(52% .18 25);
+  --danger-soft: oklch(95% .035 25);
+  --navy: oklch(22% .045 258);
+  --navy-2: oklch(27% .055 258);
+  --white: oklch(100% 0 0);
+  --font-ui: "Manrope", "Pretendard Variable", "Apple SD Gothic Neo",
+    "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --r-card: 16px;
+  --r-control: 10px;
+  --shadow: 0 14px 32px oklch(25% .04 250 / .12);
+
+  /* ── 구 토큰 별칭 ─────────────────────────────────────────
+   * 관제실(pipeline.html) 400줄이 이 이름들을 쓴다. 값을 위 정본으로
+   * 넘겨두면 마크업을 한 줄도 안 고치고 화면 전체가 같이 움직인다.
+   * 관제실을 새 컴포넌트로 옮길 때 이 블록이 사라진다.
+   */
+  --card: var(--surface);
+  --ink: var(--fg);
+  --sub: var(--muted);
+  --line: var(--border);
+  --blue: var(--accent);
+  --blue-strong: var(--accent-ink);
+  --blue-bg: var(--accent-soft);
+  --green: var(--success);
+  --green-bg: var(--success-soft);
+  --amber: var(--warning);
+  --amber-bg: var(--warning-soft);
+  --red: var(--danger);
+  --red-bg: var(--danger-soft);
+  --slate-bg: oklch(94% .012 250);
+  --button-hover: var(--accent-ink);
+  --blue-depth: var(--navy);
+  --blue-soft-ink: oklch(86% .03 250);
+  --focus-input: oklch(65% .17 262 / .42);
+  --focus-button: oklch(65% .17 262 / .42);
+  --radius-card: var(--r-card);
+  --radius-control: var(--r-control);
 }
 
 * { box-sizing: border-box; }
@@ -32,7 +129,7 @@ body {
   margin: 0;
   color: var(--ink);
   background: var(--bg);
-  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  font: 15px/1.55 var(--font-ui);
   word-break: keep-all;
 }
 
@@ -76,7 +173,7 @@ h2 { margin-bottom: 8px; font-size: 22px; line-height: 1.35; }
 h3 { margin-bottom: 4px; font-size: 17px; }
 
 .mode-list { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.mode-list span { padding: 4px 8px; color: var(--sub); background: var(--card); border: 1px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 600; }
+.mode-list span { padding: 5px 10px; color: var(--sub); background: var(--card); border: 1px solid var(--line); border-radius: 999px; font-size: 13px; font-weight: 600; }
 
 .layout { display: grid; gap: 20px; width: 100%; max-width: 1180px; min-width: 0; margin: 0 auto; padding: 0 24px 64px; }
 .layout > * { min-width: 0; max-width: 100%; }
@@ -425,3 +522,86 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
 .login-form button { width: 100%; }
 .login-error { padding: 10px 12px; color: var(--red); background: var(--red-bg); border: 1px solid var(--red); border-radius: var(--radius-control); font-size: 14px; font-weight: 600; }
 .login-note { margin: 16px 0 0; color: var(--sub); font-size: 13px; text-align: center; }
+
+/* ═══ 로그인 ═══════════════════════════════════════════════════
+ * 시안의 2단 구성(왼쪽 네이비 서사 / 오른쪽 카드)을 그대로 쓴다.
+ * 서사 쪽 숫자만 시안과 다르다 — 시안은 "01 모의원장 / AA 보안인증 /
+ * 24/7 운영 모니터링"이었는데, 우리는 보안 인증이 없고 24/7로 돌지도
+ * 않는다(D3 일 1회 · D4 정규장 전용). 지어낸 자격을 로그인 화면에
+ * 걸어두면 그게 첫 거짓말이 된다. 원장이 답할 수 있는 것만 적는다.
+ */
+.login-page { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(420px, .9fr); min-height: 100dvh; background: var(--navy); }
+.login-story { display: grid; align-content: center; padding: clamp(32px, 8vw, 120px); color: var(--white); background: linear-gradient(145deg, var(--navy), var(--navy-2)); }
+.login-story h1 { max-width: 9ch; margin: 28px 0 18px; font-size: clamp(2.5rem, 6vw, 5rem); line-height: 1.03; letter-spacing: -.06em; }
+.login-story p { max-width: 38ch; margin: 0; color: oklch(78% .03 250); font-size: 16px; }
+.login-story__meta { display: flex; flex-wrap: wrap; gap: 26px; margin-top: 46px; }
+.login-story__meta strong { display: block; color: var(--white); font: 500 1.1rem var(--font-mono); }
+.login-story__meta span { display: block; margin-top: 4px; color: oklch(70% .03 250); font-size: 11px; }
+
+.login-card-wrap { display: grid; place-items: center; min-height: 100dvh; padding: 32px; background: var(--bg); }
+.login-card { width: min(100%, 420px); padding: 34px; background: var(--surface); border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow); }
+.login-card h2 { margin: 26px 0 8px; font-size: 1.65rem; letter-spacing: -.03em; }
+.login-card > p { margin: 0 0 26px; color: var(--muted); font-size: 13px; }
+.field { display: grid; gap: 7px; margin-top: 16px; }
+.field label { margin: 0; color: var(--fg); font-size: 12px; font-weight: 600; }
+.field input { width: 100%; min-height: 46px; padding: 10px 12px; color: var(--fg); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-control); }
+/* 티커 입력용 전역 규칙(input { text-transform: uppercase })이 아이디까지
+   대문자로 보이게 만든다. 값은 안 바뀌지만 입력한 것과 다르게 보인다. */
+.field input { text-transform: none; }
+.field input::placeholder { color: var(--muted); }
+.login-submit { width: 100%; min-height: 46px; margin-top: 22px; }
+.login-footnote { margin: 18px 0 0; color: var(--muted); font-size: 11px; text-align: center; }
+/* 실패는 네 갈래가 한 문장으로 끝난다. 그래서 강조는 색과 굵기로만 주고
+   문구 자체는 login_routes.REJECTION_MESSAGE 하나에서 온다. */
+.login-error { margin: 22px 0 0; padding: 11px 13px; color: var(--danger); background: var(--danger-soft); border-left: 3px solid var(--danger); border-radius: var(--r-control); font-size: 13px; font-weight: 600; }
+
+/* 브랜드 락업 — 시안의 마크 + 워드마크 + 캡션 3단. */
+.brand { display: inline-flex; align-items: center; gap: 10px; color: var(--fg); font-weight: 700; letter-spacing: -.02em; text-decoration: none; }
+.brand img { width: 30px; height: 30px; border-radius: 8px; object-fit: cover; }
+.brand small { display: block; margin-top: 2px; color: var(--muted); font: 500 10px/1 var(--font-mono); letter-spacing: .06em; }
+.login-story .brand { color: var(--white); }
+.login-story .brand small { color: oklch(72% .03 250); }
+
+@media (max-width: 860px) {
+  .login-page { display: block; }
+  .login-story { min-height: 42dvh; padding: 32px 24px; }
+  .login-story h1 { margin: 18px 0 12px; font-size: clamp(2.25rem, 12vw, 4rem); }
+  .login-story__meta { gap: 18px; margin-top: 28px; }
+  .login-card-wrap { min-height: 0; padding: 24px 16px 40px; }
+  .login-card { padding: 24px 20px; }
+}
+
+/* ═══ 버튼 (시안) ══════════════════════════════════════════════
+ * 전역 button 규칙은 관제실이 쓰고 있어 그대로 두고, 시안 컴포넌트는
+ * .button 클래스로 따로 세운다. 두 체계가 겹치지 않게 클래스가 이긴다.
+ */
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 14px; color: var(--fg); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-control); font-size: 13px; font-weight: 600; cursor: pointer; transition: transform 120ms ease-out, background 120ms ease-out, border-color 120ms ease-out; }
+.button:hover { color: var(--fg); background: var(--bg); border-color: var(--fg); }
+.button:active { transform: translateY(1px); }
+.button--primary { color: var(--white); background: var(--accent); border-color: var(--accent); box-shadow: 0 6px 14px oklch(51% .19 262 / .2); }
+.button--primary:hover { color: var(--white); background: var(--accent-ink); border-color: var(--accent-ink); }
+
+/* 시안 §6: 실제 상태 변화에만 모션을 쓰고, 줄여 달라면 없앤다. */
+@media (prefers-reduced-motion: reduce) {
+  .button, .nav-link { transition: none; }
+  .button:active { transform: none; }
+}
+
+/* ═══ 시안 공통 컴포넌트 ════════════════════════════════════════
+ * 시안의 panel / metric / badge. W2·W3에서 계좌 홈·계좌 총람이
+ * 이 위에 올라간다. 지금 쓰는 것은 panel과 badge뿐이다 — metric은
+ * 채울 숫자가 아직 원장에 연결되지 않아 만들지 않는다(유령 금지).
+ */
+.panel { min-width: 0; padding: 22px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); }
+.eyebrow { margin: 0 0 8px; color: var(--accent-ink); font: 600 11px/1.3 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; }
+.badge { display: inline-flex; align-items: center; min-height: 25px; padding: 4px 10px; border-radius: 999px; font: 600 11px var(--font-mono); letter-spacing: .02em; }
+.badge--success { color: var(--success); background: var(--success-soft); }
+.badge--warning { color: var(--warning); background: var(--warning-soft); }
+.badge--danger { color: var(--danger); background: var(--danger-soft); }
+.badge--info { color: var(--accent-ink); background: var(--accent-soft); }
+
+/* ═══ 내 계좌 ══════════════════════════════════════════════════ */
+.account-panel { padding: 26px 28px; }
+.account-id { margin: 0; font: 600 clamp(1.6rem, 3vw, 2.1rem)/1.1 var(--font-mono); letter-spacing: -.04em; }
+.account-facts { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.account-pending { margin: 22px 0 0; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: 13px; }
