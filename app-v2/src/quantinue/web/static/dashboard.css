@@ -667,17 +667,20 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
    원장은 UTC로 적히므로, 이 셋의 관계가 곧 "언제 무슨 일이 벌어지나"다.
    숫자가 매초 바뀌므로 tabular-nums로 폭을 고정한다(안 하면 흔들린다). */
 .clock { display: flex; align-items: stretch; gap: 0; margin: 0; padding: 0; border: 1px solid var(--border); border-radius: var(--r-control); overflow: hidden; background: var(--bg); }
-.clock__zone { display: grid; gap: 1px; padding: 6px 12px; border-right: 1px solid var(--border); }
+.clock__zone { display: grid; gap: 1px; padding: 5px 13px; border-right: 1px solid var(--border); text-align: left; }
 .clock__zone:last-child { border-right: 0; }
 .clock__zone dt { color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
-.clock__zone dd { margin: 0; color: var(--fg); font: 500 13px/1.1 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+.clock__zone dd { margin: 0; color: var(--fg); font: 500 14px/1.15 var(--font-mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
 /* 강조는 **뉴욕**이다. 이 시스템의 '오늘'을 정하는 시계가 그쪽이라서 —
    서울 시각은 운영자의 컴퓨터가 이미 말해주지만, 슬롯이 언제 바뀌는지는
    여기서만 읽을 수 있다. */
 .clock__zone--basis { background: var(--accent-soft); }
 .clock__zone--basis dt { color: var(--accent-ink); }
 .clock__zone--basis dd { color: var(--accent-ink); }
-.clock__slot { display: block; margin-top: 1px; font: 500 10.5px var(--font-mono); color: var(--accent-ink); opacity: .82; }
+/* 세 칸 모두 날짜를 단다. 뉴욕에만 붙이면 칸 높이가 달라져 줄이 어긋나
+   보이고, 서울·UTC의 날짜도 자정 근처에서는 실제로 다른 값이다. */
+.clock__date { font: 500 10px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: .01em; }
+.clock__zone--basis .clock__date { color: var(--accent-ink); opacity: .8; }
 .clock__note { font-weight: 500; letter-spacing: 0; text-transform: none; opacity: .72; }
 .top-actions .who { color: var(--muted); font-size: 13px; font-weight: 600; }
 .avatar { display: grid; flex: none; place-items: center; width: 34px; height: 34px; color: var(--accent-ink); background: var(--accent-soft); border-radius: 50%; font: 600 12px var(--font-mono); }
@@ -863,3 +866,38 @@ select:focus-visible { outline: 2px solid var(--focus-input); outline-offset: 1p
 .basis-steps strong { color: var(--accent-ink); font-weight: 700; }
 .basis-steps code { padding: 1px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; font: 500 12px var(--font-mono); }
 .basis-state { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+/* ═══ 계좌 개설 폼 ════════════════════════════════════════════
+   한 줄에 한 칸씩 늘어놓으면 여섯 칸이 긴 띠가 되어 무엇과 무엇이 한 벌인지
+   안 보인다. "계좌 하나에 로그인 하나"라는 문장 그대로 두 묶음으로 나눈다. */
+.account-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
+.field-group { margin: 0; padding: 16px 18px 6px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--bg); }
+.field-group legend { padding: 0 8px; margin-left: -4px; color: var(--fg); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
+.field { display: grid; gap: 5px; margin: 0 0 14px; }
+.field label { color: var(--fg); font-size: 12.5px; font-weight: 600; }
+.field input, .field select { width: 100%; }
+.field input { min-height: 38px; padding: 8px 12px; color: var(--fg); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-control); font: 500 13px var(--font-ui); text-transform: none; }
+.field input:focus-visible { outline: 2px solid var(--focus-input); outline-offset: 1px; border-color: var(--accent); }
+.field select { min-height: 38px; }
+.field small { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
+.account-form__submit { display: flex; align-items: center; gap: 12px; grid-column: 1 / -1; padding-top: 2px; }
+.account-form__submit button { min-height: 42px; padding: 10px 22px; font-size: 13.5px; }
+.account-form__submit span { color: var(--muted); font-size: 12px; }
+@media (max-width: 860px) {
+  .account-form__submit { flex-direction: column; align-items: stretch; }
+  .account-form__submit button { width: 100%; }
+}
+
+/* 패널 안의 보충 설명. 화면이 스스로 답해야 하는 것들("왜 13개인데 12개인가")을
+   적는 자리라, 본문보다 조용하되 읽히긴 해야 한다. */
+.panel-note { margin: 10px 0 0; padding: 10px 13px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: var(--r-control); font-size: 12.5px; line-height: 1.65; }
+.panel-note b { color: var(--fg); }
+.panel-note code { padding: 1px 5px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; font: 500 11.5px var(--font-mono); }
+
+/* ═══ 용어집 ══════════════════════════════════════════════════ */
+.glossary { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 12px; margin: 14px 0 0; }
+.glossary > div { padding: 13px 15px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-control); }
+.glossary dt { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; color: var(--fg); font-size: 13.5px; font-weight: 700; }
+.glossary__code { color: var(--muted); font: 500 11px var(--font-mono); font-weight: 500; }
+.glossary dd { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
+.glossary dd b { color: var(--fg); font-weight: 600; }

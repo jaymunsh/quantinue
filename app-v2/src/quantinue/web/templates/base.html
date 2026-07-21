@@ -37,15 +37,19 @@
                슬롯 날짜를 함께 붙여, 강조가 "중요한 도시"가 아니라
                "기계가 보는 시계"라는 뜻이 되게 한다. #}
             <div class="clock__zone clock__zone--basis">
-              <dt>뉴욕 <span class="clock__note">슬롯 기준</span></dt>
-              <dd data-clock="America/New_York">--:--:--<span class="clock__slot" data-clock-date="America/New_York">-------</span></dd>
+              <dt>뉴욕 <span class="clock__note">슬롯</span></dt>
+              <dd data-clock="America/New_York">--:--:--</dd>
+              <span class="clock__date" data-clock-date="America/New_York">----------</span>
             </div>
             <div class="clock__zone">
-              <dt>서울</dt><dd data-clock="Asia/Seoul">--:--:--</dd>
+              <dt>서울</dt>
+              <dd data-clock="Asia/Seoul">--:--:--</dd>
+              <span class="clock__date" data-clock-date="Asia/Seoul">----------</span>
             </div>
             <div class="clock__zone">
-              <dt>UTC <span class="clock__note">원장 기준</span></dt>
+              <dt>UTC <span class="clock__note">원장</span></dt>
               <dd data-clock="UTC">--:--:--</dd>
+              <span class="clock__date" data-clock-date="UTC">----------</span>
             </div>
           </dl>
           {% if current_user %}
@@ -80,14 +84,10 @@
       function paint() {
         var now = new Date();
         cells.forEach(function (cell) {
-          var stamp = now.toLocaleTimeString('ko-KR', {
+          cell.textContent = now.toLocaleTimeString('ko-KR', {
             timeZone: cell.dataset.clock, hour12: false,
             hour: '2-digit', minute: '2-digit', second: '2-digit'
           });
-          /* 날짜 자식이 있으면 시각만 갈아끼운다 — textContent로 통째로
-             덮으면 그 자식이 매초 지워진다. */
-          var child = cell.querySelector('[data-clock-date]');
-          if (child) { cell.firstChild.nodeValue = stamp; } else { cell.textContent = stamp; }
         });
         dates.forEach(function (cell) {
           /* en-CA가 YYYY-MM-DD를 준다 — 슬롯 날짜와 같은 표기다. */
