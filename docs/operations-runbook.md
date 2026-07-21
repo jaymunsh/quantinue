@@ -208,13 +208,20 @@ uv run ruff check src tests scripts      # 파이프(| tail) 걸지 말 것 — 
 멱등 가드가 옛 행을 지켜내 실패를 가린다):
 
 ```bash
+docker rm -f qn-itest 2>/dev/null
 docker run -d --name qn-itest -e POSTGRES_USER=quantinue -e POSTGRES_PASSWORD=quantinue \
-  -e POSTGRES_DB=quantinue -p 127.0.0.1:5480:5432 postgres:16
+  -e POSTGRES_DB=quantinue -p 127.0.0.1:5490:5432 postgres:16
+# ⚠️ 준비될 때까지 기다린다. 바로 스키마를 부으면 일부만 들어가고
+# 테스트가 error 몇 건으로 끝난다 — 실제로 그렇게 6건이 났다.
+until docker exec qn-itest pg_isready -U quantinue -q; do sleep 1; done
 docker exec -i qn-itest psql -q -U quantinue -d quantinue < db/schema.sql
-QUANTINUE_TEST_DATABASE_URL="postgresql+asyncpg://quantinue:quantinue@127.0.0.1:5480/quantinue" \
+QUANTINUE_TEST_DATABASE_URL="postgresql+asyncpg://quantinue:quantinue@127.0.0.1:5490/quantinue" \
   uv run pytest tests/integration -q -p no:unraisableexception
 docker rm -f qn-itest
 ```
+
+⚠️ 포트가 5480 → **5490**이다. 5480은 다른 작업자의 컨테이너가 점유하고
+있을 수 있다(2026-07-21 실제로 그랬다).
 
 ---
 

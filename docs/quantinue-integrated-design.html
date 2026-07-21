@@ -271,7 +271,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v6.1 · MVP-2</span>
+    <span class="rail-ver">v6.2 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
@@ -319,7 +319,7 @@
 
   <!-- ── 히어로 ── -->
   <header class="hero">
-    <div class="eyebrow">Quantinue MVP-2 · v6.1 · 2026-07-21</div>
+    <div class="eyebrow">Quantinue MVP-2 · v6.2 · 2026-07-21</div>
     <h1>매일 아침 스스로 도는<br><span class="hl">AI 모의 운용</span> 시스템</h1>
     <p class="lede">
       시세·공시·뉴스는 <b>실물 데이터</b>로 받고, 판단은 <b>LLM 두 성향</b>이 내리고,
@@ -345,7 +345,7 @@
       Quantinue는 <b>미국 주식 모의 운용을 무인으로 돌리는 시스템</b>이다. 매일 뉴욕 세션일에
       한 번, 시가총액 상위 2,000종목의 세계를 원장(PostgreSQL)에 담고 → 그 원장만 보고
       오늘 깊이 볼 종목 20여 개를 고르고 → LLM이 성향별로 판단하고 크리틱이 반박하고 →
-      살아남은 판단만 모의 계좌에서 사고판다. 결과는 화면 넷으로 지켜본다 — 관제실(<code>GET /admin</code>) · 계좌 관리(<code>/admin/accounts</code>) · 내 계좌(<code>/me</code>) · 로그인(<code>/login</code>). <code>GET /</code>는 역할별 갈림길이다.
+      살아남은 판단만 모의 계좌에서 사고판다. 결과는 화면 여섯으로 지켜본다 — 관제실(<code>GET /admin</code>) · 운영 기준(<code>/admin/schedule</code>) · 작동 로그(<code>/admin/logs</code>) · 계좌 관리(<code>/admin/accounts</code>) · 내 계좌(<code>/me</code>) · 로그인(<code>/login</code>). <code>GET /</code>는 역할별 갈림길이다.
     </p>
 
     <div class="mermaid">
@@ -1609,9 +1609,9 @@ erDiagram
   <!-- ═══════════════ 6. 관제실 ═══════════════ -->
   <section id="screens">
     <div class="sec-eyebrow">Control Room</div>
-    <h2>웹 — 화면 넷, 유저의 쓰기는 0 <span class="b b-new">v6.1 갱신</span></h2>
+    <h2>웹 — 화면 여섯, 유저의 쓰기는 0 <span class="b b-new">v6.2 갱신</span></h2>
     <p class="sec-intro">
-      화면은 넷이고 <code>/</code>는 역할별 갈림길이다(admin → <code>/admin</code>, user → <code>/me</code>,
+      화면은 여섯이고 <code>/</code>는 역할별 갈림길이다(admin → <code>/admin</code>, user → <code>/me</code>,
       익명 → <code>/login</code>). 가드는 라우트가 아니라 <b>미들웨어</b>에 있고, 구역 밖은 403이 아니라
       <b>404</b>다 — 경로의 존재 자체를 확인해 주지 않는다. 유저 role의 쓰기 엔드포인트는 0개이고
       이는 <code>test_route_audit.py</code>가 동적으로 강제한다.
@@ -1621,6 +1621,8 @@ erDiagram
       <tbody>
         <tr><td>로그인</td><td class="mono">/login</td><td>모두</td><td>세션 쿠키 발급. 셀프 가입 없음 — 계정은 관리자가 화면에서 만든다</td></tr>
         <tr><td>관제실</td><td class="mono">/admin</td><td>admin</td><td>잡 체인·슬롯·계좌 총람. 아래 네 질문에 답한다</td></tr>
+        <tr><td>운영 기준</td><td class="mono">/admin/schedule</td><td>admin</td><td>잡이 <b>언제·어떤 기준으로</b> 도는가 — 시계 기준 4단계(슬롯은 뉴욕 날짜, 주기는 경과일, 등록 순서=실행 순서, 러너는 60초 틱이되 잡은 하루 1회) + 잡 13종의 주기·마지막 성공·다음 예정 + <b>용어집</b>. 잡 목록은 러너에게 묻는다 — 화면이 자기 목록을 들면 등록이 갈리는 설치에서 실행과 다른 말을 한다</td></tr>
+        <tr><td>작동 로그</td><td class="mono">/admin/logs</td><td>admin</td><td>날짜별로 <b>돌았나·몇 번 돌았나·안내가 나갔나</b>. 10일씩 쪽 나누기. 재시도는 <code>tb_job_run.attempts</code>가 원장으로 답한다 — 그전까지 재시도는 성공 뒤에 숨었다</td></tr>
         <tr><td>계좌 관리</td><td class="mono">/admin/accounts</td><td>admin</td><td><b>이 앱의 쓰기 전부가 여기 있다</b> — 개설(유저 생성 포함)·성향 지정·정지, 그리고 관제실의 <b>잠금 해제</b> 버튼(running으로 굳은 슬롯을 푼다 — 잡을 실행하지 않고 잠금만 푼다)</td></tr>
         <tr><td>내 계좌</td><td class="mono">/me</td><td>user</td><td>총자산·수익률·보유·거래 타임라인(체결마다 판단·근거·반박)·리스크 상태. <b>원장 대조 테스트</b>가 화면 숫자와 원장의 일치를 강제한다(오차 0 실측)</td></tr>
       </tbody>
@@ -1915,7 +1917,16 @@ erDiagram
     <div class="twrap"><table>
       <thead><tr><th>버전</th><th>날짜</th><th>내용</th></tr></thead>
       <tbody>
-        <tr class="r-new"><td class="mono"><b>v6.1</b></td><td class="mono">2026-07-21</td>
+        <tr class="r-new"><td class="mono"><b>v6.2</b></td><td class="mono">2026-07-21 저녁</td>
+          <td><b>화면 넷 → 여섯.</b> 운영 기준(<code>/admin/schedule</code>)과 작동 로그
+          (<code>/admin/logs</code>) 신설 반영 — 전자는 "잡이 언제 도는가"의 화면 답이자
+          <b>용어집</b>(슬롯·잡·원장…10개)의 자리, 후자는 날짜별 실행 기록과 시도 횟수.
+          LLM 예산 배선(⑨) 완료로 <b>openai 전환</b>이 이뤄졌다(gpt-5.4-mini) — 모든 판단
+          콜이 <code>tb_llm_usage</code>를 통과하고 상한 초과 시 "안 사는" 쪽으로 멈춘다.
+          텔레그램 알림 4종(실패·일일 안내·방어선 발동·기동/굳음). 화면 시각은 KST,
+          상단바에 뉴욕·서울·UTC 실시간 시계. 곡선의 min/max 정규화 결함 수리
+          (−0.01%가 절벽으로 그려졌다).</td></tr>
+        <tr><td class="mono">v6.1</td><td class="mono">2026-07-21</td>
           <td><b>웹 완성·알림 반영.</b> 관제실 절을 "웹 — 화면 넷"으로 교체(로그인·<code>/admin</code>·
           계좌 관리·<code>/me</code>, 역할 갈림길, 관리자 쓰기 2종 — 계좌 CRUD·슬롯 잠금 해제).
           텔레그램 알림 절 신설(실패 즉시 + 일일 안내, "침묵이 신호" 논거). JOB 체인 12종 +
