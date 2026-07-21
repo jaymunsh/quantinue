@@ -69,7 +69,7 @@
 |---|---|---|
 | `mock` | `deterministic-mock-v1` | 테스트·오프라인. 고정값 — 판단이 가짜 |
 | `local` | `QUANTINUE_LOCAL_LLM_MODEL` (관측: `Qwen3.6-35B-A3B-OptiQ-4bit`, oMLX 127.0.0.1:8888) | 현 관측 운용. 비용 0 |
-| `openai` | `QUANTINUE_OPENAI_MODEL` (기본 `gpt-4o-mini`) | AWS 이전 시 강제 |
+| `openai` | `QUANTINUE_OPENAI_MODEL` (기본 `gpt-4o-mini` — **경량 최저가 모델이다. 추론모델 아님**) | AWS 이전 시 강제 |
 
 공통 설정: `QUANTINUE_LLM_TIMEOUT_SECONDS`(관측 90) ·
 `QUANTINUE_LLM_MAX_RETRIES`(1, 구조화 출력 재시도) ·
@@ -117,10 +117,14 @@
 
 하루 콜 수 ≈ STRATEGY 40~60 + CRITIC 수~수십 = **최대 ~100콜/일**.
 콜당 입력 수백~2천 토큰(시스템 프롬프트 포함) + 출력 ≤512 토큰이므로
-하루 총량은 **수십만 토큰 자릿수**다. mini급이면 하루 수 센트,
-추론 tier여도 `budget.daily_llm_usd=3.0` 안에 넉넉히 든다 —
+하루 총량은 **수십만 토큰 자릿수**다. 경량(gpt-4o-mini급)이면 하루 수 센트,
+추론 tier(o4-mini급)여도 하루 $0.5 미만 — `budget.daily_llm_usd=3.0` 안에
+넉넉히 든다. 요율 표와 크레딧($90/10일) 대비 실산은
+`aws-migration-review.md` §2가 정본이다.
 단 **요율은 전환 시점에 실제 가격표로 재확인**하고, 인트라데이(R3)로
 사이클이 곱해지는 순간 이 산수는 무효다. 그래서 예산 배선(§4)이 선행이다.
+비용이 제약이 아니므로 예산 배선의 실제 역할은 절약이 아니라
+**폭주 차단**(버그로 인한 무한 재시도·중복 호출)이다.
 
 ---
 
