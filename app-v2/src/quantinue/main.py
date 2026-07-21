@@ -175,8 +175,8 @@ def _mount_ops_log(
     """Mount the day-by-day operations log page."""
 
     @app.get("/admin/logs", response_class=HTMLResponse)
-    async def ops_log(request: Request) -> HTMLResponse:
-        log = OpsLogView() if reads is None else await build_ops_log(reads)
+    async def ops_log(request: Request, page: int = 1) -> HTMLResponse:
+        log = OpsLogView() if reads is None else await build_ops_log(reads, page=page)
         return templates.TemplateResponse(
             request=request,
             name="ops_log.html",

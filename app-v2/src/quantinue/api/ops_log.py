@@ -16,9 +16,12 @@ from pydantic import BaseModel, ConfigDict, Field
 if TYPE_CHECKING:
     from quantinue.db.control_room_reads import JobRunRecord
 
-# 한 화면에 펼치는 날 수. 표시용 창이라 config가 아니라 여기 산다 —
+# 한 쪽에 펼치는 날 수. 표시용 창이라 config가 아니라 여기 산다 —
 # 어떤 매매 결정에도 들어가지 않는다.
-DEFAULT_LOG_DAYS = 14
+DEFAULT_PER_PAGE = 10
+# 원장에서 가져올 슬롯의 상한. 하루 한 행씩 늘어 10년치라도 수천 행이므로
+# 전부 읽어 세는 편이 쪽수를 위해 따로 세는 것보다 단순하고 정직하다.
+_MAX_SLOTS = 3650
 
 # 일일 안내 잡의 원장 이름. 이 행의 성공이 곧 "그날 안내가 나갔다"다.
 _SUMMARY_JOB = "daily_summary"
@@ -66,11 +69,27 @@ class OpsLogSlotView(BaseModel):
 
 
 class OpsLogView(BaseModel):
-    """The whole log page, newest day first."""
+    """One page of the log, newest day first."""
 
     model_config = ConfigDict(frozen=True)
 
     slots: tuple[OpsLogSlotView, ...] = ()
+    # 쪽 나누기. "최근 며칠"이 아니라 **전부**를 보여주되 한 화면에 쏟지 않는다 —
+    # 며칠치인지가 화면에 따라 달라지면 "빠진 날이 있나"를 물을 수 없다.
+    page: int = Field(default=1, ge=1)
+    total_pages: int = Field(default=1, ge=1)
+    total_slots: int = Field(default=0, ge=0)
+    per_page: int = Field(default=DEFAULT_PER_PAGE, ge=1)
+
+    @property
+    def first_index(self) -> int:
+        """1-based index of this page's newest slot, for the header."""
+        return (self.page - 1) * self.per_page + 1
+
+    @property
+    def last_index(self) -> int:
+        """1-based index of this page's oldest slot."""
+        return self.first_index + len(self.slots) - 1
 
 
 def _job_view(record: JobRunRecord) -> OpsLogJobView:
@@ -105,9 +124,29 @@ def _slot_view(slot: date, records: tuple[JobRunRecord, ...]) -> OpsLogSlotView:
     )
 
 
-async def build_ops_log(reads: OpsLogReads, *, days: int = DEFAULT_LOG_DAYS) -> OpsLogView:
-    """Project the recent slots into the log, newest first."""
-    slots = await reads.recent_job_slots(limit=days)
+async def build_ops_log(
+    reads: OpsLogReads,
+    *,
+    page: int = 1,
+    per_page: int = DEFAULT_PER_PAGE,
+) -> OpsLogView:
+    """Project one page of slots into the log, newest first.
+
+    범위 밖 쪽수는 마지막 쪽으로 당긴다. URL을 손으로 고쳤을 때 빈 화면을
+    보여주면 "기록이 없다"로 읽히는데, 사실은 그 쪽이 없는 것뿐이다.
+
+    잡 상세는 **이 쪽의 날짜만** 읽는다 — 슬롯 목록은 한 번의 조회지만
+    상세는 날짜마다 한 번이라, 전부 읽으면 쪽 나누기가 의미를 잃는다.
+    """
+    all_slots = await reads.recent_job_slots(limit=_MAX_SLOTS)
+    total = len(all_slots)
+    total_pages = max(1, -(-total // per_page))
+    current = min(max(page, 1), total_pages)
+    window = all_slots[(current - 1) * per_page : current * per_page]
     return OpsLogView(
-        slots=tuple([_slot_view(slot, await reads.job_runs(slot)) for slot in slots])
+        slots=tuple([_slot_view(slot, await reads.job_runs(slot)) for slot in window]),
+        page=current,
+        total_pages=total_pages,
+        total_slots=total,
+        per_page=per_page,
     )

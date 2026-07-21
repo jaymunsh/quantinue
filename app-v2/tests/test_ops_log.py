@@ -88,6 +88,51 @@ async def test_an_installation_with_no_runs_shows_an_empty_log() -> None:
     view = await build_ops_log(_Reads({}))
 
     assert view.slots == ()
+    assert view.total_slots == 0
+    assert view.total_pages == 1
+
+
+def _many_days(count: int) -> _Reads:
+    """count일치 슬롯 — 하루에 잡 하나씩."""
+    return _Reads(
+        {
+            date(2026, 7, 21) - timedelta(days=offset): (
+                _job("universe", date(2026, 7, 21) - timedelta(days=offset)),
+            )
+            for offset in range(count)
+        }
+    )
+
+
+@pytest.mark.anyio
+async def test_a_long_history_is_paged_newest_first() -> None:
+    """3일만 보여주던 것을 전부 보여주되, 한 화면에 쏟지 않는다."""
+    view = await build_ops_log(_many_days(25), page=1, per_page=10)
+
+    assert view.total_slots == 25
+    assert view.total_pages == 3
+    assert view.page == 1
+    assert len(view.slots) == 10
+    # 최신이 먼저다 — 어제 뭐가 깨졌나를 맨 위에서 본다
+    assert view.slots[0].slot_date == date(2026, 7, 21)
+    assert view.slots[-1].slot_date == date(2026, 7, 12)
+
+
+@pytest.mark.anyio
+async def test_the_last_page_holds_the_remainder() -> None:
+    view = await build_ops_log(_many_days(25), page=3, per_page=10)
+
+    assert (view.page, len(view.slots)) == (3, 5)
+    assert view.slots[0].slot_date == date(2026, 7, 1)
+
+
+@pytest.mark.anyio
+async def test_a_page_beyond_the_end_lands_on_the_last_one() -> None:
+    """URL을 손으로 고쳐도 빈 화면을 보여주지 않는다."""
+    view = await build_ops_log(_many_days(25), page=99, per_page=10)
+
+    assert view.page == 3
+    assert len(view.slots) == 5
 
 
 class _LedgerStore(InMemoryRunStore):
