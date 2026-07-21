@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from datetime import date  # noqa: TC003 - FastAPI가 런타임에 쿼리 타입을 해석한다
+from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,10 +31,12 @@ from quantinue.api.pipeline_presentation import PipelineDayView, sparkline_point
 from quantinue.api.review_runtime import ReviewRuntime
 from quantinue.api.reviews import build_review_router
 from quantinue.api.route_guard import RoleZoneGuard
+from quantinue.api.schedule import ScheduleView, build_schedule
 from quantinue.api.schemas import HealthResponse
 from quantinue.api.sessions import resolve_session_secret
 from quantinue.core.config import DatabaseMode, Settings
 from quantinue.core.logging import configure_logging
+from quantinue.core.market_calendar import NEW_YORK
 from quantinue.db.store import build_run_store
 from quantinue.market_data.factory import build_market_data
 from quantinue.orchestration.job_factory import (
@@ -121,6 +123,47 @@ async def _owned_account(reads: object | None, current: object | None) -> UserAc
 def _landing_target(current: object | None) -> str:
     """Pick the screen this role owns. 부트스트랩(세션 없음)은 관제실로 보낸다."""
     return "/me" if current is not None and not current.is_admin else "/admin"
+
+
+def _mount_schedule(  # noqa: PLR0913 - 협력자 나열이지 분기 아님
+    app: FastAPI,
+    templates: Jinja2Templates,
+    reads: object | None,
+    settings: Settings,
+    config: object,
+    job_runner: JobRunner | None,
+) -> None:
+    """Mount the operating-basis page: when jobs run and on whose clock."""
+
+    @app.get("/admin/schedule", response_class=HTMLResponse)
+    async def schedule(request: Request) -> HTMLResponse:
+        # 잡 이름은 러너에게 묻는다. 화면이 자기 목록을 들면 등록이 갈리는
+        # 설치(자격증명 없음)에서 화면과 실행이 다른 이야기를 한다.
+        names = () if job_runner is None else tuple(job.name for job in job_runner.jobs)
+        view = (
+            ScheduleView(
+                slot_date=datetime.now(UTC).astimezone(NEW_YORK).date(),
+                is_trading_day=False,
+                jobs_enabled=False,
+                tick_seconds=60,
+            )
+            if reads is None
+            else await build_schedule(
+                job_names=names,
+                config=config.jobs,
+                ledger=reads,
+                now=datetime.now(UTC),
+            )
+        )
+        return templates.TemplateResponse(
+            request=request,
+            name="schedule.html",
+            context={
+                "schedule": view,
+                "settings": settings,
+                "current_user": session_user(request),
+            },
+        )
 
 
 def _mount_ops_log(
@@ -325,6 +368,9 @@ def create_app(settings: Settings | None = None, *, store: RunStore | None = Non
             },
         )
 
+    _mount_schedule(
+        app, templates, control_room_reads, selected_settings, mvp2_config, job_runner
+    )
     _mount_ops_log(app, templates, control_room_reads, selected_settings)
 
     @app.get("/api/accounts", response_model=AccountRosterView)

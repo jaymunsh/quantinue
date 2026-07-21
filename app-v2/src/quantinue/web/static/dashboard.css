@@ -613,7 +613,19 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
  * 화면이 늘어나면(W3 계좌 총람 등) 그때 실제 경로로 바뀐다.
  */
 .app-shell { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: 100dvh; }
-.sidebar { position: relative; display: flex; flex-direction: column; padding: 24px 16px; color: oklch(88% .02 250); background: var(--navy); }
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: 24px 16px;
+  overflow-y: auto;
+  color: oklch(88% .02 250);
+  background: var(--navy);
+  overscroll-behavior: contain;
+}
 .sidebar__rule { height: 1px; margin: 24px 8px 18px; background: oklch(100% 0 0 / .12); }
 .sidebar .brand { color: var(--white); }
 .sidebar .brand small { color: oklch(72% .03 250); }
@@ -683,11 +695,19 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
   /* 좁아지면 사이드바를 위로 눕힌다 — 드로어를 열려면 JS가 필요하고,
      이 화면에 자바스크립트를 들이는 값보다 눕히는 편이 싸다. */
   .app-shell { display: block; }
-  .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px; }
+  /* 눕힌 사이드바에는 고정을 풀어야 한다 — 100dvh 그대로 두면 좁은 화면에서
+     내비가 첫 화면을 통째로 차지하고 본문이 스크롤 아래로 밀린다. */
+  .sidebar { position: static; height: auto; overflow: visible; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px; }
   .sidebar__rule { display: none; }
   .nav-group { display: flex; flex-wrap: wrap; gap: 6px; }
   .nav-label, .sidebar__footer { display: none; }
-  .appbar { min-height: 62px; padding: 0 16px; }
+  .appbar { min-height: 62px; padding: 0 16px; gap: 10px; }
+  /* 좁아지면 시계는 서울만 남긴다. 운영자가 서 있는 시간이 먼저고, 뉴욕·UTC는
+     대조할 때 필요한 값이라 넓은 화면에서 본다. */
+  .clock__zone { padding: 5px 9px; }
+  .clock__zone:not(.clock__zone--home) { display: none; }
+  .clock__note { display: none; }
+  .top-actions .who { display: none; }
   .page { padding: 24px 16px 48px; }
   .page-heading { display: block; }
   .metric-grid { grid-template-columns: 1fr; gap: 10px; }
@@ -769,3 +789,56 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
 .log-day__chip--bad { background: var(--danger-soft); color: var(--danger); }
 .log-day__chip--warn { background: var(--warning-soft); color: var(--warning); }
 .log-day .table-wrap { margin: 0 16px 16px; }
+
+/* ═══ 표 안의 인라인 컨트롤 ════════════════════════════════════
+   select와 버튼이 한 쌍으로 읽혀야 한다. 네이티브 select 옆에 큰 블록
+   버튼을 두면 높이도 무게도 어긋나 화면이 급조된 것처럼 보인다. */
+select {
+  min-height: 34px;
+  padding: 6px 28px 6px 10px;
+  color: var(--fg);
+  background: var(--surface)
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%236b7280' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")
+    no-repeat right 10px center;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-control);
+  font: 500 13px var(--font-ui);
+  appearance: none;
+  cursor: pointer;
+}
+select:hover { border-color: var(--accent); }
+select:focus-visible { outline: 2px solid var(--focus-input); outline-offset: 1px; }
+
+.control-pair { display: flex; align-items: center; gap: 6px; margin: 0; max-width: 100%; }
+.control-pair select { flex: 1 1 auto; min-width: 0; }
+/* 표 안의 '변경'은 부수 동작이다 — 페이지의 주 행동이 아니므로 조용한
+   버튼으로 둔다. 파란 블록 열이 표를 가로질러 서면 시선이 데이터를 떠난다. */
+.control-pair button {
+  flex: none;
+  min-height: 34px;
+  padding: 6px 12px;
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-control);
+  font: 600 12.5px var(--font-ui);
+}
+.control-pair button:hover { color: var(--accent-ink); background: var(--accent-soft); border-color: var(--accent); }
+/* 좁은 화면의 전역 규칙(button { width: 100% })이 이 쌍에는 맞지 않는다 —
+   버튼이 폭을 다 먹으면 옆의 select가 화살표만 남고 글자가 사라진다. */
+@media (max-width: 860px) {
+  .control-pair button { width: auto; }
+  .control-pair select { min-width: 96px; }
+}
+
+/* ═══ 운영 기준 ═══════════════════════════════════════════════
+   가장 자주 되묻는 것("왜 오후 1시인가")의 답이 화면 맨 위에 온다.
+   번호는 장식이 아니라 인과의 순서다 — 슬롯이 뉴욕이라서 주기가 경과일이고,
+   경과일이라서 꺼진 날이 복구된다. */
+.basis-steps { display: grid; gap: 12px; margin: 4px 0 0; padding: 0; list-style: none; counter-reset: basis; }
+.basis-steps li { position: relative; padding: 12px 16px 12px 46px; color: var(--muted); background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-control); font-size: 13px; line-height: 1.65; counter-increment: basis; }
+.basis-steps li::before { content: counter(basis); position: absolute; top: 12px; left: 14px; display: grid; place-items: center; width: 20px; height: 20px; color: var(--accent-ink); background: var(--accent-soft); border-radius: 6px; font: 700 11px var(--font-mono); }
+.basis-steps b { color: var(--fg); font-weight: 700; }
+.basis-steps strong { color: var(--accent-ink); font-weight: 700; }
+.basis-steps code { padding: 1px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; font: 500 12px var(--font-mono); }
+.basis-state { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }

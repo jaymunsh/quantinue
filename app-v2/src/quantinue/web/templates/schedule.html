@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block description %}운영 기준{% endblock %}
+{% block title %}운영 기준 · Quantinue{% endblock %}
+{% block eyebrow %}OPERATING BASIS{% endblock %}
+{% block heading %}운영 기준{% endblock %}
+{% block subheading %}<p>잡이 <b>언제</b>, <b>어떤 기준으로</b> 도는지. 이 화면의 숫자는 config와 잡 원장이 답하는 것만입니다.</p>{% endblock %}
+{% block breadcrumb %}<strong>관제실</strong><i>/</i><span>운영 기준</span>{% endblock %}
+{% block nav %}
+<nav class="nav-group" aria-label="섹션">
+  <p class="nav-label">운영</p>
+  <a class="nav-link" href="/admin">잡 체인</a>
+  <a class="nav-link" href="/admin/schedule" aria-current="page">운영 기준</a>
+  <a class="nav-link" href="/admin/logs">작동 로그</a>
+  <a class="nav-link" href="/admin/accounts">계좌 관리</a>
+</nav>
+{% endblock %}
+{% block main %}
+
+{# ── 시계 기준 ─────────────────────────────────────────────────
+   이 시스템에서 가장 자주 되묻는 것이 "왜 오후 1시인가"다. 답을 화면
+   맨 위에 둔다 — 슬롯이 뉴욕 날짜라서다. #}
+<section class="panel basis" aria-labelledby="clock-title">
+  <div class="panel__head">
+    <div>
+      <h2 id="clock-title">하루는 뉴욕에서 바뀝니다</h2>
+      <p>사람은 서울에서 보고, 기계는 뉴욕 날짜로 셉니다. 그 차이가 이 시스템의 리듬입니다.</p>
+    </div>
+  </div>
+  <ol class="basis-steps">
+    <li>
+      <b>슬롯은 뉴욕 날짜입니다.</b>
+      뉴욕 자정 = <strong>서울 13:00</strong>에 "오늘"이 바뀌고, 그때부터 새 슬롯의 잡이 돕니다.
+      지금 슬롯은 <code>{{ schedule.slot_date }}</code>입니다.
+    </li>
+    <li>
+      <b>주기는 요일이 아니라 경과일입니다.</b>
+      "마지막 성공으로부터 며칠"로 판정하므로, 앱이 꺼져 있던 날은 건너뛰는 게 아니라
+      <strong>다음에 켤 때 뒤늦게 돕니다</strong>.
+    </li>
+    <li>
+      <b>등록 순서가 실행 순서입니다.</b>
+      수집이 판단보다 앞이라 오늘 시세로 판단하고, 청산이 배분보다 앞이라 판 돈으로 삽니다.
+      아래 표의 번호가 그 순서입니다.
+    </li>
+    <li>
+      <b>러너는 {{ schedule.tick_seconds }}초마다 깨어납니다.</b>
+      깨어나서 밀린 잡만 집습니다. 정규장이 없는 날(주말·공휴일)은 아무것도 돌지 않습니다 — 정상입니다.
+    </li>
+  </ol>
+  <div class="basis-state">
+    <span class="log-day__chip {% if schedule.jobs_enabled %}log-day__chip--ok{% else %}log-day__chip--bad{% endif %}">
+      자동 운행 {% if schedule.jobs_enabled %}켜짐{% else %}꺼짐{% endif %}
+    </span>
+    <span class="log-day__chip {% if schedule.is_trading_day %}log-day__chip--ok{% else %}log-day__chip--warn{% endif %}">
+      {{ schedule.slot_date }} {% if schedule.is_trading_day %}거래일{% else %}휴장 — 오늘은 잡이 돌지 않습니다{% endif %}
+    </span>
+  </div>
+</section>
+
+<section class="panel" id="jobs" style="margin-top:18px" aria-labelledby="jobs-title">
+  <div class="panel__head">
+    <div>
+      <h2 id="jobs-title">잡 {{ schedule.jobs | length }}종</h2>
+      <p>번호 = 등록 순서 = 실행 순서. 자격증명이 없으면 그 수집 잡은 아예 등록되지 않습니다.</p>
+    </div>
+  </div>
+  {% if schedule.jobs %}
+  <div class="table-wrap" role="region" aria-label="잡 주기 표" tabindex="0">
+    <table class="portfolio-table">
+      <caption>잡별 주기와 다음 예정</caption>
+      <thead><tr>
+        <th scope="col">#</th><th scope="col">잡</th><th scope="col">무엇을 하나</th>
+        <th scope="col">주기</th><th scope="col">마지막 성공</th><th scope="col">다음</th>
+      </tr></thead>
+      <tbody>{% for job in schedule.jobs %}<tr>
+        <td data-label="#" class="mono">{{ job.order }}</td>
+        <td data-label="잡" class="mono"><strong>{{ job.job_name }}</strong></td>
+        <td data-label="무엇을 하나">{{ job.summary }}</td>
+        <td data-label="주기" class="mono">{% if job.interval_days == 1 %}매일{% else %}{{ job.interval_days }}일마다{% endif %}</td>
+        <td data-label="마지막 성공" class="mono">{{ job.last_success or '없음' }}</td>
+        <td data-label="다음">
+          {% if not job.enabled %}<span class="log-day__chip">꺼짐</span>
+          {% elif job.due_today %}<span class="log-day__chip log-day__chip--warn">오늘 대기</span>
+          {% else %}<span class="mono">{{ job.next_due }}</span>{% endif %}
+        </td>
+      </tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="portfolio-empty">
+    <strong>등록된 잡이 없습니다</strong>
+    <p>이 설치는 잡 원장을 갖지 않는 메모리 모드이거나, 자동 운행이 꺼져 있습니다.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

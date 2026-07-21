@@ -9,6 +9,7 @@
 <nav class="nav-group" aria-label="섹션">
   <p class="nav-label">운영</p>
   <a class="nav-link" href="/admin">잡 체인</a>
+  <a class="nav-link" href="/admin/schedule">운영 기준</a>
   <a class="nav-link" href="/admin/accounts" aria-current="page">계좌 관리</a>
 </nav>
 {% endblock %}
@@ -31,7 +32,7 @@
         <td data-label="평가액" class="mono">${{ '{:,.2f}'.format(account.equity) }}</td>
         <td data-label="보유" class="mono">{{ account.open_position_count }}</td>
         <td data-label="성향">
-          <form method="post" action="/admin/accounts/{{ account.broker_account_id }}/profile">
+          <form class="control-pair" method="post" action="/admin/accounts/{{ account.broker_account_id }}/profile">
             <label class="visually-hidden" for="p-{{ loop.index }}">{{ account.broker_account_id }} 성향</label>
             <select id="p-{{ loop.index }}" name="inv_type">
               {% for profile in profiles %}<option value="{{ profile }}"{% if account.inv_type == profile %} selected{% endif %}>{% if profile == 'aggressive' %}공격형{% else %}안전형{% endif %}</option>{% endfor %}
@@ -40,7 +41,7 @@
           </form>
         </td>
         <td data-label="상태">
-          <form method="post" action="/admin/accounts/{{ account.broker_account_id }}/status">
+          <form class="control-pair" method="post" action="/admin/accounts/{{ account.broker_account_id }}/status">
             <label class="visually-hidden" for="s-{{ loop.index }}">{{ account.broker_account_id }} 상태</label>
             <select id="s-{{ loop.index }}" name="account_status">
               {% for state in statuses %}<option value="{{ state }}"{% if account.status == state %} selected{% endif %}>{% if state == 'active' %}운용 중{% elif state == 'paused' %}일시 정지{% else %}종료{% endif %}</option>{% endfor %}
