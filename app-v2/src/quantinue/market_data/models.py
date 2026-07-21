@@ -50,6 +50,15 @@ class Candle(BoundaryModel):
     provenance: Provenance
 
 
+class LatestTrade(BoundaryModel):
+    """One normalized latest-trade observation for intraday watching."""
+
+    ticker: str = Field(min_length=1, max_length=12)
+    price: Decimal = Field(gt=0)
+    observed_at: AwareDateTime
+    source: str = Field(min_length=1)
+
+
 class MacroObservation(BoundaryModel):
     """One named macroeconomic series observation."""
 

@@ -14,6 +14,7 @@ from quantinue.market_data.http_source import (
 )
 from quantinue.market_data.models import (
     Candle,
+    LatestTrade,
     MacroObservation,
     MarketData,
     NewsItem,
@@ -29,6 +30,7 @@ __all__ = [
     "FixtureMarketData",
     "HttpClientPolicy",
     "HttpMarketData",
+    "LatestTrade",
     "MacroObservation",
     "MarketData",
     "MarketDataEndpoints",

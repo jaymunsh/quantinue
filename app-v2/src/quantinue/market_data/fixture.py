@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from quantinue.market_data.models import (
     Candle,
+    LatestTrade,
     MacroObservation,
     NewsItem,
     Provenance,
@@ -56,6 +57,18 @@ class FixtureMarketData:
                 volume=42_000_000,
                 provenance=_provenance("market-candles", execution_id),
             ),
+        )
+
+    async def latest_trades(self, tickers: tuple[str, ...]) -> tuple[LatestTrade, ...]:
+        """Return one stable latest trade for every requested ticker."""
+        return tuple(
+            LatestTrade(
+                ticker=ticker,
+                price=Decimal(151),
+                observed_at=_AT,
+                source="fixture:latest-trade",
+            )
+            for ticker in tickers
         )
 
     async def macro(self, series: str, execution_id: str) -> tuple[MacroObservation, ...]:
