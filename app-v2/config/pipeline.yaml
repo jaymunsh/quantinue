@@ -108,6 +108,10 @@ mvp2:
         interval_days: 1
       exits:
         interval_days: 1
+  watch:
+    enabled: false
+    interval_minutes: 1
+    session: regular
   market_data:
     # 한 요청에 넣을 종목 수(요청 수가 아니라 **한 요청의 크기**다). URL 길이가
     # 안전한 값에서 잡았다.

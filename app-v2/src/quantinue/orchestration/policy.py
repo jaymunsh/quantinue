@@ -200,6 +200,16 @@ class JobsConfig(BaseModel):
         return self.cadences.get(job_name, JobCadenceConfig())
 
 
+class WatchConfig(BaseModel):
+    """Regular-session polling policy for the intraday watch runner."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    enabled: bool = False
+    interval_minutes: int = Field(default=1, gt=0, le=60)
+    session: Literal["regular"] = "regular"
+
+
 class BudgetConfig(BaseModel):
     """Spending ceiling enforced before any billable model call."""
 
@@ -240,6 +250,7 @@ class Mvp2Config(BaseModel):
     exits: ExitsConfig = ExitsConfig()
     allocation: AllocationConfig = AllocationConfig()
     jobs: JobsConfig = JobsConfig()
+    watch: WatchConfig = WatchConfig()
     market_data: MarketDataConfig = MarketDataConfig()
     budget: BudgetConfig = BudgetConfig()
     insider: InsiderPolicy = InsiderPolicy()
