@@ -134,6 +134,9 @@ mvp2:
       gpt-4o-mini:
         input_usd_per_1m: 0.15
         output_usd_per_1m: 0.60
+      gpt-5.4-mini:
+        input_usd_per_1m: 0.375
+        output_usd_per_1m: 2.25
   insider:
     # 내부자의 재량 거래가 07 게이트에서 갖는 표의 값. 방향만 있고 크기가 없는
     # 이유는 정직함이다 — "얼마부터 큰 거래인가"를 재본 데이터가 우리에게 없고,
