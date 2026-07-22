@@ -11,8 +11,9 @@
 > 이 파일은 **"아직 안 끝난 것만"** 담는다. 완료 기록은 `dev-handoff.md`,
 > 의도적으로 미룬 기능은 `future-roadmap.md`에 있다.
 >
-> **막는 작업은 없다.** Phase 1~5와 잔여 작업 A~E가 끝났고, 시스템은 JOB
-> 12종으로 매일 돈다. 아래는 전부 "판단이 필요한 것"과 "며칠 관찰할 것"이다.
+> **막는 작업은 없다.** Phase 1~5와 잔여 작업 A~E가 끝났고, 시스템은 일일
+> 안내를 포함한 JOB 13종으로 매일 돈다. 아래는 전부 "판단이 필요한 것"과
+> "며칠 관찰할 것"이다.
 
 기준선 숫자의 정본은 `NEXT-SESSION-PROMPT.md`(현재 603/110). 아래 558/106은
 작성 시점 값이다.
@@ -55,7 +56,7 @@
 
 | 컬럼 | 어디 | 방향 |
 |---|---|---|
-| `risk_rebuttal` · `counter_scenarios` · `persona_notes` | `tb_strategist_signals` | **채우는 쪽**. 프롬프트는 이미 비슷한 내용을 만든다 — 07 출력 계약에 얹으면 된다 |
+| `risk_rebuttal` · `counter_scenarios` · `persona_notes` | `tb_strategist_signals` | **채우지 않는다(2026-07-22 확정)**. critic 반박과 성향별 프롬프트가 이미 같은 책임을 맡는다. 소비자 없는 출력을 더 만들면 토큰과 중복 계약만 늘어난다 |
 | `keywords` · `top_evidence` · `disclosure_count` · `tds_id`/`tns_id` | `tb_disclosure(_signal)` · `tb_news(_signal)` | 보류. 공시 채점이 기각됐고(폼 종류로는 채점 불가) 뉴스는 투표권이 없다 — 채울 주체가 없다 |
 | 전체 | `tb_llm_usage` | **R3의 전제**. 아래 3-1 참조 |
 | ~~전체~~ | ~~`tb_user`~~ | ✅ **해소 (2026-07-20, 웹 W1)**. 소비자가 생겼다 — 로그인 검증(`db/users.py`)·role 가드·시드. `password_hash` 컬럼도 그때 신설됐다(스키마만 있고 비밀번호 담을 자리가 없었다) |
