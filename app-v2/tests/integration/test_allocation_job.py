@@ -33,6 +33,7 @@ _SEQ_DAY = date(2026, 7, 21)
 _LOSS_DAY = date(2026, 7, 22)
 _IDEM_DAY = date(2026, 7, 23)
 _HELD_DAY = date(2026, 7, 24)
+_INTRADAY_DAY = date(2026, 7, 27)
 
 
 def _midnight(day: date) -> datetime:
@@ -297,6 +298,35 @@ async def test_rerunning_the_job_buys_nothing_twice() -> None:
         "SELECT cash FROM tb_account WHERE id=:account", account=account_id
     )
     assert cash[0][0] == Decimal("80000.00")
+
+
+@pytest.mark.anyio
+async def test_intraday_buy_uses_the_observed_price_and_remains_idempotent() -> None:
+    # Given
+    account_id = await _seed_account("INTRADAY", cash=100_000)
+    _ = await _seed_candidate("ALN1", _INTRADAY_DAY, conviction="0.900", price=50)
+    now = datetime(2026, 7, 27, 14, 0, tzinfo=UTC)
+    store = PostgresRunStore(DATABASE_URL or "")
+    await store.initialize()
+
+    # When
+    try:
+        _ = await _job(store).run_intraday(
+            now=now, prices={"ALN1": Decimal("51.00")}
+        )
+        _ = await _job(store).run_intraday(
+            now=now, prices={"ALN1": Decimal("51.00")}
+        )
+    finally:
+        await store.close()
+
+    # Then
+    orders = await _read_rows(
+        "SELECT entry_price, count(*) FROM tb_order WHERE account_id=:account "
+        "GROUP BY entry_price",
+        account=account_id,
+    )
+    assert orders == [(Decimal("51.00"), 1)]
 
 
 @pytest.mark.anyio

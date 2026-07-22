@@ -40,6 +40,16 @@ class SoftSellExecutor(Protocol):
         ...
 
 
+class IntradayBuyExecutor(Protocol):
+    """Existing allocation contract exposed at an intraday timestamp."""
+
+    async def run_intraday(
+        self, *, now: datetime, prices: Mapping[str, Decimal]
+    ) -> str:
+        """Size and execute the newest approved buys, idempotently."""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class IntradayRejudgeEngine:
     """Run both investment personas, then execute approved sell reversals."""
@@ -47,6 +57,7 @@ class IntradayRejudgeEngine:
     domain: IntradaySellDomain
     jobs: tuple[AnalysisJob, ...]
     exits: SoftSellExecutor
+    allocation: IntradayBuyExecutor | None = None
 
     async def run(self, *, now: datetime, prices: Mapping[str, Decimal]) -> int:
         """Refresh triggered tickers and close approved reversals in one tick."""
@@ -60,4 +71,6 @@ class IntradayRejudgeEngine:
         closed = await self.exits.run_soft_sells(
             as_of=as_of, prices=mutable_prices, profiles=profiles
         )
+        if self.allocation is not None:
+            _ = await self.allocation.run_intraday(now=now, prices=mutable_prices)
         return len(closed)

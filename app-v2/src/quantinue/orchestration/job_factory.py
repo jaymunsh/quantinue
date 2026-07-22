@@ -965,6 +965,13 @@ def build_watch_runner(
                 for name, profile in config.profiles.items()
             ),
             exits=exit_job,
+            allocation=AllocationJob(
+                store=store,
+                broker=MockBroker(),
+                profiles=config.profiles,
+                gates=config.gates,
+                allocation=config.allocation,
+            ),
         )
     return WatchRunner(
         config.watch,

@@ -14,12 +14,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import UTC, datetime, time
+from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from quantinue.broker.provider import OrderPlan
-from quantinue.core.market_calendar import NyseCalendar
+from quantinue.core.market_calendar import NEW_YORK, NyseCalendar
 from quantinue.core.ontology import EvidenceKind, FillSide
 from quantinue.core.order_identity import derive_client_order_id
 from quantinue.core.schemas import Evidence
@@ -60,6 +60,39 @@ class AllocationJob:
     async def run(self, *, as_of: date) -> str:
         """Allocate for every subscribed account, sequentially and idempotently."""
         domain = getattr(self.store, "domain", self.store)
+        candidates = await domain.approved_buy_candidates(as_of)
+        if not candidates:
+            return "no approved buys"
+        cycle_ts = datetime.combine(as_of, time(), tzinfo=UTC)
+        return await self._run_candidates(
+            domain, as_of=as_of, candidates=candidates, cycle_ts=cycle_ts, prices={}
+        )
+
+    async def run_intraday(
+        self, *, now: datetime, prices: Mapping[str, Decimal]
+    ) -> str:
+        """Allocate the newest approved intraday buys at observed prices."""
+        domain = getattr(self.store, "domain", self.store)
+        as_of = now.astimezone(NEW_YORK).date()
+        candidates = await domain.approved_intraday_buy_candidates(
+            as_of, tuple(prices)
+        )
+        if not candidates:
+            return "no approved buys"
+        return await self._run_candidates(
+            domain, as_of=as_of, candidates=candidates, cycle_ts=now, prices=prices
+        )
+
+    async def _run_candidates(
+        self,
+        domain: object,
+        *,
+        as_of: date,
+        candidates: Mapping[str, tuple[BuyCandidate, ...]],
+        cycle_ts: datetime,
+        prices: Mapping[str, Decimal],
+    ) -> str:
+        """Apply shared account sizing and hard guards to one approved pool."""
         session = self.calendar.previous_trading_day(as_of)
         # D8의 프로덕션 소비자가 여기다. 시가평가 없이 배분하면 사이징의
         # 분모(equity)가 최초 자본에 동결된 채로 남는다.
@@ -67,9 +100,6 @@ class AllocationJob:
         # 스냅샷은 revalue 직후·매수 전이다 — "당일 시작"의 정의. 첫 기록이
         # 이기므로(도메인 주석) 재실행이 아침 값을 덮지 않는다.
         day_start = await domain.snapshot_daily_equity(as_of)
-        candidates = await domain.approved_buy_candidates(as_of)
-        if not candidates:
-            return "no approved buys"
         macro = await domain.latest_macro(as_of, self.gates.evidence_max_age_minutes)
         held = await self._held_by_account(domain)
         bought = 0
@@ -89,6 +119,8 @@ class AllocationJob:
                 day_start=day_start.get(account.account_id),
                 risk_score=0.0 if macro is None else macro.risk_score,
                 held=held.get(account.account_id, frozenset()),
+                cycle_ts=cycle_ts,
+                prices=prices,
             )
             bought += outcome[0]
             skipped += outcome[1]
@@ -115,12 +147,13 @@ class AllocationJob:
         day_start: Decimal | None,
         risk_score: float,
         held: frozenset[str],
+        cycle_ts: datetime,
+        prices: Mapping[str, Decimal],
     ) -> tuple[int, int]:
         """Walk one account through the pool, re-reading the ledger between buys."""
         if not pool:
             return (0, 0)
-        run_id = f"allocation:{as_of.isoformat()}"
-        cycle_ts = datetime.combine(as_of, time(), tzinfo=UTC)
+        run_id = f"allocation:{cycle_ts.isoformat()}"
         # equity는 이 루프 동안 불변이다 — 매수는 현금을 포지션으로 바꿀 뿐
         # 평가액을 바꾸지 않는다. 그래서 손실 한도는 루프 밖에서 한 번만 잰다.
         state = await domain.account_risk_state(account.account_id)
@@ -150,7 +183,18 @@ class AllocationJob:
                 state = await domain.account_risk_state(account.account_id)
                 if state is None:
                     break
-            price = float(candidate.reference_price)
+            current_price = prices.get(candidate.ticker, candidate.reference_price)
+            price = float(current_price)
+            local = cycle_ts.astimezone(NEW_YORK)
+            open_at = local.replace(hour=9, minute=30, second=0, microsecond=0)
+            inside_gap_guard = local <= open_at + timedelta(
+                minutes=self.gates.gap_guard_open_minutes
+            )
+            reference_gap = (
+                float((current_price - candidate.reference_price) / candidate.reference_price)
+                if inside_gap_guard and candidate.reference_price > 0
+                else None
+            )
             plan = build_order_plan(
                 RiskPortfolioInput(
                     run_id=run_id,
@@ -171,7 +215,7 @@ class AllocationJob:
                     risk_score=risk_score,
                     # 장중 갭 가드는 일 1회 경로에 잴 대상이 없다(기준가가 곧
                     # 직전 종가다). None이면 게이트가 발동하지 않는다.
-                    reference_gap=None,
+                    reference_gap=reference_gap,
                     recent_return=candidate.recent_return,
                 ),
                 stop_loss_ratio=self.allocation.stop_loss_ratio,

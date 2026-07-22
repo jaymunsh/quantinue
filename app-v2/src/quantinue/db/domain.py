@@ -18,12 +18,14 @@ from quantinue.db.control_room_reads import (
     JobRunRecord,
     JudgementRecord,
     OrderPlanRecord,
+    WatchActivityRecord,
     account_equity_series,
     job_runs,
     judgements,
     latest_job_slot,
     order_plans,
     recent_job_slots,
+    watch_activity,
 )
 from quantinue.db.domain_records import (
     AccountHoldingRecord,
@@ -654,6 +656,19 @@ class PostgresDomainRepository:
             ).all()
         return {row.ticker: Decimal(str(row.close)) for row in rows}
 
+    async def watch_tickers(self, as_of: date) -> tuple[str, ...]:
+        """Return today's screened candidates for quote watching."""
+        picks = self._table("tb_daily_pick")
+        async with self._engine.begin() as connection:
+            rows = (
+                await connection.execute(
+                    select(picks.c.ticker)
+                    .where(picks.c.trade_date == as_of)
+                    .order_by(picks.c.rank, picks.c.ticker)
+                )
+            ).scalars()
+        return tuple(rows)
+
     async def disclosure_evidence(
         self, session: date, tickers: tuple[str, ...]
     ) -> dict[str, tuple[str, ...]]:
@@ -993,6 +1008,70 @@ class PostgresDomainRepository:
                 )
             )
         return {inv_type: tuple(items) for inv_type, items in found.items()}
+
+    async def approved_intraday_buy_candidates(
+        self, as_of: date, tickers: tuple[str, ...]
+    ) -> dict[str, tuple[BuyCandidate, ...]]:
+        """Return the newest approved intraday buy per persona and ticker."""
+        if not tickers:
+            return {}
+        signals = self._table("tb_strategist_signals")
+        verdicts = self._table("tb_critic_verdict")
+        picks = self._table("tb_daily_pick")
+        ranked = (
+            select(
+                signals.c.id,
+                signals.c.ticker,
+                signals.c.inv_type,
+                signals.c.conviction,
+                signals.c.decision_close,
+                picks.c.rank,
+                func.row_number()
+                .over(
+                    partition_by=(signals.c.inv_type, signals.c.ticker),
+                    order_by=signals.c.cycle_ts.desc(),
+                )
+                .label("position"),
+            )
+            .join(verdicts, verdicts.c.signal_id == signals.c.id)
+            .outerjoin(
+                picks,
+                and_(
+                    picks.c.trade_date == signals.c.trade_date,
+                    picks.c.ticker == signals.c.ticker,
+                ),
+            )
+            .where(
+                signals.c.trade_date == as_of,
+                signals.c.ticker.in_(tickers),
+                signals.c.side == "buy",
+                verdicts.c.decision == "pass",
+            )
+            .subquery()
+        )
+        async with self._engine.begin() as connection:
+            rows = (
+                await connection.execute(
+                    select(ranked).where(ranked.c.position == 1).order_by(
+                        ranked.c.conviction.desc(), ranked.c.rank.asc().nulls_last()
+                    )
+                )
+            ).all()
+            returns = await self._recent_returns(connection, as_of, tickers)
+        found: dict[str, list[BuyCandidate]] = {}
+        for row in rows:
+            found.setdefault(row.inv_type, []).append(
+                BuyCandidate(
+                    signal_id=int(row.id),
+                    ticker=row.ticker,
+                    inv_type=row.inv_type,
+                    conviction=Decimal(str(row.conviction)),
+                    reference_price=Decimal(str(row.decision_close)),
+                    rank=row.rank,
+                    recent_return=returns.get(row.ticker),
+                )
+            )
+        return {profile: tuple(items) for profile, items in found.items()}
 
     async def _recent_returns(
         self, connection: AsyncConnection, as_of: date, tickers: tuple[str, ...]
@@ -1600,6 +1679,10 @@ class PostgresDomainRepository:
     async def judgements(self, trade_date: date) -> tuple[JudgementRecord, ...]:
         """Delegate the judgement-and-rebuttal read to its focused module."""
         return await judgements(self._engine, trade_date)
+
+    async def watch_activity(self, trade_date: date) -> WatchActivityRecord | None:
+        """Delegate the intraday ledger summary to the control-room reader."""
+        return await watch_activity(self._engine, trade_date)
 
     async def account_holdings(self, account_id: int) -> tuple[AccountHoldingRecord, ...]:
         """List one account's open positions with the close that marks them.

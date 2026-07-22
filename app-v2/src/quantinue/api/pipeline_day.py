@@ -19,6 +19,7 @@ from quantinue.api.pipeline_presentation import (
     ChainView,
     LlmSpendView,
     PipelineDayView,
+    WatchActivityView,
     allocation_view,
     chain_view,
     equity_curve_views,
@@ -38,6 +39,20 @@ async def _llm_spend(
     if reader is None:
         return None
     return LlmSpendView(spent_usd=await reader(slot), limit_usd=Decimal(str(limit_usd)))
+
+
+async def _watch_activity(reads: object, slot: date) -> WatchActivityView | None:
+    reader = getattr(reads, "watch_activity", None)
+    if reader is None:
+        return None
+    activity = await reader(slot)
+    if activity is None:
+        return None
+    return WatchActivityView(
+        latest_at=activity.latest_at,
+        signal_count=activity.signal_count,
+        ticker_count=activity.ticker_count,
+    )
 
 if TYPE_CHECKING:
     from datetime import date
@@ -131,4 +146,5 @@ async def build_pipeline_day(
         profiles=profile_judgement_views(await reads.judgements(selected)),
         slots=slots,
         llm=await _llm_spend(reads, selected, llm_limit_usd),
+        watch=await _watch_activity(reads, selected),
     )

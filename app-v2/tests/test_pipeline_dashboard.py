@@ -20,6 +20,7 @@ from quantinue.db.control_room_reads import (
     JobRunRecord,
     JudgementRecord,
     OrderPlanRecord,
+    WatchActivityRecord,
 )
 from quantinue.db.memory import InMemoryRunStore
 from quantinue.main import create_app
@@ -180,6 +181,30 @@ def test_a_store_without_a_spend_ledger_hides_the_llm_card() -> None:
 
     # Then
     assert "LLM 지출" not in body
+
+
+def test_watch_card_reports_only_persisted_intraday_activity() -> None:
+    # Given
+    class _WatchReads(_StubReads):
+        async def watch_activity(self, day: date) -> WatchActivityRecord:
+            assert day == _DAY
+            return WatchActivityRecord(
+                latest_at=datetime(2026, 7, 20, 15, 5, tzinfo=UTC),
+                signal_count=4,
+                ticker_count=2,
+            )
+
+    reads = _WatchReads(jobs=(_job("universe"),))
+
+    # When
+    with _client(reads) as client:
+        body = client.get("/").text
+
+    # Then
+    assert "장중 감시" in body
+    assert "판단 기록 있음" in body
+    assert "종목</dt><dd>2개" in body
+    assert "성향별 시그널</dt><dd>4건" in body
 
 
 def test_a_retried_job_shows_its_attempt_count_in_the_chain() -> None:

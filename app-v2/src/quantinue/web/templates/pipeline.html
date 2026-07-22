@@ -18,6 +18,7 @@
 <nav class="nav-group nav-group--sections" aria-label="이 페이지">
   <p class="nav-label">이 페이지</p>
   <a class="nav-link nav-link--section" href="#chain">잡 체인</a>
+  <a class="nav-link nav-link--section" href="#watch">장중 감시</a>
   <a class="nav-link nav-link--section" href="#allocation">배분</a>
   <a class="nav-link nav-link--section" href="#judgements">판단과 반박</a>
   <a class="nav-link nav-link--section" href="#accounts">계좌 곡선</a>
@@ -71,6 +72,25 @@
   </article>
   {% endif %}
 </div>
+
+<section class="panel" id="watch" aria-labelledby="watch-title">
+  <div class="panel__head">
+    <div>
+      <h2 id="watch-title">장중 감시</h2>
+      <p>살아 있다는 추측 대신 장중 판단 원장에 실제로 남은 것만 보여줍니다.</p>
+    </div>
+    {% if day.watch %}<span class="badge badge--success">판단 기록 있음</span>{% else %}<span class="badge">기록 없음</span>{% endif %}
+  </div>
+  {% if day.watch %}
+  <dl class="equity-facts">
+    <dt>최근 판단</dt><dd>{{ day.watch.latest_at | kst_stamp }} KST</dd>
+    <dt>종목</dt><dd>{{ day.watch.ticker_count }}개</dd>
+    <dt>성향별 시그널</dt><dd>{{ day.watch.signal_count }}건</dd>
+  </dl>
+  {% else %}
+  <p class="empty-state">선택한 슬롯 날짜에는 자정 이후 시각의 장중 판단 기록이 없습니다. 이 표시는 감시 루프의 기동 여부를 추측하지 않습니다.</p>
+  {% endif %}
+</section>
 
 {% if day.chain.slot_date is none %}
 <section class="panel" id="chain" aria-labelledby="chain-title">

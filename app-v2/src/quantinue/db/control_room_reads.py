@@ -103,10 +103,45 @@ class JudgementRecord:
     objection: str | None
 
 
+@dataclass(frozen=True, slots=True)
+class WatchActivityRecord:
+    """What the durable intraday judgement ledger can prove for one day."""
+
+    latest_at: datetime
+    signal_count: int
+    ticker_count: int
+
+
 async def latest_job_slot(engine: AsyncEngine) -> date | None:
     """Return the most recent slot the job runner touched, if it ever ran."""
     async with engine.begin() as connection:
         return await connection.scalar(text("SELECT max(slot_date) FROM tb_job_run"))
+
+
+async def watch_activity(
+    engine: AsyncEngine, trade_date: date
+) -> WatchActivityRecord | None:
+    """Summarize persisted rejudgements without claiming that the loop is alive."""
+    async with engine.begin() as connection:
+        row = (
+            await connection.execute(
+                text(
+                    """SELECT max(cycle_ts) AS latest_at, count(*) AS signal_count,
+                              count(DISTINCT ticker) AS ticker_count
+                       FROM tb_strategist_signals
+                       WHERE trade_date=:day
+                         AND cycle_ts <> trade_date::timestamp AT TIME ZONE 'UTC'"""
+                ),
+                {"day": trade_date},
+            )
+        ).one()
+    if row.latest_at is None:
+        return None
+    return WatchActivityRecord(
+        latest_at=row.latest_at,
+        signal_count=int(row.signal_count),
+        ticker_count=int(row.ticker_count),
+    )
 
 
 async def recent_job_slots(engine: AsyncEngine, *, limit: int) -> tuple[date, ...]:

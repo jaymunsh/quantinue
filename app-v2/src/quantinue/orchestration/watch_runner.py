@@ -94,6 +94,7 @@ class WatchRunner:
         self._notifier = notifier
         self._rejudge = rejudge
         self._last_rejudged_at: dict[str, datetime] = {}
+        self._completed_sweeps: set[tuple[date, str]] = set()
         self._logger: structlog.stdlib.BoundLogger = structlog.get_logger("watch")
 
     async def tick(self, now: datetime) -> WatchOutcome:
@@ -105,20 +106,29 @@ class WatchRunner:
         if self._domain is None or self._quotes is None or self._exits is None:
             return WatchOutcome("ready")
         positions = await self._domain.open_positions()
-        tickers = tuple(dict.fromkeys(position.ticker for position in positions))
+        as_of = now.astimezone(NEW_YORK).date()
+        candidate_reader = getattr(self._domain, "watch_tickers", None)
+        candidates = () if candidate_reader is None else await candidate_reader(as_of)
+        tickers = tuple(
+            dict.fromkeys(
+                (*candidates, *(position.ticker for position in positions))
+            )
+        )
         if not tickers:
             return WatchOutcome("ready")
         trades = await self._quotes.latest_trades(tickers)
         prices = {trade.ticker: trade.price for trade in trades}
-        as_of = now.astimezone(NEW_YORK).date()
         closed = await self._exits.run_brackets(as_of=as_of, prices=prices)
         if closed and self._notifier is not None:
             await self._notifier(format_exit_alert(as_of, closed))
         rejudged = await self._rejudge_moves(
             now,
-            positions=positions,
+            tickers=tuple(
+                ticker
+                for ticker in tickers
+                if ticker not in {decision.position.ticker for decision in closed}
+            ),
             prices=prices,
-            closed_order_ids={decision.position.order_id for decision in closed},
         )
         return WatchOutcome(
             "ready", watched=len(tickers), closed=len(closed) + rejudged, rejudged=rejudged
@@ -128,25 +138,25 @@ class WatchRunner:
         self,
         now: datetime,
         *,
-        positions: tuple[OpenPosition, ...],
+        tickers: tuple[str, ...],
         prices: Mapping[str, Decimal],
-        closed_order_ids: set[int],
     ) -> int:
         """Send material, cooled-down price moves to the shared LLM path."""
         policy = self._config.rejudge
         if not policy.enabled or self._rejudge is None or self._domain is None:
             return 0
-        active = tuple(
-            dict.fromkeys(
-                position.ticker
-                for position in positions
-                if position.order_id not in closed_order_ids
-            )
-        )
+        active = tuple(dict.fromkeys(tickers))
         if not active:
             return 0
         references = await self._domain.reference_closes(
             active, before=now.astimezone(NEW_YORK).date()
+        )
+        local = now.astimezone(NEW_YORK)
+        sweep_time = local.strftime("%H:%M")
+        sweep_key = (local.date(), sweep_time)
+        sweep_due = (
+            sweep_time in policy.sweep_times_ny
+            and sweep_key not in self._completed_sweeps
         )
         cooldown = timedelta(minutes=policy.cooldown_minutes)
         triggered: dict[str, Decimal] = {}
@@ -155,7 +165,10 @@ class WatchRunner:
             reference = references.get(ticker)
             if price is None or reference is None or reference <= 0:
                 continue
-            if abs(price - reference) / reference < Decimal(str(policy.move_trigger_pct)):
+            moved = abs(price - reference) / reference >= Decimal(
+                str(policy.move_trigger_pct)
+            )
+            if not moved and not sweep_due:
                 continue
             previous = self._last_rejudged_at.get(ticker)
             if previous is None or now - previous >= cooldown:
@@ -164,6 +177,8 @@ class WatchRunner:
             return 0
         closed = await self._rejudge.run(now=now, prices=triggered)
         self._last_rejudged_at.update(dict.fromkeys(triggered, now))
+        if sweep_due:
+            self._completed_sweeps.add(sweep_key)
         return closed
 
     async def run_forever(self) -> None:

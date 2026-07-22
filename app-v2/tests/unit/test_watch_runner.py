@@ -179,6 +179,31 @@ async def test_five_percent_move_rejudges_once_inside_the_cooldown() -> None:
     assert rejudge.calls == [(first, {"NVDA": Decimal("105.00")})]
 
 
+@pytest.mark.anyio
+async def test_new_york_sweep_rejudges_a_small_move_only_once() -> None:
+    # Given
+    quotes = _Quotes()
+    quotes.latest_trades = lambda tickers: _latest_trade(tickers, "103.00")
+    rejudge = _Rejudge()
+    runner = WatchRunner(
+        WatchConfig(enabled=True, rejudge=RejudgeConfig(enabled=True)),
+        domain=_Domain(),
+        quotes=quotes,
+        exits=_NoExit(),
+        rejudge=rejudge,
+    )
+    sweep = datetime(2026, 7, 20, 14, 0, tzinfo=UTC)
+
+    # When
+    first = await runner.tick(sweep)
+    second = await runner.tick(sweep.replace(second=30))
+
+    # Then
+    assert first.rejudged == 1
+    assert second.rejudged == 0
+    assert len(rejudge.calls) == 1
+
+
 async def _latest_trade(
     tickers: tuple[str, ...], price: str
 ) -> tuple[LatestTrade, ...]:

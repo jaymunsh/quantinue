@@ -735,6 +735,15 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
   .page { padding: 24px 16px 48px; }
   .page-heading { display: block; }
   .metric-grid { grid-template-columns: 1fr; gap: 10px; }
+  .panel__head { flex-wrap: wrap; }
+  .panel__head > * { min-width: 0; }
+  .equity-facts { grid-template-columns: minmax(0, auto) minmax(0, 1fr); }
+  .equity-facts dd { overflow-wrap: anywhere; }
+}
+
+@media (max-width: 600px) {
+  .equity-facts { grid-template-columns: minmax(0, 1fr); gap: 1px; }
+  .equity-facts dd { margin-bottom: 7px; text-align: left; }
 }
 
 /* 잡 체인은 status-list와 같은 모양이지만 클래스를 겸용하지 않는다 —

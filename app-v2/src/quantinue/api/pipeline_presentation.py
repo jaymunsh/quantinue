@@ -168,6 +168,16 @@ class ProfileJudgementsView(BaseModel):
     judgements: tuple[JudgementView, ...] = ()
 
 
+class WatchActivityView(BaseModel):
+    """Durable evidence of intraday judgements, not a liveness claim."""
+
+    model_config = ConfigDict(frozen=True)
+
+    latest_at: datetime
+    signal_count: int = Field(ge=0)
+    ticker_count: int = Field(ge=0)
+
+
 class PipelineDayView(BaseModel):
     """Everything the control room reports about one pipeline day."""
 
@@ -180,6 +190,7 @@ class PipelineDayView(BaseModel):
     slots: tuple[date, ...] = ()
     # 지출 원장이 있는 스토어에서만 채워진다 — 없으면 카드를 그리지 않는다.
     llm: LlmSpendView | None = None
+    watch: WatchActivityView | None = None
 
 
 def _duration_ms(record: JobRunRecord) -> int | None:
