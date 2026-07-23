@@ -7,7 +7,7 @@ from typing_extensions import override
 
 from quantinue.orchestration.policy import WatchConfig
 from quantinue.orchestration.watch_runner import WatchOutcome, WatchRunner
-from quantinue.runtime_status import RuntimeSnapshot, present_runtime
+from quantinue.runtime_status import EventSourceSnapshot, RuntimeSnapshot, present_runtime
 
 
 class _FailingRunner(WatchRunner):
@@ -151,6 +151,67 @@ def test_runtime_snapshot_rejects_missing_or_invalid_machine_state() -> None:
                 "consecutive_failures": -1,
             }
         )
+
+
+@pytest.mark.parametrize(
+    ("source", "expected"),
+    [
+        (
+            EventSourceSnapshot(source_name="sec", cadence_seconds=1800),
+            "stopped",
+        ),
+        (
+            EventSourceSnapshot(
+                source_name="news",
+                cadence_seconds=900,
+                last_attempt=datetime(2026, 7, 20, 14, 0, tzinfo=UTC),
+                last_success=datetime(2026, 7, 20, 14, 0, tzinfo=UTC),
+            ),
+            "idle",
+        ),
+        (
+            EventSourceSnapshot(
+                source_name="wire",
+                cadence_seconds=600,
+                last_attempt=datetime(2026, 7, 20, 14, 0, tzinfo=UTC),
+                last_success=datetime(2026, 7, 20, 14, 0, tzinfo=UTC),
+                new_count=3,
+            ),
+            "active",
+        ),
+        (
+            EventSourceSnapshot(
+                source_name="sec",
+                cadence_seconds=1800,
+                last_attempt=datetime(2026, 7, 20, 14, 0, tzinfo=UTC),
+                failed_count=1,
+            ),
+            "degraded",
+        ),
+        (
+            EventSourceSnapshot(
+                source_name="news",
+                cadence_seconds=900,
+                last_attempt=datetime(2026, 7, 20, 13, 0, tzinfo=UTC),
+                last_success=datetime(2026, 7, 20, 13, 0, tzinfo=UTC),
+            ),
+            "stale",
+        ),
+    ],
+)
+def test_event_source_status_distinguishes_operator_outcomes(
+    source: EventSourceSnapshot,
+    expected: str,
+) -> None:
+    now = datetime(2026, 7, 20, 14, 1, tzinfo=UTC)
+    snapshot = RuntimeSnapshot.web_only(
+        rejudge_configured=False,
+        stream_configured=False,
+    ).model_copy(update={"event_sources": (source,)})
+
+    view = present_runtime(snapshot, now=now)
+
+    assert view.event_sources[0].status == expected
 
 
 @pytest.mark.anyio

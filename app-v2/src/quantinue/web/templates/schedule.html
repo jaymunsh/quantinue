@@ -40,6 +40,39 @@
     <dt>최근 결과</dt><dd>{{ schedule.runtime.snapshot.last_outcome }}</dd>
     <dt>연속 실패</dt><dd>{{ schedule.runtime.snapshot.consecutive_failures }}회</dd>
   </dl>
+  {% if schedule.runtime.event_sources %}
+  <div class="table-wrap" role="region" aria-label="장중 사건 수집 상태" tabindex="0">
+    <table class="portfolio-table">
+      <caption>장중 사건 수집 상태</caption>
+      <thead>
+        <tr>
+          <th scope="col">수집원</th><th scope="col">상태</th><th scope="col">최근 시도</th>
+          <th scope="col">최근 성공</th><th scope="col">최근 관측</th><th scope="col">누적 실패</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for source in schedule.runtime.event_sources %}
+        <tr data-event-source="{{ source.snapshot.source_name }}" data-event-status="{{ source.status }}">
+          <td data-label="수집원" class="mono"><strong>{{ source.snapshot.source_name }}</strong></td>
+          <td data-label="상태">
+            <span class="badge {% if source.status in ('idle', 'active') %}badge--success{% elif source.status in ('degraded', 'stale') %}badge--warning{% endif %}">
+              {% if source.status == 'stopped' %}대기 시작 전
+              {% elif source.status == 'idle' %}정상 · 신규 없음
+              {% elif source.status == 'active' %}정상 · 신규 있음
+              {% elif source.status == 'degraded' %}수집 실패
+              {% else %}수집 지연{% endif %}
+            </span>
+          </td>
+          <td data-label="최근 시도">{{ source.snapshot.last_attempt | kst_stamp if source.snapshot.last_attempt else '없음' }}</td>
+          <td data-label="최근 성공">{{ source.snapshot.last_success | kst_stamp if source.snapshot.last_success else '없음' }}</td>
+          <td data-label="최근 관측">신규 {{ source.snapshot.new_count }}건</td>
+          <td data-label="누적 실패">{{ source.snapshot.failed_count }}회</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 </section>
 
 {# ── 시계 기준 ─────────────────────────────────────────────────

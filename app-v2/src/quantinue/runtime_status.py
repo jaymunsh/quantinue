@@ -12,6 +12,31 @@ from quantinue.core.market_calendar import NyseCalendar
 StreamState = Literal["off", "connecting", "connected", "reconnecting", "failed"]
 PollOutcome = Literal["never", "disabled", "market_closed", "ready", "failed"]
 WatchStatus = Literal["off", "waiting", "ready", "attention", "closed"]
+EventSourceStatus = Literal["stopped", "idle", "active", "degraded", "stale"]
+
+
+class EventSourceSnapshot(BaseModel):
+    """Secret-free liveness counters for one incremental event source."""
+
+    model_config = ConfigDict(frozen=True)
+
+    source_name: str
+    cadence_seconds: int = Field(ge=1)
+    last_attempt: datetime | None = None
+    last_success: datetime | None = None
+    new_count: int = Field(default=0, ge=0)
+    duplicate_count: int = Field(default=0, ge=0)
+    rejected_count: int = Field(default=0, ge=0)
+    failed_count: int = Field(default=0, ge=0)
+
+
+class EventSourceView(BaseModel):
+    """Operator classification for one incremental source."""
+
+    model_config = ConfigDict(frozen=True)
+
+    snapshot: EventSourceSnapshot
+    status: EventSourceStatus
 
 
 class RuntimeSnapshot(BaseModel):
@@ -29,11 +54,10 @@ class RuntimeSnapshot(BaseModel):
     last_ready_poll: datetime | None = None
     last_outcome: PollOutcome = "never"
     consecutive_failures: int = Field(default=0, ge=0)
+    event_sources: tuple[EventSourceSnapshot, ...] = ()
 
     @classmethod
-    def web_only(
-        cls, *, rejudge_configured: bool, stream_configured: bool
-    ) -> RuntimeSnapshot:
+    def web_only(cls, *, rejudge_configured: bool, stream_configured: bool) -> RuntimeSnapshot:
         """Create a configured-but-unattached web process snapshot."""
         return cls(
             background_workers=False,
@@ -71,6 +95,7 @@ class RuntimeView(BaseModel):
 
     snapshot: RuntimeSnapshot
     watch_status: WatchStatus
+    event_sources: tuple[EventSourceView, ...] = ()
 
 
 class WatchRuntimeState:
@@ -138,4 +163,29 @@ def present_runtime(
         status = "attention"
     else:
         status = "ready"
-    return RuntimeView(snapshot=snapshot, watch_status=status)
+    return RuntimeView(
+        snapshot=snapshot,
+        watch_status=status,
+        event_sources=tuple(
+            EventSourceView(
+                snapshot=source,
+                status=present_event_source(source, now=now),
+            )
+            for source in snapshot.event_sources
+        ),
+    )
+
+
+def present_event_source(snapshot: EventSourceSnapshot, *, now: datetime) -> EventSourceStatus:
+    """Distinguish stopped, failed, quiet, active, and stale collection."""
+    if snapshot.last_attempt is None:
+        return "stopped"
+    if snapshot.failed_count > 0 and (
+        snapshot.last_success is None or snapshot.last_attempt > snapshot.last_success
+    ):
+        return "degraded"
+    if snapshot.last_success is None:
+        return "degraded"
+    if now - snapshot.last_success > timedelta(seconds=snapshot.cadence_seconds * 2):
+        return "stale"
+    return "active" if snapshot.new_count > 0 else "idle"

@@ -45,6 +45,7 @@ from quantinue.orchestration.job_factory import (
     build_budgeted_analyzer,
     build_job_runner,
 )
+from quantinue.orchestration.job_runner import JobRunner
 from quantinue.orchestration.policy import Mvp2Config, load_mvp2_config
 from quantinue.orchestration.watch_factory import build_watch_runner
 from quantinue.runtime_status import RuntimeSnapshot, RuntimeView, present_runtime
@@ -56,7 +57,6 @@ if TYPE_CHECKING:
 
     from quantinue.db.contracts import RunStore
     from quantinue.db.users import UserAccount
-    from quantinue.orchestration.job_runner import JobRunner
     from quantinue.orchestration.watch_runner import WatchRunner
 
 # 타임라인에 몇 건을 보여줄지. 판단 문턱이 아니라 표시용 창이라 config가
@@ -151,14 +151,19 @@ def _mount_schedule(  # noqa: PLR0913 - 협력자 나열이지 분기 아님
                 stream_configured=config.watch.stream.enabled,
             )
         if watch_runner is None:
-            return RuntimeSnapshot.owner(
+            snapshot = RuntimeSnapshot.owner(
                 daily_attached=job_runner is not None and config.jobs.enabled,
                 watch_attached=False,
                 rejudge_configured=config.watch.rejudge.enabled,
                 stream_configured=config.watch.stream.enabled,
             )
-        return watch_runner.snapshot().model_copy(
-            update={"daily_attached": job_runner is not None and config.jobs.enabled}
+        else:
+            snapshot = watch_runner.snapshot().model_copy(
+                update={"daily_attached": job_runner is not None and config.jobs.enabled}
+            )
+        event_runtime = job_runner.event_runtime if isinstance(job_runner, JobRunner) else None
+        return snapshot.model_copy(
+            update={"event_sources": () if event_runtime is None else event_runtime.snapshot()}
         )
 
     @app.get("/api/runtime/status", response_model=RuntimeView)

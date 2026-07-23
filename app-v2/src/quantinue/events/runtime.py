@@ -14,6 +14,7 @@ from quantinue.events.analysis import EventAnalysisRun
 from quantinue.events.evidence import EvidenceDocumentError
 from quantinue.events.ingestion import (
     IncrementalEventSource,
+    IngestionResult,
     PostgresEventIngestionRepository,
     ingest_incrementally,
 )
@@ -22,6 +23,7 @@ from quantinue.events.routing_repository import (
     route_pending_events,
 )
 from quantinue.llm.budget import LlmBudgetExceededError, LlmUsageBoundExceededError
+from quantinue.runtime_status import EventSourceSnapshot
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -36,7 +38,7 @@ if TYPE_CHECKING:
 class EventIngestor(Protocol):
     """Execute one configured source by name."""
 
-    async def ingest(self, source_name: str, as_of: date) -> None:
+    async def ingest(self, source_name: str, as_of: date) -> IngestionResult | None:
         """Persist all currently available pages."""
         ...
 
@@ -64,9 +66,7 @@ class EventAnalyzer(Protocol):
 class EventOrderExecutor(Protocol):
     """Execute newly approved material changes through durable order jobs."""
 
-    async def execute(
-        self, decisions: tuple[EventDecision, ...], *, now: datetime
-    ) -> None:
+    async def execute(self, decisions: tuple[EventDecision, ...], *, now: datetime) -> None:
         """Apply eligible event decisions without creating a parallel order path."""
         ...
 
@@ -94,23 +94,24 @@ class EventIngestionExecutor:
     analysis_dispatcher: EventAnalyzer | None = None
     order_executor: EventOrderExecutor | None = None
 
-    async def ingest(self, source_name: str, as_of: date) -> None:
+    async def ingest(self, source_name: str, as_of: date) -> IngestionResult | None:
         """Ingest one source, then route every durable pending event."""
         source = self.sources.get(source_name)
         if source is None:
-            return
+            return None
         match source:
             case SecEventSourceAdapter() | NewsEventSourceAdapter():
                 source = replace(source, now=datetime.now(UTC))
             case _:
                 pass
-        _ = await ingest_incrementally(
+        result = await ingest_incrementally(
             source_name,
             source,
             self.repository,
             self.config.sources[source_name].overlap,
         )
         _ = await route_pending_events(self.routing_repository, as_of)
+        return result
 
     async def prepare_evidence(self, now: datetime) -> EvidencePreparationRun | None:
         """Prepare each accepted route at most once in this tick."""
@@ -185,6 +186,7 @@ class EventIngestionRuntime:
     config: EventIngestionConfig
     ingestor: EventIngestor
     _last_dispatch: dict[str, datetime] = field(default_factory=dict, init=False)
+    _source_status: dict[str, EventSourceSnapshot] = field(default_factory=dict, init=False)
     last_evidence_run: EvidencePreparationRun | None = field(default=None, init=False)
 
     @property
@@ -194,6 +196,19 @@ class EventIngestionRuntime:
             return None
         return self.last_evidence_run.analysis
 
+    def snapshot(self) -> tuple[EventSourceSnapshot, ...]:
+        """Return configured sources even before their first attempt."""
+        return tuple(
+            self._source_status.get(
+                source_name,
+                EventSourceSnapshot(
+                    source_name=source_name,
+                    cadence_seconds=max(1, int(schedule.cadence.total_seconds())),
+                ),
+            )
+            for source_name, schedule in self.config.sources.items()
+        )
+
     async def tick(self, now: datetime) -> None:
         """Dispatch due sources, coalescing delayed ticks into one run."""
         as_of = now.astimezone(NEW_YORK).date()
@@ -202,7 +217,31 @@ class EventIngestionRuntime:
             previous = self._last_dispatch.get(source_name)
             if previous is not None and now - previous < schedule.cadence:
                 continue
-            await self.ingestor.ingest(source_name, as_of)
+            cadence_seconds = max(1, int(schedule.cadence.total_seconds()))
+            prior = self._source_status.get(
+                source_name,
+                EventSourceSnapshot(
+                    source_name=source_name,
+                    cadence_seconds=cadence_seconds,
+                ),
+            )
+            try:
+                result = await self.ingestor.ingest(source_name, as_of)
+            except Exception:
+                self._source_status[source_name] = prior.model_copy(
+                    update={
+                        "last_attempt": now,
+                        "failed_count": prior.failed_count + 1,
+                    }
+                )
+                raise
+            self._source_status[source_name] = prior.model_copy(
+                update={
+                    "last_attempt": now,
+                    "last_success": now,
+                    "new_count": 0 if result is None else result.documents_seen,
+                }
+            )
             dispatched = True
             self._last_dispatch[source_name] = now
         if dispatched:

@@ -24,7 +24,12 @@ from quantinue.orchestration.policy import (
     Mvp2Config,
     load_mvp2_config,
 )
-from quantinue.runtime_status import RuntimeView
+from quantinue.runtime_status import (
+    EventSourceSnapshot,
+    RuntimeSnapshot,
+    RuntimeView,
+    present_runtime,
+)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -152,3 +157,43 @@ def test_runtime_status_api_distinguishes_configured_policy_from_attached_worker
     assert payload.snapshot.last_poll_attempt is None
     assert payload.snapshot.last_ready_poll is None
     assert payload.snapshot.consecutive_failures == 0
+
+
+def test_schedule_page_exposes_incremental_source_liveness(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given
+    now = datetime.now(UTC)
+    snapshot = RuntimeSnapshot.web_only(
+        rejudge_configured=False,
+        stream_configured=False,
+    ).model_copy(
+        update={
+            "event_sources": (
+                EventSourceSnapshot(
+                    source_name="news",
+                    cadence_seconds=900,
+                    last_attempt=now,
+                    last_success=now,
+                    new_count=2,
+                ),
+            )
+        }
+    )
+
+    def event_runtime_view(runtime: RuntimeSnapshot, *, now: datetime) -> RuntimeView:
+        del runtime
+        return present_runtime(snapshot, now=now)
+
+    monkeypatch.setattr(main, "present_runtime", event_runtime_view)
+    client = TestClient(create_app(Settings(app_name="Quantinue Test")))
+
+    # When
+    response = client.get("/schedule")
+
+    # Then
+    assert response.status_code == 200
+    assert 'data-event-source="news"' in response.text
+    assert 'data-event-status="active"' in response.text
+    assert "정상 · 신규 있음" in response.text
+    assert "신규 2건" in response.text

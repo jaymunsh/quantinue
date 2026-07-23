@@ -7,6 +7,7 @@ import pytest
 from typing_extensions import override
 
 from quantinue.events.analysis import EventAnalysisRun
+from quantinue.events.ingestion import IngestionResult
 from quantinue.events.runtime import (
     EventIngestionExecutor,
     EventIngestionRuntime,
@@ -24,9 +25,11 @@ if TYPE_CHECKING:
 class Recorder:
     calls: list[tuple[str, date]] = field(default_factory=list)
     closed: bool = False
+    documents_seen: int = 0
 
-    async def ingest(self, source_name: str, as_of: date) -> None:
+    async def ingest(self, source_name: str, as_of: date) -> IngestionResult:
         self.calls.append((source_name, as_of))
+        return IngestionResult(pages_committed=1, documents_seen=self.documents_seen)
 
     async def prepare_evidence(self, now: datetime) -> EvidencePreparationRun | None:
         _ = now
@@ -51,6 +54,45 @@ async def test_compressed_clock_dispatches_exact_source_cadences() -> None:
     assert [source for source, _ in recorder.calls].count("news") == 3
     assert [source for source, _ in recorder.calls].count("wire") == 4
     assert {as_of for _, as_of in recorder.calls} == {date(2026, 7, 24)}
+
+
+@pytest.mark.anyio
+async def test_runtime_snapshot_distinguishes_stopped_quiet_and_new_documents() -> None:
+    recorder = Recorder(documents_seen=4)
+    runtime = EventIngestionRuntime(EventIngestionConfig(), recorder)
+    stopped = runtime.snapshot()
+    now = datetime(2026, 7, 24, 12, tzinfo=UTC)
+
+    await runtime.tick(now)
+    completed = runtime.snapshot()
+
+    assert {source.last_attempt for source in stopped} == {None}
+    assert {source.source_name: source.new_count for source in completed} == {
+        "sec": 4,
+        "news": 4,
+        "wire": 4,
+    }
+    assert {source.last_success for source in completed} == {now}
+
+
+@pytest.mark.anyio
+async def test_runtime_snapshot_records_failed_attempt_without_false_success() -> None:
+    class FailingRecorder(Recorder):
+        @override
+        async def ingest(self, source_name: str, as_of: date) -> IngestionResult:
+            del source_name, as_of
+            raise TimeoutError
+
+    runtime = EventIngestionRuntime(EventIngestionConfig(), FailingRecorder())
+    now = datetime(2026, 7, 24, 12, tzinfo=UTC)
+
+    with pytest.raises(TimeoutError):
+        await runtime.tick(now)
+
+    failed = runtime.snapshot()[0]
+    assert failed.last_attempt == now
+    assert failed.last_success is None
+    assert failed.failed_count == 1
 
 
 @pytest.mark.anyio

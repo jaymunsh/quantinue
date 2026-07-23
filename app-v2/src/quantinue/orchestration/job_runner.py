@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     from quantinue.events.analysis import EventAnalysisRun
     from quantinue.orchestration.policy import JobsConfig
+    from quantinue.runtime_status import EventSourceSnapshot
 
 
 class JobRunLedger(Protocol):
@@ -63,6 +64,10 @@ class EventRuntime(Protocol):
 
     async def close(self) -> None:
         """Release resources owned by the event runtime."""
+        ...
+
+    def snapshot(self) -> tuple[EventSourceSnapshot, ...]:
+        """Return secret-free source liveness for operator surfaces."""
         ...
 
     @property
