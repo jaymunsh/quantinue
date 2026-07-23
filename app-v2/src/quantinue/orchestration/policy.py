@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, Final, Literal
 from zoneinfo import ZoneInfo
 
@@ -102,6 +103,43 @@ class NewsConfig(BaseModel):
     # 종목당 프롬프트에 넣는 헤드라인 수. 예산이자 방어선이다 — 안 자르면
     # 시끄러운 종목 하나가 그날 판단의 컨텍스트를 통째로 차지한다.
     headlines_per_ticker: int = Field(default=5, gt=0, le=50)
+
+
+class EventSourceScheduleConfig(BaseModel):
+    """Polling and late-arrival window for one incremental event source."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    cadence_minutes: int = Field(gt=0, le=1_440)
+    overlap_minutes: int = Field(gt=0, le=10_080)
+
+    @property
+    def cadence(self) -> timedelta:
+        """Return the polling cadence as a duration."""
+        return timedelta(minutes=self.cadence_minutes)
+
+    @property
+    def overlap(self) -> timedelta:
+        """Return the late-arrival overlap as a duration."""
+        return timedelta(minutes=self.overlap_minutes)
+
+
+def _default_event_sources() -> dict[str, EventSourceScheduleConfig]:
+    return {
+        "sec": EventSourceScheduleConfig(cadence_minutes=30, overlap_minutes=60),
+        "news": EventSourceScheduleConfig(cadence_minutes=15, overlap_minutes=30),
+        "wire": EventSourceScheduleConfig(cadence_minutes=10, overlap_minutes=20),
+    }
+
+
+class EventIngestionConfig(BaseModel):
+    """Incremental event collection policy owned by pipeline configuration."""
+
+    model_config = ConfigDict(frozen=True, extra="forbid")
+
+    sources: dict[str, EventSourceScheduleConfig] = Field(
+        default_factory=_default_event_sources
+    )
 
 
 class ScreeningConfig(BaseModel):
@@ -262,6 +300,7 @@ class Mvp2Config(BaseModel):
     screening: ScreeningConfig = ScreeningConfig()
     disclosure: DisclosureConfig = DisclosureConfig()
     news: NewsConfig = NewsConfig()
+    event_ingestion: EventIngestionConfig = EventIngestionConfig()
     exits: ExitsConfig = ExitsConfig()
     allocation: AllocationConfig = AllocationConfig()
     jobs: JobsConfig = JobsConfig()

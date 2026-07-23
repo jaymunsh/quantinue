@@ -61,6 +61,17 @@ mvp2:
     # 정책 오염이므로 하지 않는다. 투표권이 필요해지면 보도자료 와이어(로드맵 R11).
     page_size: 50
     headlines_per_ticker: 5
+  event_ingestion:
+    sources:
+      sec:
+        cadence_minutes: 30
+        overlap_minutes: 60
+      news:
+        cadence_minutes: 15
+        overlap_minutes: 30
+      wire:
+        cadence_minutes: 10
+        overlap_minutes: 20
   screening:
     universe_size: 2000
     min_price_usd: 5

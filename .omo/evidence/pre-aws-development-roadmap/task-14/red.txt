@@ -1,0 +1,27 @@
+
+==================================== ERRORS ====================================
+__________ ERROR collecting tests/unit/test_event_ingestion_config.py __________
+ImportError while importing test module '/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app-v2/tests/unit/test_event_ingestion_config.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.11/3.11.15_3/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/unit/test_event_ingestion_config.py:3: in <module>
+    from quantinue.orchestration.policy import EventIngestionConfig
+E   ImportError: cannot import name 'EventIngestionConfig' from 'quantinue.orchestration.policy' (/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app-v2/src/quantinue/orchestration/policy.py)
+____ ERROR collecting tests/integration/test_incremental_event_ingestion.py ____
+ImportError while importing test module '/Users/sunghyuk/Documents/ClaudeCode/quantinue-v2/app-v2/tests/integration/test_incremental_event_ingestion.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+/opt/homebrew/Cellar/python@3.11/3.11.15_3/Frameworks/Python.framework/Versions/3.11/lib/python3.11/importlib/__init__.py:126: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/integration/test_incremental_event_ingestion.py:12: in <module>
+    from quantinue.events.ingestion import (
+E   ModuleNotFoundError: No module named 'quantinue.events'
+=========================== short test summary info ============================
+ERROR tests/unit/test_event_ingestion_config.py
+ERROR tests/integration/test_incremental_event_ingestion.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 2 errors during collection !!!!!!!!!!!!!!!!!!!!
+2 errors in 0.26s

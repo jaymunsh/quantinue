@@ -1,0 +1,21 @@
+$ pytest complete-page/reordered/duplicate
+.                                                                        [100%]
+1 passed in 0.33s
+$ SQL after complete pages
+documents=3
+versions=3
+events=3
+receipts=3
+news:c2
+$ pytest repeated-token
+.                                                                        [100%]
+1 passed in 0.32s
+$ SQL after loop rejection
+documents=1
+news:c1
+$ pytest partial failure
+.                                                                        [100%]
+1 passed in 0.31s
+$ SQL after partial failure
+documents=1
+wire:c1
