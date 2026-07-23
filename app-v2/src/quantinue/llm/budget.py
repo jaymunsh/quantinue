@@ -37,8 +37,8 @@ class ModelPrice(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
-    input_usd_per_1m: float = Field(default=0.0, ge=0)
-    output_usd_per_1m: float = Field(default=0.0, ge=0)
+    input_usd_per_1m: Decimal = Field(gt=0, allow_inf_nan=False)
+    output_usd_per_1m: Decimal = Field(gt=0, allow_inf_nan=False)
 
 
 class LlmUsageRecord(BaseModel):
@@ -242,8 +242,8 @@ class BudgetedAnalyzer:
             return Decimal(0)
         per_million = Decimal(1_000_000)
         return (
-            Decimal(input_tokens) * Decimal(str(price.input_usd_per_1m)) / per_million
-            + Decimal(output_tokens) * Decimal(str(price.output_usd_per_1m)) / per_million
+            Decimal(input_tokens) * price.input_usd_per_1m / per_million
+            + Decimal(output_tokens) * price.output_usd_per_1m / per_million
         )
 
     def _usage_cost(self, usage: MaximumTokenUsage) -> Decimal:

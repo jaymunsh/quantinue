@@ -59,6 +59,7 @@ class WireModelSettingsRequest(BaseModel):
     max_tokens: int | None = None
     max_completion_tokens: int | None = None
     chat_template_kwargs: dict[str, object] | None = None
+    service_tier: str | None = None
 
 
 @pytest.mark.anyio
@@ -387,6 +388,7 @@ async def test_openai_mode_caps_output_but_leaves_reasoning_to_the_provider() ->
 
     capped = observed_requests[0]
     assert 512 in {capped.max_tokens, capped.max_completion_tokens}
+    assert capped.service_tier == "default"
     assert capped.model_fields_set.isdisjoint({"reasoning_effort", "chat_template_kwargs"})
 
 

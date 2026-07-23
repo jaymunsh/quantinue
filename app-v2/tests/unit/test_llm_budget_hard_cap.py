@@ -92,7 +92,12 @@ def _analyzer(inner: _BoundedAnalyzer, ledger: _Ledger) -> BudgetedAnalyzer:
         inner,
         ledger=ledger,
         daily_limit_usd=3,
-        pricing={"gpt-x": ModelPrice(input_usd_per_1m=1)},
+        pricing={
+            "gpt-x": ModelPrice(
+                input_usd_per_1m=Decimal(1),
+                output_usd_per_1m=Decimal(1),
+            )
+        },
         now=lambda: datetime(2026, 7, 21, 4, tzinfo=UTC),
     )
 

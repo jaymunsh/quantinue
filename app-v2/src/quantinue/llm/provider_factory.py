@@ -84,7 +84,8 @@ def build_llm_analyzer(
             model_name,
             provider=OpenAIProvider(openai_client=client),
             settings=OpenAIChatModelSettings(
-                max_tokens=settings.llm_max_output_tokens
+                max_tokens=settings.llm_max_output_tokens,
+                openai_service_tier="default",
             ),
         ),
         AnalyzerProviderConfig(

@@ -89,7 +89,14 @@ async def test_missing_billable_usage_commits_maximum_and_blocks_next_call() -> 
     inner = MissingUsageAnalyzer(maximum)
     ledger = MissingUsageLedger(Decimal("2.997"))
     analyzer = budgeted(
-        inner, ledger, {"gpt-x": ModelPrice(input_usd_per_1m=1)}
+        inner,
+        ledger,
+        {
+            "gpt-x": ModelPrice(
+                input_usd_per_1m=Decimal(1),
+                output_usd_per_1m=Decimal(1),
+            )
+        },
     )
 
     # When / Then

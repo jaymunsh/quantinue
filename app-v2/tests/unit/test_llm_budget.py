@@ -105,7 +105,12 @@ def _analyzer(
         ledger=ledger,
         daily_limit_usd=limit,
         sell_budget_reserve_ratio=reserve,
-        pricing={"gpt-x": ModelPrice(input_usd_per_1m=1.0, output_usd_per_1m=4.0)},
+        pricing={
+            "gpt-x": ModelPrice(
+                input_usd_per_1m=Decimal(1),
+                output_usd_per_1m=Decimal(4),
+            )
+        },
         now=lambda: datetime(2026, 7, 21, 4, 0, tzinfo=UTC),
     )
 
@@ -176,7 +181,15 @@ def test_a_billable_model_without_a_declared_rate_refuses_to_start() -> None:
 
 
 def test_a_declared_rate_satisfies_the_startup_check() -> None:
-    require_pricing_for("gpt-x", {"gpt-x": ModelPrice(input_usd_per_1m=1.0)})
+    require_pricing_for(
+        "gpt-x",
+        {
+            "gpt-x": ModelPrice(
+                input_usd_per_1m=Decimal(1),
+                output_usd_per_1m=Decimal(1),
+            )
+        },
+    )
 
 
 def test_pricing_is_owned_by_config() -> None:
@@ -195,7 +208,7 @@ def test_pricing_is_owned_by_config() -> None:
     )
 
     assert config.budget.daily_llm_usd == 2.5
-    assert config.budget.model_pricing["gpt-4o-mini"].output_usd_per_1m == 0.60
+    assert config.budget.model_pricing["gpt-4o-mini"].output_usd_per_1m == Decimal("0.60")
 
 
 class IsolatedSettings(Settings):
