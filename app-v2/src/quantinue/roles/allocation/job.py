@@ -18,7 +18,15 @@ from datetime import UTC, datetime, time, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+import anyio
+
 from quantinue.broker.provider import OrderPlan
+from quantinue.core.errors import (
+    AuthenticationFailureError,
+    HttpFailureError,
+    TransientFailureError,
+    ValidationFailureError,
+)
 from quantinue.core.market_calendar import NEW_YORK, NyseCalendar
 from quantinue.core.ontology import EvidenceKind, FillSide
 from quantinue.core.order_identity import derive_client_order_id
@@ -31,6 +39,7 @@ from quantinue.db.contracts import (
 from quantinue.db.domain_records import CompletedFillWrite, OrderPlanWrite
 from quantinue.roles.role_09_risk_portfolio.contracts import (
     RiskPortfolioInput,
+    RiskPortfolioOutput,
     build_order_plan,
 )
 
@@ -38,6 +47,7 @@ if TYPE_CHECKING:
     from collections.abc import Mapping
     from datetime import date
 
+    from quantinue.broker.contracts import Broker
     from quantinue.db.domain_records import AccountRiskState, BuyCandidate
     from quantinue.orchestration.policy import (
         AllocationConfig,
@@ -47,15 +57,24 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
+class BuyExecutionOutcome:
+    """Observable buy result used to persist an exact skip reason."""
+
+    executed: bool
+    skipped_reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class AllocationJob:
     """Turn today's approved buy candidates into sized, filled bracket orders."""
 
     store: object
-    broker: object
+    broker: Broker
     profiles: Mapping[str, ProfileConfig]
     gates: GatesConfig
     allocation: AllocationConfig
     calendar: NyseCalendar = field(default_factory=NyseCalendar)
+    tradability_timeout_seconds: float = 3.0
 
     async def run(self, *, as_of: date) -> str:
         """Allocate for every subscribed account, sequentially and idempotently."""
@@ -227,12 +246,12 @@ class AllocationJob:
             reason = plan.skipped_reason
             quantity = plan.quantity
             if quantity > 0:
-                executed = await self._execute(plan, state.equity, as_of, cycle_ts)
-                if executed:
+                execution = await self.execute_buy(plan, state.equity, as_of, cycle_ts)
+                if execution.executed:
                     owned.add(candidate.ticker)
                     bought += 1
                 else:
-                    reason = "daily_order_cap"
+                    reason = execution.skipped_reason
                     quantity = 0
             if quantity == 0:
                 skipped += 1
@@ -244,14 +263,41 @@ class AllocationJob:
             )
         return (bought, skipped)
 
-    async def _execute(
-        self, plan: object, equity: Decimal, as_of: date, cycle_ts: datetime
-    ) -> bool:
+    async def execute_buy(
+        self,
+        plan: RiskPortfolioOutput,
+        equity: Decimal,
+        as_of: date,
+        cycle_ts: datetime,
+    ) -> BuyExecutionOutcome:
         """Reserve, fill, and book one bracket — every step idempotent.
 
         순서는 청산 잡과 같은 이유로 예약 → 브로커 → 체결이다: 브로커가 체결한
         뒤 원장 자리가 없는 상태를 만들지 않는다.
         """
+        lookup_failed = False
+        try:
+            with anyio.fail_after(self.tradability_timeout_seconds):
+                try:
+                    tradable = await self.broker.is_tradable(plan.ticker)
+                except (
+                    AuthenticationFailureError,
+                    HttpFailureError,
+                    TransientFailureError,
+                    ValidationFailureError,
+                ):
+                    lookup_failed = True
+                    tradable = False
+        except TimeoutError:
+            return BuyExecutionOutcome(
+                executed=False, skipped_reason="tradability_unavailable"
+            )
+        if lookup_failed:
+            return BuyExecutionOutcome(
+                executed=False, skipped_reason="tradability_unavailable"
+            )
+        if not tradable:
+            return BuyExecutionOutcome(executed=False, skipped_reason="not_tradable")
         client_order_id = derive_client_order_id(
             account_id=plan.account_id, signal_id=plan.signal_id
         )
@@ -273,7 +319,7 @@ class AllocationJob:
             )
         )
         if reserved.outcome is AppOrderExposureReservationOutcome.REJECTED:
-            return False
+            return BuyExecutionOutcome(executed=False, skipped_reason="daily_order_cap")
         result = await self.broker.submit(
             OrderPlan(
                 ticker=plan.ticker,
@@ -296,7 +342,7 @@ class AllocationJob:
                 side=FillSide.BUY,
             )
         )
-        return True
+        return BuyExecutionOutcome(executed=True)
 
     def _evidence(
         self, run_id: str, candidate: BuyCandidate, account_id: int, cycle_ts: datetime

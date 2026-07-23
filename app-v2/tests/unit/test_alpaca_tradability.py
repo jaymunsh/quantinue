@@ -6,6 +6,7 @@ from pydantic import SecretStr
 
 from quantinue.broker.alpaca import AlpacaBroker
 from quantinue.core.config import BrokerMode, Settings
+from quantinue.core.errors import HttpFailureError
 
 
 def _settings() -> Settings:
@@ -63,10 +64,17 @@ async def test_unknown_symbol_is_not_tradable() -> None:
 
 
 @pytest.mark.anyio
-async def test_lookup_failure_does_not_block_execution() -> None:
-    # A flaky assets endpoint must not become an outage that stops all trading;
-    # Alpaca still rejects a genuinely halted symbol at submission.
+async def test_lookup_failure_remains_typed_for_fail_closed_allocation() -> None:
+    # Given
     def handler(request: httpx2.Request) -> httpx2.Response:
         return httpx2.Response(500, json={"message": "boom"}, request=request)
 
-    assert await _broker(handler).is_tradable("NVDA") is True
+    # When
+    failure: HttpFailureError | None = None
+    try:
+        _ = await _broker(handler).is_tradable("NVDA")
+    except HttpFailureError as error:
+        failure = error
+
+    # Then
+    assert failure == HttpFailureError(500)

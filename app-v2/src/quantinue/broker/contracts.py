@@ -52,6 +52,10 @@ class ClosePlan(BaseModel):
 class Broker(Protocol):
     """Minimal common capability consumed by role 10."""
 
+    async def is_tradable(self, ticker: str) -> bool:
+        """Return whether the venue currently accepts orders for this symbol."""
+        ...
+
     async def submit(self, plan: OrderPlan) -> OrderResult:
         """Submit or simulate exactly one bracket order."""
         ...
