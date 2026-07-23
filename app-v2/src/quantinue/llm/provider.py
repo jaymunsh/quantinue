@@ -6,9 +6,12 @@ from enum import StrEnum, unique
 from hashlib import sha256
 from typing import TYPE_CHECKING, Protocol, assert_never
 
+import anyio
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent, RunUsage, UsageLimits
 from pydantic_ai.exceptions import ModelAPIError
+from pydantic_ai.models.wrapper import WrapperModel
+from typing_extensions import override
 
 from quantinue.core.errors import TransientFailureError
 from quantinue.core.ontology import ModelProvider
@@ -21,7 +24,9 @@ from quantinue.llm.usage_limits import (
 )
 
 if TYPE_CHECKING:
-    from pydantic_ai.models import Model
+    from pydantic_ai.messages import ModelMessage, ModelResponse
+    from pydantic_ai.models import Model, ModelRequestParameters
+    from pydantic_ai.settings import ModelSettings
 
 
 @unique
@@ -255,8 +260,9 @@ class PydanticAiAnalyzer:
         boundary: ProviderCallBoundary | None,
     ) -> AnalysisResult:
         system_prompt = load_system_prompt(task.value, profile=profile)
+        model = _BoundaryModel(self._model, boundary) if boundary is not None else self._model
         agent = Agent(
-            self._model,
+            model,
             output_type=_output_type_for(task),
             instructions=system_prompt.content,
             retries=self._retries,
@@ -275,8 +281,6 @@ class PydanticAiAnalyzer:
                         self._config.usage_limit.count_input_before_request
                     ),
                 )
-            if boundary is not None:
-                await boundary.dispatched()
             result = await agent.run(
                 ModelInput(external_data=prompt).model_dump_json(),
                 usage_limits=usage_limits,
@@ -308,10 +312,26 @@ class PydanticAiAnalyzer:
             ),
         )
 
-
 class _UsageResult(Protocol):
     @property
     def usage(self) -> RunUsage | None: ...
+
+
+class _BoundaryModel(WrapperModel):
+    def __init__(self, wrapped: Model, boundary: ProviderCallBoundary) -> None:
+        super().__init__(wrapped)
+        self._boundary = boundary
+
+    @override
+    async def request(
+        self,
+        messages: list[ModelMessage],
+        model_settings: ModelSettings | None,
+        model_request_parameters: ModelRequestParameters,
+    ) -> ModelResponse:
+        with anyio.CancelScope(shield=True):
+            await self._boundary.dispatched()
+        return await self.wrapped.request(messages, model_settings, model_request_parameters)
 
 
 def _usage(result: _UsageResult) -> TokenUsage | None:

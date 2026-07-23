@@ -141,6 +141,20 @@ class PaidCallBoundary(Protocol):
 
 
 @runtime_checkable
+class AtomicPaidCallBoundary(Protocol):
+    """Cross budget and workload ownership as one durable transition."""
+
+    async def dispatch_with_budget(
+        self,
+        reservation: LlmBudgetReservation,
+        *,
+        dispatched_at: datetime,
+    ) -> bool:
+        """Return whether the caller owned every component of the ticket."""
+        ...
+
+
+@runtime_checkable
 class BoundaryAwareAnalyzer(Protocol):
     """Provider adapter that acknowledges actual transport initiation."""
 
@@ -165,6 +179,20 @@ class _BudgetDispatchBoundary:
     crossed: bool = False
 
     async def dispatched(self) -> None:
+        if self.crossed:
+            return
+        if (
+            self.durable is not None
+            and self.reservation is not None
+            and isinstance(self.external, AtomicPaidCallBoundary)
+        ):
+            if not await self.external.dispatch_with_budget(
+                self.reservation, dispatched_at=self.dispatched_at
+            ):
+                message = "atomic paid-call ticket ownership lost"
+                raise LlmBudgetExceededError(message)
+            self.crossed = True
+            return
         if (
             self.durable is not None
             and self.reservation is not None

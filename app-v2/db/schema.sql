@@ -334,7 +334,7 @@ CREATE TABLE IF NOT EXISTS tb_rejudgement_cooldown (
   claimed_at TIMESTAMPTZ NOT NULL,
   completed_at TIMESTAMPTZ,
   PRIMARY KEY (ticker, persona),
-  CHECK (
+  CONSTRAINT tb_rejudgement_cooldown_lifecycle_check CHECK (
     (status IN ('claimed','dispatched') AND completed_at IS NULL)
     OR (status = 'completed' AND completed_at IS NOT NULL)
   )

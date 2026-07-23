@@ -37,8 +37,10 @@ from quantinue.events.analysis_repository import (
     EventAnalysisStage,
 )
 from quantinue.llm.budget import (
+    AtomicPaidCallBoundary,
     BudgetedAnalyzer,
     LlmBudgetExceededError,
+    LlmBudgetReservation,
     PaidCallBoundary,
 )
 from quantinue.llm.provider import AnalysisResult, AnalysisTask, LlmAnalyzer, ModelInput
@@ -121,7 +123,7 @@ class _EventOwnershipLostError(RuntimeError):
 
 
 @dataclass(slots=True)
-class _EventPaidBoundary(PaidCallBoundary):
+class _EventPaidBoundary(PaidCallBoundary, AtomicPaidCallBoundary):
     receipts: EventAnalysisReceiptRepository
     event_id: int
     ticker: str
@@ -143,9 +145,29 @@ class _EventPaidBoundary(PaidCallBoundary):
             raise _EventOwnershipLostError
         self.crossed = True
 
+    @override
+    async def dispatch_with_budget(
+        self,
+        reservation: LlmBudgetReservation,
+        *,
+        dispatched_at: datetime,
+    ) -> bool:
+        acknowledged = await self.receipts.mark_dispatched_with_budget(
+            self.event_id,
+            self.ticker,
+            self.persona,
+            self.stage,
+            self.owner_token,
+            reservation,
+            dispatched_at,
+        )
+        if acknowledged:
+            self.crossed = True
+        return acknowledged
+
 
 @dataclass(slots=True)
-class _LeasePaidBoundary(PaidCallBoundary):
+class _LeasePaidBoundary(PaidCallBoundary, AtomicPaidCallBoundary):
     lease: WorkLease
     ticker: str
     persona: str
@@ -153,6 +175,25 @@ class _LeasePaidBoundary(PaidCallBoundary):
     @override
     async def dispatched(self) -> None:
         await self.lease.mark_dispatched(self.ticker, self.persona)
+
+    @override
+    async def dispatch_with_budget(
+        self,
+        reservation: LlmBudgetReservation,
+        *,
+        dispatched_at: datetime,
+    ) -> bool:
+        atomic_dispatch = getattr(self.lease, "dispatch_with_budget", None)
+        if atomic_dispatch is None:
+            return False
+        return bool(
+            await atomic_dispatch(
+                self.ticker,
+                self.persona,
+                reservation,
+                dispatched_at=dispatched_at,
+            )
+        )
 
 
 @dataclass(slots=True)

@@ -2412,6 +2412,58 @@ class PostgresDomainRepository:
             )
             return result.rowcount == 1
 
+    async def dispatch_rejudgement_with_budget(
+        self,
+        ticker: str,
+        persona: str,
+        *,
+        owner_token: str,
+        reservation: LlmBudgetReservation,
+        dispatched_at: datetime,
+    ) -> bool:
+        """Atomically dispatch cooldown and budget ownership."""
+        async with self._engine.begin() as connection:
+            budget = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_llm_budget_reservation
+                    SET state='dispatched', dispatched_at=:dispatched_at
+                    WHERE budget_day=:budget_day
+                      AND reservation_id=:reservation_id
+                      AND owner_token=:budget_owner_token
+                      AND state='claimed'
+                    """
+                ),
+                {
+                    "budget_day": reservation.budget_day,
+                    "reservation_id": reservation.reservation_id,
+                    "budget_owner_token": reservation.owner_token,
+                    "dispatched_at": dispatched_at,
+                },
+            )
+            if budget.rowcount != 1:
+                return False
+            cooldown = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_rejudgement_cooldown
+                    SET status='dispatched', claimed_at=:dispatched_at
+                    WHERE ticker=:ticker AND persona=:persona
+                      AND status='claimed' AND owner_token=:owner_token
+                    """
+                ),
+                {
+                    "ticker": ticker,
+                    "persona": persona,
+                    "owner_token": owner_token,
+                    "dispatched_at": dispatched_at,
+                },
+            )
+            if cooldown.rowcount != 1:
+                message = "budget/cooldown call-ticket ownership diverged"
+                raise RuntimeError(message)
+            return True
+
     async def release_rejudgement(
         self, ticker: str, persona: str, *, owner_token: str
     ) -> bool:

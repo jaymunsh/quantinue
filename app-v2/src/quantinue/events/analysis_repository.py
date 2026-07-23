@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from quantinue.events.evidence import EvidencePack
+    from quantinue.llm.budget import LlmBudgetReservation
 
 
 class EventAnalysisStage(StrEnum):
@@ -271,6 +272,76 @@ class PostgresEventAnalysisReceiptRepository:
                 )
                 if cooldown.rowcount != 1:
                     message = "strategist dispatch/cooldown ownership diverged"
+                    raise RuntimeError(message)
+            return True
+
+    async def mark_dispatched_with_budget(  # noqa: PLR0913
+        self,
+        event_id: int,
+        ticker: str,
+        persona: str,
+        stage: EventAnalysisStage,
+        owner_token: str,
+        reservation: LlmBudgetReservation,
+        dispatched_at: datetime,
+    ) -> bool:
+        """Atomically dispatch the event stage and its budget reservation."""
+        async with self._engine.begin() as connection:
+            budget = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_llm_budget_reservation
+                    SET state='dispatched', dispatched_at=:dispatched_at
+                    WHERE budget_day=:budget_day
+                      AND reservation_id=:reservation_id
+                      AND owner_token=:budget_owner_token
+                      AND state='claimed'
+                    """
+                ),
+                {
+                    "budget_day": reservation.budget_day,
+                    "reservation_id": reservation.reservation_id,
+                    "budget_owner_token": reservation.owner_token,
+                    "dispatched_at": dispatched_at,
+                },
+            )
+            if budget.rowcount != 1:
+                return False
+            receipt = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_event_processing_receipt
+                    SET completed_at=claimed_at
+                    WHERE event_id=:event_id AND ticker=:ticker
+                      AND persona=:persona AND status='claimed'
+                      AND completed_at IS NULL AND owner_token=:owner_token
+                    """
+                ),
+                {**self._key(event_id, ticker, persona, stage), "owner_token": owner_token},
+            )
+            if receipt.rowcount != 1:
+                message = "budget/receipt call-ticket ownership diverged"
+                raise RuntimeError(message)
+            if stage is EventAnalysisStage.STRATEGIST:
+                cooldown = await connection.execute(
+                    text(
+                        """
+                        UPDATE tb_rejudgement_cooldown
+                        SET status='dispatched',
+                            claimed_at=GREATEST(claimed_at, :dispatched_at)
+                        WHERE ticker=:ticker AND persona=:persona
+                          AND status='claimed' AND owner_token=:owner_token
+                        """
+                    ),
+                    {
+                        "ticker": ticker,
+                        "persona": persona,
+                        "owner_token": owner_token,
+                        "dispatched_at": dispatched_at,
+                    },
+                )
+                if cooldown.rowcount != 1:
+                    message = "budget/receipt/cooldown call-ticket ownership diverged"
                     raise RuntimeError(message)
             return True
 

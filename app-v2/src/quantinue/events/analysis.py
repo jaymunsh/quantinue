@@ -17,6 +17,7 @@ if TYPE_CHECKING:
         EventAnalysisStage,
     )
     from quantinue.events.evidence import EvidencePack
+    from quantinue.llm.budget import LlmBudgetReservation
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +80,19 @@ class EventAnalysisReceiptRepository(Protocol):
         owner_token: str,
     ) -> bool:
         """Fence the actual provider dispatch."""
+        ...
+
+    async def mark_dispatched_with_budget(  # noqa: PLR0913
+        self,
+        event_id: int,
+        ticker: str,
+        persona: str,
+        stage: EventAnalysisStage,
+        owner_token: str,
+        reservation: LlmBudgetReservation,
+        dispatched_at: datetime,
+    ) -> bool:
+        """Atomically dispatch the event stage and its budget reservation."""
         ...
 
     async def complete(  # noqa: PLR0913 - durable key and owner fence are independent

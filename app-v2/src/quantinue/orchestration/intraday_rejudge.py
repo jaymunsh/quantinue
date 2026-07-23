@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from datetime import date, datetime
     from decimal import Decimal
 
+    from quantinue.llm.budget import LlmBudgetReservation
     from quantinue.orchestration.work_lease import WorkLease
     from quantinue.roles.analysis.job import AnalysisJob
     from quantinue.roles.exits import ExitDecision
@@ -55,6 +56,18 @@ class IntradaySellDomain(Protocol):
         self, ticker: str, persona: str, *, owner_token: str, now: datetime
     ) -> bool:
         """Make the shared cooldown non-reclaimable at provider dispatch."""
+        ...
+
+    async def dispatch_rejudgement_with_budget(
+        self,
+        ticker: str,
+        persona: str,
+        *,
+        owner_token: str,
+        reservation: LlmBudgetReservation,
+        dispatched_at: datetime,
+    ) -> bool:
+        """Atomically dispatch cooldown and budget ownership."""
         ...
 
     async def release_rejudgement(
@@ -116,6 +129,24 @@ class _CooldownLease:
         ):
             message = "rejudgement ownership lost before dispatch"
             raise IntradayPartialFailureError(message)
+
+    async def dispatch_with_budget(
+        self,
+        ticker: str,
+        persona: str,
+        reservation: LlmBudgetReservation,
+        *,
+        dispatched_at: datetime,
+    ) -> bool:
+        if self.inner is not None:
+            await self.inner.mark_dispatched(ticker, persona)
+        return await self.domain.dispatch_rejudgement_with_budget(
+            ticker,
+            persona,
+            owner_token=self.owner_tokens[ticker],
+            reservation=reservation,
+            dispatched_at=dispatched_at,
+        )
 
     async def complete_item(self, ticker: str, persona: str) -> None:
         if self.inner is not None:
