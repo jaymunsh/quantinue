@@ -19,14 +19,13 @@ from typing import TYPE_CHECKING, Protocol
 import anyio
 import structlog
 
-from quantinue.core.market_calendar import NEW_YORK, NyseCalendar
+from quantinue.core.market_calendar import NEW_YORK, NyseCalendar, Session
 from quantinue.orchestration.job_cadence import is_job_due
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from datetime import date
 
-    from quantinue.events.runtime import EventIngestionRuntime
     from quantinue.orchestration.policy import JobsConfig
 
 
@@ -50,6 +49,14 @@ class JobRunLedger(Protocol):
 
     async def last_job_success(self, job_name: str) -> date | None:
         """Return the last slot this job actually completed, if any."""
+        ...
+
+
+class EventRuntime(Protocol):
+    """Dispatch incremental event sources for one scheduler tick."""
+
+    async def tick(self, now: datetime) -> None:
+        """Run sources due at this instant."""
         ...
 
 
@@ -82,7 +89,7 @@ class JobRunner:
         notifier: Callable[[str], Awaitable[None]] | None = None,
         *,
         ops_alerts: bool = False,
-        event_runtime: EventIngestionRuntime | None = None,
+        event_runtime: EventRuntime | None = None,
     ) -> None:
         """Bind collaborators; each job owns its own side effects."""
         self._config = config
@@ -111,14 +118,15 @@ class JobRunner:
         """Decide and run whatever is due, returning one outcome per job."""
         if not self._config.enabled:
             return tuple(JobOutcome(job.name, "disabled") for job in self._jobs)
-        if self._event_runtime is not None:
-            await self._event_runtime.tick(now)
         # 슬롯은 뉴욕 세션일이다. UTC 날짜를 쓰면 장중 20:00(뉴욕)에 날짜가
         # 넘어가 같은 세션에 잡이 두 번 돈다.
         as_of = now.astimezone(NEW_YORK).date()
         if not self._calendar.is_trading_day(as_of):
             # 세션이 없으면 새 일봉도 새 청산 대상도 없다(D4 정규장 전용).
             return tuple(JobOutcome(job.name, "holiday") for job in self._jobs)
+        session = self._calendar.current_session(now)
+        if self._event_runtime is not None and session in {Session.PRE, Session.REGULAR}:
+            await self._event_runtime.tick(now)
         await self._announce_stuck(as_of, now)
         return tuple([await self._run_one(job, as_of) for job in self._jobs])
 

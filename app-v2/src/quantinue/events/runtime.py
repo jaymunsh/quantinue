@@ -1,5 +1,6 @@
 """Minute-cadence runtime for incremental event sources."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import Protocol
@@ -26,7 +27,7 @@ class EventIngestionExecutor:
     """Bind source adapters to the transactional repository."""
 
     config: EventIngestionConfig
-    sources: dict[str, IncrementalEventSource]
+    sources: Mapping[str, IncrementalEventSource]
     repository: PostgresEventIngestionRepository
 
     async def ingest(self, source_name: str) -> None:
