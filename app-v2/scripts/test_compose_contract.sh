@@ -12,7 +12,7 @@ docker compose config >"$rendered"
 # the safe local-LLM/mock-broker contract is explicit, and Postgres loads the schema.
 grep -F 'host_ip: 127.0.0.1' "$rendered" >/dev/null
 grep -F 'host_ip: 0.0.0.0' "$rendered" >/dev/null
-grep -F 'published: "5444"' "$rendered" >/dev/null
+grep -F 'published: "5445"' "$rendered" >/dev/null
 grep -F 'published: "8011"' "$rendered" >/dev/null
 grep -F 'target: /docker-entrypoint-initdb.d/001-schema.sql' "$rendered" >/dev/null
 grep -F 'postgresql+asyncpg://quantinue:quantinue@db:5432/quantinue' "$rendered" >/dev/null
