@@ -34,6 +34,7 @@ _LOSS_DAY = date(2026, 7, 22)
 _IDEM_DAY = date(2026, 7, 23)
 _HELD_DAY = date(2026, 7, 24)
 _INTRADAY_DAY = date(2026, 7, 27)
+_EVENT_DAY = date(2026, 7, 28)
 
 
 def _midnight(day: date) -> datetime:
@@ -327,6 +328,39 @@ async def test_intraday_buy_uses_the_observed_price_and_remains_idempotent() -> 
         account=account_id,
     )
     assert orders == [(Decimal("51.00"), 1)]
+
+
+@pytest.mark.anyio
+async def test_event_buy_filters_persona_and_remains_idempotent() -> None:
+    account_id = await _seed_account("EVENT", cash=100_000)
+    _ = await _seed_candidate("ALE1", _EVENT_DAY, conviction="0.900", price=50)
+    _ = await _seed_candidate(
+        "ALE2",
+        _EVENT_DAY,
+        inv_type="conservative",
+        conviction="0.900",
+        price=50,
+    )
+    now = datetime(2026, 7, 28, 14, 0, tzinfo=UTC)
+    store = PostgresRunStore(DATABASE_URL or "")
+    await store.initialize()
+
+    try:
+        for _ in range(2):
+            _ = await _job(store).run_event(
+                now=now,
+                prices={"ALE1": Decimal(51), "ALE2": Decimal(51)},
+                profiles={"ALE1": frozenset({"aggressive"})},
+            )
+    finally:
+        await store.close()
+
+    orders = await _read_rows(
+        "SELECT ticker, entry_price, count(*) FROM tb_order "
+        "WHERE account_id=:account GROUP BY ticker, entry_price",
+        account=account_id,
+    )
+    assert orders == [("ALE1", Decimal("51.00"), 1)]
 
 
 @pytest.mark.anyio

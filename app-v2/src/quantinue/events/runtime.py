@@ -26,6 +26,7 @@ from quantinue.llm.budget import LlmBudgetExceededError, LlmUsageBoundExceededEr
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from quantinue.events.analysis import EventDecision
     from quantinue.events.evidence import EvidencePack
     from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
     from quantinue.llm.provider import LlmAnalyzer
@@ -60,6 +61,16 @@ class EventAnalyzer(Protocol):
         ...
 
 
+class EventOrderExecutor(Protocol):
+    """Execute newly approved material changes through durable order jobs."""
+
+    async def execute(
+        self, decisions: tuple[EventDecision, ...], *, now: datetime
+    ) -> None:
+        """Apply eligible event decisions without creating a parallel order path."""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class EvidencePreparationRun:
     """Truthful evidence outcomes from one source dispatch."""
@@ -81,6 +92,7 @@ class EventIngestionExecutor:
     evidence_repository: PostgresEventEvidenceRepository | None = None
     analyzer: LlmAnalyzer | None = None
     analysis_dispatcher: EventAnalyzer | None = None
+    order_executor: EventOrderExecutor | None = None
 
     async def ingest(self, source_name: str, as_of: date) -> None:
         """Ingest one source, then route every durable pending event."""
@@ -131,6 +143,8 @@ class EventIngestionExecutor:
                     summary_timeout_seconds=self.config.summary_timeout_seconds,
                 )
                 analysis += await self.analysis_dispatcher.dispatch(pack, now=now)
+            if self.order_executor is not None and analysis.decisions:
+                await self.order_executor.execute(analysis.decisions, now=now)
             return EvidencePreparationRun(
                 prepared=prepared,
                 failed=failed,

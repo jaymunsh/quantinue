@@ -1000,6 +1000,31 @@ class PostgresDomainRepository:
             found.setdefault(row.ticker, set()).add(row.inv_type)
         return {ticker: frozenset(profiles) for ticker, profiles in found.items()}
 
+    async def latest_approved_side(
+        self,
+        ticker: str,
+        inv_type: str,
+        *,
+        before: datetime,
+    ) -> str | None:
+        """Return the last critic-approved side before an event judgement."""
+        signals = self._table("tb_strategist_signals")
+        verdicts = self._table("tb_critic_verdict")
+        async with self._engine.begin() as connection:
+            value = await connection.scalar(
+                select(signals.c.side)
+                .join(verdicts, verdicts.c.signal_id == signals.c.id)
+                .where(
+                    signals.c.ticker == ticker,
+                    signals.c.inv_type == inv_type,
+                    signals.c.cycle_ts < before,
+                    verdicts.c.decision == "pass",
+                )
+                .order_by(signals.c.cycle_ts.desc(), signals.c.id.desc())
+                .limit(1)
+            )
+        return None if value is None else str(value)
+
     async def approved_buy_candidates(
         self, as_of: date
     ) -> dict[str, tuple[BuyCandidate, ...]]:

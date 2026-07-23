@@ -31,6 +31,7 @@ from quantinue.db.domain_records import CriticVerdictWrite, StrategistSignalWrit
 from quantinue.events.analysis import (
     EventAnalysisReceiptRepository,
     EventAnalysisRun,
+    EventDecision,
 )
 from quantinue.events.analysis_repository import (
     EventAnalysisReceiptClaim,
@@ -627,6 +628,12 @@ class AnalysisJob:
         macro = await self._macro(domain, as_of)
         indicators = await self._indicators(domain, as_of, session)
         disclosure_scores = await domain.disclosure_scores(as_of)
+        previous_reader = getattr(domain, "latest_approved_side", None)
+        previous_side = (
+            None
+            if previous_reader is None
+            else await previous_reader(ticker, self.profile_name, before=now)
+        )
         event_analyzer = _EventAnalyzer(
             self.analyzer,
             receipts,
@@ -671,6 +678,24 @@ class AnalysisJob:
             reused=event_analyzer.reused,
             suppressed=event_analyzer.suppressed,
             reason="completed" if outcome is not None else "no_outcome",
+            decisions=(
+                ()
+                if outcome is None or event_analyzer.completed == 0
+                else (
+                    EventDecision(
+                        ticker=outcome.ticker,
+                        persona=self.profile_name,
+                        side=outcome.side,
+                        reference_price=subject.close,
+                        approved=outcome.approved,
+                        changed=(
+                            outcome.side != "hold"
+                            if previous_side is None
+                            else outcome.side != previous_side
+                        ),
+                    ),
+                )
+            ),
         )
 
     async def _run_subjects(  # noqa: C901, PLR0913 - lease fencing adds one branch

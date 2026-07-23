@@ -9,6 +9,7 @@ import anyio
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
+    from decimal import Decimal
 
     from pydantic import JsonValue
 
@@ -18,6 +19,18 @@ if TYPE_CHECKING:
     )
     from quantinue.events.evidence import EvidencePack
     from quantinue.llm.budget import LlmBudgetReservation
+
+
+@dataclass(frozen=True, slots=True)
+class EventDecision:
+    """One event judgement eligible for the existing order paths."""
+
+    ticker: str
+    persona: str
+    side: str
+    reference_price: Decimal
+    approved: bool
+    changed: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -31,6 +44,7 @@ class EventAnalysisRun:
     failed: int = 0
     uncertain: int = 0
     reason: str = "no_analysis"
+    decisions: tuple[EventDecision, ...] = ()
 
     def __add__(self, other: EventAnalysisRun) -> EventAnalysisRun:
         """Combine counters while retaining every non-empty reason."""
@@ -43,6 +57,7 @@ class EventAnalysisRun:
             failed=self.failed + other.failed,
             uncertain=self.uncertain + other.uncertain,
             reason=",".join(reasons) if reasons else "no_analysis",
+            decisions=self.decisions + other.decisions,
         )
 
 

@@ -102,6 +102,35 @@ class AllocationJob:
             domain, as_of=as_of, candidates=candidates, cycle_ts=now, prices=prices
         )
 
+    async def run_event(
+        self,
+        *,
+        now: datetime,
+        prices: Mapping[str, Decimal],
+        profiles: Mapping[str, frozenset[str]],
+    ) -> str:
+        """Allocate only persona/ticker pairs changed by a routed event."""
+        domain = getattr(self.store, "domain", self.store)
+        as_of = now.astimezone(NEW_YORK).date()
+        candidates = await domain.approved_intraday_buy_candidates(
+            as_of, tuple(prices)
+        )
+        selected = {
+            persona: tuple(
+                candidate
+                for candidate in pool
+                if persona in profiles.get(candidate.ticker, frozenset())
+            )
+            for persona, pool in candidates.items()
+        }
+        return await self._run_candidates(
+            domain,
+            as_of=as_of,
+            candidates=selected,
+            cycle_ts=now,
+            prices=prices,
+        )
+
     async def _run_candidates(
         self,
         domain: object,

@@ -28,6 +28,7 @@ from quantinue.events.analysis_repository import (
     PostgresEventAnalysisReceiptRepository,
 )
 from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
+from quantinue.events.execution import EventDecisionExecutor
 from quantinue.events.ingestion import PostgresEventIngestionRepository
 from quantinue.events.routing_repository import PostgresEventRoutingRepository
 from quantinue.events.runtime import EventIngestionExecutor, EventIngestionRuntime
@@ -968,6 +969,26 @@ def _event_runtime(
             ),
         )
     )
+    order_executor = (
+        None
+        if analysis_dispatcher is None
+        else EventDecisionExecutor(
+            exits=ExitJob(
+                store=store,
+                broker=MockBroker(),
+                time_exit_bdays=config.exits.time_exit_bdays,
+                calendar=calendar,
+            ),
+            allocation=AllocationJob(
+                store=store,
+                broker=MockBroker(),
+                profiles=config.profiles,
+                gates=config.gates,
+                allocation=config.allocation,
+                calendar=calendar,
+            ),
+        )
+    )
     return EventIngestionRuntime(
         config.event_ingestion,
         EventIngestionExecutor(
@@ -978,6 +999,7 @@ def _event_runtime(
             evidence_repository,
             selected.analyzer,
             analysis_dispatcher,
+            order_executor,
         ),
     )
 
