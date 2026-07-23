@@ -28,6 +28,10 @@ class LlmUsageBoundExceededError(RuntimeError):
     """Raised after recording usage that violated its provider-enforced bound."""
 
 
+class LlmUsageMissingError(RuntimeError):
+    """Raised after conservatively charging a billable call with missing usage."""
+
+
 class ModelPrice(BaseModel):
     """Per-million-token rates for one model, owned by config."""
 
@@ -109,6 +113,12 @@ class BudgetedAnalyzer:
         """Return process-local spend currently reserved by in-flight calls."""
         return sum(self._reserved_by_day.values(), Decimal(0))
 
+    def maximum_usage(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> MaximumTokenUsage:
+        """Expose the wrapped provider's enforceable usage ceiling."""
+        return self._inner.maximum_usage(task, prompt, profile=profile)
+
     async def analyze(
         self, task: AnalysisTask, prompt: str, *, profile: str | None = None
     ) -> AnalysisResult:
@@ -135,7 +145,7 @@ class BudgetedAnalyzer:
     ) -> AnalysisResult:
         called_at = self._now()
         day = called_at.date()
-        maximum = self._inner.maximum_usage(task, prompt, profile=profile)
+        maximum = self.maximum_usage(task, prompt, profile=profile)
         reservation = self._usage_cost(maximum)
         async with self._spend_lock:
             ledger_committed = await self._ledger.llm_spend_on(day)
@@ -161,7 +171,28 @@ class BudgetedAnalyzer:
             result = await self._inner.analyze(task, prompt, profile=profile)
             usage = result.usage
             if usage is None:
-                return result
+                if reservation == 0:
+                    return result
+                with anyio.CancelScope(shield=True):
+                    async with self._spend_lock:
+                        await self._ledger.record_llm_usage(
+                            LlmUsageRecord(
+                                called_at=called_at,
+                                task=task.value,
+                                model=maximum.model,
+                                prompt_tokens=maximum.input_tokens,
+                                completion_tokens=maximum.output_tokens,
+                                est_cost_usd=reservation,
+                            )
+                        )
+                        self._committed_by_day[day] += reservation
+                        self._release(day, reservation)
+                        reservation_active = False
+                message = (
+                    "provider omitted usage for a billable call; "
+                    f"charged reserved maximum {reservation}"
+                )
+                raise LlmUsageMissingError(message)
             model = result.metadata.model
             cost = self._cost(model, usage.input_tokens, usage.output_tokens)
             with anyio.CancelScope(shield=True):
