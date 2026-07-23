@@ -447,49 +447,212 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
     CHECK ((status = 'ordered') = (order_id IS NOT NULL))
 );
 
-DO $$
-DECLARE
-  missing_contract TEXT;
-BEGIN
-  SELECT string_agg(expected.table_name || '.' || expected.column_name, ', ')
-    INTO missing_contract
-  FROM (
-    VALUES
-      ('tb_event_source_cursor', 'source_name'),
-      ('tb_event_source_cursor', 'cursor_value'),
-      ('tb_event_raw_document', 'document_id'),
-      ('tb_event_raw_document', 'source_name'),
-      ('tb_event_raw_document', 'source_document_id'),
-      ('tb_event_raw_version', 'raw_version_id'),
-      ('tb_event_raw_version', 'document_id'),
-      ('tb_event_raw_version', 'normalized_length'),
-      ('tb_normalized_event', 'event_id'),
-      ('tb_normalized_event', 'raw_version_id'),
-      ('tb_normalized_event', 'source_name'),
-      ('tb_event_evidence_pack', 'event_id'),
-      ('tb_event_evidence_pack', 'raw_version_id'),
-      ('tb_event_evidence_pack', 'end_offset'),
-      ('tb_event_summary_cache', 'raw_version_id'),
-      ('tb_event_summary_cache', 'content_hash'),
-      ('tb_event_processing_receipt', 'event_id'),
-      ('tb_event_processing_receipt', 'status')
-  ) AS expected(table_name, column_name)
-  LEFT JOIN information_schema.columns AS actual
-    ON actual.table_schema = 'public'
-    AND actual.table_name = expected.table_name
-    AND actual.column_name = expected.column_name
-  WHERE actual.column_name IS NULL;
-  IF missing_contract IS NOT NULL THEN
-    RAISE EXCEPTION 'incompatible partial event schema: %', missing_contract;
-  END IF;
-END;
-$$;
-
 ALTER TABLE tb_normalized_event
   DROP CONSTRAINT IF EXISTS tb_normalized_event_source_name_check;
 ALTER TABLE tb_normalized_event
   ADD CONSTRAINT tb_normalized_event_source_name_check
     CHECK (length(btrim(source_name)) > 0);
+
+DO $$
+DECLARE
+  mismatch TEXT;
+BEGIN
+  WITH expected(table_name, column_name, data_type, required, default_kind) AS (
+    VALUES
+      ('tb_event_source_cursor','source_name','text',true,'none'),
+      ('tb_event_source_cursor','cursor_value','text',true,'none'),
+      ('tb_event_source_cursor','checkpoint_at','timestamp with time zone',true,'none'),
+      ('tb_event_source_cursor','updated_at','timestamp with time zone',true,'now'),
+      ('tb_event_raw_document','document_id','bigint',true,'nextval'),
+      ('tb_event_raw_document','source_name','text',true,'none'),
+      ('tb_event_raw_document','source_document_id','text',true,'none'),
+      ('tb_event_raw_document','source_url','text',true,'none'),
+      ('tb_event_raw_document','published_at','timestamp with time zone',true,'none'),
+      ('tb_event_raw_document','first_seen_at','timestamp with time zone',true,'now'),
+      ('tb_event_raw_version','raw_version_id','bigint',true,'nextval'),
+      ('tb_event_raw_version','document_id','bigint',true,'none'),
+      ('tb_event_raw_version','version_no','integer',true,'none'),
+      ('tb_event_raw_version','content_hash','text',true,'none'),
+      ('tb_event_raw_version','raw_text','text',true,'none'),
+      ('tb_event_raw_version','normalized_text','text',true,'none'),
+      ('tb_event_raw_version','normalized_length','integer',true,'none'),
+      ('tb_event_raw_version','captured_at','timestamp with time zone',true,'now'),
+      ('tb_normalized_event','event_id','bigint',true,'nextval'),
+      ('tb_normalized_event','raw_version_id','bigint',true,'none'),
+      ('tb_normalized_event','event_key','text',true,'none'),
+      ('tb_normalized_event','source_name','text',true,'none'),
+      ('tb_normalized_event','source_sequence','text',true,'none'),
+      ('tb_normalized_event','event_type','text',true,'none'),
+      ('tb_normalized_event','occurred_at','timestamp with time zone',true,'none'),
+      ('tb_normalized_event','payload','jsonb',true,'none'),
+      ('tb_normalized_event','created_at','timestamp with time zone',true,'now'),
+      ('tb_event_evidence_pack','evidence_id','bigint',true,'nextval'),
+      ('tb_event_evidence_pack','event_id','bigint',true,'none'),
+      ('tb_event_evidence_pack','raw_version_id','bigint',true,'none'),
+      ('tb_event_evidence_pack','start_offset','integer',true,'none'),
+      ('tb_event_evidence_pack','end_offset','integer',true,'none'),
+      ('tb_event_evidence_pack','quote_hash','text',true,'none'),
+      ('tb_event_evidence_pack','created_at','timestamp with time zone',true,'now'),
+      ('tb_event_summary_cache','summary_id','bigint',true,'nextval'),
+      ('tb_event_summary_cache','raw_version_id','bigint',true,'none'),
+      ('tb_event_summary_cache','content_hash','text',true,'none'),
+      ('tb_event_summary_cache','normalized_length','integer',true,'none'),
+      ('tb_event_summary_cache','model','text',true,'none'),
+      ('tb_event_summary_cache','prompt_version','text',true,'none'),
+      ('tb_event_summary_cache','summary_text','text',true,'none'),
+      ('tb_event_summary_cache','created_at','timestamp with time zone',true,'now'),
+      ('tb_event_processing_receipt','receipt_id','bigint',true,'nextval'),
+      ('tb_event_processing_receipt','event_id','bigint',true,'none'),
+      ('tb_event_processing_receipt','ticker','text',true,'none'),
+      ('tb_event_processing_receipt','persona','text',true,'none'),
+      ('tb_event_processing_receipt','status','text',true,'none'),
+      ('tb_event_processing_receipt','order_id','bigint',false,'none'),
+      ('tb_event_processing_receipt','claimed_at','timestamp with time zone',true,'now'),
+      ('tb_event_processing_receipt','completed_at','timestamp with time zone',false,'none')
+  ),
+  actual AS (
+    SELECT c.table_name, c.column_name, c.data_type,
+           c.is_nullable = 'NO' AS required,
+           CASE
+             WHEN c.column_default IS NULL THEN 'none'
+             WHEN c.column_default LIKE 'nextval(%' THEN 'nextval'
+             WHEN c.column_default = 'now()' THEN 'now'
+             ELSE c.column_default
+           END AS default_kind
+    FROM information_schema.columns AS c
+    WHERE c.table_schema = 'public'
+      AND c.table_name IN (
+        'tb_event_source_cursor', 'tb_event_raw_document',
+        'tb_event_raw_version', 'tb_normalized_event',
+        'tb_event_evidence_pack', 'tb_event_summary_cache',
+        'tb_event_processing_receipt'
+      )
+  ),
+  differences AS (
+    SELECT COALESCE(e.table_name, a.table_name) AS table_name,
+           COALESCE(e.column_name, a.column_name) AS column_name
+    FROM expected AS e
+    FULL JOIN actual AS a USING (table_name, column_name)
+    WHERE e.column_name IS NULL OR a.column_name IS NULL
+       OR (e.data_type, e.required, e.default_kind)
+          IS DISTINCT FROM (a.data_type, a.required, a.default_kind)
+  )
+  SELECT string_agg(table_name || '.' || column_name, ', ' ORDER BY 1, 2)
+    INTO mismatch
+  FROM differences;
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible event column catalog: %', mismatch;
+  END IF;
+
+  WITH expected(table_name, constraint_name, constraint_type, fragment) AS (
+    VALUES
+      ('tb_event_source_cursor','tb_event_source_cursor_pkey','p','primary key (source_name)'),
+      ('tb_event_source_cursor','tb_event_source_cursor_source_name_check','c','length(btrim(source_name)) > 0'),
+      ('tb_event_source_cursor','tb_event_source_cursor_cursor_value_check','c','length(btrim(cursor_value)) > 0'),
+      ('tb_event_raw_document','tb_event_raw_document_pkey','p','primary key (document_id)'),
+      ('tb_event_raw_document','uq_event_raw_document_source','u','unique (source_name, source_document_id)'),
+      ('tb_event_raw_document','tb_event_raw_document_source_name_check','c','length(btrim(source_name)) > 0'),
+      ('tb_event_raw_document','tb_event_raw_document_source_document_id_check','c','length(btrim(source_document_id)) > 0'),
+      ('tb_event_raw_version','tb_event_raw_version_pkey','p','primary key (raw_version_id)'),
+      ('tb_event_raw_version','uq_event_raw_version_number','u','unique (document_id, version_no)'),
+      ('tb_event_raw_version','uq_event_raw_version_hash','u','unique (document_id, content_hash)'),
+      ('tb_event_raw_version','uq_event_raw_version_summary_fk','u','unique (raw_version_id, content_hash, normalized_length)'),
+      ('tb_event_raw_version','tb_event_raw_version_document_id_fkey','f','references tb_event_raw_document(document_id)'),
+      ('tb_event_raw_version','tb_event_raw_version_version_no_check','c','version_no > 0'),
+      ('tb_event_raw_version','tb_event_raw_version_content_hash_check','c','length(btrim(content_hash)) > 0'),
+      ('tb_event_raw_version','tb_event_raw_version_normalized_length_check','c','normalized_length = char_length(normalized_text)'),
+      ('tb_normalized_event','tb_normalized_event_pkey','p','primary key (event_id)'),
+      ('tb_normalized_event','tb_normalized_event_raw_version_id_fkey','f','references tb_event_raw_version(raw_version_id)'),
+      ('tb_normalized_event','uq_normalized_event_key','u','unique (event_key)'),
+      ('tb_normalized_event','uq_normalized_event_source_order','u','unique (source_name, source_sequence)'),
+      ('tb_normalized_event','tb_normalized_event_event_key_check','c','length(btrim(event_key)) > 0'),
+      ('tb_normalized_event','tb_normalized_event_source_name_check','c','length(btrim(source_name)) > 0'),
+      ('tb_normalized_event','tb_normalized_event_source_sequence_check','c','length(btrim(source_sequence)) > 0'),
+      ('tb_normalized_event','tb_normalized_event_event_type_check','c','length(btrim(event_type)) > 0'),
+      ('tb_event_evidence_pack','tb_event_evidence_pack_pkey','p','primary key (evidence_id)'),
+      ('tb_event_evidence_pack','tb_event_evidence_pack_event_id_fkey','f','references tb_normalized_event(event_id)'),
+      ('tb_event_evidence_pack','tb_event_evidence_pack_raw_version_id_fkey','f','references tb_event_raw_version(raw_version_id)'),
+      ('tb_event_evidence_pack','uq_event_evidence_span','u','unique (event_id, raw_version_id, start_offset, end_offset)'),
+      ('tb_event_evidence_pack','tb_event_evidence_pack_offsets_check','c','end_offset > start_offset'),
+      ('tb_event_evidence_pack','tb_event_evidence_pack_quote_hash_check','c','length(btrim(quote_hash)) > 0'),
+      ('tb_event_summary_cache','tb_event_summary_cache_pkey','p','primary key (summary_id)'),
+      ('tb_event_summary_cache','fk_event_summary_raw_version','f','references tb_event_raw_version(raw_version_id, content_hash, normalized_length)'),
+      ('tb_event_summary_cache','uq_event_summary_cache_key','u','unique (content_hash, model, prompt_version)'),
+      ('tb_event_summary_cache','tb_event_summary_cache_normalized_length_check','c','normalized_length > 12000'),
+      ('tb_event_summary_cache','tb_event_summary_cache_content_hash_check','c','length(btrim(content_hash)) > 0'),
+      ('tb_event_summary_cache','tb_event_summary_cache_model_check','c','length(btrim(model)) > 0'),
+      ('tb_event_summary_cache','tb_event_summary_cache_prompt_version_check','c','length(btrim(prompt_version)) > 0'),
+      ('tb_event_summary_cache','tb_event_summary_cache_summary_text_check','c','length(btrim(summary_text)) > 0'),
+      ('tb_event_processing_receipt','tb_event_processing_receipt_pkey','p','primary key (receipt_id)'),
+      ('tb_event_processing_receipt','tb_event_processing_receipt_event_id_fkey','f','references tb_normalized_event(event_id)'),
+      ('tb_event_processing_receipt','tb_event_processing_receipt_order_id_fkey','f','references tb_order(id)'),
+      ('tb_event_processing_receipt','uq_event_processing_key','u','unique (event_id, ticker, persona)'),
+      ('tb_event_processing_receipt','tb_event_processing_receipt_ticker_check','c','length(btrim(ticker)) > 0'),
+      ('tb_event_processing_receipt','tb_event_processing_receipt_persona_check','c','length(btrim(persona)) > 0'),
+      ('tb_event_processing_receipt','tb_event_processing_receipt_status_check','c','status = any'),
+      ('tb_event_processing_receipt','tb_event_processing_receipt_order_check','c','order_id is not null')
+  ),
+  actual AS (
+    SELECT c.relname AS table_name, p.conname AS constraint_name,
+           p.contype::text AS constraint_type,
+           lower(pg_get_constraintdef(p.oid)) AS definition
+    FROM pg_constraint AS p
+    JOIN pg_class AS c ON c.oid = p.conrelid
+    JOIN pg_namespace AS n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname IN (
+        'tb_event_source_cursor', 'tb_event_raw_document',
+        'tb_event_raw_version', 'tb_normalized_event',
+        'tb_event_evidence_pack', 'tb_event_summary_cache',
+        'tb_event_processing_receipt'
+      )
+  ),
+  differences AS (
+    SELECT COALESCE(e.table_name, a.table_name) AS table_name,
+           COALESCE(e.constraint_name, a.constraint_name) AS constraint_name
+    FROM expected AS e
+    FULL JOIN actual AS a USING (table_name, constraint_name)
+    WHERE e.constraint_name IS NULL OR a.constraint_name IS NULL
+       OR e.constraint_type IS DISTINCT FROM a.constraint_type
+       OR position(e.fragment IN a.definition) = 0
+  )
+  SELECT string_agg(table_name || '.' || constraint_name, ', ' ORDER BY 1, 2)
+    INTO mismatch
+  FROM differences;
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible event constraint catalog: %', mismatch;
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  invalid_events BIGINT;
+  invalid_evidence BIGINT;
+BEGIN
+  SELECT count(*) INTO invalid_events
+  FROM tb_normalized_event AS event
+  JOIN tb_event_raw_version AS version
+    ON version.raw_version_id = event.raw_version_id
+  JOIN tb_event_raw_document AS document
+    ON document.document_id = version.document_id
+  WHERE event.source_name IS DISTINCT FROM document.source_name;
+
+  SELECT count(*) INTO invalid_evidence
+  FROM tb_event_evidence_pack AS evidence
+  JOIN tb_normalized_event AS event ON event.event_id = evidence.event_id
+  JOIN tb_event_raw_version AS version
+    ON version.raw_version_id = event.raw_version_id
+  WHERE evidence.raw_version_id IS DISTINCT FROM event.raw_version_id
+     OR evidence.end_offset > version.normalized_length;
+
+  IF invalid_events > 0 OR invalid_evidence > 0 THEN
+    RAISE EXCEPTION
+      'incoherent pre-existing event provenance: events=%, evidence=%',
+      invalid_events, invalid_evidence;
+  END IF;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION enforce_normalized_event_source()
 RETURNS trigger LANGUAGE plpgsql AS $$
@@ -566,6 +729,51 @@ FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
 CREATE TRIGGER trg_event_summary_immutable
 BEFORE UPDATE OR DELETE ON tb_event_summary_cache
 FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+
+DO $$
+DECLARE
+  mismatch TEXT;
+BEGIN
+  WITH expected(trigger_name, table_name, fragment) AS (
+    VALUES
+      ('trg_normalized_event_source','tb_normalized_event','before insert'),
+      ('trg_event_evidence_span','tb_event_evidence_pack','before insert'),
+      ('trg_event_raw_document_immutable','tb_event_raw_document','before delete or update'),
+      ('trg_event_raw_version_immutable','tb_event_raw_version','before delete or update'),
+      ('trg_normalized_event_immutable','tb_normalized_event','before delete or update'),
+      ('trg_event_evidence_immutable','tb_event_evidence_pack','before delete or update'),
+      ('trg_event_summary_immutable','tb_event_summary_cache','before delete or update')
+  ),
+  actual AS (
+    SELECT trigger.tgname AS trigger_name, relation.relname AS table_name,
+           lower(pg_get_triggerdef(trigger.oid)) AS definition
+    FROM pg_trigger AS trigger
+    JOIN pg_class AS relation ON relation.oid = trigger.tgrelid
+    JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public'
+      AND NOT trigger.tgisinternal
+      AND relation.relname IN (
+        'tb_event_source_cursor', 'tb_event_raw_document',
+        'tb_event_raw_version', 'tb_normalized_event',
+        'tb_event_evidence_pack', 'tb_event_summary_cache',
+        'tb_event_processing_receipt'
+      )
+  ),
+  differences AS (
+    SELECT COALESCE(e.trigger_name, a.trigger_name) AS trigger_name
+    FROM expected AS e
+    FULL JOIN actual AS a USING (trigger_name, table_name)
+    WHERE e.trigger_name IS NULL OR a.trigger_name IS NULL
+       OR position(e.fragment IN a.definition) = 0
+  )
+  SELECT string_agg(trigger_name, ', ' ORDER BY trigger_name)
+    INTO mismatch
+  FROM differences;
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible event trigger catalog: %', mismatch;
+  END IF;
+END;
+$$;
 
 DROP FUNCTION IF EXISTS reject_event_raw_version_mutation();
 

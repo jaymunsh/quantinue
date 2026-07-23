@@ -1440,6 +1440,7 @@ erDiagram
         </tbody></table></div>
     </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">장중 사건 내구 원장</h4>
+    <div class="inner"><p class="small" style="margin:6px 0">마이그레이션은 7개 사건 테이블의 전체 컬럼 타입·nullability·기본값과 PK/UNIQUE/FK/CHECK/trigger 카탈로그를 canonical 신규 설치와 대조한다. 부분 스키마나 예상 밖 제약은 트랜잭션 전체를 실패시킨다. 불변 trigger를 설치하기 전에는 기존 사건의 source와 raw document source, evidence와 event의 raw version, evidence 끝 위치와 정규화 본문 길이를 감사한다. 모순된 기존 행도 자동 보정하거나 불변화하지 않고 원자적으로 실패시켜 운영자 정정 후 재실행하게 한다.</p></div>
     <details class="schema">
       <summary><code>tb_event_source_cursor</code> <span class="b b-new">신규</span> <span class="sd">소스별 증분 수집 체크포인트</span><span class="cnt">4 컬럼</span></summary>
       <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>

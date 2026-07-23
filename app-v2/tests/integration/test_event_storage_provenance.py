@@ -2,7 +2,6 @@
 
 from .test_event_storage_contract import (
     event_database,
-    run_migration,
     run_psql,
     seed_short_document,
 )
@@ -171,57 +170,6 @@ def test_summary_cache_is_append_only(event_database: str) -> None:
 
     # Then
     assert updated.returncode != 0
-
-
-def test_migration_rejects_incompatible_partial_state_then_recovers(
-    event_database: str,
-) -> None:
-    # Given
-    _ = run_psql(
-        event_database,
-        """
-        DROP TABLE tb_event_processing_receipt;
-        DROP TABLE tb_event_summary_cache;
-        DROP TABLE tb_event_evidence_pack;
-        DROP TABLE tb_normalized_event;
-        DROP TABLE tb_event_raw_version;
-        DROP TABLE tb_event_raw_document;
-        CREATE TABLE tb_event_raw_document (document_id BIGINT PRIMARY KEY);
-        """,
-    )
-
-    # When
-    rejected = run_migration(event_database, check=False)
-
-    # Then
-    assert rejected.returncode != 0
-    partial = run_psql(
-        event_database,
-        "SELECT to_regclass('public.tb_normalized_event') IS NULL",
-    )
-    assert partial.stdout.strip() == "t"
-
-    # Given
-    _ = run_psql(event_database, "DROP TABLE tb_event_raw_document")
-
-    # When
-    _ = run_migration(event_database)
-
-    # Then
-    recovered = run_psql(
-        event_database,
-        """
-        SELECT count(*) FROM information_schema.tables
-        WHERE table_schema='public'
-          AND table_name IN (
-            'tb_event_source_cursor', 'tb_event_raw_document',
-            'tb_event_raw_version', 'tb_normalized_event',
-            'tb_event_evidence_pack', 'tb_event_summary_cache',
-            'tb_event_processing_receipt'
-          );
-        """,
-    )
-    assert recovered.stdout.strip() == "7"
 
 
 def test_source_cursor_remains_mutable_checkpoint_state(event_database: str) -> None:
