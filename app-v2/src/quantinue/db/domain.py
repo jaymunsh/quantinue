@@ -64,7 +64,7 @@ from quantinue.db.users import (
     set_account_profile,
     set_account_status,
 )
-from quantinue.llm.budget import LlmUsageRecord
+from quantinue.llm.budget import LlmBudgetReservation, LlmUsageRecord
 from quantinue.roles.analysis import AnalysisSubject
 from quantinue.roles.exits import DailyObservation, OpenPosition
 from quantinue.roles.role_01_universe_screener.contracts import UniverseScreenerOutput
@@ -97,6 +97,7 @@ _TABLES = (
     "tb_llm_usage",
     "tb_watch_sweep",
     "tb_rejudgement_cooldown",
+    "tb_llm_budget_reservation",
 )
 
 _WATCH_SWEEP_STALE_AFTER: Final = timedelta(minutes=30)
@@ -2131,6 +2132,120 @@ class PostgresDomainRepository:
         async with self._engine.begin() as connection:
             return Decimal(str(await connection.scalar(statement)))
 
+    async def reserve_llm_budget(  # noqa: PLR0913
+        self,
+        *,
+        reservation_id: str,
+        owner_token: str,
+        budget_day: date,
+        reserve_class: str,
+        max_cost_usd: Decimal,
+        spending_limit: Decimal,
+        claimed_at: datetime,
+    ) -> LlmBudgetReservation | None:
+        """Atomically reserve maximum LLM spend across processes."""
+        async with self._engine.begin() as connection:
+            _ = await connection.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                {"key": f"llm-budget:{budget_day.isoformat()}"},
+            )
+            row = (
+                await connection.execute(
+                    text(
+                        """
+                        INSERT INTO tb_llm_budget_reservation
+                          (budget_day, reservation_id, reserve_class, max_cost_usd,
+                           owner_token, state, claimed_at)
+                        SELECT :budget_day, :reservation_id, :reserve_class,
+                               :max_cost_usd, :owner_token, 'claimed', :claimed_at
+                        WHERE (
+                          SELECT COALESCE(SUM(est_cost_usd), 0)
+                          FROM tb_llm_usage
+                          WHERE called_at >= :day_start
+                            AND called_at < :day_end
+                        ) + (
+                          SELECT COALESCE(SUM(max_cost_usd), 0)
+                          FROM tb_llm_budget_reservation
+                          WHERE budget_day=:budget_day
+                            AND state IN ('claimed','dispatched')
+                        ) + :max_cost_usd <= :spending_limit
+                        RETURNING budget_day, reservation_id, owner_token, max_cost_usd
+                        """
+                    ),
+                    {
+                        "budget_day": budget_day,
+                        "reservation_id": reservation_id,
+                        "reserve_class": reserve_class,
+                        "max_cost_usd": max_cost_usd,
+                        "owner_token": owner_token,
+                        "claimed_at": claimed_at,
+                        "day_start": datetime.combine(budget_day, time(), tzinfo=UTC),
+                        "day_end": datetime.combine(budget_day, time(), tzinfo=UTC)
+                        + timedelta(days=1),
+                        "spending_limit": spending_limit,
+                    },
+                )
+            ).mappings().one_or_none()
+        return None if row is None else LlmBudgetReservation.model_validate(dict(row))
+
+    async def dispatch_llm_budget(
+        self, reservation: LlmBudgetReservation, *, dispatched_at: datetime
+    ) -> bool:
+        """Acknowledge the caller-owned LLM provider boundary."""
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_llm_budget_reservation
+                    SET state='dispatched', dispatched_at=:dispatched_at
+                    WHERE budget_day=:budget_day AND reservation_id=:reservation_id
+                      AND owner_token=:owner_token AND state='claimed'
+                    """
+                ),
+                {**reservation.model_dump(), "dispatched_at": dispatched_at},
+            )
+            return result.rowcount == 1
+
+    async def release_llm_budget(
+        self, reservation: LlmBudgetReservation, *, released_at: datetime
+    ) -> bool:
+        """Release one caller-owned unbilled LLM reservation."""
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_llm_budget_reservation
+                    SET state='released', released_at=:released_at
+                    WHERE budget_day=:budget_day AND reservation_id=:reservation_id
+                      AND owner_token=:owner_token AND state='claimed'
+                    """
+                ),
+                {**reservation.model_dump(), "released_at": released_at},
+            )
+            return result.rowcount == 1
+
+    async def settle_llm_budget(
+        self, reservation: LlmBudgetReservation, record: LlmUsageRecord
+    ) -> bool:
+        """Settle reservation and usage in one transaction."""
+        table = self._table("tb_llm_usage")
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_llm_budget_reservation
+                    SET state='settled', settled_at=:settled_at
+                    WHERE budget_day=:budget_day AND reservation_id=:reservation_id
+                      AND owner_token=:owner_token AND state='dispatched'
+                    """
+                ),
+                {**reservation.model_dump(), "settled_at": record.called_at},
+            )
+            if result.rowcount != 1:
+                return False
+            _ = await connection.execute(insert(table).values(**record.model_dump()))
+            return True
+
     async def reserve_watch_sweep(self, sweep_at: datetime, *, now: datetime) -> int | None:
         """Atomically claim a new or failed scheduled sweep."""
         table = self._table("tb_watch_sweep")
@@ -2194,8 +2309,14 @@ class PostgresDomainRepository:
                     ON CONFLICT (ticker, persona) DO UPDATE
                     SET status='claimed', owner_token=:owner_token,
                         claimed_at=:now, completed_at=NULL
-                    WHERE tb_rejudgement_cooldown.status='completed'
+                    WHERE (
+                      tb_rejudgement_cooldown.status='completed'
                       AND tb_rejudgement_cooldown.completed_at <= :cooldown_after
+                    ) OR (
+                      tb_rejudgement_cooldown.status='claimed'
+                      AND tb_rejudgement_cooldown.completed_at IS NULL
+                      AND tb_rejudgement_cooldown.claimed_at <= :stale_before
+                    )
                     RETURNING ticker
                     """
                 ),
@@ -2205,6 +2326,7 @@ class PostgresDomainRepository:
                     "owner_token": owner_token,
                     "now": now,
                     "cooldown_after": now - cooldown,
+                    "stale_before": now - timedelta(minutes=5),
                 },
             )
             return result.one_or_none() is not None
@@ -2234,6 +2356,24 @@ class PostgresDomainRepository:
                     "owner_token": owner_token,
                     "now": now,
                 },
+            )
+            return result.rowcount == 1
+
+    async def release_rejudgement(
+        self, ticker: str, persona: str, *, owner_token: str
+    ) -> bool:
+        """Release one pre-result ticker/persona reservation."""
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    DELETE FROM tb_rejudgement_cooldown
+                    WHERE ticker=:ticker AND persona=:persona
+                      AND status='claimed' AND completed_at IS NULL
+                      AND owner_token=:owner_token
+                    """
+                ),
+                {"ticker": ticker, "persona": persona, "owner_token": owner_token},
             )
             return result.rowcount == 1
 

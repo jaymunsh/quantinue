@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from uuid import uuid4
 
 import anyio
 from pydantic import BaseModel, ConfigDict, Field
@@ -81,6 +82,52 @@ class LlmUsageLedger(Protocol):
         """Append one call to the ledger."""
         ...
 
+
+class LlmBudgetReservation(BaseModel):
+    """One owner-fenced admission to the daily provider budget."""
+
+    model_config = ConfigDict(frozen=True)
+    budget_day: date
+    reservation_id: str
+    owner_token: str
+    max_cost_usd: Decimal
+
+
+@runtime_checkable
+class AtomicLlmBudgetReservations(Protocol):
+    """Durable multi-process admission and settlement contract."""
+
+    async def reserve_llm_budget(  # noqa: PLR0913
+        self,
+        *,
+        reservation_id: str,
+        owner_token: str,
+        budget_day: date,
+        reserve_class: str,
+        max_cost_usd: Decimal,
+        spending_limit: Decimal,
+        claimed_at: datetime,
+    ) -> LlmBudgetReservation | None:
+        """Atomically admit one maximum-cost reservation."""
+        ...
+
+    async def dispatch_llm_budget(
+        self, reservation: LlmBudgetReservation, *, dispatched_at: datetime
+    ) -> bool:
+        """Acknowledge the reservation's paid boundary."""
+        ...
+
+    async def release_llm_budget(
+        self, reservation: LlmBudgetReservation, *, released_at: datetime
+    ) -> bool:
+        """Release an unbilled reservation owned by the caller."""
+        ...
+
+    async def settle_llm_budget(
+        self, reservation: LlmBudgetReservation, record: LlmUsageRecord
+    ) -> bool:
+        """Atomically settle ownership and append actual usage."""
+        ...
 
 class PaidCallBoundary(Protocol):
     """Durable callback invoked immediately before a provider call."""
@@ -183,7 +230,7 @@ class BudgetedAnalyzer:
             boundary=boundary,
         )
 
-    async def _analyze(
+    async def _analyze(  # noqa: C901, PLR0912, PLR0915
         self,
         task: AnalysisTask,
         prompt: str,
@@ -196,28 +243,38 @@ class BudgetedAnalyzer:
         day = called_at.date()
         maximum = self.maximum_usage(task, prompt, profile=profile)
         reservation = self._usage_cost(maximum)
-        async with self._spend_lock:
-            ledger_committed = await self._ledger.llm_spend_on(day)
-            committed = max(ledger_committed, self._committed_by_day.get(day, Decimal(0)))
-            self._committed_by_day[day] = committed
-            reserved = self._reserved_by_day.get(day, Decimal(0))
-            if committed + reserved + reservation > spending_limit:
-                # 남은 예산으로 살 수 없으면 **안 산다**. 여기서 중립 결과를
-                # 지어내 돌려주면 판단 없이 주문이 나가는 길이 열린다 —
-                # 분석 잡은 예외를 종목 단위로 격리하므로 이 종목만 건너뛴다.
-                message = (
-                    "daily llm budget exhausted: "
-                    f"{committed} committed + {reserved} reserved + "
-                    f"{reservation} requested > {spending_limit}"
-                )
+        durable = self._ledger if isinstance(self._ledger, AtomicLlmBudgetReservations) else None
+        durable_reservation: LlmBudgetReservation | None = None
+        if durable is not None:
+            durable_reservation = await durable.reserve_llm_budget(
+                reservation_id=uuid4().hex,
+                owner_token=uuid4().hex,
+                budget_day=day,
+                reserve_class="sell" if spending_limit == self._limit else "general",
+                max_cost_usd=reservation,
+                spending_limit=spending_limit,
+                claimed_at=called_at,
+            )
+            if durable_reservation is None:
+                message = "daily llm budget exhausted"
                 raise LlmBudgetExceededError(message)
-            self._reserved_by_day[day] = reserved + reservation
+        else:
+            await self._reserve_local(day, reservation, spending_limit)
 
         reservation_active = True
         try:
             if boundary is not None:
                 with anyio.CancelScope(shield=True):
                     await boundary.dispatched()
+            if (
+                durable is not None
+                and durable_reservation is not None
+                and not await durable.dispatch_llm_budget(
+                    durable_reservation, dispatched_at=called_at
+                )
+            ):
+                message = "llm budget reservation ownership lost"
+                raise LlmBudgetExceededError(message)
             result = await self._inner.analyze(task, prompt, profile=profile)
             usage = result.usage
             if usage is None:
@@ -225,8 +282,7 @@ class BudgetedAnalyzer:
                     return result
                 with anyio.CancelScope(shield=True):
                     async with self._spend_lock:
-                        await self._ledger.record_llm_usage(
-                            LlmUsageRecord(
+                        missing_record = LlmUsageRecord(
                                 called_at=called_at,
                                 task=task.value,
                                 model=maximum.model,
@@ -234,9 +290,17 @@ class BudgetedAnalyzer:
                                 completion_tokens=maximum.output_tokens,
                                 est_cost_usd=reservation,
                             )
-                        )
-                        self._committed_by_day[day] += reservation
-                        self._release(day, reservation)
+                        if durable is not None and durable_reservation is not None:
+                            if not await durable.settle_llm_budget(
+                                durable_reservation, missing_record
+                            ):
+                                message = "llm budget settlement ownership lost"
+                                raise LlmBudgetExceededError(message)
+                        else:
+                            await self._ledger.record_llm_usage(missing_record)
+                        if durable is None:
+                            self._committed_by_day[day] += reservation
+                            self._release(day, reservation)
                         reservation_active = False
                 message = (
                     "provider omitted usage for a billable call; "
@@ -247,8 +311,7 @@ class BudgetedAnalyzer:
             cost = self._cost(model, usage.input_tokens, usage.output_tokens)
             with anyio.CancelScope(shield=True):
                 async with self._spend_lock:
-                    await self._ledger.record_llm_usage(
-                        LlmUsageRecord(
+                    usage_record = LlmUsageRecord(
                             called_at=called_at,
                             task=task.value,
                             model=model,
@@ -256,9 +319,15 @@ class BudgetedAnalyzer:
                             completion_tokens=usage.output_tokens,
                             est_cost_usd=cost,
                         )
-                    )
-                    self._committed_by_day[day] += cost
-                    self._release(day, reservation)
+                    if durable is not None and durable_reservation is not None:
+                        if not await durable.settle_llm_budget(durable_reservation, usage_record):
+                            message = "llm budget settlement ownership lost"
+                            raise LlmBudgetExceededError(message)
+                    else:
+                        await self._ledger.record_llm_usage(usage_record)
+                    if durable is None:
+                        self._committed_by_day[day] += cost
+                        self._release(day, reservation)
                     reservation_active = False
             if cost > reservation:
                 message = f"provider usage cost {cost} exceeded reserved maximum {reservation}"
@@ -267,8 +336,26 @@ class BudgetedAnalyzer:
         finally:
             if reservation_active:
                 with anyio.CancelScope(shield=True):
-                    async with self._spend_lock:
-                        self._release(day, reservation)
+                    if durable is not None and durable_reservation is not None:
+                        _ = await durable.release_llm_budget(
+                            durable_reservation, released_at=self._now()
+                        )
+                    else:
+                        async with self._spend_lock:
+                            self._release(day, reservation)
+
+    async def _reserve_local(
+        self, day: date, reservation: Decimal, spending_limit: Decimal
+    ) -> None:
+        async with self._spend_lock:
+            ledger_committed = await self._ledger.llm_spend_on(day)
+            committed = max(ledger_committed, self._committed_by_day.get(day, Decimal(0)))
+            self._committed_by_day[day] = committed
+            reserved = self._reserved_by_day.get(day, Decimal(0))
+            if committed + reserved + reservation > spending_limit:
+                message = "daily llm budget exhausted"
+                raise LlmBudgetExceededError(message)
+            self._reserved_by_day[day] = reserved + reservation
 
     def _release(self, day: date, amount: Decimal) -> None:
         remaining = self._reserved_by_day[day] - amount

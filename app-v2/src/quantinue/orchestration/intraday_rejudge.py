@@ -51,6 +51,12 @@ class IntradaySellDomain(Protocol):
         """Publish cooldown for the current owner."""
         ...
 
+    async def release_rejudgement(
+        self, ticker: str, persona: str, *, owner_token: str
+    ) -> bool:
+        """Release the caller's pre-result cooldown reservation."""
+        ...
+
 
 class SoftSellExecutor(Protocol):
     """Durable execution seam for critic-approved intraday sells."""
@@ -90,7 +96,7 @@ class IntradayRejudgeEngine:
     allocation: IntradayBuyExecutor | None = None
     cooldown: timedelta = timedelta(minutes=30)
 
-    async def run(
+    async def run(  # noqa: C901, PLR0912 - trigger ownership lifecycle
         self,
         *,
         now: datetime,
@@ -112,15 +118,8 @@ class IntradayRejudgeEngine:
                     cooldown=self.cooldown,
                 ):
                     reserved[ticker] = owner_token
-            for ticker, owner_token in reserved.items():
-                _ = await self.domain.complete_rejudgement(
-                    ticker,
-                    job.profile_name,
-                    owner_token=owner_token,
-                    now=now,
-                )
-            skipped += (
-                await job.run_intraday(
+            try:
+                outcome = await job.run_intraday(
                     now=now,
                     prices={
                         ticker: mutable_prices[ticker]
@@ -128,7 +127,28 @@ class IntradayRejudgeEngine:
                     },
                     lease=lease,
                 )
-            ).skipped
+            except BaseException:
+                for ticker, owner_token in reserved.items():
+                    _ = await self.domain.release_rejudgement(
+                        ticker, job.profile_name, owner_token=owner_token
+                    )
+                raise
+            skipped += outcome.skipped
+            if outcome.skipped:
+                for ticker, owner_token in reserved.items():
+                    _ = await self.domain.release_rejudgement(
+                        ticker, job.profile_name, owner_token=owner_token
+                    )
+            else:
+                for ticker, owner_token in reserved.items():
+                    if not await self.domain.complete_rejudgement(
+                        ticker,
+                        job.profile_name,
+                        owner_token=owner_token,
+                        now=now,
+                    ):
+                        message = "rejudgement ownership lost"
+                        raise IntradayPartialFailureError(message)
         if skipped:
             message = f"intraday rejudgement incomplete: skipped={skipped}"
             raise IntradayPartialFailureError(message)

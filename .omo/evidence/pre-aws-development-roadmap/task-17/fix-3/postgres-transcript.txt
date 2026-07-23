@@ -1,0 +1,31 @@
+PostgreSQL 16 schema plus mvp2 migration twice: PASS
+
+Repeated related run 1:
+719 unit passed
+27 PostgreSQL integration passed
+
+Repeated related run 2:
+719 unit passed
+27 PostgreSQL integration passed
+
+Critical PostgreSQL owner/budget module:
+10 consecutive passes
+
+Catalog:
+tb_event_processing_receipt
+tb_llm_budget_reservation
+tb_llm_usage
+tb_rejudgement_cooldown
+
+Budget reservation:
+settled|1|0.75
+
+Usage:
+1|0.50
+
+Orders:
+0
+
+Exact 14-file basedpyright:
+420 errors, 8 warnings, 0 notes
+Fix2 baseline: 420 errors, 8 warnings

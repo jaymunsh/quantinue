@@ -136,6 +136,8 @@ async def _reset_database() -> None:
     engine = create_async_engine(_DATABASE_URL)
     async with engine.begin() as connection:
         for table_name in (
+            "tb_llm_budget_reservation",
+            "tb_llm_usage",
             "tb_rejudgement_cooldown",
             "tb_event_processing_receipt",
             "tb_event_summary_cache",
@@ -263,7 +265,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
         timedelta(minutes=30),
         owner_token,
     )
-    await repository.mark_dispatched(
+    assert await repository.mark_dispatched(
         route.event_id,
         route.ticker,
         "aggressive",
@@ -286,7 +288,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
             )
         ).one()
     await engine.dispose()
-    await repository.complete(
+    assert await repository.complete(
         route.event_id,
         route.ticker,
         "aggressive",

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
@@ -11,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 if TYPE_CHECKING:
-    from datetime import datetime, timedelta
+    from datetime import datetime
 
     from quantinue.events.evidence import EvidencePack
 
@@ -45,15 +46,18 @@ class _ReceiptRow(BaseModel):
 class PostgresEventAnalysisReceiptRepository:
     """Serialize stage claims and fail closed only after provider dispatch."""
 
-    def __init__(self, database_url: str) -> None:
+    def __init__(
+        self, database_url: str, *, ownership_ttl: timedelta | None = None
+    ) -> None:
         """Create a lazy pool for the shared event receipt ledger."""
         self._engine: AsyncEngine = create_async_engine(database_url, pool_pre_ping=True)
+        self._ownership_ttl = ownership_ttl or timedelta(minutes=5)
 
     async def close(self) -> None:
         """Dispose all pooled receipt connections."""
         await self._engine.dispose()
 
-    async def claim(  # noqa: PLR0913 - durable key, policy, and owner are independent
+    async def claim(  # noqa: PLR0911, PLR0913 - exhaustive ownership outcomes
         self,
         pack: EvidencePack,
         persona: str,
@@ -102,7 +106,48 @@ class PostgresEventAnalysisReceiptRepository:
                     return EventAnalysisReceiptClaim.SUPPRESSED
                 if row.dispatched:
                     return EventAnalysisReceiptClaim.UNCERTAIN
-                return EventAnalysisReceiptClaim.DUPLICATE
+                reclaimed = await connection.execute(
+                    text(
+                        """
+                        UPDATE tb_event_processing_receipt
+                        SET owner_token=:owner_token, claimed_at=:now
+                        WHERE event_id=:event_id AND ticker=:ticker
+                          AND persona=:persona AND status='claimed'
+                          AND completed_at IS NULL AND claimed_at <= :stale_before
+                        """
+                    ),
+                    {
+                        **self._key(event_id, ticker, persona, stage),
+                        "owner_token": owner_token,
+                        "now": now,
+                        "stale_before": now - self._ownership_ttl,
+                    },
+                )
+                if reclaimed.rowcount != 1:
+                    return EventAnalysisReceiptClaim.DUPLICATE
+                if stage is EventAnalysisStage.STRATEGIST:
+                    cooldown_reclaimed = await connection.execute(
+                        text(
+                            """
+                            UPDATE tb_rejudgement_cooldown
+                            SET owner_token=:owner_token, claimed_at=:now
+                            WHERE ticker=:ticker AND persona=:persona
+                              AND status='claimed' AND completed_at IS NULL
+                              AND claimed_at <= :stale_before
+                            """
+                        ),
+                        {
+                            "ticker": ticker,
+                            "persona": persona,
+                            "owner_token": owner_token,
+                            "now": now,
+                            "stale_before": now - self._ownership_ttl,
+                        },
+                    )
+                    if cooldown_reclaimed.rowcount != 1:
+                        message = "stale receipt/cooldown ownership diverged"
+                        raise RuntimeError(message)
+                return EventAnalysisReceiptClaim.CLAIMED
             cooled = False
             if stage is EventAnalysisStage.STRATEGIST:
                 reservation = await connection.execute(
@@ -195,10 +240,10 @@ class PostgresEventAnalysisReceiptRepository:
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Make a stage non-releasable at the actual provider boundary."""
         async with self._engine.begin() as connection:
-            _ = await connection.execute(
+            result = await connection.execute(
                 text(
                     """
                     UPDATE tb_event_processing_receipt
@@ -210,22 +255,7 @@ class PostgresEventAnalysisReceiptRepository:
                 ),
                 {**self._key(event_id, ticker, persona, stage), "owner_token": owner_token},
             )
-            if stage is EventAnalysisStage.STRATEGIST:
-                _ = await connection.execute(
-                    text(
-                        """
-                        UPDATE tb_rejudgement_cooldown
-                        SET status='completed', completed_at=claimed_at
-                        WHERE ticker=:ticker AND persona=:cooldown_persona
-                          AND status='claimed' AND owner_token=:owner_token
-                        """
-                    ),
-                    {
-                        "ticker": ticker,
-                        "cooldown_persona": persona,
-                        "owner_token": owner_token,
-                    },
-                )
+            return result.rowcount == 1
 
     async def complete(  # noqa: PLR0913 - durable key and owner fence are independent
         self,
@@ -235,10 +265,10 @@ class PostgresEventAnalysisReceiptRepository:
         stage: EventAnalysisStage,
         result_payload: dict[str, JsonValue],
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Persist a stage result before the next stage may be claimed."""
         async with self._engine.begin() as connection:
-            _ = await connection.execute(
+            result = await connection.execute(
                 text(
                     """
                     UPDATE tb_event_processing_receipt
@@ -255,6 +285,24 @@ class PostgresEventAnalysisReceiptRepository:
                     "owner_token": owner_token,
                 },
             )
+            if result.rowcount != 1:
+                return False
+            if stage is EventAnalysisStage.STRATEGIST:
+                cooldown = await connection.execute(
+                    text(
+                        """
+                        UPDATE tb_rejudgement_cooldown
+                        SET status='completed', completed_at=GREATEST(claimed_at, now())
+                        WHERE ticker=:ticker AND persona=:persona
+                          AND status='claimed' AND owner_token=:owner_token
+                        """
+                    ),
+                    {"ticker": ticker, "persona": persona, "owner_token": owner_token},
+                )
+                if cooldown.rowcount != 1:
+                    message = "strategist result/cooldown ownership diverged"
+                    raise RuntimeError(message)
+            return True
 
     async def release_unbilled(
         self,
@@ -263,10 +311,10 @@ class PostgresEventAnalysisReceiptRepository:
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Delete only a stage proven not to have reached the provider."""
         async with self._engine.begin() as connection:
-            _ = await connection.execute(
+            result = await connection.execute(
                 text(
                     """
                     DELETE FROM tb_event_processing_receipt
@@ -277,8 +325,10 @@ class PostgresEventAnalysisReceiptRepository:
                 ),
                 {**self._key(event_id, ticker, persona, stage), "owner_token": owner_token},
             )
+            if result.rowcount != 1:
+                return False
             if stage is EventAnalysisStage.STRATEGIST:
-                _ = await connection.execute(
+                cooldown = await connection.execute(
                     text(
                         """
                         DELETE FROM tb_rejudgement_cooldown
@@ -292,6 +342,10 @@ class PostgresEventAnalysisReceiptRepository:
                         "owner_token": owner_token,
                     },
                 )
+                if cooldown.rowcount != 1:
+                    message = "released receipt/cooldown ownership diverged"
+                    raise RuntimeError(message)
+            return True
 
     async def suppress(
         self,
@@ -300,10 +354,10 @@ class PostgresEventAnalysisReceiptRepository:
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Record a stage-local budget refusal that made no provider call."""
         async with self._engine.begin() as connection:
-            _ = await connection.execute(
+            result = await connection.execute(
                 text(
                     """
                     UPDATE tb_event_processing_receipt
@@ -315,6 +369,7 @@ class PostgresEventAnalysisReceiptRepository:
                 ),
                 {**self._key(event_id, ticker, persona, stage), "owner_token": owner_token},
             )
+            return result.rowcount == 1
 
     @staticmethod
     def _persona(persona: str, stage: EventAnalysisStage) -> str:

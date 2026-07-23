@@ -305,4 +305,4 @@ class ModelInput(BaseModel):
 
     model_config = ConfigDict(frozen=True)
 
-    external_data: str
+    external_data: str = Field(max_length=32_768)

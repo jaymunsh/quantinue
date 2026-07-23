@@ -252,6 +252,16 @@ CREATE TABLE IF NOT EXISTS tb_llm_usage (
   completion_tokens INT NOT NULL CHECK (completion_tokens >= 0),
   est_cost_usd NUMERIC NOT NULL CHECK (est_cost_usd >= 0), run_id TEXT
 );
+CREATE TABLE IF NOT EXISTS tb_llm_budget_reservation (
+  budget_day DATE NOT NULL, reservation_id TEXT NOT NULL,
+  reserve_class TEXT NOT NULL CHECK (reserve_class IN ('general','sell')),
+  max_cost_usd NUMERIC NOT NULL CHECK (max_cost_usd >= 0),
+  owner_token TEXT NOT NULL,
+  state TEXT NOT NULL CHECK (state IN ('claimed','dispatched','settled','released')),
+  claimed_at TIMESTAMPTZ NOT NULL, dispatched_at TIMESTAMPTZ,
+  settled_at TIMESTAMPTZ, released_at TIMESTAMPTZ,
+  PRIMARY KEY (budget_day, reservation_id)
+);
 
 -- 일봉 원장. 스크리닝 랭킹·브래킷 발동 판정·시가평가가 전부 여기서 온다.
 -- 종목당 1콜로 받던 것을 배치 1콜로 바꾸는 근거이자, 같은 날을 두 번 받아도

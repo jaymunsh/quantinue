@@ -242,7 +242,7 @@ async def test_open_tick_fetches_held_quotes_and_closes_in_the_same_tick() -> No
 
 
 @pytest.mark.anyio
-async def test_five_percent_move_rejudges_once_inside_the_cooldown() -> None:
+async def test_watch_runner_delegates_cooldown_to_rejudge_engine() -> None:
     # Given
     quotes = _Quotes()
     quotes.latest_trades = lambda tickers: _latest_trade(tickers, "105.00")
@@ -262,8 +262,11 @@ async def test_five_percent_move_rejudges_once_inside_the_cooldown() -> None:
 
     # Then
     assert first_outcome.rejudged == 1
-    assert second_outcome.rejudged == 0
-    assert rejudge.calls == [(first, {"NVDA": Decimal("105.00")})]
+    assert second_outcome.rejudged == 1
+    assert rejudge.calls == [
+        (first, {"NVDA": Decimal("105.00")}),
+        (first.replace(minute=29), {"NVDA": Decimal("105.00")}),
+    ]
 
 
 @pytest.mark.anyio

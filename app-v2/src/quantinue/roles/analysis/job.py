@@ -116,6 +116,10 @@ class _EventStageStoppedError(RuntimeError):
         self.run = run
 
 
+class _EventOwnershipLostError(RuntimeError):
+    pass
+
+
 @dataclass(slots=True)
 class _EventPaidBoundary(PaidCallBoundary):
     receipts: EventAnalysisReceiptRepository
@@ -128,13 +132,15 @@ class _EventPaidBoundary(PaidCallBoundary):
 
     @override
     async def dispatched(self) -> None:
-        await self.receipts.mark_dispatched(
+        acknowledged = await self.receipts.mark_dispatched(
             self.event_id,
             self.ticker,
             self.persona,
             self.stage,
             self.owner_token,
         )
+        if not acknowledged:
+            raise _EventOwnershipLostError
         self.crossed = True
 
 
@@ -265,8 +271,9 @@ class _EventAnalyzer(LlmAnalyzer):
                     reserved=reserved,
                     boundary=boundary,
                 )
+            completed = False
             with anyio.CancelScope(shield=True):
-                await self.receipts.complete(
+                completed = await self.receipts.complete(
                     self.pack.document.event_id,
                     self.pack.document.ticker,
                     self.persona,
@@ -274,18 +281,24 @@ class _EventAnalyzer(LlmAnalyzer):
                     _EventProviderPayload(result=result).model_dump(mode="json"),
                     owner_token,
                 )
+            if not completed:
+                raise _EventStageStoppedError(
+                    EventAnalysisRun(uncertain=1, reason=f"{stage.value}_ownership_lost")
+                )
             self.completed += 1
             return result  # noqa: TRY300 - success must update counters before return
         except LlmBudgetExceededError:
+            suppressed = False
             with anyio.CancelScope(shield=True):
-                await self.receipts.suppress(
+                suppressed = await self.receipts.suppress(
                     self.pack.document.event_id,
                     self.pack.document.ticker,
                     self.persona,
                     stage,
                     owner_token,
                 )
-            self.suppressed += 1
+            if suppressed:
+                self.suppressed += 1
             raise _EventStageStoppedError(
                 EventAnalysisRun(
                     attempted=self.attempted,
@@ -297,7 +310,7 @@ class _EventAnalyzer(LlmAnalyzer):
         except TimeoutError:
             if not boundary.crossed:
                 with anyio.CancelScope(shield=True):
-                    await self.receipts.release_unbilled(
+                    _ = await self.receipts.release_unbilled(
                         self.pack.document.event_id,
                         self.pack.document.ticker,
                         self.persona,
@@ -317,7 +330,7 @@ class _EventAnalyzer(LlmAnalyzer):
         except anyio.get_cancelled_exc_class():
             if not boundary.crossed:
                 with anyio.CancelScope(shield=True):
-                    await self.receipts.release_unbilled(
+                    _ = await self.receipts.release_unbilled(
                         self.pack.document.event_id,
                         self.pack.document.ticker,
                         self.persona,
@@ -375,8 +388,9 @@ class _EventAnalyzer(LlmAnalyzer):
             if claim is not EventAnalysisReceiptClaim.CLAIMED:
                 return
             self.attempted += 1
+            completed = False
             with anyio.CancelScope(shield=True):
-                await self.receipts.complete(
+                completed = await self.receipts.complete(
                     self.pack.document.event_id,
                     self.pack.document.ticker,
                     self.persona,
@@ -384,10 +398,12 @@ class _EventAnalyzer(LlmAnalyzer):
                     {"gate_result": True},
                     owner_token,
                 )
+            if not completed:
+                return
             self.completed += 1
         except anyio.get_cancelled_exc_class():
             with anyio.CancelScope(shield=True):
-                await self.receipts.release_unbilled(
+                _ = await self.receipts.release_unbilled(
                     self.pack.document.event_id,
                     self.pack.document.ticker,
                     self.persona,

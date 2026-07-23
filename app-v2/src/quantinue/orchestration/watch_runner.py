@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Literal, Protocol
 
@@ -268,7 +268,6 @@ class WatchRunner:
         self._stream = stream
         self._clock = clock or _utc_now
         self._heartbeat_wait = heartbeat_wait or _wait_for_watch_heartbeat
-        self._last_rejudged_at: dict[str, datetime] = {}
         self._last_stream_at: dict[str, datetime] = {}
         self._evaluation_lock = anyio.Lock()
         self._logger: structlog.stdlib.BoundLogger = structlog.get_logger("watch")
@@ -402,14 +401,11 @@ class WatchRunner:
         references = await self._domain.reference_closes(
             active, before=local.date()
         )
-        cooldown = timedelta(minutes=policy.cooldown_minutes)
         triggered = self._triggered_prices(
             active,
             prices,
             references,
-            now=now,
             sweep_due=sweep_due,
-            cooldown=cooldown,
             move_trigger_pct=Decimal(str(policy.move_trigger_pct)),
         )
         if not triggered:
@@ -431,7 +427,6 @@ class WatchRunner:
                         sweep_claim, now, succeeded=False, detail=f"targets={len(triggered)}"
                     )
             raise
-        self._last_rejudged_at.update(dict.fromkeys(triggered, now))
         await self._finish_sweep(
             sweep_claim,
             now,
@@ -486,15 +481,13 @@ class WatchRunner:
             raise WatchSweepLeaseLostError(message)
         return result
 
-    def _triggered_prices(  # noqa: PLR0913 - each value is one trigger input
+    def _triggered_prices(
         self,
         active: tuple[str, ...],
         prices: Mapping[str, Decimal],
         references: Mapping[str, Decimal],
         *,
-        now: datetime,
         sweep_due: bool,
-        cooldown: timedelta,
         move_trigger_pct: Decimal,
     ) -> dict[str, Decimal]:
         triggered: dict[str, Decimal] = {}
@@ -508,9 +501,7 @@ class WatchRunner:
                 continue
             if abs(price - reference) / reference < move_trigger_pct:
                 continue
-            previous = self._last_rejudged_at.get(ticker)
-            if previous is None or now - previous >= cooldown:
-                triggered[ticker] = price
+            triggered[ticker] = price
         return triggered
 
     async def _reserve_due_sweep(

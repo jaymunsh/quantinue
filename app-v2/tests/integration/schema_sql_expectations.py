@@ -37,6 +37,7 @@ TABLES = {
     "order_submissions",
     "tb_user",
     "tb_llm_usage",
+    "tb_llm_budget_reservation",
     "tb_benchmark_price",
     "tb_daily_bar",
     "tb_job_run",
@@ -71,6 +72,7 @@ PK = {
     "order_submissions": ("submission_id",),
     "tb_user": ("user_id",),
     "tb_llm_usage": ("id",),
+    "tb_llm_budget_reservation": ("budget_day", "reservation_id"),
     "tb_benchmark_price": ("price_date", "ticker"),
     "tb_daily_bar": ("trade_date", "ticker"),
     "tb_job_run": ("job_name", "slot_date"),
@@ -284,6 +286,11 @@ CHECKS: dict[str, dict[tuple[str, ...], tuple[str, ...]]] = {
     "tb_rejudgement_cooldown": {
         ("status",): ("'claimed'", "'completed'"),
         ("status", "completed_at"): ("'completed'", "completed_at is not null"),
+    },
+    "tb_llm_budget_reservation": {
+        ("reserve_class",): ("'general'", "'sell'"),
+        ("state",): ("'claimed'", "'dispatched'", "'settled'", "'released'"),
+        ("max_cost_usd",): ("max_cost_usd >=",),
     },
     "tb_macro": {
         ("regime",): ("'risk_on'", "'risk_off'"),

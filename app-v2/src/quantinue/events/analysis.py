@@ -77,7 +77,7 @@ class EventAnalysisReceiptRepository(Protocol):
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Fence the actual provider dispatch."""
         ...
 
@@ -89,7 +89,7 @@ class EventAnalysisReceiptRepository(Protocol):
         stage: EventAnalysisStage,
         result_payload: dict[str, JsonValue],
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Persist the provider result durably."""
         ...
 
@@ -100,7 +100,7 @@ class EventAnalysisReceiptRepository(Protocol):
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Release a claim proven not to have reached the provider."""
         ...
 
@@ -111,7 +111,7 @@ class EventAnalysisReceiptRepository(Protocol):
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         """Persist a terminal zero-call refusal."""
         ...
 

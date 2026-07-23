@@ -32,6 +32,12 @@ class _Domain:
         _ = ticker, persona, owner_token, now
         return True
 
+    async def release_rejudgement(
+        self, ticker: str, persona: str, *, owner_token: str
+    ) -> bool:
+        _ = ticker, persona, owner_token
+        return True
+
     async def approved_sell_profiles(
         self, as_of: date, tickers: tuple[str, ...]
     ) -> dict[str, frozenset[str]]:

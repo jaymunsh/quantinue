@@ -329,10 +329,11 @@ class _EventReceipts:
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         _ = event_id, ticker, persona
         assert self.owners[stage] == owner_token
         self.dispatched.append(stage)
+        return True
 
     async def complete(  # noqa: PLR0913
         self,
@@ -342,11 +343,12 @@ class _EventReceipts:
         stage: EventAnalysisStage,
         result_payload: dict[str, object],
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         _ = event_id, ticker, persona
         assert self.owners[stage] == owner_token
         self.states[stage] = EventAnalysisReceiptClaim.COMPLETED
         self.results[stage] = result_payload
+        return True
 
     async def release_unbilled(
         self,
@@ -355,13 +357,14 @@ class _EventReceipts:
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         _ = event_id, ticker, persona
         if self.owners.get(stage) != owner_token:
-            return
+            return False
         self.released.append(stage)
         self.states.pop(stage, None)
         self.owners.pop(stage, None)
+        return True
 
     async def suppress(
         self,
@@ -370,11 +373,12 @@ class _EventReceipts:
         persona: str,
         stage: EventAnalysisStage,
         owner_token: str,
-    ) -> None:
+    ) -> bool:
         _ = event_id, ticker, persona
         assert self.owners[stage] == owner_token
         self.suppressed.append(stage)
         self.states[stage] = EventAnalysisReceiptClaim.SUPPRESSED
+        return True
 
     async def close(self) -> None:
         return
