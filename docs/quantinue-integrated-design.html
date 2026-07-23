@@ -909,6 +909,13 @@ erDiagram
   tb_account ||--o{ tb_order : "account_id"
   tb_order ||--o{ tb_fill : "order_id"
   tb_order |o--o{ tb_order : "closes_order_id (청산→매수)"
+  tb_event_raw_document ||--o{ tb_event_raw_version : "document_id"
+  tb_event_raw_version ||--o{ tb_normalized_event : "raw_version_id"
+  tb_normalized_event ||--o{ tb_event_evidence_pack : "event_id"
+  tb_event_raw_version ||--o{ tb_event_evidence_pack : "raw_version_id"
+  tb_event_raw_version ||--o{ tb_event_summary_cache : "version·hash·length"
+  tb_normalized_event ||--o{ tb_event_processing_receipt : "event_id"
+  tb_order |o--o{ tb_event_processing_receipt : "order_id"
   tb_account ||--o{ tb_account_equity_daily : "account_id"
   tb_strategist_signals ||--o{ tb_review_price_snapshots : "signal_id"
   tb_strategist_signals ||--o| tb_review : "signal_id"
@@ -928,6 +935,13 @@ erDiagram
         <tr><td class="mono">tb_macro</td><td>시장 국면 (regime · risk_score)</td><td class="mono">PK(as_of)</td></tr>
         <tr><td rowspan="2">원시 원장</td><td class="mono r-new" style="background:var(--buy-bg)">tb_disclosure_raw</td><td>전 시장 공시 + 하드 이벤트 플래그</td><td>FK 없음 — 분석 범위 <b>밖</b>을 담는 게 존재 이유</td></tr>
         <tr class="r-new"><td class="mono">tb_news_raw</td><td>전 시장 헤드라인 (Alpaca + 와이어 RSS)</td><td class="mono">PK(article_id,ticker) · FK 없음</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_source_cursor</td><td>소스별 증분 수집 체크포인트</td><td class="mono">PK(source_name) · 빈 cursor 금지</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_raw_document</td><td>공급자 문서의 안정 식별자</td><td class="mono">UNIQUE(source_name,source_document_id)</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_raw_version</td><td>원문·정규화 본문의 불변 버전</td><td class="mono">UPDATE/DELETE 거부 · 문서별 version/hash UNIQUE</td></tr>
+        <tr class="r-new"><td class="mono">tb_normalized_event</td><td>결정론적 장중 사건과 공급자 순서</td><td class="mono">event_key · source order UNIQUE</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_evidence_pack</td><td>사건 판단의 불변 원문 span</td><td class="mono">FK → event + raw version · offset CHECK</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_summary_cache</td><td>12,000자 초과 문서의 모델 요약 캐시</td><td class="mono">UNIQUE(hash,model,prompt) · length &gt; 12000</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_processing_receipt</td><td>사건·종목·성향별 처리/주문 영수증</td><td class="mono">UNIQUE(event,ticker,persona) · FK → order</td></tr>
         <tr><td rowspan="2">선별</td><td class="mono">tb_daily_pick</td><td>오늘의 분석 범위 (랭킹 상위 + 보유)</td><td class="mono">FK → tb_universe · rank 상한 없음</td></tr>
         <tr class="r-chg"><td class="mono">tb_disclosure_signal</td><td>공시 채점 — 현행은 <b>인사이더 표</b>가 여기 앉는다 (<code>sentiment_score</code>)</td><td class="mono">UNIQUE(ticker,cycle_ts) · FK → pick</td></tr>
         <tr><td rowspan="3">판단</td><td class="mono">tb_strategist_signals</td><td>성향별 판단 (side·확신도·서사·증거)</td><td class="mono">UNIQUE(ticker,cycle_ts,inv_type) + 계보 FK 4개</td></tr>
@@ -1425,6 +1439,98 @@ erDiagram
         <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>갱신 시각 (upsert)</td></tr>
         </tbody></table></div>
     </details>
+    <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">장중 사건 내구 원장</h4>
+    <details class="schema">
+      <summary><code>tb_event_source_cursor</code> <span class="b b-new">신규</span> <span class="sd">소스별 증분 수집 체크포인트</span><span class="cnt">4 컬럼</span></summary>
+      <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
+        <tr><td>source_name</td><td class="mono">TEXT PRIMARY KEY · non-empty</td><td>어댑터 라우팅 키</td></tr>
+        <tr><td>cursor_value</td><td class="mono">TEXT NOT NULL · non-empty</td><td>다음 페이지/시간창 시작점</td></tr>
+        <tr><td>checkpoint_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>마지막 성공 배치 경계</td></tr>
+        <tr><td>updated_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>stale 체크포인트 관측</td></tr>
+      </tbody></table></div>
+    </details>
+    <details class="schema">
+      <summary><code>tb_event_raw_document</code> <span class="b b-new">신규</span> <span class="sd">공급자 문서의 안정 식별자</span><span class="cnt">6 컬럼</span></summary>
+      <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
+        <tr><td>document_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>버전 FK</td></tr>
+        <tr><td>source_name</td><td class="mono">TEXT NOT NULL · non-empty</td><td>소스 어댑터</td></tr>
+        <tr><td>source_document_id</td><td class="mono">TEXT NOT NULL · non-empty</td><td>공급자 중복 제거</td></tr>
+        <tr><td>source_url</td><td class="mono">TEXT NOT NULL</td><td>출처 감사 링크</td></tr>
+        <tr><td>published_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>사건 시간 정규화</td></tr>
+        <tr><td>first_seen_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>수집 지연 관측</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(source_name, source_document_id)</td></tr>
+      </tbody></table></div>
+    </details>
+    <details class="schema">
+      <summary><code>tb_event_raw_version</code> <span class="b b-new">신규</span> <span class="sd">원문·정규화 본문의 불변 버전</span><span class="cnt">8 컬럼</span></summary>
+      <div class="inner"><p class="small">외부 원문은 지시가 아니라 비신뢰 데이터로만 저장한다. 정정은 새 version/hash 행이며 UPDATE·DELETE trigger가 과거 내용을 보존한다.</p></div>
+      <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
+        <tr><td>raw_version_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>사건·근거·요약 FK</td></tr>
+        <tr><td>document_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_event_raw_document</td><td>정정 문서 묶음</td></tr>
+        <tr><td>version_no</td><td class="mono">INT NOT NULL CHECK (&gt; 0)</td><td>정정 순서</td></tr>
+        <tr><td>content_hash</td><td class="mono">TEXT NOT NULL · non-empty</td><td>내용 중복 제거·요약 키</td></tr>
+        <tr><td>raw_text</td><td class="mono">TEXT NOT NULL</td><td>감사 원문(실행 금지)</td></tr>
+        <tr><td>normalized_text</td><td class="mono">TEXT NOT NULL</td><td>정규화·span·요약 입력</td></tr>
+        <tr><td>normalized_length</td><td class="mono">INT = char_length(normalized_text)</td><td>12,000자 요약 게이트</td></tr>
+        <tr><td>captured_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>수집 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(document_id,version_no) · UNIQUE(document_id,content_hash) · UPDATE/DELETE 거부</td></tr>
+      </tbody></table></div>
+    </details>
+    <details class="schema">
+      <summary><code>tb_normalized_event</code> <span class="b b-new">신규</span> <span class="sd">결정론적 장중 사건</span><span class="cnt">9 컬럼</span></summary>
+      <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
+        <tr><td>event_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>근거·처리 영수증 FK</td></tr>
+        <tr><td>raw_version_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_event_raw_version</td><td>원문 계보</td></tr>
+        <tr><td>event_key</td><td class="mono">TEXT NOT NULL UNIQUE · non-empty</td><td>겹친 창 사건 dedupe</td></tr>
+        <tr><td>source_name</td><td class="mono">TEXT NOT NULL</td><td>소스 라우팅</td></tr>
+        <tr><td>source_sequence</td><td class="mono">TEXT NOT NULL · non-empty</td><td>공급자 순서 계보</td></tr>
+        <tr><td>event_type</td><td class="mono">TEXT NOT NULL · non-empty</td><td>materiality 라우팅</td></tr>
+        <tr><td>occurred_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>장중 시간순 처리</td></tr>
+        <tr><td>payload</td><td class="mono">JSONB NOT NULL</td><td>정규화 필드 소비자</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>처리 지연 관측</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(event_key) · UNIQUE(source_name,source_sequence)</td></tr>
+      </tbody></table></div>
+    </details>
+    <details class="schema">
+      <summary><code>tb_event_evidence_pack</code> <span class="b b-new">신규</span> <span class="sd">불변 원문 근거 span</span><span class="cnt">7 컬럼</span></summary>
+      <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
+        <tr><td>evidence_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>판단 근거 식별자</td></tr>
+        <tr><td>event_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_normalized_event</td><td>사건 근거 묶음</td></tr>
+        <tr><td>raw_version_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_event_raw_version</td><td>불변 원문 버전</td></tr>
+        <tr><td>start_offset</td><td class="mono">INT NOT NULL CHECK (&gt;= 0)</td><td>근거 시작 위치</td></tr>
+        <tr><td>end_offset</td><td class="mono">INT NOT NULL CHECK (&gt; start)</td><td>근거 끝 위치</td></tr>
+        <tr><td>quote_hash</td><td class="mono">TEXT NOT NULL · non-empty</td><td>span 변조 검증</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>근거 생성 시각</td></tr>
+      </tbody></table></div>
+    </details>
+    <details class="schema">
+      <summary><code>tb_event_summary_cache</code> <span class="b b-new">신규</span> <span class="sd">장문 모델 요약 캐시</span><span class="cnt">8 컬럼</span></summary>
+      <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
+        <tr><td>summary_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>요약 식별자</td></tr>
+        <tr><td>raw_version_id</td><td class="mono">BIGINT NOT NULL</td><td>불변 버전 계보</td></tr>
+        <tr><td>content_hash</td><td class="mono">TEXT NOT NULL · non-empty</td><td>내용 기반 캐시 키</td></tr>
+        <tr><td>normalized_length</td><td class="mono">INT NOT NULL CHECK (&gt; 12000)</td><td>장문 전용 게이트</td></tr>
+        <tr><td>model</td><td class="mono">TEXT NOT NULL · non-empty</td><td>모델별 캐시 분리</td></tr>
+        <tr><td>prompt_version</td><td class="mono">TEXT NOT NULL · non-empty</td><td>프롬프트별 캐시 무효화</td></tr>
+        <tr><td>summary_text</td><td class="mono">TEXT NOT NULL · non-empty</td><td>후속 사건 분석 입력</td></tr>
+        <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>캐시 생성 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FK(version,hash,length) · UNIQUE(content_hash,model,prompt_version)</td></tr>
+      </tbody></table></div>
+    </details>
+    <details class="schema">
+      <summary><code>tb_event_processing_receipt</code> <span class="b b-new">신규</span> <span class="sd">처리·주문 멱등 영수증</span><span class="cnt">8 컬럼</span></summary>
+      <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
+        <tr><td>receipt_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>처리 영수증 식별자</td></tr>
+        <tr><td>event_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_normalized_event</td><td>사건 계보</td></tr>
+        <tr><td>ticker</td><td class="mono">TEXT NOT NULL · non-empty</td><td>보유/오늘 픽 대상</td></tr>
+        <tr><td>persona</td><td class="mono">TEXT NOT NULL · non-empty</td><td>성향별 판단 분리</td></tr>
+        <tr><td>status</td><td class="mono">claimed·processed·skipped·ordered</td><td>재시도 상태 머신</td></tr>
+        <tr><td>order_id</td><td class="mono">BIGINT REFERENCES tb_order</td><td>ordered 효과 계보</td></tr>
+        <tr><td>claimed_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>claim 시각</td></tr>
+        <tr><td>completed_at</td><td class="mono">TIMESTAMPTZ</td><td>종료 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(event_id,ticker,persona) · ordered iff order_id IS NOT NULL</td></tr>
+      </tbody></table></div>
+    </details>
     <h4 style="margin:22px 0 6px;font-size:15px;color:var(--ink-soft)">운영</h4>
     <details class="schema">
       <summary><code>tb_job_run</code> <span class="b b-new">2차 신규</span> <span class="sd">JOB 실행 원장 — 멱등의 근거</span><span class="cnt">6 컬럼</span></summary>
@@ -1636,6 +1742,7 @@ erDiagram
         <tr><td class="mono">tb_job_run</td><td class="mono">status</td><td class="mono">'running','succeeded','failed'</td></tr>
         <tr><td class="mono">tb_watch_sweep</td><td class="mono">status</td><td class="mono">'running','succeeded','failed'</td></tr>
         <tr><td class="mono">tb_watch_sweep_item</td><td class="mono">status</td><td class="mono">'claimed','dispatched','completed'</td></tr>
+        <tr><td class="mono">tb_event_processing_receipt</td><td class="mono">status</td><td class="mono">'claimed','processed','skipped','ordered'</td></tr>
         </tbody></table></div>
     </details>
 

@@ -340,3 +340,158 @@ CREATE TABLE IF NOT EXISTS tb_news_raw (
 -- 분석 잡이 매 실행 던지는 유일한 질문의 모양이다: 그 세션 · 이 종목들 ·
 -- 최신순 N건. 원장이 하루 1400행씩 자라므로 순차 스캔으로 두면 곧 비싸진다.
 CREATE INDEX IF NOT EXISTS ix_news_raw_session ON tb_news_raw (trade_date, ticker, published_at DESC);
+
+-- 장중 사건 수집 커서. 어댑터는 raw/version/receipt 트랜잭션이 커밋된 뒤에만
+-- cursor_value를 전진시키고, checkpoint_at으로 마지막 성공 경계를 관측한다.
+CREATE TABLE IF NOT EXISTS tb_event_source_cursor (
+  source_name TEXT PRIMARY KEY,
+  cursor_value TEXT NOT NULL,
+  checkpoint_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT tb_event_source_cursor_source_name_check
+    CHECK (length(btrim(source_name)) > 0),
+  CONSTRAINT tb_event_source_cursor_cursor_value_check
+    CHECK (length(btrim(cursor_value)) > 0)
+);
+
+-- 공급자 문서의 안정 식별자. 정정은 이 행을 덮는 대신 아래 version을 늘린다.
+CREATE TABLE IF NOT EXISTS tb_event_raw_document (
+  document_id BIGSERIAL PRIMARY KEY,
+  source_name TEXT NOT NULL,
+  source_document_id TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  published_at TIMESTAMPTZ NOT NULL,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_event_raw_document_source UNIQUE (source_name, source_document_id),
+  CONSTRAINT tb_event_raw_document_source_name_check
+    CHECK (length(btrim(source_name)) > 0),
+  CONSTRAINT tb_event_raw_document_source_document_id_check
+    CHECK (length(btrim(source_document_id)) > 0)
+);
+
+-- 원문과 정규화 결과의 불변 버전. raw_text는 외부의 비신뢰 데이터일 뿐이며
+-- 실행 지시로 해석하는 소비자가 없다. 길이는 요약 캐시 FK/CHECK가 사용한다.
+CREATE TABLE IF NOT EXISTS tb_event_raw_version (
+  raw_version_id BIGSERIAL PRIMARY KEY,
+  document_id BIGINT NOT NULL REFERENCES tb_event_raw_document(document_id),
+  version_no INT NOT NULL,
+  content_hash TEXT NOT NULL,
+  raw_text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  normalized_length INT NOT NULL,
+  captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_event_raw_version_number UNIQUE (document_id, version_no),
+  CONSTRAINT uq_event_raw_version_hash UNIQUE (document_id, content_hash),
+  CONSTRAINT uq_event_raw_version_summary_fk
+    UNIQUE (raw_version_id, content_hash, normalized_length),
+  CONSTRAINT tb_event_raw_version_version_no_check CHECK (version_no > 0),
+  CONSTRAINT tb_event_raw_version_content_hash_check
+    CHECK (length(btrim(content_hash)) > 0),
+  CONSTRAINT tb_event_raw_version_normalized_length_check
+    CHECK (
+      normalized_length >= 0
+      AND normalized_length = char_length(normalized_text)
+    )
+);
+
+CREATE OR REPLACE FUNCTION reject_event_raw_version_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'tb_event_raw_version is immutable';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_event_raw_version_immutable ON tb_event_raw_version;
+CREATE TRIGGER trg_event_raw_version_immutable
+BEFORE UPDATE OR DELETE ON tb_event_raw_version
+FOR EACH ROW EXECUTE FUNCTION reject_event_raw_version_mutation();
+
+-- 결정론적 정규화 사건. source_sequence는 공급자 순서를 보존하고 event_key는
+-- 겹친 수집 창과 재시도에서 같은 사건이 두 번 생기는 것을 막는다.
+CREATE TABLE IF NOT EXISTS tb_normalized_event (
+  event_id BIGSERIAL PRIMARY KEY,
+  raw_version_id BIGINT NOT NULL REFERENCES tb_event_raw_version(raw_version_id),
+  event_key TEXT NOT NULL,
+  source_name TEXT NOT NULL,
+  source_sequence TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  occurred_at TIMESTAMPTZ NOT NULL,
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_normalized_event_key UNIQUE (event_key),
+  CONSTRAINT uq_normalized_event_source_order UNIQUE (source_name, source_sequence),
+  CONSTRAINT tb_normalized_event_event_key_check
+    CHECK (length(btrim(event_key)) > 0),
+  CONSTRAINT tb_normalized_event_source_sequence_check
+    CHECK (length(btrim(source_sequence)) > 0),
+  CONSTRAINT tb_normalized_event_event_type_check
+    CHECK (length(btrim(event_type)) > 0)
+);
+
+-- 판단 근거 span. FK가 불변 raw version을 직접 가리켜 원문 정정 뒤에도 어느
+-- 버전의 어느 구간이 근거였는지 재현한다.
+CREATE TABLE IF NOT EXISTS tb_event_evidence_pack (
+  evidence_id BIGSERIAL PRIMARY KEY,
+  event_id BIGINT NOT NULL REFERENCES tb_normalized_event(event_id),
+  raw_version_id BIGINT NOT NULL REFERENCES tb_event_raw_version(raw_version_id),
+  start_offset INT NOT NULL,
+  end_offset INT NOT NULL,
+  quote_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_event_evidence_span
+    UNIQUE (event_id, raw_version_id, start_offset, end_offset),
+  CONSTRAINT tb_event_evidence_pack_offsets_check
+    CHECK (start_offset >= 0 AND end_offset > start_offset),
+  CONSTRAINT tb_event_evidence_pack_quote_hash_check
+    CHECK (length(btrim(quote_hash)) > 0)
+);
+
+-- 12,000자 초과 문서만 사용하는 모델 요약 캐시. 복합 FK는 전달받은 hash와
+-- 길이가 실제 불변 버전의 값임을 보증한다.
+CREATE TABLE IF NOT EXISTS tb_event_summary_cache (
+  summary_id BIGSERIAL PRIMARY KEY,
+  raw_version_id BIGINT NOT NULL,
+  content_hash TEXT NOT NULL,
+  normalized_length INT NOT NULL,
+  model TEXT NOT NULL,
+  prompt_version TEXT NOT NULL,
+  summary_text TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT fk_event_summary_raw_version
+    FOREIGN KEY (raw_version_id, content_hash, normalized_length)
+    REFERENCES tb_event_raw_version(raw_version_id, content_hash, normalized_length),
+  CONSTRAINT uq_event_summary_cache_key
+    UNIQUE (content_hash, model, prompt_version),
+  CONSTRAINT tb_event_summary_cache_normalized_length_check
+    CHECK (normalized_length > 12000),
+  CONSTRAINT tb_event_summary_cache_content_hash_check
+    CHECK (length(btrim(content_hash)) > 0),
+  CONSTRAINT tb_event_summary_cache_model_check
+    CHECK (length(btrim(model)) > 0),
+  CONSTRAINT tb_event_summary_cache_prompt_version_check
+    CHECK (length(btrim(prompt_version)) > 0),
+  CONSTRAINT tb_event_summary_cache_summary_text_check
+    CHECK (length(btrim(summary_text)) > 0)
+);
+
+-- 사건·종목·성향별 처리 영수증. 이 키로 LLM/주문 효과를 한 번으로 제한하며,
+-- ordered 상태는 실제 tb_order 계보 없이는 기록할 수 없다.
+CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
+  receipt_id BIGSERIAL PRIMARY KEY,
+  event_id BIGINT NOT NULL REFERENCES tb_normalized_event(event_id),
+  ticker TEXT NOT NULL,
+  persona TEXT NOT NULL,
+  status TEXT NOT NULL,
+  order_id BIGINT REFERENCES tb_order(id),
+  claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  CONSTRAINT uq_event_processing_key UNIQUE (event_id, ticker, persona),
+  CONSTRAINT tb_event_processing_receipt_ticker_check
+    CHECK (length(btrim(ticker)) > 0),
+  CONSTRAINT tb_event_processing_receipt_persona_check
+    CHECK (length(btrim(persona)) > 0),
+  CONSTRAINT tb_event_processing_receipt_status_check
+    CHECK (status IN ('claimed','processed','skipped','ordered')),
+  CONSTRAINT tb_event_processing_receipt_order_check
+    CHECK ((status = 'ordered') = (order_id IS NOT NULL))
+);

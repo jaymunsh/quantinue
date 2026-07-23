@@ -303,3 +303,147 @@ CREATE TABLE IF NOT EXISTS tb_account_equity_daily (
 -- 통하는 계정"이 아니다 — 검증 경로가 그것을 강제한다.
 ALTER TABLE tb_user
   ADD COLUMN IF NOT EXISTS password_hash TEXT;
+
+-- 장중 사건 저장 계약. 모두 IF NOT EXISTS 또는 재생성 가능한 trigger라 재개 시
+-- 중단 지점과 무관하게 같은 카탈로그로 수렴한다.
+CREATE TABLE IF NOT EXISTS tb_event_source_cursor (
+  source_name TEXT PRIMARY KEY,
+  cursor_value TEXT NOT NULL,
+  checkpoint_at TIMESTAMPTZ NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT tb_event_source_cursor_source_name_check
+    CHECK (length(btrim(source_name)) > 0),
+  CONSTRAINT tb_event_source_cursor_cursor_value_check
+    CHECK (length(btrim(cursor_value)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS tb_event_raw_document (
+  document_id BIGSERIAL PRIMARY KEY,
+  source_name TEXT NOT NULL,
+  source_document_id TEXT NOT NULL,
+  source_url TEXT NOT NULL,
+  published_at TIMESTAMPTZ NOT NULL,
+  first_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_event_raw_document_source UNIQUE (source_name, source_document_id),
+  CONSTRAINT tb_event_raw_document_source_name_check
+    CHECK (length(btrim(source_name)) > 0),
+  CONSTRAINT tb_event_raw_document_source_document_id_check
+    CHECK (length(btrim(source_document_id)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS tb_event_raw_version (
+  raw_version_id BIGSERIAL PRIMARY KEY,
+  document_id BIGINT NOT NULL REFERENCES tb_event_raw_document(document_id),
+  version_no INT NOT NULL,
+  content_hash TEXT NOT NULL,
+  raw_text TEXT NOT NULL,
+  normalized_text TEXT NOT NULL,
+  normalized_length INT NOT NULL,
+  captured_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_event_raw_version_number UNIQUE (document_id, version_no),
+  CONSTRAINT uq_event_raw_version_hash UNIQUE (document_id, content_hash),
+  CONSTRAINT uq_event_raw_version_summary_fk
+    UNIQUE (raw_version_id, content_hash, normalized_length),
+  CONSTRAINT tb_event_raw_version_version_no_check CHECK (version_no > 0),
+  CONSTRAINT tb_event_raw_version_content_hash_check
+    CHECK (length(btrim(content_hash)) > 0),
+  CONSTRAINT tb_event_raw_version_normalized_length_check
+    CHECK (
+      normalized_length >= 0
+      AND normalized_length = char_length(normalized_text)
+    )
+);
+
+CREATE OR REPLACE FUNCTION reject_event_raw_version_mutation()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+  RAISE EXCEPTION 'tb_event_raw_version is immutable';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_event_raw_version_immutable ON tb_event_raw_version;
+CREATE TRIGGER trg_event_raw_version_immutable
+BEFORE UPDATE OR DELETE ON tb_event_raw_version
+FOR EACH ROW EXECUTE FUNCTION reject_event_raw_version_mutation();
+
+CREATE TABLE IF NOT EXISTS tb_normalized_event (
+  event_id BIGSERIAL PRIMARY KEY,
+  raw_version_id BIGINT NOT NULL REFERENCES tb_event_raw_version(raw_version_id),
+  event_key TEXT NOT NULL,
+  source_name TEXT NOT NULL,
+  source_sequence TEXT NOT NULL,
+  event_type TEXT NOT NULL,
+  occurred_at TIMESTAMPTZ NOT NULL,
+  payload JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_normalized_event_key UNIQUE (event_key),
+  CONSTRAINT uq_normalized_event_source_order UNIQUE (source_name, source_sequence),
+  CONSTRAINT tb_normalized_event_event_key_check
+    CHECK (length(btrim(event_key)) > 0),
+  CONSTRAINT tb_normalized_event_source_sequence_check
+    CHECK (length(btrim(source_sequence)) > 0),
+  CONSTRAINT tb_normalized_event_event_type_check
+    CHECK (length(btrim(event_type)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS tb_event_evidence_pack (
+  evidence_id BIGSERIAL PRIMARY KEY,
+  event_id BIGINT NOT NULL REFERENCES tb_normalized_event(event_id),
+  raw_version_id BIGINT NOT NULL REFERENCES tb_event_raw_version(raw_version_id),
+  start_offset INT NOT NULL,
+  end_offset INT NOT NULL,
+  quote_hash TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT uq_event_evidence_span
+    UNIQUE (event_id, raw_version_id, start_offset, end_offset),
+  CONSTRAINT tb_event_evidence_pack_offsets_check
+    CHECK (start_offset >= 0 AND end_offset > start_offset),
+  CONSTRAINT tb_event_evidence_pack_quote_hash_check
+    CHECK (length(btrim(quote_hash)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS tb_event_summary_cache (
+  summary_id BIGSERIAL PRIMARY KEY,
+  raw_version_id BIGINT NOT NULL,
+  content_hash TEXT NOT NULL,
+  normalized_length INT NOT NULL,
+  model TEXT NOT NULL,
+  prompt_version TEXT NOT NULL,
+  summary_text TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT fk_event_summary_raw_version
+    FOREIGN KEY (raw_version_id, content_hash, normalized_length)
+    REFERENCES tb_event_raw_version(raw_version_id, content_hash, normalized_length),
+  CONSTRAINT uq_event_summary_cache_key
+    UNIQUE (content_hash, model, prompt_version),
+  CONSTRAINT tb_event_summary_cache_normalized_length_check
+    CHECK (normalized_length > 12000),
+  CONSTRAINT tb_event_summary_cache_content_hash_check
+    CHECK (length(btrim(content_hash)) > 0),
+  CONSTRAINT tb_event_summary_cache_model_check
+    CHECK (length(btrim(model)) > 0),
+  CONSTRAINT tb_event_summary_cache_prompt_version_check
+    CHECK (length(btrim(prompt_version)) > 0),
+  CONSTRAINT tb_event_summary_cache_summary_text_check
+    CHECK (length(btrim(summary_text)) > 0)
+);
+
+CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
+  receipt_id BIGSERIAL PRIMARY KEY,
+  event_id BIGINT NOT NULL REFERENCES tb_normalized_event(event_id),
+  ticker TEXT NOT NULL,
+  persona TEXT NOT NULL,
+  status TEXT NOT NULL,
+  order_id BIGINT REFERENCES tb_order(id),
+  claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  completed_at TIMESTAMPTZ,
+  CONSTRAINT uq_event_processing_key UNIQUE (event_id, ticker, persona),
+  CONSTRAINT tb_event_processing_receipt_ticker_check
+    CHECK (length(btrim(ticker)) > 0),
+  CONSTRAINT tb_event_processing_receipt_persona_check
+    CHECK (length(btrim(persona)) > 0),
+  CONSTRAINT tb_event_processing_receipt_status_check
+    CHECK (status IN ('claimed','processed','skipped','ordered')),
+  CONSTRAINT tb_event_processing_receipt_order_check
+    CHECK ((status = 'ordered') = (order_id IS NOT NULL))
+);

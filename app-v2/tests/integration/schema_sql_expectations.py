@@ -3,6 +3,14 @@
 from pathlib import Path
 from typing import TypeAlias
 
+from .event_schema_expectations import (
+    EVENT_CHECKS,
+    EVENT_FK,
+    EVENT_PK,
+    EVENT_TABLES,
+    EVENT_UNIQUE,
+)
+
 ForeignKey: TypeAlias = tuple[tuple[str, ...], str, tuple[str, ...]]
 
 SCHEMA = Path("db/schema.sql").resolve()
@@ -72,7 +80,7 @@ PK = {
     # 당일 시작 equity는 계좌·날짜당 하나다 — 첫 기록이 이긴다.
     "tb_account_equity_daily": ("account_id", "trade_date"),
 }
-UNIQUE = {
+UNIQUE: dict[str, set[tuple[str, ...]]] = {
     "tb_disclosure": {("filing_no",)},
     "tb_disclosure_signal": {("ticker", "cycle_ts")},
     "tb_news": {("news_key", "ticker")},
@@ -211,7 +219,7 @@ FK: dict[str, set[ForeignKey]] = {
     },
 }
 # Each tuple is one CHECK constraint and lists every semantic fragment it must contain.
-CHECKS = {
+CHECKS: dict[str, dict[tuple[str, ...], tuple[str, ...]]] = {
     # NUMERIC 캐스트가 붙어 카탈로그에는 (0)::numeric으로 남는다 — 접두만 본다.
     "tb_account_equity_daily": {("equity",): ("equity >=",)},
     "tb_order_plan": {
@@ -389,3 +397,9 @@ CHECKS = {
         ("stale_after", "claimed_at"): ("stale_after > claimed_at",),
     },
 }
+
+TABLES.update(EVENT_TABLES)
+PK.update(EVENT_PK)
+UNIQUE.update(EVENT_UNIQUE)
+FK.update(EVENT_FK)
+CHECKS.update(EVENT_CHECKS)

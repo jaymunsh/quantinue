@@ -40,6 +40,7 @@ def _run(docker: str, arguments: list[str]) -> subprocess.CompletedProcess[str]:
         check=True,
         capture_output=True,
         text=True,
+        timeout=30,
     )
 
 
@@ -120,6 +121,7 @@ def postgres_catalog() -> Iterator[Catalog]:
         tables: set[str] = set()
         for _attempt in range(60):
             try:
+                owner = _run(docker, ["exec", name, "cat", "/proc/1/comm"])
                 result = _run(
                     docker,
                     [
@@ -138,7 +140,7 @@ def postgres_catalog() -> Iterator[Catalog]:
                 time.sleep(0.05)
                 continue
             tables = set(result.stdout.splitlines())
-            if tables == TABLES:
+            if owner.stdout.strip() == "postgres" and tables == TABLES:
                 break
             time.sleep(0.05)
         query = """
