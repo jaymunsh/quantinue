@@ -44,6 +44,11 @@ class StrategistSignalWrite:
     model_name: str | None = None
     prompt_version: str | None = None
     input_hash: str | None = None
+    source: str | None = None
+    source_ref: str | None = None
+    captured_at: datetime | None = None
+    evidence_id: str | None = None
+    parent_evidence_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -61,6 +66,11 @@ class CriticVerdictWrite:
     # 이 판정에 적용되지 않은 게이트들. 화면("건너뛴 규칙")이 읽는 값이고,
     # 비어 있으면 "전부 검증했다"로 읽힌다 — 매도는 그렇지 않다.
     skipped_rules: tuple[str, ...] = ()
+    source: str | None = None
+    source_ref: str | None = None
+    captured_at: datetime | None = None
+    evidence_id: str | None = None
+    parent_evidence_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

@@ -1689,6 +1689,11 @@ class PostgresDomainRepository:
                 model_name=value.model_name,
                 prompt_version=value.prompt_version,
                 input_hash=value.input_hash,
+                source=value.source,
+                source_ref=value.source_ref,
+                captured_at=value.captured_at,
+                evidence_id=value.evidence_id,
+                parent_evidence_ids=list(value.parent_evidence_ids),
                 evidence=list(value.evidence),
                 sizing_hint={},
                 decision_close=value.decision_close,
@@ -2031,6 +2036,11 @@ class PostgresDomainRepository:
             "decided_layer": value.decided_layer,
             "verdict_source": value.verdict_source,
             "skipped_rules": list(value.skipped_rules),
+            "source": value.source,
+            "source_ref": value.source_ref,
+            "captured_at": value.captured_at,
+            "evidence_id": value.evidence_id,
+            "parent_evidence_ids": list(value.parent_evidence_ids),
         }
         statement = (
             insert(table).values(**fields).on_conflict_do_nothing(index_elements=["signal_id"])
@@ -2346,6 +2356,30 @@ class PostgresDomainRepository:
                     """
                     UPDATE tb_rejudgement_cooldown
                     SET status='completed', completed_at=:now
+                    WHERE ticker=:ticker AND persona=:persona
+                      AND status IN ('claimed','dispatched')
+                      AND owner_token=:owner_token
+                    """
+                ),
+                {
+                    "ticker": ticker,
+                    "persona": persona,
+                    "owner_token": owner_token,
+                    "now": now,
+                },
+            )
+            return result.rowcount == 1
+
+    async def dispatch_rejudgement(
+        self, ticker: str, persona: str, *, owner_token: str, now: datetime
+    ) -> bool:
+        """Make a cooldown reservation non-reclaimable at provider dispatch."""
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_rejudgement_cooldown
+                    SET status='dispatched', claimed_at=:now
                     WHERE ticker=:ticker AND persona=:persona
                       AND status='claimed' AND owner_token=:owner_token
                     """

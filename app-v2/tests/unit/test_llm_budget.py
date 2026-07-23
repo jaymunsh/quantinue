@@ -5,7 +5,7 @@ from decimal import Decimal
 from hashlib import sha256
 
 import pytest
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 from pydantic_settings import SettingsConfigDict
 
 from quantinue.core.config import LlmMode, Settings
@@ -141,6 +141,20 @@ async def test_exhausted_budget_stops_the_call_before_the_model_is_reached() -> 
 
     with pytest.raises(LlmBudgetExceededError):
         await _analyzer(inner, ledger, limit=0).analyze(AnalysisTask.STRATEGY, "p")
+
+    assert inner.calls == 0
+    assert ledger.records == []
+
+
+@pytest.mark.anyio
+async def test_oversized_model_input_is_rejected_before_budget_or_provider() -> None:
+    ledger = RecordingLedger()
+    inner = StubAnalyzer(TokenUsage(input_tokens=1_000, output_tokens=500))
+
+    with pytest.raises(ValidationError):
+        _ = await _analyzer(inner, ledger).analyze(
+            AnalysisTask.STRATEGY, "x" * 32_769
+        )
 
     assert inner.calls == 0
     assert ledger.records == []

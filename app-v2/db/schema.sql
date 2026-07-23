@@ -325,11 +325,12 @@ CREATE TABLE IF NOT EXISTS tb_watch_sweep_item (
 CREATE TABLE IF NOT EXISTS tb_rejudgement_cooldown (
   ticker TEXT NOT NULL,
   persona TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('claimed','completed')),
+  status TEXT NOT NULL CHECK (status IN ('claimed','dispatched','completed')),
   owner_token TEXT NOT NULL,
   claimed_at TIMESTAMPTZ NOT NULL,
   completed_at TIMESTAMPTZ,
   PRIMARY KEY (ticker, persona),
+  CHECK ((status = 'dispatched') = (completed_at IS NULL AND status <> 'claimed')),
   CHECK ((status = 'completed') = (completed_at IS NOT NULL))
 );
 

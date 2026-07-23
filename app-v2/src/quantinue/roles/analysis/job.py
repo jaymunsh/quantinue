@@ -41,7 +41,7 @@ from quantinue.llm.budget import (
     LlmBudgetExceededError,
     PaidCallBoundary,
 )
-from quantinue.llm.provider import AnalysisResult, AnalysisTask, LlmAnalyzer
+from quantinue.llm.provider import AnalysisResult, AnalysisTask, LlmAnalyzer, ModelInput
 from quantinue.roles.analysis.contracts import (
     HoldingContext,
     analysis_prompt,
@@ -202,6 +202,7 @@ class _EventAnalyzer(LlmAnalyzer):
                 stage = EventAnalysisStage.CRITIC
             case _:
                 return await self.inner.analyze(task, prompt, profile=profile)
+        _ = ModelInput(external_data=prompt)
         owner_token = uuid4().hex
         boundary = _EventPaidBoundary(
             self.receipts,
@@ -781,6 +782,15 @@ class AnalysisJob:
                 model_name=evidence.metadata.model,
                 prompt_version=evidence.metadata.prompt_version,
                 input_hash=evidence.metadata.input_hash,
+                source="event" if evidence_ids_override is not None else None,
+                source_ref=evidence_ids[0] if evidence_ids_override is not None else None,
+                captured_at=cycle_ts if evidence_ids_override is not None else None,
+                evidence_id=(
+                    f"{run_id}:strategist:{subject.ticker}"
+                    if evidence_ids_override is not None
+                    else None
+                ),
+                parent_evidence_ids=evidence_ids if evidence_ids_override is not None else (),
             )
         )
         if lease is not None:
@@ -805,6 +815,19 @@ class AnalysisJob:
                 confidence=Decimal(str(verdict.confidence)),
                 decided_layer=verdict.decided_layer,
                 skipped_rules=verdict.skipped_rules,
+                source="event" if evidence_ids_override is not None else None,
+                source_ref=evidence_ids[0] if evidence_ids_override is not None else None,
+                captured_at=cycle_ts if evidence_ids_override is not None else None,
+                evidence_id=(
+                    f"{run_id}:critic:{subject.ticker}"
+                    if evidence_ids_override is not None
+                    else None
+                ),
+                parent_evidence_ids=(
+                    (f"{run_id}:strategist:{subject.ticker}",)
+                    if evidence_ids_override is not None
+                    else ()
+                ),
             )
         )
         if lease is not None:

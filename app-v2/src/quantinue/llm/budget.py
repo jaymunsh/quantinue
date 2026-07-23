@@ -10,6 +10,8 @@ from uuid import uuid4
 import anyio
 from pydantic import BaseModel, ConfigDict, Field
 
+from quantinue.llm.provider import ModelInput
+
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
 
@@ -239,6 +241,7 @@ class BudgetedAnalyzer:
         spending_limit: Decimal,
         boundary: PaidCallBoundary | None,
     ) -> AnalysisResult:
+        _ = ModelInput(external_data=prompt)
         called_at = self._now()
         day = called_at.date()
         maximum = self.maximum_usage(task, prompt, profile=profile)
@@ -262,19 +265,18 @@ class BudgetedAnalyzer:
             await self._reserve_local(day, reservation, spending_limit)
 
         reservation_active = True
+        dispatched = False
         try:
-            if boundary is not None:
-                with anyio.CancelScope(shield=True):
+            with anyio.CancelScope(shield=True):
+                if boundary is not None:
                     await boundary.dispatched()
-            if (
-                durable is not None
-                and durable_reservation is not None
-                and not await durable.dispatch_llm_budget(
-                    durable_reservation, dispatched_at=called_at
-                )
-            ):
-                message = "llm budget reservation ownership lost"
-                raise LlmBudgetExceededError(message)
+                if durable is not None and durable_reservation is not None:
+                    if not await durable.dispatch_llm_budget(
+                        durable_reservation, dispatched_at=called_at
+                    ):
+                        message = "llm budget reservation ownership lost"
+                        raise LlmBudgetExceededError(message)
+                    dispatched = True
             result = await self._inner.analyze(task, prompt, profile=profile)
             usage = result.usage
             if usage is None:
@@ -337,9 +339,22 @@ class BudgetedAnalyzer:
             if reservation_active:
                 with anyio.CancelScope(shield=True):
                     if durable is not None and durable_reservation is not None:
-                        _ = await durable.release_llm_budget(
-                            durable_reservation, released_at=self._now()
-                        )
+                        if dispatched:
+                            _ = await durable.settle_llm_budget(
+                                durable_reservation,
+                                LlmUsageRecord(
+                                    called_at=called_at,
+                                    task=task.value,
+                                    model=maximum.model,
+                                    prompt_tokens=maximum.input_tokens,
+                                    completion_tokens=maximum.output_tokens,
+                                    est_cost_usd=reservation,
+                                ),
+                            )
+                        else:
+                            _ = await durable.release_llm_budget(
+                                durable_reservation, released_at=self._now()
+                            )
                     else:
                         async with self._spend_lock:
                             self._release(day, reservation)

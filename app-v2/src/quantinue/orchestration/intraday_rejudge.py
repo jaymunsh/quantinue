@@ -51,6 +51,12 @@ class IntradaySellDomain(Protocol):
         """Publish cooldown for the current owner."""
         ...
 
+    async def dispatch_rejudgement(
+        self, ticker: str, persona: str, *, owner_token: str, now: datetime
+    ) -> bool:
+        """Make the shared cooldown non-reclaimable at provider dispatch."""
+        ...
+
     async def release_rejudgement(
         self, ticker: str, persona: str, *, owner_token: str
     ) -> bool:
@@ -87,6 +93,40 @@ class IntradayPartialFailureError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
+class _CooldownLease:
+    domain: IntradaySellDomain
+    owner_tokens: Mapping[str, str]
+    persona: str
+    now: datetime
+    inner: WorkLease | None
+
+    async def renew(self) -> None:
+        if self.inner is not None:
+            await self.inner.renew()
+
+    async def claim_item(self, ticker: str, persona: str) -> bool:
+        return self.inner is None or await self.inner.claim_item(ticker, persona)
+
+    async def mark_dispatched(self, ticker: str, persona: str) -> None:
+        if self.inner is not None:
+            await self.inner.mark_dispatched(ticker, persona)
+        owner_token = self.owner_tokens[ticker]
+        if not await self.domain.dispatch_rejudgement(
+            ticker, persona, owner_token=owner_token, now=self.now
+        ):
+            message = "rejudgement ownership lost before dispatch"
+            raise IntradayPartialFailureError(message)
+
+    async def complete_item(self, ticker: str, persona: str) -> None:
+        if self.inner is not None:
+            await self.inner.complete_item(ticker, persona)
+
+    async def release_item(self, ticker: str, persona: str) -> None:
+        if self.inner is not None:
+            await self.inner.release_item(ticker, persona)
+
+
+@dataclass(frozen=True, slots=True)
 class IntradayRejudgeEngine:
     """Run both investment personas, then execute approved sell reversals."""
 
@@ -96,7 +136,7 @@ class IntradayRejudgeEngine:
     allocation: IntradayBuyExecutor | None = None
     cooldown: timedelta = timedelta(minutes=30)
 
-    async def run(  # noqa: C901, PLR0912 - trigger ownership lifecycle
+    async def run(  # noqa: C901 - trigger ownership lifecycle
         self,
         *,
         now: datetime,
@@ -125,7 +165,9 @@ class IntradayRejudgeEngine:
                         ticker: mutable_prices[ticker]
                         for ticker in reserved
                     },
-                    lease=lease,
+                    lease=_CooldownLease(
+                        self.domain, reserved, job.profile_name, now, lease
+                    ),
                 )
             except BaseException:
                 for ticker, owner_token in reserved.items():
@@ -134,21 +176,21 @@ class IntradayRejudgeEngine:
                     )
                 raise
             skipped += outcome.skipped
-            if outcome.skipped:
-                for ticker, owner_token in reserved.items():
+            completed_tickers = frozenset(item.ticker for item in outcome.outcomes)
+            for ticker, owner_token in reserved.items():
+                if ticker not in completed_tickers:
                     _ = await self.domain.release_rejudgement(
                         ticker, job.profile_name, owner_token=owner_token
                     )
-            else:
-                for ticker, owner_token in reserved.items():
-                    if not await self.domain.complete_rejudgement(
-                        ticker,
-                        job.profile_name,
-                        owner_token=owner_token,
-                        now=now,
-                    ):
-                        message = "rejudgement ownership lost"
-                        raise IntradayPartialFailureError(message)
+                    continue
+                if not await self.domain.complete_rejudgement(
+                    ticker,
+                    job.profile_name,
+                    owner_token=owner_token,
+                    now=now,
+                ):
+                    message = "rejudgement ownership lost"
+                    raise IntradayPartialFailureError(message)
         if skipped:
             message = f"intraday rejudgement incomplete: skipped={skipped}"
             raise IntradayPartialFailureError(message)

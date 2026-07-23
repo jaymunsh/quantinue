@@ -37,13 +37,19 @@ CREATE TABLE IF NOT EXISTS tb_watch_sweep_item (
 CREATE TABLE IF NOT EXISTS tb_rejudgement_cooldown (
   ticker TEXT NOT NULL,
   persona TEXT NOT NULL,
-  status TEXT NOT NULL CHECK (status IN ('claimed','completed')),
+  status TEXT NOT NULL CHECK (status IN ('claimed','dispatched','completed')),
   owner_token TEXT NOT NULL,
   claimed_at TIMESTAMPTZ NOT NULL,
   completed_at TIMESTAMPTZ,
   PRIMARY KEY (ticker, persona),
+  CHECK ((status = 'dispatched') = (completed_at IS NULL AND status <> 'claimed')),
   CHECK ((status = 'completed') = (completed_at IS NOT NULL))
 );
+ALTER TABLE tb_rejudgement_cooldown
+  DROP CONSTRAINT IF EXISTS tb_rejudgement_cooldown_status_check;
+ALTER TABLE tb_rejudgement_cooldown
+  ADD CONSTRAINT tb_rejudgement_cooldown_status_check
+  CHECK (status IN ('claimed','dispatched','completed'));
 
 -- 1. reason TEXT -> JSONB (4 tables). Legacy prose is preserved under "legacy".
 DO $$

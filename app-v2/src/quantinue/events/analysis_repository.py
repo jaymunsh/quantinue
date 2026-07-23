@@ -255,7 +255,24 @@ class PostgresEventAnalysisReceiptRepository:
                 ),
                 {**self._key(event_id, ticker, persona, stage), "owner_token": owner_token},
             )
-            return result.rowcount == 1
+            if result.rowcount != 1:
+                return False
+            if stage is EventAnalysisStage.STRATEGIST:
+                cooldown = await connection.execute(
+                    text(
+                        """
+                        UPDATE tb_rejudgement_cooldown
+                        SET status='dispatched', claimed_at=GREATEST(claimed_at, now())
+                        WHERE ticker=:ticker AND persona=:persona
+                          AND status='claimed' AND owner_token=:owner_token
+                        """
+                    ),
+                    {"ticker": ticker, "persona": persona, "owner_token": owner_token},
+                )
+                if cooldown.rowcount != 1:
+                    message = "strategist dispatch/cooldown ownership diverged"
+                    raise RuntimeError(message)
+            return True
 
     async def complete(  # noqa: PLR0913 - durable key and owner fence are independent
         self,
@@ -294,7 +311,7 @@ class PostgresEventAnalysisReceiptRepository:
                         UPDATE tb_rejudgement_cooldown
                         SET status='completed', completed_at=GREATEST(claimed_at, now())
                         WHERE ticker=:ticker AND persona=:persona
-                          AND status='claimed' AND owner_token=:owner_token
+                          AND status='dispatched' AND owner_token=:owner_token
                         """
                     ),
                     {"ticker": ticker, "persona": persona, "owner_token": owner_token},
