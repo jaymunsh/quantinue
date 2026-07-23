@@ -13,6 +13,7 @@ from quantinue.llm.provider import AnalysisTask
 
 DIRECT_DOCUMENT_CHARS: Final = 12_000
 MAX_DOCUMENT_CHARS: Final = 10 * 1024 * 1024
+MAX_SUMMARY_CHARS: Final = 4_000
 _HALF_PACK_CHARS: Final = DIRECT_DOCUMENT_CHARS // 2
 
 
@@ -59,16 +60,19 @@ class EvidenceErrorCode(StrEnum):
     UNAVAILABLE = "accepted_route_unavailable"
     HASH_MISMATCH = "route_content_hash_mismatch"
     EMPTY_SUMMARY = "structured_summary_empty"
+    OVERSIZED_SUMMARY = "structured_summary_oversized"
     MODEL_MISMATCH = "summary_model_mismatch"
     PROMPT_MISMATCH = "summary_prompt_version_mismatch"
     INTERRUPTED = "summary_completion_interrupted"
 
 
-@dataclass(frozen=True, slots=True)
 class EvidenceDocumentError(Exception):
     """A bounded evidence contract rejected one document or summary."""
 
-    code: EvidenceErrorCode
+    def __init__(self, code: EvidenceErrorCode) -> None:
+        """Retain the stable error code while allowing traceback mutation."""
+        self.code = code
+        super().__init__(code.value)
 
 
 def _span(text: str, start: int, end: int) -> EvidenceSpan:

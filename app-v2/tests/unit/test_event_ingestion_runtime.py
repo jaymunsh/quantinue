@@ -17,6 +17,9 @@ class Recorder:
     async def ingest(self, source_name: str, as_of: date) -> None:
         self.calls.append((source_name, as_of))
 
+    async def prepare_evidence(self) -> None:
+        return None
+
     async def close(self) -> None:
         self.closed = True
 

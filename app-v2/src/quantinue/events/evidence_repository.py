@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_en
 
 from quantinue.events.evidence import (
     DIRECT_DOCUMENT_CHARS,
+    MAX_SUMMARY_CHARS,
     EvidenceDocumentError,
     EvidenceErrorCode,
     EvidencePack,
@@ -212,13 +213,16 @@ class PostgresEventEvidenceRepository:
         summary = ""
         with anyio.fail_after(summary_timeout_seconds):
             result = await analyzer.analyze(task, prompt)
-            summary = result.reason.strip()
-            if not summary:
-                raise EvidenceDocumentError(EvidenceErrorCode.EMPTY_SUMMARY)
-            if result.metadata.model != model:
-                raise EvidenceDocumentError(EvidenceErrorCode.MODEL_MISMATCH)
-            if result.metadata.prompt_version != prompt_version:
-                raise EvidenceDocumentError(EvidenceErrorCode.PROMPT_MISMATCH)
+        summary = result.reason.strip()
+        if not summary:
+            raise EvidenceDocumentError(EvidenceErrorCode.EMPTY_SUMMARY)
+        if len(summary) > MAX_SUMMARY_CHARS:
+            raise EvidenceDocumentError(EvidenceErrorCode.OVERSIZED_SUMMARY)
+        if result.metadata.model != model:
+            raise EvidenceDocumentError(EvidenceErrorCode.MODEL_MISMATCH)
+        if result.metadata.prompt_version != prompt_version:
+            raise EvidenceDocumentError(EvidenceErrorCode.PROMPT_MISMATCH)
+        with anyio.CancelScope(shield=True):
             _ = await connection.execute(
                 text(
                     """

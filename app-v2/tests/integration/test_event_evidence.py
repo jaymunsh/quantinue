@@ -15,6 +15,8 @@ from typing_extensions import override
 
 from quantinue.core.ontology import ModelProvider
 from quantinue.events.evidence import (
+    EvidenceDocumentError,
+    EvidenceErrorCode,
     RawEvidenceDocument,
     summary_prompt,
     summary_prompt_identity,
@@ -105,6 +107,15 @@ class _NeverReturningAnalyzer(_CountingAnalyzer):
         self.calls += 1
         await anyio.sleep_forever()
         raise AssertionError
+
+
+class _OversizedSummaryAnalyzer(_CountingAnalyzer):
+    @override
+    async def analyze(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> AnalysisResult:
+        result = await super().analyze(task, prompt, profile=profile)
+        return result.model_copy(update={"reason": "x" * 4_001})
 
 
 class _AcceptedRouteRow(BaseModel):
@@ -450,4 +461,21 @@ async def test_summary_timeout_rolls_back_and_later_attempt_recovers() -> None:
     assert blocked.calls == 1
     assert recovered.calls == 1
     assert pack.summary == "summary-1"
+    await repository.close()
+
+
+@pytest.mark.anyio
+async def test_oversized_summary_fails_closed_without_cache() -> None:
+    await _reset_database()
+    raw_text = json.dumps(
+        {"headline": "Apple guidance", "source": "Reuters", "body": "z" * 13_000},
+        separators=(",", ":"),
+    )
+    route = await _accepted_route("oversized-summary", raw_text)
+    repository = PostgresEventEvidenceRepository(_DATABASE_URL)
+
+    with pytest.raises(EvidenceDocumentError) as raised:
+        _ = await repository.prepare(route, _OversizedSummaryAnalyzer())
+
+    assert raised.value.code is EvidenceErrorCode.OVERSIZED_SUMMARY
     await repository.close()

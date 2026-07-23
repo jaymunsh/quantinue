@@ -20,6 +20,7 @@ from quantinue.events.routing_repository import (
     PostgresEventRoutingRepository,
     route_pending_events,
 )
+from quantinue.llm.budget import LlmBudgetExceededError, LlmUsageBoundExceededError
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -32,10 +33,12 @@ if TYPE_CHECKING:
 class EventIngestor(Protocol):
     """Execute one configured source by name."""
 
-    async def ingest(
-        self, source_name: str, as_of: date
-    ) -> EvidencePreparationRun | None:
+    async def ingest(self, source_name: str, as_of: date) -> None:
         """Persist all currently available pages."""
+        ...
+
+    async def prepare_evidence(self) -> EvidencePreparationRun | None:
+        """Prepare the global accepted backlog once after all due sources."""
         ...
 
     async def close(self) -> None:
@@ -62,13 +65,11 @@ class EventIngestionExecutor:
     evidence_repository: PostgresEventEvidenceRepository | None = None
     analyzer: LlmAnalyzer | None = None
 
-    async def ingest(
-        self, source_name: str, as_of: date
-    ) -> EvidencePreparationRun | None:
+    async def ingest(self, source_name: str, as_of: date) -> None:
         """Ingest one source, then route every durable pending event."""
         source = self.sources.get(source_name)
         if source is None:
-            return None
+            return
         match source:
             case SecEventSourceAdapter() | NewsEventSourceAdapter():
                 source = replace(source, now=datetime.now(UTC))
@@ -81,6 +82,9 @@ class EventIngestionExecutor:
             self.config.sources[source_name].overlap,
         )
         _ = await route_pending_events(self.routing_repository, as_of)
+
+    async def prepare_evidence(self) -> EvidencePreparationRun | None:
+        """Prepare each accepted route at most once in this tick."""
         if self.evidence_repository is None or self.analyzer is None:
             return None
         routes = await self.routing_repository.accepted_without_evidence()
@@ -94,7 +98,12 @@ class EventIngestionExecutor:
                     summary_timeout_seconds=self.config.summary_timeout_seconds,
                 )
                 prepared += 1
-            except (EvidenceDocumentError, TimeoutError):
+            except (
+                EvidenceDocumentError,
+                LlmBudgetExceededError,
+                LlmUsageBoundExceededError,
+                TimeoutError,
+            ):
                 failed += 1
         return EvidencePreparationRun(prepared=prepared, failed=failed)
 
@@ -123,22 +132,17 @@ class EventIngestionRuntime:
     async def tick(self, now: datetime) -> None:
         """Dispatch due sources, coalescing delayed ticks into one run."""
         as_of = now.astimezone(NEW_YORK).date()
-        evidence_runs: list[EvidencePreparationRun] = []
+        dispatched = False
         for source_name, schedule in self.config.sources.items():
             previous = self._last_dispatch.get(source_name)
             if previous is not None and now - previous < schedule.cadence:
                 continue
-            result = await self.ingestor.ingest(source_name, as_of)
-            if result is not None:
-                evidence_runs.append(result)
+            await self.ingestor.ingest(source_name, as_of)
+            dispatched = True
             self._last_dispatch[source_name] = now
-        if evidence_runs:
-            self.last_evidence_run = EvidencePreparationRun(
-                prepared=sum(run.prepared for run in evidence_runs),
-                failed=sum(run.failed for run in evidence_runs),
-            )
-        else:
-            self.last_evidence_run = None
+        self.last_evidence_run = (
+            await self.ingestor.prepare_evidence() if dispatched else None
+        )
 
     async def close(self) -> None:
         """Release resources owned by the executor."""
