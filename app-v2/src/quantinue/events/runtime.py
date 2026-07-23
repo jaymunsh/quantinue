@@ -108,16 +108,23 @@ class EventIngestionExecutor:
         return EvidencePreparationRun(prepared=prepared, failed=failed)
 
     async def close(self) -> None:
-        """Dispose both database pools even if the first close fails."""
+        """Attempt every pool once and raise the first cleanup failure."""
         with anyio.CancelScope(shield=True):
-            try:
-                await self.repository.close()
-            finally:
+            first_error: RuntimeError | None = None
+            for repository in (
+                self.repository,
+                self.routing_repository,
+                self.evidence_repository,
+            ):
+                if repository is None:
+                    continue
                 try:
-                    await self.routing_repository.close()
-                finally:
-                    if self.evidence_repository is not None:
-                        await self.evidence_repository.close()
+                    await repository.close()
+                except RuntimeError as error:
+                    if first_error is None:
+                        first_error = error
+            if first_error is not None:
+                raise first_error
 
 
 @dataclass
@@ -140,9 +147,7 @@ class EventIngestionRuntime:
             await self.ingestor.ingest(source_name, as_of)
             dispatched = True
             self._last_dispatch[source_name] = now
-        self.last_evidence_run = (
-            await self.ingestor.prepare_evidence() if dispatched else None
-        )
+        self.last_evidence_run = await self.ingestor.prepare_evidence() if dispatched else None
 
     async def close(self) -> None:
         """Release resources owned by the executor."""

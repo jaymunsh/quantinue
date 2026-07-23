@@ -1,12 +1,22 @@
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING, cast
 
 import anyio
 import pytest
 from typing_extensions import override
 
-from quantinue.events.runtime import EventIngestionRuntime
+from quantinue.events.runtime import (
+    EventIngestionExecutor,
+    EventIngestionRuntime,
+    EvidencePreparationRun,
+)
 from quantinue.orchestration.policy import EventIngestionConfig
+
+if TYPE_CHECKING:
+    from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
+    from quantinue.events.ingestion import PostgresEventIngestionRepository
+    from quantinue.events.routing_repository import PostgresEventRoutingRepository
 
 
 @dataclass
@@ -17,7 +27,7 @@ class Recorder:
     async def ingest(self, source_name: str, as_of: date) -> None:
         self.calls.append((source_name, as_of))
 
-    async def prepare_evidence(self) -> None:
+    async def prepare_evidence(self) -> EvidencePreparationRun | None:
         return None
 
     async def close(self) -> None:
@@ -76,3 +86,62 @@ async def test_runtime_close_finishes_awaited_disposal_under_cancellation() -> N
         recorder.release.set()
 
     assert recorder.closed
+
+
+@pytest.mark.anyio
+async def test_executor_close_attempts_all_three_pools_once_and_raises_first_error() -> None:
+    class CloseRecorder:
+        def __init__(self, name: str, calls: list[str], error: RuntimeError | None) -> None:
+            self.name = name
+            self.calls = calls
+            self.error = error
+
+        async def close(self) -> None:
+            self.calls.append(self.name)
+            if self.error is not None:
+                raise self.error
+
+    calls: list[str] = []
+    first_error = RuntimeError("ingestion close failed")
+    executor = EventIngestionExecutor(
+        config=EventIngestionConfig(),
+        sources={},
+        repository=cast(
+            "PostgresEventIngestionRepository",
+            cast("object", CloseRecorder("ingestion", calls, first_error)),
+        ),
+        routing_repository=cast(
+            "PostgresEventRoutingRepository",
+            cast("object", CloseRecorder("routing", calls, RuntimeError("routing close failed"))),
+        ),
+        evidence_repository=cast(
+            "PostgresEventEvidenceRepository",
+            cast("object", CloseRecorder("evidence", calls, RuntimeError("evidence close failed"))),
+        ),
+    )
+
+    with pytest.raises(RuntimeError) as caught:
+        await executor.close()
+
+    assert caught.value is first_error
+    assert calls == ["ingestion", "routing", "evidence"]
+
+
+@pytest.mark.anyio
+async def test_sec_news_wire_share_one_poison_evidence_attempt() -> None:
+    class CountingRecorder(Recorder):
+        poison_attempts = 0
+
+        @override
+        async def prepare_evidence(self) -> EvidencePreparationRun:
+            self.poison_attempts += 1
+            return EvidencePreparationRun(prepared=0, failed=1)
+
+    recorder = CountingRecorder()
+    runtime = EventIngestionRuntime(EventIngestionConfig(), recorder)
+
+    await runtime.tick(datetime(2026, 7, 24, 12, tzinfo=UTC))
+
+    assert [source for source, _ in recorder.calls] == ["sec", "news", "wire"]
+    assert recorder.poison_attempts == 1
+    assert runtime.last_evidence_run == EvidencePreparationRun(prepared=0, failed=1)

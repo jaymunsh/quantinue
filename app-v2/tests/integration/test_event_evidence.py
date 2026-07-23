@@ -109,15 +109,6 @@ class _NeverReturningAnalyzer(_CountingAnalyzer):
         raise AssertionError
 
 
-class _OversizedSummaryAnalyzer(_CountingAnalyzer):
-    @override
-    async def analyze(
-        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
-    ) -> AnalysisResult:
-        result = await super().analyze(task, prompt, profile=profile)
-        return result.model_copy(update={"reason": "x" * 4_001})
-
-
 class _AcceptedRouteRow(BaseModel):
     model_config = ConfigDict(frozen=True, strict=True)
 
@@ -174,9 +165,7 @@ async def _reset_database() -> None:
     await engine.dispose()
 
 
-async def _accepted_route(
-    identity: str, raw_text: str, source_name: str = "news"
-) -> AcceptedRoute:
+async def _accepted_route(identity: str, raw_text: str, source_name: str = "news") -> AcceptedRoute:
     ingestion = PostgresEventIngestionRepository(_DATABASE_URL)
 
     class _OnePage:
@@ -198,9 +187,7 @@ async def _accepted_route(
             )
             return EventPage((document,), None, f"2026-07-24T14:00:{identity[-2:]}+00:00")
 
-    _ = await ingest_incrementally(
-        source_name, _OnePage(), ingestion, timedelta(minutes=15)
-    )
+    _ = await ingest_incrementally(source_name, _OnePage(), ingestion, timedelta(minutes=15))
     await ingestion.close()
     routing = PostgresEventRoutingRepository(_DATABASE_URL)
     _ = await route_pending_events(routing, date(2026, 7, 24))
@@ -372,9 +359,15 @@ async def test_correction_and_model_change_create_new_cache_keys() -> None:
 
 
 def test_news_and_sec_use_distinct_effective_prompt_identities() -> None:
-    assert summary_prompt_identity(
-        AnalysisTask.NEWS, PROMPT_VERSION
-    ) != summary_prompt_identity(AnalysisTask.DISCLOSURE, PROMPT_VERSION)
+    assert summary_prompt_identity(AnalysisTask.NEWS, PROMPT_VERSION) != summary_prompt_identity(
+        AnalysisTask.DISCLOSURE, PROMPT_VERSION
+    )
+
+
+def test_user_prompt_template_change_invalidates_cache_identity() -> None:
+    first = summary_prompt_identity(AnalysisTask.NEWS, PROMPT_VERSION, "template-v1")
+    second = summary_prompt_identity(AnalysisTask.NEWS, PROMPT_VERSION, "template-v2")
+    assert first != second
 
 
 def test_untrusted_delimiters_remain_encoded_data() -> None:
@@ -451,9 +444,7 @@ async def test_summary_timeout_rolls_back_and_later_attempt_recovers() -> None:
 
     # When
     with pytest.raises(TimeoutError):
-        _ = await repository.prepare(
-            route, blocked, summary_timeout_seconds=0.01
-        )
+        _ = await repository.prepare(route, blocked, summary_timeout_seconds=0.01)
     recovered = _CountingAnalyzer()
     pack = await repository.prepare(route, recovered, summary_timeout_seconds=1)
 
@@ -473,9 +464,31 @@ async def test_oversized_summary_fails_closed_without_cache() -> None:
     )
     route = await _accepted_route("oversized-summary", raw_text)
     repository = PostgresEventEvidenceRepository(_DATABASE_URL)
+    engine = create_async_engine(_DATABASE_URL)
+    async with engine.begin() as connection:
+        _ = await connection.execute(
+            text(
+                """
+                INSERT INTO tb_event_summary_cache
+                  (raw_version_id, content_hash, normalized_length,
+                   model, prompt_version, summary_text)
+                VALUES (:raw_version_id, :content_hash, :normalized_length,
+                        :model, :prompt_version, :summary_text)
+                """
+            ),
+            {
+                "raw_version_id": route.raw_version_id,
+                "content_hash": route.content_hash,
+                "normalized_length": len(raw_text),
+                "model": "summary-model",
+                "prompt_version": summary_prompt_identity(AnalysisTask.NEWS, PROMPT_VERSION),
+                "summary_text": "x" * 4_001,
+            },
+        )
+    await engine.dispose()
 
     with pytest.raises(EvidenceDocumentError) as raised:
-        _ = await repository.prepare(route, _OversizedSummaryAnalyzer())
+        _ = await repository.prepare(route, _CountingAnalyzer())
 
     assert raised.value.code is EvidenceErrorCode.OVERSIZED_SUMMARY
     await repository.close()

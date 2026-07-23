@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Protocol
@@ -244,5 +245,10 @@ class JobRunner:
                 await anyio.sleep(self._config.tick_seconds)
         finally:
             if self._event_runtime is not None:
-                with anyio.CancelScope(shield=True):
-                    await self._event_runtime.close()
+                primary_error = sys.exception()
+                try:
+                    with anyio.CancelScope(shield=True):
+                        await self._event_runtime.close()
+                except BaseException:
+                    if primary_error is None:
+                        raise

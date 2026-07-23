@@ -209,7 +209,10 @@ class PostgresEventEvidenceRepository:
             .one_or_none()
         )
         if cached is not None:
-            return _SummaryRow.model_validate(dict(cached)).summary_text
+            cached_summary = _SummaryRow.model_validate(dict(cached)).summary_text
+            if len(cached_summary) > MAX_SUMMARY_CHARS:
+                raise EvidenceDocumentError(EvidenceErrorCode.OVERSIZED_SUMMARY)
+            return cached_summary
         summary = ""
         with anyio.fail_after(summary_timeout_seconds):
             result = await analyzer.analyze(task, prompt)
