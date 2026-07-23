@@ -22,6 +22,9 @@ from quantinue.events.routing_repository import (
     PostgresEventRoutingRepository,
     route_pending_events,
 )
+from quantinue.events.runtime import EventIngestionExecutor, EventIngestionRuntime
+from quantinue.orchestration.job_runner import JobRunner
+from quantinue.orchestration.policy import EventIngestionConfig, JobsConfig
 
 if TYPE_CHECKING:
     from quantinue.events.routing import RoutingDecision
@@ -234,6 +237,160 @@ async def test_correction_routes_each_immutable_raw_version_once(
     assert run.accepted == 2
     assert run.rejected == 0
     await repository.close()
+
+
+@pytest.mark.anyio
+async def test_scheduler_runtime_routes_newly_ingested_events_without_llm_or_orders(
+    routing_database_url: str,
+) -> None:
+    # Given
+    document = _document("runtime-boundary")
+
+    class OnePageSource:
+        async def fetch_page(
+            self,
+            cursor: SourceCursor | None,
+            page_token: str | None,
+            overlap: timedelta,
+        ) -> EventPage:
+            _ = cursor, page_token, overlap
+            return EventPage((document,), None, "2026-07-24T14:00:00+00:00")
+
+    ingestion = PostgresEventIngestionRepository(routing_database_url)
+    routing = PostgresEventRoutingRepository(routing_database_url)
+    config = EventIngestionConfig()
+    runtime = EventIngestionRuntime(
+        config,
+        EventIngestionExecutor(config, {"news": OnePageSource()}, ingestion, routing),
+    )
+
+    class Ledger:
+        async def reserve_job_run(self, job_name: str, slot_date: date) -> bool:
+            _ = job_name, slot_date
+            return True
+
+        async def finish_job_run(
+            self,
+            job_name: str,
+            slot_date: date,
+            *,
+            succeeded: bool,
+            detail: str | None = None,
+        ) -> None:
+            _ = job_name, slot_date, succeeded, detail
+
+        async def last_job_success(self, job_name: str) -> date | None:
+            _ = job_name
+            return None
+
+    scheduler = JobRunner(
+        JobsConfig(enabled=True),
+        Ledger(),
+        (),
+        event_runtime=runtime,
+    )
+
+    # When
+    _ = await scheduler.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    _ = await scheduler.tick(datetime(2026, 7, 24, 14, 1, tzinfo=UTC))
+
+    # Then
+    engine = create_async_engine(routing_database_url)
+    async with engine.connect() as connection:
+        counts = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT
+                      (SELECT count(*) FROM tb_event_processing_receipt
+                       WHERE persona = 'routing:accepted:guidance'),
+                      (SELECT count(*) FROM tb_llm_usage),
+                      (SELECT count(*) FROM tb_order)
+                    """
+                )
+            )
+        ).one()
+    await engine.dispose()
+    await runtime.close()
+    assert tuple(counts) == (1, 0, 0)
+
+
+@pytest.mark.anyio
+async def test_runtime_retries_partial_routing_without_reingestion_duplicates(
+    routing_database_url: str,
+) -> None:
+    # Given
+    documents = (_document("retry-first"), _document("retry-second"))
+
+    class OnePageSource:
+        async def fetch_page(
+            self,
+            cursor: SourceCursor | None,
+            page_token: str | None,
+            overlap: timedelta,
+        ) -> EventPage:
+            _ = cursor, page_token, overlap
+            return EventPage(documents, None, "2026-07-24T14:00:00+00:00")
+
+    class FailsAfterFirstRoute(PostgresEventRoutingRepository):
+        failed = False
+
+        @override
+        async def record(self, decision: RoutingDecision, ticker: str) -> bool:
+            if self.failed:
+                message = "routing interrupted"
+                raise RuntimeError(message)
+            recorded = await super().record(decision, ticker)
+            self.failed = True
+            return recorded
+
+    config = EventIngestionConfig()
+    ingestion = PostgresEventIngestionRepository(routing_database_url)
+    interrupted_routing = FailsAfterFirstRoute(routing_database_url)
+    interrupted = EventIngestionRuntime(
+        config,
+        EventIngestionExecutor(
+            config,
+            {"news": OnePageSource()},
+            ingestion,
+            interrupted_routing,
+        ),
+    )
+    now = datetime(2026, 7, 24, 14, tzinfo=UTC)
+
+    # When
+    with pytest.raises(RuntimeError, match="routing interrupted"):
+        await interrupted.tick(now)
+    await interrupted.close()
+    resumed = EventIngestionRuntime(
+        config,
+        EventIngestionExecutor(
+            config,
+            {"news": OnePageSource()},
+            PostgresEventIngestionRepository(routing_database_url),
+            PostgresEventRoutingRepository(routing_database_url),
+        ),
+    )
+    await resumed.tick(now)
+
+    # Then
+    engine = create_async_engine(routing_database_url)
+    async with engine.connect() as connection:
+        counts = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT
+                      (SELECT count(*) FROM tb_event_raw_document),
+                      (SELECT count(*) FROM tb_event_processing_receipt
+                       WHERE persona = 'routing:accepted:guidance')
+                    """
+                )
+            )
+        ).one()
+    await engine.dispose()
+    await resumed.close()
+    assert tuple(counts) == (2, 2)
 
 
 @pytest.mark.anyio

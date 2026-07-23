@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
+import anyio
 import pytest
 
 from quantinue.orchestration.job_runner import JobRunner
@@ -31,9 +32,13 @@ class Ledger:
 @dataclass
 class EventRuntime:
     calls: list[datetime] = field(default_factory=list)
+    closed: bool = False
 
     async def tick(self, now: datetime) -> None:
         self.calls.append(now)
+
+    async def close(self) -> None:
+        self.closed = True
 
 
 @pytest.mark.anyio
@@ -62,3 +67,24 @@ async def test_production_runner_dispatches_only_in_premarket_or_regular_session
         datetime(2026, 7, 24, 8, tzinfo=UTC),
         datetime(2026, 7, 24, 14, tzinfo=UTC),
     ]
+
+
+@pytest.mark.anyio
+async def test_runner_cancellation_closes_event_runtime() -> None:
+    # Given
+    events = EventRuntime()
+    runner = JobRunner(
+        JobsConfig(enabled=True),
+        Ledger(),
+        (),
+        event_runtime=events,
+    )
+
+    # When
+    async with anyio.create_task_group() as task_group:
+        _ = task_group.start_soon(runner.run_forever)
+        await anyio.lowlevel.checkpoint()
+        task_group.cancel_scope.cancel()
+
+    # Then
+    assert events.closed

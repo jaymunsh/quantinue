@@ -2,14 +2,19 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 from typing import Protocol
 
+from quantinue.core.market_calendar import NEW_YORK
 from quantinue.events.adapters import NewsEventSourceAdapter, SecEventSourceAdapter
 from quantinue.events.ingestion import (
     IncrementalEventSource,
     PostgresEventIngestionRepository,
     ingest_incrementally,
+)
+from quantinue.events.routing_repository import (
+    PostgresEventRoutingRepository,
+    route_pending_events,
 )
 from quantinue.orchestration.policy import EventIngestionConfig
 
@@ -17,8 +22,12 @@ from quantinue.orchestration.policy import EventIngestionConfig
 class EventIngestor(Protocol):
     """Execute one configured source by name."""
 
-    async def ingest(self, source_name: str) -> None:
+    async def ingest(self, source_name: str, as_of: date) -> None:
         """Persist all currently available pages."""
+        ...
+
+    async def close(self) -> None:
+        """Release resources owned by the ingestion boundary."""
         ...
 
 
@@ -29,9 +38,10 @@ class EventIngestionExecutor:
     config: EventIngestionConfig
     sources: Mapping[str, IncrementalEventSource]
     repository: PostgresEventIngestionRepository
+    routing_repository: PostgresEventRoutingRepository
 
-    async def ingest(self, source_name: str) -> None:
-        """Run one source with its configured overlap."""
+    async def ingest(self, source_name: str, as_of: date) -> None:
+        """Ingest one source, then route every durable pending event."""
         source = self.sources.get(source_name)
         if source is None:
             return
@@ -46,6 +56,14 @@ class EventIngestionExecutor:
             self.repository,
             self.config.sources[source_name].overlap,
         )
+        _ = await route_pending_events(self.routing_repository, as_of)
+
+    async def close(self) -> None:
+        """Dispose both database pools even if the first close fails."""
+        try:
+            await self.repository.close()
+        finally:
+            await self.routing_repository.close()
 
 
 @dataclass
@@ -58,9 +76,14 @@ class EventIngestionRuntime:
 
     async def tick(self, now: datetime) -> None:
         """Dispatch due sources, coalescing delayed ticks into one run."""
+        as_of = now.astimezone(NEW_YORK).date()
         for source_name, schedule in self.config.sources.items():
             previous = self._last_dispatch.get(source_name)
             if previous is not None and now - previous < schedule.cadence:
                 continue
-            await self.ingestor.ingest(source_name)
+            await self.ingestor.ingest(source_name, as_of)
             self._last_dispatch[source_name] = now
+
+    async def close(self) -> None:
+        """Release resources owned by the executor."""
+        await self.ingestor.close()

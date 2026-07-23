@@ -59,6 +59,10 @@ class EventRuntime(Protocol):
         """Run sources due at this instant."""
         ...
 
+    async def close(self) -> None:
+        """Release resources owned by the event runtime."""
+        ...
+
 
 @dataclass(frozen=True, slots=True)
 class JobDefinition:
@@ -221,14 +225,18 @@ class JobRunner:
 
     async def run_forever(self) -> None:
         """Tick forever; a failing tick is logged and never kills the loop."""
-        await self.announce_boot(datetime.now(UTC))
-        while True:
-            try:
-                for outcome in await self.tick(datetime.now(UTC)):
-                    if outcome.reason in {"ran", "failed"}:
-                        await self._logger.ainfo(
-                            "jobs.tick", job=outcome.name, reason=outcome.reason
-                        )
-            except Exception:  # noqa: BLE001 — 루프 생존이 우선
-                await self._logger.aexception("jobs.tick.failed")
-            await anyio.sleep(self._config.tick_seconds)
+        try:
+            await self.announce_boot(datetime.now(UTC))
+            while True:
+                try:
+                    for outcome in await self.tick(datetime.now(UTC)):
+                        if outcome.reason in {"ran", "failed"}:
+                            await self._logger.ainfo(
+                                "jobs.tick", job=outcome.name, reason=outcome.reason
+                            )
+                except Exception:  # noqa: BLE001 — 루프 생존이 우선
+                    await self._logger.aexception("jobs.tick.failed")
+                await anyio.sleep(self._config.tick_seconds)
+        finally:
+            if self._event_runtime is not None:
+                await self._event_runtime.close()
