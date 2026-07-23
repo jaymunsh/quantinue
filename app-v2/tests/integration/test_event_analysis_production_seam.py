@@ -62,6 +62,26 @@ class _CountRow(BaseModel):
     value: int
 
 
+class _EventLedgerCounts(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    usage: int
+    receipts: int
+    cooldowns: int
+    signals: int
+    verdicts: int
+    orders: int
+
+    def as_tuple(self) -> tuple[int, int, int, int, int, int]:
+        return (
+            self.usage,
+            self.receipts,
+            self.cooldowns,
+            self.signals,
+            self.verdicts,
+            self.orders,
+        )
+
+
 class _EmptyDisclosureSource:
     async def filings(self, trade_date: object) -> tuple[()]:
         _ = trade_date
@@ -219,24 +239,28 @@ def _event_config(*, enabled: bool, daily_limit: float = 3) -> Mvp2Config:
 async def _event_ledger_counts() -> tuple[int, ...]:
     engine = create_async_engine(_DATABASE_URL)
     async with engine.connect() as connection:
-        row = (
-            await connection.execute(
-                text(
-                    """
-                    SELECT
-                      (SELECT count(*) FROM tb_llm_usage),
-                      (SELECT count(*) FROM tb_event_processing_receipt
-                         WHERE persona LIKE 'analysis:%'),
-                      (SELECT count(*) FROM tb_rejudgement_cooldown),
-                      (SELECT count(*) FROM tb_strategist_signals),
-                      (SELECT count(*) FROM tb_critic_verdict),
-                      (SELECT count(*) FROM tb_order)
-                    """
+        row = _EventLedgerCounts.model_validate(
+            (
+                await connection.execute(
+                    text(
+                        """
+                        SELECT
+                          (SELECT count(*) FROM tb_llm_usage) AS usage,
+                          (SELECT count(*) FROM tb_event_processing_receipt
+                             WHERE persona LIKE 'analysis:%') AS receipts,
+                          (SELECT count(*) FROM tb_rejudgement_cooldown) AS cooldowns,
+                          (SELECT count(*) FROM tb_strategist_signals) AS signals,
+                          (SELECT count(*) FROM tb_critic_verdict) AS verdicts,
+                          (SELECT count(*) FROM tb_order) AS orders
+                        """
+                    )
                 )
             )
-        ).one()
+            .mappings()
+            .one()
+        )
     await engine.dispose()
-    return tuple(int(value) for value in row)
+    return row.as_tuple()
 
 
 def _adversarial_article(identity: int) -> RawNewsWrite:
@@ -747,7 +771,7 @@ async def test_public_runner_cancellation_respects_paid_boundary(
     analyzer = _AdversarialTransport(mode)
     runner, store = await _adversarial_runner(analyzer, 7400 + len(mode))
     with pytest.raises(anyio.get_cancelled_exc_class()):
-        await runner.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+        _ = await runner.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
     usage, _, cooldowns, signals, verdicts, orders = await _event_ledger_counts()
     assert (usage, cooldowns) == paid_state
     assert (signals, verdicts, orders) == (0, 0, 0)

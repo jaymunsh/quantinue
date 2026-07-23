@@ -83,6 +83,18 @@ class IntradayCompletionReader(Protocol):
         ...
 
 
+@runtime_checkable
+class _AtomicWorkLease(Protocol):
+    async def dispatch_with_budget(
+        self,
+        ticker: str,
+        persona: str,
+        reservation: LlmBudgetReservation,
+        *,
+        dispatched_at: datetime,
+    ) -> bool: ...
+
+
 @dataclass(frozen=True, slots=True)
 class AnalysisOutcome:
     """What the job decided for one ticker."""
@@ -183,16 +195,13 @@ class _LeasePaidBoundary(PaidCallBoundary, AtomicPaidCallBoundary):
         *,
         dispatched_at: datetime,
     ) -> bool:
-        atomic_dispatch = getattr(self.lease, "dispatch_with_budget", None)
-        if atomic_dispatch is None:
+        if not isinstance(self.lease, _AtomicWorkLease):
             return False
-        return bool(
-            await atomic_dispatch(
-                self.ticker,
-                self.persona,
-                reservation,
-                dispatched_at=dispatched_at,
-            )
+        return await self.lease.dispatch_with_budget(
+            self.ticker,
+            self.persona,
+            reservation,
+            dispatched_at=dispatched_at,
         )
 
 
