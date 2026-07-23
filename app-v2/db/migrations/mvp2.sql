@@ -308,6 +308,207 @@ ALTER TABLE tb_user
 -- 중단 지점과 무관하게 같은 카탈로그로 수렴한다.
 BEGIN;
 
+-- PostgreSQL 16 정규 카탈로그 manifest v1. 이미 존재하는 객체는 이름만 같아도
+-- 통과시키지 않는다. 빠진 table은 아래 DDL이 만들고, 빠진 function/trigger는
+-- 데이터 audit 뒤 복원하지만, 동작이 다른 기존 객체는 operator가 먼저 제거한다.
+DO $$
+DECLARE
+  mismatch TEXT;
+BEGIN
+  WITH expected(table_name, constraint_fingerprint, index_fingerprint) AS (
+    VALUES
+      ('tb_event_source_cursor','ee0b3732479d8c505891f3a280aeebe2','518fd3697c038975c5452885bbf9ef32'),
+      ('tb_event_raw_document','89669b577dc901e62a0157a9ffacd87e','18bcbbb8a4571640a5a40443aa60e4ff'),
+      ('tb_event_raw_version','2f69f42397ed28ad7f59aef7c061acce','41dd70251cac8c784303238549084098'),
+      ('tb_normalized_event','732e9cf6008127fe96fa5c36c202228a','bd099a3e64d5587e49d448c76168d621'),
+      ('tb_event_evidence_pack','47361641935d956672fd42dd30c1f5fd','e081b23fff49d0e5fffb695364deed81'),
+      ('tb_event_summary_cache','c37a7b22190e1325c04e1aa7e7561b02','afadfc9caa44d0b2770c5a0460233409'),
+      ('tb_event_processing_receipt','5cc41b57758ef8e3607406501c718c1e','9f8b132b3e4633a0d713bdce19f7b922')
+  ),
+  existing AS (
+    SELECT class.oid, class.relname AS table_name
+    FROM pg_class AS class
+    JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+    JOIN expected ON expected.table_name = class.relname
+    WHERE namespace.nspname = 'public' AND class.relkind = 'r'
+  ),
+  constraint_entries AS (
+    SELECT existing.table_name,
+           catalog_constraint.conname || '|' ||
+           catalog_constraint.contype::text || '|' ||
+           catalog_constraint.convalidated || '|' ||
+           catalog_constraint.condeferrable || '|' ||
+           catalog_constraint.condeferred || '|' ||
+           pg_get_constraintdef(catalog_constraint.oid, false) AS entry
+    FROM existing
+    JOIN pg_constraint AS catalog_constraint
+      ON catalog_constraint.conrelid = existing.oid
+  ),
+  constraint_fingerprints AS (
+    SELECT table_name, md5(string_agg(entry, E'\n' ORDER BY entry)) AS fingerprint
+    FROM constraint_entries GROUP BY table_name
+  ),
+  index_entries AS (
+    SELECT existing.table_name,
+           index_class.relname || '|' || catalog.indisunique || '|' ||
+           catalog.indisprimary || '|' || catalog.indisvalid || '|' ||
+           coalesce(pg_get_expr(catalog.indpred, catalog.indrelid), '') || '|' ||
+           pg_get_indexdef(catalog.indexrelid, 0, false) AS entry
+    FROM existing
+    JOIN pg_index AS catalog ON catalog.indrelid = existing.oid
+    JOIN pg_class AS index_class ON index_class.oid = catalog.indexrelid
+  ),
+  index_fingerprints AS (
+    SELECT table_name, md5(string_agg(entry, E'\n' ORDER BY entry)) AS fingerprint
+    FROM index_entries GROUP BY table_name
+  ),
+  differences AS (
+    SELECT existing.table_name
+    FROM existing
+    JOIN expected USING (table_name)
+    LEFT JOIN constraint_fingerprints USING (table_name)
+    LEFT JOIN index_fingerprints USING (table_name)
+    WHERE (constraint_fingerprints.fingerprint, index_fingerprints.fingerprint)
+      IS DISTINCT FROM
+      (expected.constraint_fingerprint, expected.index_fingerprint)
+  )
+  SELECT string_agg(table_name, ', ' ORDER BY table_name) INTO mismatch
+  FROM differences;
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible event constraint/index catalog: %', mismatch;
+  END IF;
+
+  WITH expected(table_name, column_name, expression) AS (
+    VALUES
+      ('tb_event_source_cursor','updated_at','now()'),
+      ('tb_event_raw_document','document_id',
+       'nextval(''tb_event_raw_document_document_id_seq''::regclass)'),
+      ('tb_event_raw_document','first_seen_at','now()'),
+      ('tb_event_raw_version','raw_version_id',
+       'nextval(''tb_event_raw_version_raw_version_id_seq''::regclass)'),
+      ('tb_event_raw_version','captured_at','now()'),
+      ('tb_normalized_event','event_id',
+       'nextval(''tb_normalized_event_event_id_seq''::regclass)'),
+      ('tb_normalized_event','created_at','now()'),
+      ('tb_event_evidence_pack','evidence_id',
+       'nextval(''tb_event_evidence_pack_evidence_id_seq''::regclass)'),
+      ('tb_event_evidence_pack','created_at','now()'),
+      ('tb_event_summary_cache','summary_id',
+       'nextval(''tb_event_summary_cache_summary_id_seq''::regclass)'),
+      ('tb_event_summary_cache','created_at','now()'),
+      ('tb_event_processing_receipt','receipt_id',
+       'nextval(''tb_event_processing_receipt_receipt_id_seq''::regclass)'),
+      ('tb_event_processing_receipt','claimed_at','now()')
+  ),
+  actual AS (
+    SELECT class.relname AS table_name, attribute.attname AS column_name,
+           pg_get_expr(default_value.adbin, default_value.adrelid) AS expression
+    FROM pg_attrdef AS default_value
+    JOIN pg_class AS class ON class.oid = default_value.adrelid
+    JOIN pg_namespace AS namespace ON namespace.oid = class.relnamespace
+    JOIN pg_attribute AS attribute
+      ON attribute.attrelid = class.oid
+     AND attribute.attnum = default_value.adnum
+    WHERE namespace.nspname = 'public'
+      AND class.relname IN (
+        'tb_event_source_cursor', 'tb_event_raw_document',
+        'tb_event_raw_version', 'tb_normalized_event',
+        'tb_event_evidence_pack', 'tb_event_summary_cache',
+        'tb_event_processing_receipt'
+      )
+  ),
+  differences AS (
+    SELECT COALESCE(expected.table_name, actual.table_name) AS table_name,
+           COALESCE(expected.column_name, actual.column_name) AS column_name
+    FROM expected FULL JOIN actual USING (table_name, column_name)
+    WHERE expected.expression IS DISTINCT FROM actual.expression
+      AND (
+        actual.table_name IS NOT NULL
+        OR to_regclass('public.' || expected.table_name) IS NOT NULL
+      )
+  )
+  SELECT string_agg(table_name || '.' || column_name, ', ' ORDER BY 1, 2)
+    INTO mismatch
+  FROM differences;
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible event default catalog: %', mismatch;
+  END IF;
+
+  WITH expected(function_name, source_fingerprint) AS (
+    VALUES
+      ('enforce_event_evidence_span','b7b49636c5bb5134e002a75a122e28cd'),
+      ('enforce_normalized_event_source','a3c624ba1dec6bd404e51498350163b3'),
+      ('reject_event_provenance_mutation','f0c933f2b332d19ec7d51866e2ad5a7b')
+  ),
+  actual AS (
+    SELECT procedure.proname AS function_name, md5(procedure.prosrc) AS source_fingerprint,
+           language.lanname, procedure.provolatile, procedure.prosecdef,
+           procedure.prokind, procedure.pronargs
+    FROM pg_proc AS procedure
+    JOIN pg_namespace AS namespace ON namespace.oid = procedure.pronamespace
+    JOIN pg_language AS language ON language.oid = procedure.prolang
+    JOIN expected ON expected.function_name = procedure.proname
+    WHERE namespace.nspname = 'public'
+  ),
+  differences AS (
+    SELECT actual.function_name
+    FROM actual JOIN expected USING (function_name)
+    WHERE actual.source_fingerprint IS DISTINCT FROM expected.source_fingerprint
+       OR (actual.lanname, actual.provolatile, actual.prosecdef,
+           actual.prokind, actual.pronargs)
+          IS DISTINCT FROM ('plpgsql', 'v'::"char", false, 'f'::"char", 0::smallint)
+  )
+  SELECT string_agg(function_name, ', ' ORDER BY function_name) INTO mismatch
+  FROM differences;
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible event function catalog: %', mismatch;
+  END IF;
+
+  WITH expected(trigger_name, definition) AS (
+    VALUES
+      ('trg_normalized_event_source',
+       'CREATE TRIGGER trg_normalized_event_source BEFORE INSERT ON public.tb_normalized_event FOR EACH ROW EXECUTE FUNCTION enforce_normalized_event_source()'),
+      ('trg_event_evidence_span',
+       'CREATE TRIGGER trg_event_evidence_span BEFORE INSERT ON public.tb_event_evidence_pack FOR EACH ROW EXECUTE FUNCTION enforce_event_evidence_span()'),
+      ('trg_event_raw_document_immutable',
+       'CREATE TRIGGER trg_event_raw_document_immutable BEFORE DELETE OR UPDATE ON public.tb_event_raw_document FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+      ('trg_event_raw_version_immutable',
+       'CREATE TRIGGER trg_event_raw_version_immutable BEFORE DELETE OR UPDATE ON public.tb_event_raw_version FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+      ('trg_normalized_event_immutable',
+       'CREATE TRIGGER trg_normalized_event_immutable BEFORE DELETE OR UPDATE ON public.tb_normalized_event FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+      ('trg_event_evidence_immutable',
+       'CREATE TRIGGER trg_event_evidence_immutable BEFORE DELETE OR UPDATE ON public.tb_event_evidence_pack FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+      ('trg_event_summary_immutable',
+       'CREATE TRIGGER trg_event_summary_immutable BEFORE DELETE OR UPDATE ON public.tb_event_summary_cache FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()')
+  ),
+  actual AS (
+    SELECT trigger.tgname AS trigger_name,
+           pg_get_triggerdef(trigger.oid, false) AS definition
+    FROM pg_trigger AS trigger
+    JOIN pg_class AS relation ON relation.oid = trigger.tgrelid
+    JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+    WHERE namespace.nspname = 'public' AND NOT trigger.tgisinternal
+      AND relation.relname IN (
+        'tb_event_source_cursor', 'tb_event_raw_document',
+        'tb_event_raw_version', 'tb_normalized_event',
+        'tb_event_evidence_pack', 'tb_event_summary_cache',
+        'tb_event_processing_receipt'
+      )
+  ),
+  differences AS (
+    SELECT actual.trigger_name
+    FROM actual LEFT JOIN expected USING (trigger_name)
+    WHERE expected.trigger_name IS NULL
+       OR expected.definition IS DISTINCT FROM actual.definition
+  )
+  SELECT string_agg(trigger_name, ', ' ORDER BY trigger_name) INTO mismatch
+  FROM differences;
+  IF mismatch IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible event trigger catalog: %', mismatch;
+  END IF;
+END;
+$$;
+
 CREATE TABLE IF NOT EXISTS tb_event_source_cursor (
   source_name TEXT PRIMARY KEY,
   cursor_value TEXT NOT NULL,

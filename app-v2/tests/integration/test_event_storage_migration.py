@@ -215,3 +215,122 @@ def test_migration_rejects_preexisting_incoherent_provenance(
         check=False,
     )
     assert frozen.returncode != 0
+
+
+def test_migration_atomically_rejects_same_named_weakened_catalog(
+    event_database: str,
+) -> None:
+    # Given: every object keeps its canonical name while its behavior is weakened.
+    _ = run_psql(
+        event_database,
+        """
+        DROP TRIGGER trg_event_evidence_immutable ON tb_event_evidence_pack;
+        DROP TRIGGER trg_event_evidence_span ON tb_event_evidence_pack;
+        DROP TRIGGER trg_normalized_event_source ON tb_normalized_event;
+        ALTER TABLE tb_event_evidence_pack
+          DROP CONSTRAINT tb_event_evidence_pack_offsets_check;
+        ALTER TABLE tb_event_evidence_pack
+          ADD CONSTRAINT tb_event_evidence_pack_offsets_check
+          CHECK (end_offset > start_offset);
+        ALTER TABLE tb_event_raw_version
+          DROP CONSTRAINT tb_event_raw_version_document_id_fkey;
+        ALTER TABLE tb_event_raw_version
+          ADD CONSTRAINT tb_event_raw_version_document_id_fkey
+          FOREIGN KEY (document_id) REFERENCES tb_event_raw_document(document_id)
+          ON DELETE CASCADE;
+        CREATE SEQUENCE weakened_event_id_seq;
+        ALTER TABLE tb_normalized_event
+          ALTER COLUMN event_id SET DEFAULT nextval('weakened_event_id_seq');
+        CREATE INDEX ix_event_unexpected ON tb_normalized_event (event_type);
+        CREATE OR REPLACE FUNCTION enforce_event_evidence_span()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          RETURN NEW;
+        END;
+        $$;
+        CREATE TRIGGER trg_event_evidence_span
+        BEFORE INSERT OR UPDATE ON tb_event_evidence_pack
+        FOR EACH ROW EXECUTE FUNCTION enforce_event_evidence_span();
+        CREATE TRIGGER trg_normalized_event_source
+        BEFORE INSERT ON tb_normalized_event
+        FOR EACH STATEMENT EXECUTE FUNCTION enforce_normalized_event_source();
+        """,
+    )
+    exploit = run_psql(
+        event_database,
+        """
+        INSERT INTO tb_event_raw_document
+          (document_id, source_name, source_document_id, source_url, published_at)
+        VALUES (1, 'wire', 'negative-span', 'https://example.invalid/n', now());
+        INSERT INTO tb_event_raw_version
+          (raw_version_id, document_id, version_no, content_hash, raw_text,
+           normalized_text, normalized_length)
+        VALUES (1, 1, 1, 'negative-span', 'raw', 'short', 5);
+        INSERT INTO tb_normalized_event
+          (event_id, raw_version_id, event_key, source_name, source_sequence,
+           event_type, occurred_at, payload)
+        VALUES (1, 1, 'negative-span', 'wire', '0001', 'headline', now(), '{}');
+        INSERT INTO tb_event_evidence_pack
+          (event_id, raw_version_id, start_offset, end_offset, quote_hash)
+        VALUES (1, 1, -5, -1, 'accepted-by-weakened-check');
+        """,
+    )
+    assert exploit.returncode == 0
+
+    # When
+    rejected = run_migration(event_database, check=False)
+
+    # Then: rejection is atomic; migration must not silently replace bad objects.
+    assert rejected.returncode != 0
+    assert "incompatible event" in rejected.stderr
+    trigger = run_psql(
+        event_database,
+        """
+        SELECT lower(pg_get_triggerdef(oid))
+        FROM pg_trigger
+        WHERE tgname='trg_event_evidence_span';
+        """,
+    )
+    assert "before insert or update" in trigger.stdout
+
+    # Given: the operator removes bad catalog objects before immutable triggers return.
+    _ = run_psql(
+        event_database,
+        """
+        DELETE FROM tb_event_evidence_pack
+        WHERE quote_hash='accepted-by-weakened-check';
+        DROP TRIGGER trg_event_evidence_span ON tb_event_evidence_pack;
+        DROP TRIGGER trg_normalized_event_source ON tb_normalized_event;
+        DROP FUNCTION enforce_event_evidence_span();
+        DROP INDEX ix_event_unexpected;
+        ALTER TABLE tb_event_evidence_pack
+          DROP CONSTRAINT tb_event_evidence_pack_offsets_check;
+        ALTER TABLE tb_event_evidence_pack
+          ADD CONSTRAINT tb_event_evidence_pack_offsets_check
+          CHECK (start_offset >= 0 AND end_offset > start_offset);
+        ALTER TABLE tb_event_raw_version
+          DROP CONSTRAINT tb_event_raw_version_document_id_fkey;
+        ALTER TABLE tb_event_raw_version
+          ADD CONSTRAINT tb_event_raw_version_document_id_fkey
+          FOREIGN KEY (document_id) REFERENCES tb_event_raw_document(document_id);
+        ALTER TABLE tb_normalized_event ALTER COLUMN event_id
+          SET DEFAULT nextval('tb_normalized_event_event_id_seq');
+        DROP SEQUENCE weakened_event_id_seq;
+        """,
+    )
+
+    # When
+    _ = run_migration(event_database)
+    _ = run_migration(event_database)
+
+    # Then
+    negative = run_psql(
+        event_database,
+        """
+        INSERT INTO tb_event_evidence_pack
+          (event_id, raw_version_id, start_offset, end_offset, quote_hash)
+        VALUES (1, 1, -5, -1, 'must-reject');
+        """,
+        check=False,
+    )
+    assert negative.returncode != 0
