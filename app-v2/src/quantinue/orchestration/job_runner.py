@@ -26,6 +26,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from datetime import date
 
+    from quantinue.events.runtime import EventIngestionRuntime
     from quantinue.orchestration.policy import JobsConfig
 
 
@@ -81,6 +82,7 @@ class JobRunner:
         notifier: Callable[[str], Awaitable[None]] | None = None,
         *,
         ops_alerts: bool = False,
+        event_runtime: EventIngestionRuntime | None = None,
     ) -> None:
         """Bind collaborators; each job owns its own side effects."""
         self._config = config
@@ -94,6 +96,7 @@ class JobRunner:
         # 울리면 진짜 신호가 소음에 묻힌다. 실패 알림은 이 플래그와 무관하다 —
         # 어느 인스턴스가 보내든 실패는 실패다.
         self._ops_alerts = ops_alerts
+        self._event_runtime = event_runtime
         # 같은 굳음을 틱마다 반복 알리지 않기 위한 메모리. 재시작하면 비는데,
         # 그때 한 번 더 오는 것은 결함이 아니라 확인이다 — 굳음은 지속 상태다.
         self._stuck_alerted: set[tuple[str, date]] = set()
@@ -108,6 +111,8 @@ class JobRunner:
         """Decide and run whatever is due, returning one outcome per job."""
         if not self._config.enabled:
             return tuple(JobOutcome(job.name, "disabled") for job in self._jobs)
+        if self._event_runtime is not None:
+            await self._event_runtime.tick(now)
         # 슬롯은 뉴욕 세션일이다. UTC 날짜를 쓰면 장중 20:00(뉴욕)에 날짜가
         # 넘어가 같은 세션에 잡이 두 번 돈다.
         as_of = now.astimezone(NEW_YORK).date()

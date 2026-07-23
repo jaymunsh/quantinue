@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Final, Literal
 from zoneinfo import ZoneInfo
 
 import yaml
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter
 
 # pydantic이 런타임에 필드 타입을 해석하므로 타입 전용 임포트로 옮길 수 없다.
 from quantinue.llm.budget import ModelPrice  # noqa: TC001
@@ -313,5 +313,7 @@ class Mvp2Config(BaseModel):
 def load_mvp2_config(path: Path) -> Mvp2Config:
     """Load the mvp2 block; an absent block yields safe defaults (disabled)."""
     with path.open(encoding="utf-8") as stream:
-        document = yaml.safe_load(stream) or {}
+        document = TypeAdapter(dict[str, JsonValue]).validate_python(
+            yaml.safe_load(stream) or {}
+        )
     return Mvp2Config.model_validate(document.get("mvp2") or {})

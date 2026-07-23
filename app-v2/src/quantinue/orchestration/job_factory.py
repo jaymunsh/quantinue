@@ -22,6 +22,9 @@ from quantinue.broker.mock import MockBroker
 from quantinue.core.config import LlmMode
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.domain_records import DailyPickWrite
+from quantinue.events.adapters import NewsEventSourceAdapter, SecEventSourceAdapter
+from quantinue.events.ingestion import PostgresEventIngestionRepository
+from quantinue.events.runtime import EventIngestionExecutor, EventIngestionRuntime
 from quantinue.llm.budget import BudgetedAnalyzer, require_pricing_for
 from quantinue.llm.provider_factory import build_llm_analyzer
 from quantinue.market_data.alpaca_bars import AlpacaBarSource
@@ -905,6 +908,33 @@ def build_job_runner(
         # 키가 없으면 None이고, 그때 러너는 알림을 아예 시도하지 않는다.
         notifier=notifier,
         ops_alerts=settings.ops_alerts,
+        event_runtime=_event_runtime(settings, config, selected),
+    )
+
+
+def _event_runtime(
+    settings: Settings,
+    config: Mvp2Config,
+    selected: JobSources,
+) -> EventIngestionRuntime:
+    now = datetime.now(UTC)
+    sec = selected.disclosures or SecDailyIndexSource()
+    wire = selected.wire_news or WireRssSource(default_wire_feeds())
+    sources = {
+        "sec": SecEventSourceAdapter(sec, now),
+        "wire": NewsEventSourceAdapter(wire, now, event_type="wire"),
+    }
+    key = settings.alpaca_api_key.get_secret_value().strip()
+    secret = settings.alpaca_secret_key.get_secret_value().strip()
+    news = selected.news
+    if news is None and key and secret:
+        news = AlpacaNewsSource(key, secret, page_size=config.news.page_size)
+    if news is not None:
+        sources["news"] = NewsEventSourceAdapter(news, now)
+    repository = PostgresEventIngestionRepository(str(settings.database_url))
+    return EventIngestionRuntime(
+        config.event_ingestion,
+        EventIngestionExecutor(config.event_ingestion, sources, repository),
     )
 
 

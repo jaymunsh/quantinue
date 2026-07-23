@@ -232,6 +232,7 @@ class PostgresEventIngestionRepository:
                     SET cursor_value = excluded.cursor_value,
                         checkpoint_at = excluded.checkpoint_at,
                         updated_at = now()
+                    WHERE tb_event_source_cursor.cursor_value < excluded.cursor_value
                     """
                 ),
                 {"source_name": source_name, "checkpoint": page.checkpoint},

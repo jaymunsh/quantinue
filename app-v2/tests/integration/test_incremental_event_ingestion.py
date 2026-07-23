@@ -217,6 +217,43 @@ async def test_cancellation_before_complete_page_keeps_checkpoint(
     assert await repository.cursor("wire") == SourceCursor("c1")
 
 
+@pytest.mark.anyio
+async def test_reordered_checkpoint_cannot_regress_durable_cursor(
+    repository: PostgresEventIngestionRepository,
+) -> None:
+    # Given
+    newer = FakePagedSource(
+        {None: EventPage((_document("3", 3),), None, "2026-07-24T12:03:00+00:00")}
+    )
+    older = FakePagedSource(
+        {None: EventPage((_document("1", 1),), None, "2026-07-24T12:01:00+00:00")}
+    )
+    _ = await ingest_incrementally("news", newer, repository, timedelta(minutes=30))
+
+    # When
+    _ = await ingest_incrementally("news", older, repository, timedelta(minutes=30))
+
+    # Then
+    assert await repository.cursor("news") == SourceCursor("2026-07-24T12:03:00+00:00")
+
+
+@pytest.mark.anyio
+async def test_concurrent_page_commits_keep_greatest_cursor(
+    repository: PostgresEventIngestionRepository,
+) -> None:
+    # Given
+    older = EventPage((_document("1", 1),), None, "2026-07-24T12:01:00+00:00")
+    newer = EventPage((_document("3", 3),), None, "2026-07-24T12:03:00+00:00")
+
+    # When
+    async with anyio.create_task_group() as tasks:
+        _ = tasks.start_soon(repository.commit_page, "wire", older)
+        _ = tasks.start_soon(repository.commit_page, "wire", newer)
+
+    # Then
+    assert await repository.cursor("wire") == SourceCursor("2026-07-24T12:03:00+00:00")
+
+
 @pytest.fixture
 async def event_database_url() -> str:
     url = "postgresql+asyncpg://postgres:test-only@127.0.0.1:5490/contracts"

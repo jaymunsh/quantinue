@@ -1,0 +1,8 @@
+5490=free
+8021=free
+COMMAND   PID     USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+Python  68620 sunghyuk   16u  IPv4 0x36d4fa4269643b7d      0t0  TCP 127.0.0.1:8020 (LISTEN)
+COMMAND     PID     USER   FD   TYPE             DEVICE SIZE/OFF NODE NAME
+com.docke 20651 sunghyuk  163u  IPv4 0x3f4e32936bcaaaf8      0t0  TCP 127.0.0.1:5445 (LISTEN)
+c68c0ad1dcba0f595e87b5fcef064f201efdb6e4e7849fc15598de2a9af65174  app-v2/src/quantinue/main.py
+c366abf57ff738bd13f78097fa5e96a5cc5e916f2b16ced6ea254ad4c67c5d99  app-v2/tests/unit/test_runtime_ownership.py

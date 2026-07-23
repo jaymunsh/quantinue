@@ -51,9 +51,12 @@ class SecEventSourceAdapter:
         overlap: timedelta,
     ) -> EventPage:
         """Collect SEC rows without fetching the filing document URLs."""
-        if page_token is not None:
-            raise RuntimeError(page_token)
-        rows = await self.provider.filings(_start_date(cursor, overlap, self.now))
+        current_date = (
+            date.fromisoformat(page_token)
+            if page_token is not None
+            else _start_date(cursor, overlap, self.now)
+        )
+        rows = await self.provider.filings(current_date)
         documents = tuple(
             EventDocument(
                 provider_id=row.filing_no,
@@ -74,7 +77,14 @@ class SecEventSourceAdapter:
             )
             for row in rows
         )
-        return EventPage(documents, None, self.now.isoformat())
+        next_date = current_date + timedelta(days=1)
+        next_token = next_date.isoformat() if next_date <= self.now.date() else None
+        checkpoint = (
+            self.now.isoformat()
+            if next_token is None
+            else datetime.combine(next_date, datetime.min.time(), self.now.tzinfo).isoformat()
+        )
+        return EventPage(documents, next_token, checkpoint)
 
 
 @dataclass(frozen=True, slots=True)
