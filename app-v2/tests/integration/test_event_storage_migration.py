@@ -334,3 +334,132 @@ def test_migration_atomically_rejects_same_named_weakened_catalog(
         check=False,
     )
     assert negative.returncode != 0
+
+
+def test_original_event_catalog_upgrades_and_converges(event_database: str) -> None:
+    # Given: the event objects match the original Todo 13 release.
+    _ = run_psql(
+        event_database,
+        """
+        DROP TRIGGER trg_normalized_event_source ON tb_normalized_event;
+        DROP TRIGGER trg_event_evidence_span ON tb_event_evidence_pack;
+        DROP TRIGGER trg_event_raw_document_immutable ON tb_event_raw_document;
+        DROP TRIGGER trg_event_raw_version_immutable ON tb_event_raw_version;
+        DROP TRIGGER trg_normalized_event_immutable ON tb_normalized_event;
+        DROP TRIGGER trg_event_evidence_immutable ON tb_event_evidence_pack;
+        DROP TRIGGER trg_event_summary_immutable ON tb_event_summary_cache;
+        DROP FUNCTION enforce_normalized_event_source();
+        DROP FUNCTION enforce_event_evidence_span();
+        DROP FUNCTION reject_event_provenance_mutation();
+        ALTER TABLE tb_normalized_event
+          DROP CONSTRAINT tb_normalized_event_source_name_check;
+        CREATE FUNCTION reject_event_raw_version_mutation()
+        RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          RAISE EXCEPTION 'tb_event_raw_version is immutable';
+        END;
+        $$;
+        CREATE TRIGGER trg_event_raw_version_immutable
+        BEFORE UPDATE OR DELETE ON tb_event_raw_version
+        FOR EACH ROW EXECUTE FUNCTION reject_event_raw_version_mutation();
+        """,
+    )
+
+    # When
+    first = run_migration(event_database, check=False)
+    second = run_migration(event_database, check=False)
+
+    # Then
+    assert first.returncode == 0, first.stderr
+    assert second.returncode == 0, second.stderr
+    source_check = run_psql(
+        event_database,
+        """
+        SELECT count(*) FROM pg_constraint
+        WHERE conrelid='tb_normalized_event'::regclass
+          AND conname='tb_normalized_event_source_name_check'
+          AND convalidated;
+        """,
+    )
+    assert source_check.stdout.strip() == "1"
+
+
+def test_legacy_immutable_triggers_have_explicit_operator_repair_path(
+    event_database: str,
+) -> None:
+    # Given: invalid legacy rows exist and the prior migration restored immutability.
+    _ = run_psql(
+        event_database,
+        """
+        DROP TRIGGER trg_normalized_event_source ON tb_normalized_event;
+        DROP TRIGGER trg_event_evidence_span ON tb_event_evidence_pack;
+        DROP TRIGGER trg_normalized_event_immutable ON tb_normalized_event;
+        DROP TRIGGER trg_event_evidence_immutable ON tb_event_evidence_pack;
+        INSERT INTO tb_event_raw_document
+          (document_id, source_name, source_document_id, source_url, published_at)
+        VALUES
+          (1, 'wire', 'legacy-1', 'https://example.invalid/1', now()),
+          (2, 'wire', 'legacy-2', 'https://example.invalid/2', now());
+        INSERT INTO tb_event_raw_version
+          (raw_version_id, document_id, version_no, content_hash, raw_text,
+           normalized_text, normalized_length)
+        VALUES
+          (1, 1, 1, 'legacy-1', 'raw', 'short', 5),
+          (2, 2, 1, 'legacy-2', 'raw', 'other', 5);
+        INSERT INTO tb_normalized_event
+          (event_id, raw_version_id, event_key, source_name, source_sequence,
+           event_type, occurred_at, payload)
+        VALUES (1, 1, 'legacy-event', 'wrong', '0001', 'headline', now(), '{}');
+        INSERT INTO tb_event_evidence_pack
+          (evidence_id, event_id, raw_version_id,
+           start_offset, end_offset, quote_hash)
+        VALUES (1, 1, 2, 0, 4, 'wrong-version');
+        CREATE TRIGGER trg_normalized_event_source
+        BEFORE INSERT ON tb_normalized_event
+        FOR EACH ROW EXECUTE FUNCTION enforce_normalized_event_source();
+        CREATE TRIGGER trg_event_evidence_span
+        BEFORE INSERT ON tb_event_evidence_pack
+        FOR EACH ROW EXECUTE FUNCTION enforce_event_evidence_span();
+        CREATE TRIGGER trg_normalized_event_immutable
+        BEFORE UPDATE OR DELETE ON tb_normalized_event
+        FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+        CREATE TRIGGER trg_event_evidence_immutable
+        BEFORE UPDATE OR DELETE ON tb_event_evidence_pack
+        FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+        """,
+    )
+
+    # When
+    rejected = run_migration(event_database, check=False)
+
+    # Then
+    assert rejected.returncode != 0
+    blocked = run_psql(
+        event_database,
+        "UPDATE tb_normalized_event SET source_name='wire' WHERE event_id=1",
+        check=False,
+    )
+    assert blocked.returncode != 0
+
+    # Given: the operator drops only the two canonical repair-blocking triggers.
+    _ = run_psql(
+        event_database,
+        """
+        DROP TRIGGER trg_normalized_event_immutable ON tb_normalized_event;
+        DROP TRIGGER trg_event_evidence_immutable ON tb_event_evidence_pack;
+        UPDATE tb_normalized_event SET source_name='wire' WHERE event_id=1;
+        UPDATE tb_event_evidence_pack SET raw_version_id=1 WHERE evidence_id=1;
+        """,
+    )
+
+    # When
+    _ = run_migration(event_database)
+    _ = run_migration(event_database)
+
+    # Then
+    frozen = run_psql(
+        event_database,
+        "UPDATE tb_normalized_event SET event_type='changed' WHERE event_id=1",
+        check=False,
+    )
+    assert frozen.returncode != 0

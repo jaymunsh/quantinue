@@ -315,15 +315,18 @@ DO $$
 DECLARE
   mismatch TEXT;
 BEGIN
-  WITH expected(table_name, constraint_fingerprint, index_fingerprint) AS (
+  WITH expected(
+    table_name, constraint_fingerprint, legacy_constraint_fingerprint,
+    index_fingerprint
+  ) AS (
     VALUES
-      ('tb_event_source_cursor','ee0b3732479d8c505891f3a280aeebe2','518fd3697c038975c5452885bbf9ef32'),
-      ('tb_event_raw_document','89669b577dc901e62a0157a9ffacd87e','18bcbbb8a4571640a5a40443aa60e4ff'),
-      ('tb_event_raw_version','2f69f42397ed28ad7f59aef7c061acce','41dd70251cac8c784303238549084098'),
-      ('tb_normalized_event','732e9cf6008127fe96fa5c36c202228a','bd099a3e64d5587e49d448c76168d621'),
-      ('tb_event_evidence_pack','47361641935d956672fd42dd30c1f5fd','e081b23fff49d0e5fffb695364deed81'),
-      ('tb_event_summary_cache','c37a7b22190e1325c04e1aa7e7561b02','afadfc9caa44d0b2770c5a0460233409'),
-      ('tb_event_processing_receipt','5cc41b57758ef8e3607406501c718c1e','9f8b132b3e4633a0d713bdce19f7b922')
+      ('tb_event_source_cursor','ee0b3732479d8c505891f3a280aeebe2',NULL,'518fd3697c038975c5452885bbf9ef32'),
+      ('tb_event_raw_document','89669b577dc901e62a0157a9ffacd87e',NULL,'18bcbbb8a4571640a5a40443aa60e4ff'),
+      ('tb_event_raw_version','2f69f42397ed28ad7f59aef7c061acce',NULL,'41dd70251cac8c784303238549084098'),
+      ('tb_normalized_event','732e9cf6008127fe96fa5c36c202228a','6e27cc9e0b5dadcc87c21bed5588298b','bd099a3e64d5587e49d448c76168d621'),
+      ('tb_event_evidence_pack','47361641935d956672fd42dd30c1f5fd',NULL,'e081b23fff49d0e5fffb695364deed81'),
+      ('tb_event_summary_cache','c37a7b22190e1325c04e1aa7e7561b02',NULL,'afadfc9caa44d0b2770c5a0460233409'),
+      ('tb_event_processing_receipt','5cc41b57758ef8e3607406501c718c1e',NULL,'9f8b132b3e4633a0d713bdce19f7b922')
   ),
   existing AS (
     SELECT class.oid, class.relname AS table_name
@@ -368,9 +371,14 @@ BEGIN
     JOIN expected USING (table_name)
     LEFT JOIN constraint_fingerprints USING (table_name)
     LEFT JOIN index_fingerprints USING (table_name)
-    WHERE (constraint_fingerprints.fingerprint, index_fingerprints.fingerprint)
-      IS DISTINCT FROM
-      (expected.constraint_fingerprint, expected.index_fingerprint)
+    WHERE (
+        constraint_fingerprints.fingerprint
+          IS DISTINCT FROM expected.constraint_fingerprint
+        AND constraint_fingerprints.fingerprint
+          IS DISTINCT FROM expected.legacy_constraint_fingerprint
+      )
+       OR index_fingerprints.fingerprint
+          IS DISTINCT FROM expected.index_fingerprint
   )
   SELECT string_agg(table_name, ', ' ORDER BY table_name) INTO mismatch
   FROM differences;
@@ -464,22 +472,23 @@ BEGIN
     RAISE EXCEPTION 'incompatible event function catalog: %', mismatch;
   END IF;
 
-  WITH expected(trigger_name, definition) AS (
+  WITH expected(trigger_name, definition, legacy_definition) AS (
     VALUES
       ('trg_normalized_event_source',
-       'CREATE TRIGGER trg_normalized_event_source BEFORE INSERT ON public.tb_normalized_event FOR EACH ROW EXECUTE FUNCTION enforce_normalized_event_source()'),
+       'CREATE TRIGGER trg_normalized_event_source BEFORE INSERT ON public.tb_normalized_event FOR EACH ROW EXECUTE FUNCTION enforce_normalized_event_source()', NULL),
       ('trg_event_evidence_span',
-       'CREATE TRIGGER trg_event_evidence_span BEFORE INSERT ON public.tb_event_evidence_pack FOR EACH ROW EXECUTE FUNCTION enforce_event_evidence_span()'),
+       'CREATE TRIGGER trg_event_evidence_span BEFORE INSERT ON public.tb_event_evidence_pack FOR EACH ROW EXECUTE FUNCTION enforce_event_evidence_span()', NULL),
       ('trg_event_raw_document_immutable',
-       'CREATE TRIGGER trg_event_raw_document_immutable BEFORE DELETE OR UPDATE ON public.tb_event_raw_document FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+       'CREATE TRIGGER trg_event_raw_document_immutable BEFORE DELETE OR UPDATE ON public.tb_event_raw_document FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()', NULL),
       ('trg_event_raw_version_immutable',
-       'CREATE TRIGGER trg_event_raw_version_immutable BEFORE DELETE OR UPDATE ON public.tb_event_raw_version FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+       'CREATE TRIGGER trg_event_raw_version_immutable BEFORE DELETE OR UPDATE ON public.tb_event_raw_version FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()',
+       'CREATE TRIGGER trg_event_raw_version_immutable BEFORE DELETE OR UPDATE ON public.tb_event_raw_version FOR EACH ROW EXECUTE FUNCTION reject_event_raw_version_mutation()'),
       ('trg_normalized_event_immutable',
-       'CREATE TRIGGER trg_normalized_event_immutable BEFORE DELETE OR UPDATE ON public.tb_normalized_event FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+       'CREATE TRIGGER trg_normalized_event_immutable BEFORE DELETE OR UPDATE ON public.tb_normalized_event FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()', NULL),
       ('trg_event_evidence_immutable',
-       'CREATE TRIGGER trg_event_evidence_immutable BEFORE DELETE OR UPDATE ON public.tb_event_evidence_pack FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()'),
+       'CREATE TRIGGER trg_event_evidence_immutable BEFORE DELETE OR UPDATE ON public.tb_event_evidence_pack FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()', NULL),
       ('trg_event_summary_immutable',
-       'CREATE TRIGGER trg_event_summary_immutable BEFORE DELETE OR UPDATE ON public.tb_event_summary_cache FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()')
+       'CREATE TRIGGER trg_event_summary_immutable BEFORE DELETE OR UPDATE ON public.tb_event_summary_cache FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation()', NULL)
   ),
   actual AS (
     SELECT trigger.tgname AS trigger_name,
@@ -499,7 +508,10 @@ BEGIN
     SELECT actual.trigger_name
     FROM actual LEFT JOIN expected USING (trigger_name)
     WHERE expected.trigger_name IS NULL
-       OR expected.definition IS DISTINCT FROM actual.definition
+       OR (
+         expected.definition IS DISTINCT FROM actual.definition
+         AND expected.legacy_definition IS DISTINCT FROM actual.definition
+       )
   )
   SELECT string_agg(trigger_name, ', ' ORDER BY trigger_name) INTO mismatch
   FROM differences;
