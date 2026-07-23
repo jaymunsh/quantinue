@@ -42,6 +42,7 @@ TABLES = {
     "tb_job_run",
     "tb_watch_sweep",
     "tb_watch_sweep_item",
+    "tb_rejudgement_cooldown",
     "tb_disclosure_raw",
     "tb_news_raw",
     "tb_order_plan",
@@ -75,6 +76,7 @@ PK = {
     "tb_job_run": ("job_name", "slot_date"),
     "tb_watch_sweep": ("sweep_at",),
     "tb_watch_sweep_item": ("sweep_at", "ticker", "persona"),
+    "tb_rejudgement_cooldown": ("ticker", "persona"),
     "tb_disclosure_raw": ("filing_no",),
     # 기사 하나가 여러 종목을 언급하므로 기사 id만으로는 행을 못 가른다.
     "tb_news_raw": ("article_id", "ticker"),
@@ -277,6 +279,10 @@ CHECKS: dict[str, dict[tuple[str, ...], tuple[str, ...]]] = {
         ("status",): ("'claimed'", "'dispatched'", "'completed'"),
         ("attempt",): ("attempt >",),
         ("status", "dispatched_at"): ("'claimed'", "dispatched_at is null"),
+        ("status", "completed_at"): ("'completed'", "completed_at is not null"),
+    },
+    "tb_rejudgement_cooldown": {
+        ("status",): ("'claimed'", "'completed'"),
         ("status", "completed_at"): ("'completed'", "completed_at is not null"),
     },
     "tb_macro": {

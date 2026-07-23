@@ -136,6 +136,7 @@ async def _reset_database() -> None:
     engine = create_async_engine(_DATABASE_URL)
     async with engine.begin() as connection:
         for table_name in (
+            "tb_rejudgement_cooldown",
             "tb_event_processing_receipt",
             "tb_event_summary_cache",
             "tb_event_evidence_pack",
@@ -251,6 +252,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
     pack = await evidence.prepare(route, _CountingAnalyzer())
     repository = PostgresEventAnalysisReceiptRepository(_DATABASE_URL)
     now = datetime(2026, 7, 24, 14, tzinfo=UTC)
+    owner_token = "receipt-owner-01"
 
     # When
     first = await repository.claim(
@@ -259,12 +261,14 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
         EventAnalysisStage.STRATEGIST,
         now,
         timedelta(minutes=30),
+        owner_token,
     )
     await repository.mark_dispatched(
         route.event_id,
         route.ticker,
         "aggressive",
         EventAnalysisStage.STRATEGIST,
+        owner_token,
     )
     engine = create_async_engine(_DATABASE_URL)
     async with engine.connect() as connection:
@@ -288,6 +292,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
         "aggressive",
         EventAnalysisStage.STRATEGIST,
         {"result": {"score": 1}},
+        owner_token,
     )
     await repository.close()
     restarted = PostgresEventAnalysisReceiptRepository(_DATABASE_URL)
@@ -297,6 +302,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
         EventAnalysisStage.STRATEGIST,
         now + timedelta(minutes=1),
         timedelta(minutes=30),
+        "duplicate-owner",
     )
     second_route = await _accepted_route(
         "receipt-02",
@@ -309,6 +315,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
         EventAnalysisStage.STRATEGIST,
         now + timedelta(minutes=2),
         timedelta(minutes=30),
+        "cooldown-owner",
     )
 
     # Then
@@ -336,6 +343,46 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
     await engine.dispose()
     assert rows == ["processed", "skipped"]
     await restarted.close()
+    await evidence.close()
+
+
+@pytest.mark.anyio
+async def test_concurrent_distinct_events_share_one_ticker_persona_cooldown() -> None:
+    await _reset_database()
+    first_route = await _accepted_route(
+        "cooldown-race-01",
+        '{"headline":"Apple changes guidance","source":"Reuters"}',
+    )
+    second_route = await _accepted_route(
+        "cooldown-race-02",
+        '{"headline":"Apple updates guidance","source":"Reuters"}',
+    )
+    evidence = PostgresEventEvidenceRepository(_DATABASE_URL)
+    first_pack = await evidence.prepare(first_route, _CountingAnalyzer())
+    second_pack = await evidence.prepare(second_route, _CountingAnalyzer())
+    repository = PostgresEventAnalysisReceiptRepository(_DATABASE_URL)
+    results: list[EventAnalysisReceiptClaim] = []
+
+    async def claim(pack: EvidencePack, owner_token: str) -> None:
+        results.append(
+            await repository.claim(
+                pack,
+                "aggressive",
+                EventAnalysisStage.STRATEGIST,
+                datetime(2026, 7, 24, 14, tzinfo=UTC),
+                timedelta(minutes=30),
+                owner_token,
+            )
+        )
+
+    async with anyio.create_task_group() as tasks:
+        tasks.start_soon(claim, first_pack, "race-owner-1")
+        tasks.start_soon(claim, second_pack, "race-owner-2")
+
+    assert sorted(results) == sorted(
+        [EventAnalysisReceiptClaim.CLAIMED, EventAnalysisReceiptClaim.COOLDOWN]
+    )
+    await repository.close()
     await evidence.close()
 
 

@@ -1,0 +1,24 @@
+PostgreSQL 16 migration applied twice successfully.
+
+Focused race:
+tests/integration/test_event_evidence.py::test_concurrent_distinct_events_share_one_ticker_persona_cooldown
+1 passed in 1.42s
+
+receipt schema:
+owner_token:text:YES
+result_payload:jsonb:YES
+
+cooldown schema:
+ticker:text:NO
+persona:text:NO
+status:text:NO
+owner_token:text:NO
+claimed_at:timestamp with time zone:NO
+completed_at:timestamp with time zone:YES
+
+durable cooldown rows:
+AAPL|aggressive|claimed|t|t|f
+
+audit ledgers:
+llm_usage|0
+orders|0

@@ -25,6 +25,7 @@ class EventAnalysisRun:
 
     attempted: int = 0
     completed: int = 0
+    reused: int = 0
     suppressed: int = 0
     failed: int = 0
     uncertain: int = 0
@@ -36,6 +37,7 @@ class EventAnalysisRun:
         return EventAnalysisRun(
             attempted=self.attempted + other.attempted,
             completed=self.completed + other.completed,
+            reused=self.reused + other.reused,
             suppressed=self.suppressed + other.suppressed,
             failed=self.failed + other.failed,
             uncertain=self.uncertain + other.uncertain,
@@ -46,13 +48,14 @@ class EventAnalysisRun:
 class EventAnalysisReceiptRepository(Protocol):
     """Durable stage operations used at paid provider boundaries."""
 
-    async def claim(
+    async def claim(  # noqa: PLR0913 - durable key, policy, and owner are independent
         self,
         pack: EvidencePack,
         persona: str,
         stage: EventAnalysisStage,
         now: datetime,
         cooldown: timedelta,
+        owner_token: str,
     ) -> EventAnalysisReceiptClaim:
         """Claim one independently durable stage."""
         ...
@@ -73,17 +76,19 @@ class EventAnalysisReceiptRepository(Protocol):
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
+        owner_token: str,
     ) -> None:
         """Fence the actual provider dispatch."""
         ...
 
-    async def complete(
+    async def complete(  # noqa: PLR0913 - durable key and owner fence are independent
         self,
         event_id: int,
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
         result_payload: dict[str, JsonValue],
+        owner_token: str,
     ) -> None:
         """Persist the provider result durably."""
         ...
@@ -94,6 +99,7 @@ class EventAnalysisReceiptRepository(Protocol):
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
+        owner_token: str,
     ) -> None:
         """Release a claim proven not to have reached the provider."""
         ...
@@ -104,6 +110,7 @@ class EventAnalysisReceiptRepository(Protocol):
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
+        owner_token: str,
     ) -> None:
         """Persist a terminal zero-call refusal."""
         ...

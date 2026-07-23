@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import TYPE_CHECKING, Protocol
+from uuid import uuid4
 
 from quantinue.core.market_calendar import NEW_YORK
 
@@ -24,6 +26,29 @@ class IntradaySellDomain(Protocol):
         self, as_of: date, tickers: tuple[str, ...]
     ) -> Mapping[str, frozenset[str]]:
         """Return personas whose sell survived the critic."""
+        ...
+
+    async def claim_rejudgement(
+        self,
+        ticker: str,
+        persona: str,
+        *,
+        owner_token: str,
+        now: datetime,
+        cooldown: timedelta,
+    ) -> bool:
+        """Reserve the shared trigger-independent cooldown."""
+        ...
+
+    async def complete_rejudgement(
+        self,
+        ticker: str,
+        persona: str,
+        *,
+        owner_token: str,
+        now: datetime,
+    ) -> bool:
+        """Publish cooldown for the current owner."""
         ...
 
 
@@ -63,6 +88,7 @@ class IntradayRejudgeEngine:
     jobs: tuple[AnalysisJob, ...]
     exits: SoftSellExecutor
     allocation: IntradayBuyExecutor | None = None
+    cooldown: timedelta = timedelta(minutes=30)
 
     async def run(
         self,
@@ -75,8 +101,33 @@ class IntradayRejudgeEngine:
         mutable_prices = dict(prices)
         skipped = 0
         for job in self.jobs:
+            reserved: dict[str, str] = {}
+            for ticker in mutable_prices:
+                owner_token = uuid4().hex
+                if await self.domain.claim_rejudgement(
+                    ticker,
+                    job.profile_name,
+                    owner_token=owner_token,
+                    now=now,
+                    cooldown=self.cooldown,
+                ):
+                    reserved[ticker] = owner_token
+            for ticker, owner_token in reserved.items():
+                _ = await self.domain.complete_rejudgement(
+                    ticker,
+                    job.profile_name,
+                    owner_token=owner_token,
+                    now=now,
+                )
             skipped += (
-                await job.run_intraday(now=now, prices=mutable_prices, lease=lease)
+                await job.run_intraday(
+                    now=now,
+                    prices={
+                        ticker: mutable_prices[ticker]
+                        for ticker in reserved
+                    },
+                    lease=lease,
+                )
             ).skipped
         if skipped:
             message = f"intraday rejudgement incomplete: skipped={skipped}"

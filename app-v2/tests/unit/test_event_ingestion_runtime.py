@@ -6,6 +6,7 @@ import anyio
 import pytest
 from typing_extensions import override
 
+from quantinue.events.analysis import EventAnalysisRun
 from quantinue.events.runtime import (
     EventIngestionExecutor,
     EventIngestionRuntime,
@@ -153,3 +154,27 @@ async def test_sec_news_wire_share_one_poison_evidence_attempt() -> None:
     assert [source for source, _ in recorder.calls] == ["sec", "news", "wire"]
     assert recorder.poison_attempts == 1
     assert runtime.last_evidence_run == EvidencePreparationRun(prepared=0, failed=1)
+
+
+@pytest.mark.anyio
+async def test_idle_tick_retains_latest_analysis_outcome() -> None:
+    class AnalysisRecorder(Recorder):
+        @override
+        async def prepare_evidence(self, now: datetime) -> EvidencePreparationRun:
+            _ = now
+            return EvidencePreparationRun(
+                prepared=1,
+                failed=0,
+                analysis=EventAnalysisRun(completed=2, reason="completed"),
+                reason="completed",
+            )
+
+    runtime = EventIngestionRuntime(EventIngestionConfig(), AnalysisRecorder())
+    first = datetime(2026, 7, 24, 12, tzinfo=UTC)
+
+    await runtime.tick(first)
+    latest = runtime.last_analysis_run
+    await runtime.tick(first.replace(second=1))
+
+    assert latest == EventAnalysisRun(completed=2, reason="completed")
+    assert runtime.last_analysis_run == latest

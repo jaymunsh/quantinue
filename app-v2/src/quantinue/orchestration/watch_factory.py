@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING, Protocol, assert_never, runtime_checkable
 
 from quantinue.broker.mock import MockBroker
@@ -97,6 +98,7 @@ def build_watch_runner(
                 gates=config.gates,
                 allocation=config.allocation,
             ),
+            cooldown=timedelta(minutes=config.watch.rejudge.cooldown_minutes),
         )
     return WatchRunner(
         config.watch,

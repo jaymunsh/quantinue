@@ -118,6 +118,8 @@ class _ControlledBudgetedAnalyzer(BudgetedAnalyzer):
             raise anyio.get_cancelled_exc_class()
         await boundary.dispatched()
         self.calls.append(task)
+        if self.mode == "hang":
+            await anyio.sleep_forever()
         if self.mode == "in_call_cancel":
             raise anyio.get_cancelled_exc_class()
         return _analysis_result()
@@ -285,19 +287,30 @@ class _EventReceipts:
         self.dispatched: list[EventAnalysisStage] = []
         self.released: list[EventAnalysisStage] = []
         self.suppressed: list[EventAnalysisStage] = []
+        self.cancel_after_claim: EventAnalysisStage | None = None
+        self.owners: dict[EventAnalysisStage, str] = {}
 
-    async def claim(
+    async def claim(  # noqa: PLR0913
         self,
         pack: EvidencePack,
         persona: str,
         stage: EventAnalysisStage,
         now: datetime,
         cooldown: timedelta,
+        owner_token: str,
     ) -> EventAnalysisReceiptClaim:
         _ = pack, persona, now, cooldown
+        if self.cancel_after_claim is stage:
+            self.cancel_after_claim = None
+            self.states[stage] = EventAnalysisReceiptClaim.DUPLICATE
+            self.owners[stage] = owner_token
+            raise anyio.get_cancelled_exc_class()
         if stage in self.dispatched and stage not in self.states:
             return EventAnalysisReceiptClaim.UNCERTAIN
-        return self.states.get(stage, EventAnalysisReceiptClaim.CLAIMED)
+        claim = self.states.get(stage, EventAnalysisReceiptClaim.CLAIMED)
+        if claim is EventAnalysisReceiptClaim.CLAIMED:
+            self.owners[stage] = owner_token
+        return claim
 
     async def result(
         self,
@@ -315,19 +328,23 @@ class _EventReceipts:
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
+        owner_token: str,
     ) -> None:
         _ = event_id, ticker, persona
+        assert self.owners[stage] == owner_token
         self.dispatched.append(stage)
 
-    async def complete(
+    async def complete(  # noqa: PLR0913
         self,
         event_id: int,
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
         result_payload: dict[str, object],
+        owner_token: str,
     ) -> None:
         _ = event_id, ticker, persona
+        assert self.owners[stage] == owner_token
         self.states[stage] = EventAnalysisReceiptClaim.COMPLETED
         self.results[stage] = result_payload
 
@@ -337,10 +354,14 @@ class _EventReceipts:
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
+        owner_token: str,
     ) -> None:
         _ = event_id, ticker, persona
+        if self.owners.get(stage) != owner_token:
+            return
         self.released.append(stage)
         self.states.pop(stage, None)
+        self.owners.pop(stage, None)
 
     async def suppress(
         self,
@@ -348,8 +369,10 @@ class _EventReceipts:
         ticker: str,
         persona: str,
         stage: EventAnalysisStage,
+        owner_token: str,
     ) -> None:
         _ = event_id, ticker, persona
+        assert self.owners[stage] == owner_token
         self.suppressed.append(stage)
         self.states[stage] = EventAnalysisReceiptClaim.SUPPRESSED
 
@@ -546,8 +569,62 @@ async def test_event_restart_reuses_completed_provider_stages() -> None:
     )
 
     assert first.completed == 2
-    assert second.completed == 2
+    assert second.completed == 0
+    assert second.reused == 2
     assert analyzer.calls == [AnalysisTask.STRATEGY, AnalysisTask.CRITIC]
+
+
+@pytest.mark.anyio
+async def test_cancellation_after_strategy_claim_commit_releases_owned_stage() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _ControlledBudgetedAnalyzer()
+    receipts = _EventReceipts()
+    receipts.cancel_after_claim = EventAnalysisStage.STRATEGIST
+    job = _job(domain, analyzer)
+
+    with pytest.raises(anyio.get_cancelled_exc_class()):
+        await job.run_event(
+            _event_pack(),
+            now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+            receipts=receipts,
+            cooldown=timedelta(minutes=30),
+        )
+    retried = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert receipts.released == [EventAnalysisStage.STRATEGIST]
+    assert retried.completed == 2
+
+
+@pytest.mark.anyio
+async def test_cancellation_after_unbilled_critic_claim_commit_releases_owned_stage() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _Analyzer(strategy=0.1)
+    receipts = _EventReceipts()
+    receipts.cancel_after_claim = EventAnalysisStage.CRITIC
+    job = _job(domain, analyzer)
+
+    with pytest.raises(anyio.get_cancelled_exc_class()):
+        await job.run_event(
+            _event_pack(),
+            now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+            receipts=receipts,
+            cooldown=timedelta(minutes=30),
+        )
+    retried = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert receipts.released == [EventAnalysisStage.CRITIC]
+    assert retried.reused == 1
+    assert retried.completed == 1
 
 
 @pytest.mark.anyio
@@ -579,7 +656,8 @@ async def test_critic_budget_refusal_preserves_completed_strategist() -> None:
     assert first.completed == 1
     assert first.suppressed == 1
     assert first.reason == "critic_budget_refused"
-    assert second.completed == 1
+    assert second.completed == 0
+    assert second.reused == 1
     assert second.suppressed == 1
     assert analyzer.calls == [AnalysisTask.STRATEGY]
 
@@ -651,6 +729,39 @@ async def test_in_call_cancellation_is_uncertain_and_never_rebilled() -> None:
 
 
 @pytest.mark.anyio
+async def test_hung_provider_is_bounded_and_restart_never_rebills() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _ControlledBudgetedAnalyzer("hang")
+    receipts = _EventReceipts()
+    job = AnalysisJob(
+        store=_Store(domain),
+        analyzer=analyzer,
+        gates=GatesConfig(evidence_max_age_minutes=2_880),
+        profile=ProfileConfig(),
+        profile_name="aggressive",
+        event_timeout_seconds=0.01,
+    )
+
+    first = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+    restarted = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert first.uncertain == 1
+    assert first.reason == "strategist_timeout"
+    assert restarted.uncertain == 1
+    assert analyzer.calls == [AnalysisTask.STRATEGY]
+
+
+@pytest.mark.anyio
 async def test_critic_pre_boundary_cancellation_retries_critic_only() -> None:
     domain = _Domain((_subject("AAA"),))
     analyzer = _ControlledBudgetedAnalyzer("critic_pre_cancel")
@@ -679,7 +790,8 @@ async def test_critic_pre_boundary_cancellation_retries_critic_only() -> None:
     )
 
     assert receipts.released == [EventAnalysisStage.CRITIC]
-    assert restarted.completed == 2
+    assert restarted.completed == 1
+    assert restarted.reused == 1
     assert analyzer.calls == [AnalysisTask.STRATEGY, AnalysisTask.CRITIC]
 
 

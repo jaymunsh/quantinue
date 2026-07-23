@@ -312,6 +312,17 @@ CREATE TABLE IF NOT EXISTS tb_watch_sweep_item (
   CHECK ((status = 'completed') = (completed_at IS NOT NULL))
 );
 
+CREATE TABLE IF NOT EXISTS tb_rejudgement_cooldown (
+  ticker TEXT NOT NULL,
+  persona TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('claimed','completed')),
+  owner_token TEXT NOT NULL,
+  claimed_at TIMESTAMPTZ NOT NULL,
+  completed_at TIMESTAMPTZ,
+  PRIMARY KEY (ticker, persona),
+  CHECK ((status = 'completed') = (completed_at IS NOT NULL))
+);
+
 -- 공시 원시 원장. tb_disclosure(채점 결과)와 따로 두는 이유는 FK다 — 그쪽은
 -- (trade_date, ticker) → tb_daily_pick을 걸어 그날 분석 대상이 아닌 종목에는
 -- 행을 넣을 수 없는데, 일괄 수집이 노리는 것이 정확히 그 바깥이다(스크리너에서
@@ -479,6 +490,7 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
   ticker TEXT NOT NULL,
   persona TEXT NOT NULL,
   status TEXT NOT NULL,
+  owner_token TEXT,
   result_payload JSONB,
   order_id BIGINT REFERENCES tb_order(id),
   claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),

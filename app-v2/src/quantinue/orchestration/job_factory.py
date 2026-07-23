@@ -959,6 +959,7 @@ def _event_runtime(
                     profile_name=profile_name,
                     calendar=calendar,
                     headlines_per_ticker=config.news.headlines_per_ticker,
+                    event_timeout_seconds=config.event_ingestion.analysis_timeout_seconds,
                 )
                 for profile_name in sorted(config.profiles)
             ),

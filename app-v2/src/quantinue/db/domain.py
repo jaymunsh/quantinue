@@ -96,6 +96,7 @@ _TABLES = (
     "tb_fill",
     "tb_llm_usage",
     "tb_watch_sweep",
+    "tb_rejudgement_cooldown",
 )
 
 _WATCH_SWEEP_STALE_AFTER: Final = timedelta(minutes=30)
@@ -2164,6 +2165,77 @@ class PostgresDomainRepository:
         )
         async with self._engine.begin() as connection:
             return await connection.scalar(statement)
+
+    async def claim_rejudgement(
+        self,
+        ticker: str,
+        persona: str,
+        *,
+        owner_token: str,
+        now: datetime,
+        cooldown: timedelta,
+    ) -> bool:
+        """Reserve the canonical ticker/persona cooldown across all triggers."""
+        async with self._engine.begin() as connection:
+            _ = await connection.execute(
+                text(
+                    "SELECT pg_advisory_xact_lock("
+                    "hashtextextended(:lock_key, 0))"
+                ),
+                {"lock_key": f"rejudgement:{ticker}:{persona}"},
+            )
+            result = await connection.execute(
+                text(
+                    """
+                    INSERT INTO tb_rejudgement_cooldown
+                      (ticker, persona, status, owner_token, claimed_at)
+                    VALUES
+                      (:ticker, :persona, 'claimed', :owner_token, :now)
+                    ON CONFLICT (ticker, persona) DO UPDATE
+                    SET status='claimed', owner_token=:owner_token,
+                        claimed_at=:now, completed_at=NULL
+                    WHERE tb_rejudgement_cooldown.status='completed'
+                      AND tb_rejudgement_cooldown.completed_at <= :cooldown_after
+                    RETURNING ticker
+                    """
+                ),
+                {
+                    "ticker": ticker,
+                    "persona": persona,
+                    "owner_token": owner_token,
+                    "now": now,
+                    "cooldown_after": now - cooldown,
+                },
+            )
+            return result.one_or_none() is not None
+
+    async def complete_rejudgement(
+        self,
+        ticker: str,
+        persona: str,
+        *,
+        owner_token: str,
+        now: datetime,
+    ) -> bool:
+        """Start cooldown only for the caller's current reservation."""
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_rejudgement_cooldown
+                    SET status='completed', completed_at=:now
+                    WHERE ticker=:ticker AND persona=:persona
+                      AND status='claimed' AND owner_token=:owner_token
+                    """
+                ),
+                {
+                    "ticker": ticker,
+                    "persona": persona,
+                    "owner_token": owner_token,
+                    "now": now,
+                },
+            )
+            return result.rowcount == 1
 
     async def finish_watch_sweep(
         self,

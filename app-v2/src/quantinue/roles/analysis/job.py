@@ -20,6 +20,7 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, time
 from decimal import Decimal
 from typing import TYPE_CHECKING, Final, Protocol, runtime_checkable
+from uuid import uuid4
 
 import anyio
 from pydantic import BaseModel, ConfigDict
@@ -122,6 +123,7 @@ class _EventPaidBoundary(PaidCallBoundary):
     ticker: str
     persona: str
     stage: EventAnalysisStage
+    owner_token: str
     crossed: bool = False
 
     @override
@@ -131,6 +133,7 @@ class _EventPaidBoundary(PaidCallBoundary):
             self.ticker,
             self.persona,
             self.stage,
+            self.owner_token,
         )
         self.crossed = True
 
@@ -143,8 +146,10 @@ class _EventAnalyzer(LlmAnalyzer):
     persona: str
     now: datetime
     cooldown: timedelta
+    timeout_seconds: float
     attempted: int = 0
     completed: int = 0
+    reused: int = 0
     suppressed: int = 0
 
     @override
@@ -176,7 +181,7 @@ class _EventAnalyzer(LlmAnalyzer):
     ) -> AnalysisResult:
         return await self._analyze_stage(task, prompt, profile=profile, reserved=True)
 
-    async def _analyze_stage(  # noqa: C901 - exhaustive receipt state machine
+    async def _analyze_stage(  # noqa: C901, PLR0912 - exhaustive receipt state machine
         self,
         task: AnalysisTask,
         prompt: str,
@@ -191,68 +196,75 @@ class _EventAnalyzer(LlmAnalyzer):
                 stage = EventAnalysisStage.CRITIC
             case _:
                 return await self.inner.analyze(task, prompt, profile=profile)
-        claim = await self.receipts.claim(
-            self.pack,
-            self.persona,
-            stage,
-            self.now,
-            self.cooldown,
-        )
-        match claim:
-            case EventAnalysisReceiptClaim.COMPLETED:
-                payload = await self.receipts.result(
-                    self.pack.document.event_id,
-                    self.pack.document.ticker,
-                    self.persona,
-                    stage,
-                )
-                self.completed += 1
-                return _EventProviderPayload.model_validate(payload).result
-            case EventAnalysisReceiptClaim.CLAIMED:
-                self.attempted += 1
-            case EventAnalysisReceiptClaim.COOLDOWN | EventAnalysisReceiptClaim.SUPPRESSED:
-                self.suppressed += 1
-                raise _EventStageStoppedError(
-                    EventAnalysisRun(
-                        attempted=self.attempted,
-                        completed=self.completed,
-                        suppressed=self.suppressed,
-                        reason=f"{stage.value}_suppressed",
-                    )
-                )
-            case EventAnalysisReceiptClaim.UNCERTAIN:
-                raise _EventStageStoppedError(
-                    EventAnalysisRun(
-                        attempted=self.attempted,
-                        completed=self.completed,
-                        uncertain=1,
-                        reason=f"{stage.value}_uncertain",
-                    )
-                )
-            case EventAnalysisReceiptClaim.DUPLICATE:
-                raise _EventStageStoppedError(
-                    EventAnalysisRun(
-                        attempted=self.attempted,
-                        completed=self.completed,
-                        suppressed=1,
-                        reason=f"{stage.value}_in_flight",
-                    )
-                )
+        owner_token = uuid4().hex
         boundary = _EventPaidBoundary(
             self.receipts,
             self.pack.document.event_id,
             self.pack.document.ticker,
             self.persona,
             stage,
+            owner_token,
         )
         try:
-            result = await self._call_inner(
-                task,
-                prompt,
-                profile=profile,
-                reserved=reserved,
-                boundary=boundary,
+            claim = await self.receipts.claim(
+                self.pack,
+                self.persona,
+                stage,
+                self.now,
+                self.cooldown,
+                owner_token,
             )
+            match claim:
+                case EventAnalysisReceiptClaim.COMPLETED:
+                    payload = await self.receipts.result(
+                        self.pack.document.event_id,
+                        self.pack.document.ticker,
+                        self.persona,
+                        stage,
+                    )
+                    self.reused += 1
+                    return _EventProviderPayload.model_validate(payload).result
+                case EventAnalysisReceiptClaim.CLAIMED:
+                    self.attempted += 1
+                case EventAnalysisReceiptClaim.COOLDOWN | EventAnalysisReceiptClaim.SUPPRESSED:
+                    self.suppressed += 1
+                    raise _EventStageStoppedError(
+                        EventAnalysisRun(
+                            attempted=self.attempted,
+                            completed=self.completed,
+                            reused=self.reused,
+                            suppressed=self.suppressed,
+                            reason=f"{stage.value}_suppressed",
+                        )
+                    )
+                case EventAnalysisReceiptClaim.UNCERTAIN:
+                    raise _EventStageStoppedError(
+                        EventAnalysisRun(
+                            attempted=self.attempted,
+                            completed=self.completed,
+                            reused=self.reused,
+                            uncertain=1,
+                            reason=f"{stage.value}_uncertain",
+                        )
+                    )
+                case EventAnalysisReceiptClaim.DUPLICATE:
+                    raise _EventStageStoppedError(
+                        EventAnalysisRun(
+                            attempted=self.attempted,
+                            completed=self.completed,
+                            reused=self.reused,
+                            suppressed=1,
+                            reason=f"{stage.value}_in_flight",
+                        )
+                    )
+            with anyio.fail_after(self.timeout_seconds):
+                result = await self._call_inner(
+                    task,
+                    prompt,
+                    profile=profile,
+                    reserved=reserved,
+                    boundary=boundary,
+                )
             with anyio.CancelScope(shield=True):
                 await self.receipts.complete(
                     self.pack.document.event_id,
@@ -260,6 +272,7 @@ class _EventAnalyzer(LlmAnalyzer):
                     self.persona,
                     stage,
                     _EventProviderPayload(result=result).model_dump(mode="json"),
+                    owner_token,
                 )
             self.completed += 1
             return result  # noqa: TRY300 - success must update counters before return
@@ -270,6 +283,7 @@ class _EventAnalyzer(LlmAnalyzer):
                     self.pack.document.ticker,
                     self.persona,
                     stage,
+                    owner_token,
                 )
             self.suppressed += 1
             raise _EventStageStoppedError(
@@ -280,6 +294,26 @@ class _EventAnalyzer(LlmAnalyzer):
                     reason=f"{stage.value}_budget_refused",
                 )
             ) from None
+        except TimeoutError:
+            if not boundary.crossed:
+                with anyio.CancelScope(shield=True):
+                    await self.receipts.release_unbilled(
+                        self.pack.document.event_id,
+                        self.pack.document.ticker,
+                        self.persona,
+                        stage,
+                        owner_token,
+                    )
+            raise _EventStageStoppedError(
+                EventAnalysisRun(
+                    attempted=self.attempted,
+                    completed=self.completed,
+                    reused=self.reused,
+                    failed=0 if boundary.crossed else 1,
+                    uncertain=1 if boundary.crossed else 0,
+                    reason=f"{stage.value}_timeout",
+                )
+            ) from None
         except anyio.get_cancelled_exc_class():
             if not boundary.crossed:
                 with anyio.CancelScope(shield=True):
@@ -288,6 +322,7 @@ class _EventAnalyzer(LlmAnalyzer):
                         self.pack.document.ticker,
                         self.persona,
                         stage,
+                        owner_token,
                     )
             raise
 
@@ -324,28 +359,42 @@ class _EventAnalyzer(LlmAnalyzer):
     async def complete_unbilled_critic(self) -> None:
         """Persist a critic hard-gate result that required no provider call."""
         stage = EventAnalysisStage.CRITIC
-        claim = await self.receipts.claim(
-            self.pack,
-            self.persona,
-            stage,
-            self.now,
-            self.cooldown,
-        )
-        if claim is EventAnalysisReceiptClaim.COMPLETED:
-            self.completed += 1
-            return
-        if claim is not EventAnalysisReceiptClaim.CLAIMED:
-            return
-        self.attempted += 1
-        with anyio.CancelScope(shield=True):
-            await self.receipts.complete(
-                self.pack.document.event_id,
-                self.pack.document.ticker,
+        owner_token = uuid4().hex
+        try:
+            claim = await self.receipts.claim(
+                self.pack,
                 self.persona,
                 stage,
-                {"gate_result": True},
+                self.now,
+                self.cooldown,
+                owner_token,
             )
-        self.completed += 1
+            if claim is EventAnalysisReceiptClaim.COMPLETED:
+                self.reused += 1
+                return
+            if claim is not EventAnalysisReceiptClaim.CLAIMED:
+                return
+            self.attempted += 1
+            with anyio.CancelScope(shield=True):
+                await self.receipts.complete(
+                    self.pack.document.event_id,
+                    self.pack.document.ticker,
+                    self.persona,
+                    stage,
+                    {"gate_result": True},
+                    owner_token,
+                )
+            self.completed += 1
+        except anyio.get_cancelled_exc_class():
+            with anyio.CancelScope(shield=True):
+                await self.receipts.release_unbilled(
+                    self.pack.document.event_id,
+                    self.pack.document.ticker,
+                    self.persona,
+                    stage,
+                    owner_token,
+                )
+            raise
 
 
 @dataclass(frozen=True, slots=True)
@@ -360,6 +409,7 @@ class AnalysisJob:
     calendar: NyseCalendar = field(default_factory=NyseCalendar)
     # 종목당 프롬프트에 넣을 헤드라인 수(``news.headlines_per_ticker``).
     headlines_per_ticker: int = 5
+    event_timeout_seconds: float = 30.0
 
     async def run(self, *, as_of: date, session: date) -> AnalysisRun:
         """Decide, verify, and persist one signal per ticker in scope."""
@@ -437,6 +487,7 @@ class AnalysisJob:
             self.profile_name,
             now,
             cooldown,
+            self.event_timeout_seconds,
         )
         try:
             outcome = await self._analyse(
@@ -465,11 +516,12 @@ class AnalysisJob:
             )
         except _EventStageStoppedError as stopped:
             return stopped.run
-        if event_analyzer.completed == 1:
+        if event_analyzer.completed + event_analyzer.reused == 1:
             await event_analyzer.complete_unbilled_critic()
         return EventAnalysisRun(
             attempted=event_analyzer.attempted,
             completed=event_analyzer.completed,
+            reused=event_analyzer.reused,
             suppressed=event_analyzer.suppressed,
             reason="completed" if outcome is not None else "no_outcome",
         )

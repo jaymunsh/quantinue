@@ -191,7 +191,8 @@ class EventIngestionRuntime:
             await self.ingestor.ingest(source_name, as_of)
             dispatched = True
             self._last_dispatch[source_name] = now
-        self.last_evidence_run = await self.ingestor.prepare_evidence(now) if dispatched else None
+        if dispatched:
+            self.last_evidence_run = await self.ingestor.prepare_evidence(now)
 
     async def close(self) -> None:
         """Release resources owned by the executor."""

@@ -34,6 +34,17 @@ CREATE TABLE IF NOT EXISTS tb_watch_sweep_item (
   CHECK ((status = 'completed') = (completed_at IS NOT NULL))
 );
 
+CREATE TABLE IF NOT EXISTS tb_rejudgement_cooldown (
+  ticker TEXT NOT NULL,
+  persona TEXT NOT NULL,
+  status TEXT NOT NULL CHECK (status IN ('claimed','completed')),
+  owner_token TEXT NOT NULL,
+  claimed_at TIMESTAMPTZ NOT NULL,
+  completed_at TIMESTAMPTZ,
+  PRIMARY KEY (ticker, persona),
+  CHECK ((status = 'completed') = (completed_at IS NOT NULL))
+);
+
 -- 1. reason TEXT -> JSONB (4 tables). Legacy prose is preserved under "legacy".
 DO $$
 DECLARE
@@ -646,6 +657,7 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
   ticker TEXT NOT NULL,
   persona TEXT NOT NULL,
   status TEXT NOT NULL,
+  owner_token TEXT,
   result_payload JSONB,
   order_id BIGINT REFERENCES tb_order(id),
   claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -662,6 +674,7 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
 );
 
 ALTER TABLE tb_event_processing_receipt
+  ADD COLUMN IF NOT EXISTS owner_token TEXT,
   ADD COLUMN IF NOT EXISTS result_payload JSONB;
 
 ALTER TABLE tb_normalized_event
@@ -723,6 +736,7 @@ BEGIN
       ('tb_event_processing_receipt','ticker','text',true,'none'),
       ('tb_event_processing_receipt','persona','text',true,'none'),
       ('tb_event_processing_receipt','status','text',true,'none'),
+      ('tb_event_processing_receipt','owner_token','text',false,'none'),
       ('tb_event_processing_receipt','result_payload','jsonb',false,'none'),
       ('tb_event_processing_receipt','order_id','bigint',false,'none'),
       ('tb_event_processing_receipt','claimed_at','timestamp with time zone',true,'now'),
