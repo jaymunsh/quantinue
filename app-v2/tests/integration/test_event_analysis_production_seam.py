@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, PostgresDsn
 from pydantic_settings import SettingsConfigDict
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
+from typing_extensions import override
 
 from integration.test_event_evidence import (
     _DATABASE_URL,
@@ -39,8 +40,10 @@ from quantinue.llm.provider import (
 )
 from quantinue.llm.usage_limits import MaximumTokenUsage, TokenUsage
 from quantinue.orchestration.job_factory import JobSources, build_job_runner
+from quantinue.orchestration.job_runner import JobRunner
 from quantinue.orchestration.policy import (
     BudgetConfig,
+    EventIngestionConfig,
     JobCadenceConfig,
     JobsConfig,
     Mvp2Config,
@@ -123,6 +126,46 @@ class _TransportAnalyzer:
         return await self.analyze(task, prompt, profile=profile)
 
 
+class _AdversarialTransport(_TransportAnalyzer):
+    def __init__(self, mode: str) -> None:
+        super().__init__()
+        self.mode = mode
+
+    @override
+    async def analyze_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        if self.mode == "pre_cancel":
+            raise anyio.get_cancelled_exc_class()
+        await boundary.dispatched()
+        if self.mode == "in_call_cancel":
+            raise anyio.get_cancelled_exc_class()
+        if self.mode == "hang":
+            await anyio.sleep_forever()
+        if self.mode == "malformed":
+            raise ValueError
+        if self.mode == "steal_owner":
+            engine = create_async_engine(_DATABASE_URL)
+            async with engine.begin() as connection:
+                _ = await connection.execute(
+                    text(
+                        """
+                        UPDATE tb_event_processing_receipt
+                        SET owner_token='stolen-owner'
+                        WHERE persona LIKE 'analysis:%'
+                          AND status='claimed' AND completed_at IS NOT NULL
+                        """
+                    )
+                )
+            await engine.dispose()
+        return await self.analyze(task, prompt, profile=profile)
+
+
 async def _seed_analysis_scope(database_url: str) -> None:
     engine = create_async_engine(database_url)
     async with engine.begin() as connection:
@@ -194,6 +237,66 @@ async def _event_ledger_counts() -> tuple[int, ...]:
         ).one()
     await engine.dispose()
     return tuple(int(value) for value in row)
+
+
+def _adversarial_article(identity: int) -> RawNewsWrite:
+    return RawNewsWrite(
+        article_id=identity,
+        ticker="AAPL",
+        trade_date=datetime(2026, 7, 24, tzinfo=UTC).date(),
+        headline=f"Apple raises guidance {identity}",
+        source="Reuters",
+        url=f"https://reuters.com/markets/{identity}",
+        published_at=datetime(2026, 7, 24, 13, 30, tzinfo=UTC),
+    )
+
+
+async def _adversarial_runner(
+    analyzer: _TransportAnalyzer | BudgetedAnalyzer,
+    identity: int,
+    *,
+    daily_limit: float = 3,
+    analysis_timeout_seconds: float = 30,
+) -> tuple[JobRunner, PostgresRunStore]:
+    config = _event_config(enabled=True, daily_limit=daily_limit).model_copy(
+        update={
+            "event_ingestion": EventIngestionConfig(
+                analysis_timeout_seconds=analysis_timeout_seconds
+            )
+        }
+    )
+    store = PostgresRunStore(_DATABASE_URL)
+    await store.initialize()
+    bounded_analyzer = (
+        analyzer
+        if isinstance(analyzer, BudgetedAnalyzer)
+        else BudgetedAnalyzer(
+            analyzer,
+            ledger=store.domain,
+            daily_limit_usd=daily_limit,
+            pricing=config.budget.model_pricing,
+        )
+    )
+    runner = build_job_runner(
+        _IsolatedSettings(database_url=PostgresDsn(_DATABASE_URL)),
+        config,
+        store=store,
+        sources=JobSources(
+            analyzer=bounded_analyzer,
+            disclosures=_EmptyDisclosureSource(),
+            news=_ArticleSource(_adversarial_article(identity)),
+            wire_news=_EmptyNewsSource(),
+            ownership=object(),
+        ),
+    )
+    assert runner is not None
+    return runner, store
+
+
+async def _close_adversarial_runner(runner: JobRunner, store: PostgresRunStore) -> None:
+    if runner.event_runtime is not None:
+        await runner.event_runtime.close()
+    await store.close()
 
 
 @pytest.mark.anyio
@@ -572,3 +675,106 @@ async def test_public_job_runner_executes_event_analysis_once_end_to_end() -> No
     await restarted.event_runtime.close()
     await engine.dispose()
     await store.close()
+
+
+@pytest.mark.anyio
+async def test_public_runner_critic_refusal_restarts_at_critic_only() -> None:
+    await _reset_database()
+    await _seed_analysis_scope(_DATABASE_URL)
+    analyzer = _TransportAnalyzer()
+    runner, store = await _adversarial_runner(analyzer, 7201, daily_limit=0.00249)
+    now = datetime(2026, 7, 24, 14, tzinfo=UTC)
+    _ = await runner.tick(now)
+    assert [task for task, _, _ in analyzer.calls] == [AnalysisTask.STRATEGY]
+    assert runner.last_event_analysis_run is not None
+    assert runner.last_event_analysis_run.reason == "critic_budget_refused"
+    restarted, restarted_store = await _adversarial_runner(analyzer, 7201, daily_limit=1)
+    _ = await restarted.tick(now + timedelta(minutes=31))
+    assert [task for task, _, _ in analyzer.calls] == [AnalysisTask.STRATEGY]
+    assert restarted.last_event_analysis_run is not None
+    assert restarted.last_event_analysis_run.completed == 0
+    assert restarted.last_event_analysis_run.suppressed == 1
+    await _close_adversarial_runner(runner, store)
+    await _close_adversarial_runner(restarted, restarted_store)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("mode", "reason"),
+    [
+        pytest.param(
+            "malformed",
+            "persona_failed",
+            id="malformed-provider-output",
+        ),
+        pytest.param(
+            "hang",
+            "strategist_timeout",
+            id="permanently-hanging-provider",
+        ),
+    ],
+)
+async def test_public_runner_bounds_provider_failures(
+    mode: str, reason: str
+) -> None:
+    await _reset_database()
+    await _seed_analysis_scope(_DATABASE_URL)
+    analyzer = _AdversarialTransport(mode)
+    runner, store = await _adversarial_runner(
+        analyzer, 7300 + len(mode), analysis_timeout_seconds=0.05
+    )
+    _ = await runner.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    assert runner.last_event_analysis_run is not None
+    assert reason in runner.last_event_analysis_run.reason
+    _, _, cooldowns, signals, verdicts, orders = await _event_ledger_counts()
+    assert (cooldowns, signals, verdicts, orders) == (1, 0, 0, 0)
+    await _close_adversarial_runner(runner, store)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("mode", "paid_state"),
+    [
+        pytest.param("pre_cancel", (0, 0), id="pre-dispatch"),
+        pytest.param("in_call_cancel", (1, 1), id="in-call"),
+    ],
+)
+async def test_public_runner_cancellation_respects_paid_boundary(
+    mode: str, paid_state: tuple[int, int]
+) -> None:
+    await _reset_database()
+    await _seed_analysis_scope(_DATABASE_URL)
+    analyzer = _AdversarialTransport(mode)
+    runner, store = await _adversarial_runner(analyzer, 7400 + len(mode))
+    with pytest.raises(anyio.get_cancelled_exc_class()):
+        await runner.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    usage, _, cooldowns, signals, verdicts, orders = await _event_ledger_counts()
+    assert (usage, cooldowns) == paid_state
+    assert (signals, verdicts, orders) == (0, 0, 0)
+    await _close_adversarial_runner(runner, store)
+
+
+@pytest.mark.anyio
+async def test_public_runner_active_wrong_owner_causes_zero_provider_calls() -> None:
+    await _reset_database()
+    await _seed_analysis_scope(_DATABASE_URL)
+    engine = create_async_engine(_DATABASE_URL)
+    async with engine.begin() as connection:
+        _ = await connection.execute(
+            text(
+                """
+                INSERT INTO tb_rejudgement_cooldown
+                  (ticker,persona,status,claimed_at,owner_token)
+                VALUES ('AAPL','aggressive','claimed',:now,'other-runner')
+                """
+            ),
+            {"now": datetime(2026, 7, 24, 14, tzinfo=UTC)},
+        )
+    await engine.dispose()
+    analyzer = _TransportAnalyzer()
+    runner, store = await _adversarial_runner(analyzer, 7501)
+    _ = await runner.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    assert analyzer.calls == []
+    assert runner.last_event_analysis_run is not None
+    assert runner.last_event_analysis_run.reason == "strategist_suppressed"
+    await _close_adversarial_runner(runner, store)
