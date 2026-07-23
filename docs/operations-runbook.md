@@ -283,11 +283,14 @@ test "$db_name_user" = 'quantinue:quantinue' || {
   echo '중단: app-v2 DB 이름/사용자가 정본과 다르다.' >&2
   exit 1
 }
+umask 077
 mkdir -p .runtime/preactivation-backups
+chmod 700 .runtime/preactivation-backups
 stamp="$(date +%Y%m%dT%H%M%S%z)"
 backup=".runtime/preactivation-backups/quantinue-5445-preactivation-${stamp}.dump"
 (set -o noclobber; docker exec app-v2-db-1 pg_dump -Fc -U quantinue -d quantinue > "$backup")
 test -s "$backup"
+chmod 600 "$backup"
 docker run --rm \
   -v "$PWD/$(dirname "$backup"):/backup:ro" postgres:17-alpine \
   pg_restore -l "/backup/$(basename "$backup")" >/dev/null
@@ -298,6 +301,10 @@ docker exec -i app-v2-db-1 psql -X -U quantinue -d quantinue \
 docker exec -i app-v2-db-1 psql -X -U quantinue -d quantinue \
   -v ON_ERROR_STOP=1 < db/migrations/mvp2.sql
 ```
+
+백업은 활성화·롤백 증거이므로 자동 삭제하지 않는다. 경로는 `.runtime/` 아래라
+Git에 포함하지 않고, 디렉터리 `0700`·dump `0600`을 유지한다. 정리 시점과
+보관 개수가 별도 정책으로 확정되기 전에는 임의로 삭제하지 않는다.
 
 실제 활성화·롤백 직전에는 아래 함수를 **같은 셸에서 먼저** 실행한다. 등록 잡
 14개의 마지막 성공과 주기(유니버스 7일, 나머지 1일)를 현재 뉴욕 슬롯과
