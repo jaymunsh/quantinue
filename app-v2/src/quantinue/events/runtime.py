@@ -6,6 +6,8 @@ from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING, Protocol
 
+import anyio
+
 from quantinue.core.market_calendar import NEW_YORK
 from quantinue.events.adapters import NewsEventSourceAdapter, SecEventSourceAdapter
 from quantinue.events.evidence import EvidenceDocumentError
@@ -98,14 +100,15 @@ class EventIngestionExecutor:
 
     async def close(self) -> None:
         """Dispose both database pools even if the first close fails."""
-        try:
-            await self.repository.close()
-        finally:
+        with anyio.CancelScope(shield=True):
             try:
-                await self.routing_repository.close()
+                await self.repository.close()
             finally:
-                if self.evidence_repository is not None:
-                    await self.evidence_repository.close()
+                try:
+                    await self.routing_repository.close()
+                finally:
+                    if self.evidence_repository is not None:
+                        await self.evidence_repository.close()
 
 
 @dataclass
@@ -115,9 +118,7 @@ class EventIngestionRuntime:
     config: EventIngestionConfig
     ingestor: EventIngestor
     _last_dispatch: dict[str, datetime] = field(default_factory=dict, init=False)
-    last_evidence_runs: tuple[EvidencePreparationRun, ...] = field(
-        default=(), init=False
-    )
+    last_evidence_run: EvidencePreparationRun | None = field(default=None, init=False)
 
     async def tick(self, now: datetime) -> None:
         """Dispatch due sources, coalescing delayed ticks into one run."""
@@ -131,8 +132,15 @@ class EventIngestionRuntime:
             if result is not None:
                 evidence_runs.append(result)
             self._last_dispatch[source_name] = now
-        self.last_evidence_runs = tuple(evidence_runs)
+        if evidence_runs:
+            self.last_evidence_run = EvidencePreparationRun(
+                prepared=sum(run.prepared for run in evidence_runs),
+                failed=sum(run.failed for run in evidence_runs),
+            )
+        else:
+            self.last_evidence_run = None
 
     async def close(self) -> None:
         """Release resources owned by the executor."""
-        await self.ingestor.close()
+        with anyio.CancelScope(shield=True):
+            await self.ingestor.close()

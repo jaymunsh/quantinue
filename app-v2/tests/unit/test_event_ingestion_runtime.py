@@ -1,7 +1,9 @@
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
+import anyio
 import pytest
+from typing_extensions import override
 
 from quantinue.events.runtime import EventIngestionRuntime
 from quantinue.orchestration.policy import EventIngestionConfig
@@ -46,4 +48,28 @@ async def test_runtime_closes_the_ingestion_and_routing_owner() -> None:
     await runtime.close()
 
     # Then
+    assert recorder.closed
+
+
+@pytest.mark.anyio
+async def test_runtime_close_finishes_awaited_disposal_under_cancellation() -> None:
+    class AwaitingRecorder(Recorder):
+        started = anyio.Event()
+        release = anyio.Event()
+
+        @override
+        async def close(self) -> None:
+            self.started.set()
+            await self.release.wait()
+            self.closed = True
+
+    recorder = AwaitingRecorder()
+    runtime = EventIngestionRuntime(EventIngestionConfig(), recorder)
+
+    async with anyio.create_task_group() as task_group:
+        _ = task_group.start_soon(runtime.close)
+        await recorder.started.wait()
+        task_group.cancel_scope.cancel()
+        recorder.release.set()
+
     assert recorder.closed

@@ -403,7 +403,10 @@ async def test_runtime_retries_evidence_after_durable_accepted_receipt(
     routing_database_url: str,
 ) -> None:
     # Given
-    document = _document("runtime-evidence-retry")
+    documents = (
+        _document("runtime-evidence-poison"),
+        _document("runtime-evidence-valid"),
+    )
 
     class OnePageSource:
         async def fetch_page(
@@ -413,20 +416,29 @@ async def test_runtime_retries_evidence_after_durable_accepted_receipt(
             overlap: timedelta,
         ) -> EventPage:
             _ = cursor, page_token, overlap
-            return EventPage((document,), None, "2026-07-24T14:00:00+00:00")
+            return EventPage(documents, None, "2026-07-24T14:00:00+00:00")
 
     class FailingEvidence(PostgresEventEvidenceRepository):
+        failed = False
+
         @override
         async def prepare(
             self,
             route: AcceptedRoute,
             analyzer: LlmAnalyzer,
-                *,
-                summary_prompt_version: str | None = None,
-                summary_timeout_seconds: float = 30.0,
-            ) -> EvidencePack:
-                _ = route, analyzer, summary_prompt_version, summary_timeout_seconds
+            *,
+            summary_prompt_version: str | None = None,
+            summary_timeout_seconds: float = 30.0,
+        ) -> EvidencePack:
+            if not self.failed:
+                self.failed = True
                 raise EvidenceDocumentError(EvidenceErrorCode.OVERSIZED)
+            return await super().prepare(
+                route,
+                analyzer,
+                summary_prompt_version=summary_prompt_version,
+                summary_timeout_seconds=summary_timeout_seconds,
+            )
 
     analyzer = _NeverCalledAnalyzer()
     config = EventIngestionConfig()
@@ -444,8 +456,8 @@ async def test_runtime_retries_evidence_after_durable_accepted_receipt(
 
     # When
     await interrupted.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
-    assert interrupted.last_evidence_runs == (
-        EvidencePreparationRun(prepared=0, failed=1),
+    assert interrupted.last_evidence_run == EvidencePreparationRun(
+        prepared=1, failed=1
     )
     await interrupted.close()
     resumed = EventIngestionRuntime(
@@ -478,7 +490,7 @@ async def test_runtime_retries_evidence_after_durable_accepted_receipt(
         ).one()
     await engine.dispose()
     await resumed.close()
-    assert tuple(counts) == (1, 1)
+    assert tuple(counts) == (2, 2)
     assert analyzer.calls == 0
 
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from hashlib import sha256
 
 import pytest
@@ -77,8 +78,18 @@ def test_strategy_input_contains_provenance_raw_spans_and_optional_summary() -> 
     rendered = render_strategy_evidence(document, spans, "structured summary")
 
     # Then
-    assert document.content_hash in rendered
-    assert document.source_sequence in rendered
-    assert "material guidance raised" in rendered
-    assert "structured summary" in rendered
-    assert "[0:24]" in rendered
+    expected = {
+        "format": "event-evidence-v1",
+        "provenance": {
+            "source": document.source_name,
+            "source_document_id": document.source_document_id,
+            "source_sequence": document.source_sequence,
+            "ticker": document.ticker,
+            "content_hash": document.content_hash,
+        },
+        "summary": "structured summary",
+        "spans": [{"start": 0, "end": 24, "text": "material guidance raised"}],
+    }
+    assert rendered == json.dumps(
+        expected, ensure_ascii=True, separators=(",", ":")
+    )

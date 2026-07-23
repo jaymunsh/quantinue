@@ -14,6 +14,8 @@ from pydantic_settings import SettingsConfigDict
 from quantinue.core.config import DataMode, Settings
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.domain_records import DailyBarWrite, KnownListing, RawNewsWrite
+from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
+from quantinue.events.runtime import EventIngestionExecutor, EventIngestionRuntime
 from quantinue.llm.provider import DeterministicAnalyzer
 from quantinue.market_data.fixture import FixtureMarketData
 from quantinue.market_data.models import MacroObservation, Provenance, SecuritySnapshot
@@ -891,3 +893,22 @@ def test_an_installation_without_telegram_has_no_daily_note() -> None:
     # Then
     assert runner is not None
     assert "daily_summary" not in [job.name for job in runner.jobs]
+
+
+def test_factory_injects_evidence_repository_and_selected_analyzer() -> None:
+    analyzer = DeterministicAnalyzer()
+
+    runner = build_job_runner(
+        _settings(),
+        Mvp2Config(),
+        store=_Store(_HoldingDomain(())),
+        sources=JobSources(analyzer=analyzer),
+    )
+
+    assert runner is not None
+    runtime = runner.event_runtime
+    assert isinstance(runtime, EventIngestionRuntime)
+    executor = runtime.ingestor
+    assert isinstance(executor, EventIngestionExecutor)
+    assert isinstance(executor.evidence_repository, PostgresEventEvidenceRepository)
+    assert executor.analyzer is analyzer

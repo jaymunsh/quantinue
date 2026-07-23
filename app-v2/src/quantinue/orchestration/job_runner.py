@@ -118,6 +118,11 @@ class JobRunner:
         """Registered jobs in execution order — the order is a data dependency."""
         return self._jobs
 
+    @property
+    def event_runtime(self) -> EventRuntime | None:
+        """Runtime assembled for durable event processing."""
+        return self._event_runtime
+
     async def tick(self, now: datetime) -> tuple[JobOutcome, ...]:
         """Decide and run whatever is due, returning one outcome per job."""
         if not self._config.enabled:
@@ -239,4 +244,5 @@ class JobRunner:
                 await anyio.sleep(self._config.tick_seconds)
         finally:
             if self._event_runtime is not None:
-                await self._event_runtime.close()
+                with anyio.CancelScope(shield=True):
+                    await self._event_runtime.close()
