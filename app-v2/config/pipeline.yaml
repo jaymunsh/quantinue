@@ -109,7 +109,7 @@ mvp2:
       exits:
         interval_days: 1
   watch:
-    enabled: false
+    enabled: true
     interval_minutes: 1
     session: regular
     rejudge:
