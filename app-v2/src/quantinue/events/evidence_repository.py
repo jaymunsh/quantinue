@@ -18,6 +18,7 @@ from quantinue.events.evidence import (
     build_evidence_spans,
     render_strategy_evidence,
     summary_prompt,
+    summary_prompt_identity,
     summary_task,
 )
 from quantinue.llm.prompts import load_system_prompt
@@ -64,6 +65,7 @@ class PostgresEventEvidenceRepository:
         analyzer: LlmAnalyzer,
         *,
         summary_prompt_version: str | None = None,
+        summary_timeout_seconds: float = 30.0,
     ) -> EvidencePack:
         """Build one routed event's durable bounded evidence pack."""
         with anyio.CancelScope(shield=True):
@@ -96,6 +98,7 @@ class PostgresEventEvidenceRepository:
                     document,
                     analyzer,
                     summary_prompt_version=summary_prompt_version,
+                    summary_timeout_seconds=summary_timeout_seconds,
                 )
             return EvidencePack(
                 document=document,
@@ -164,6 +167,7 @@ class PostgresEventEvidenceRepository:
         analyzer: LlmAnalyzer,
         *,
         summary_prompt_version: str | None,
+        summary_timeout_seconds: float,
     ) -> str | None:
         if len(document.normalized_text) <= DIRECT_DOCUMENT_CHARS:
             return None
@@ -175,7 +179,8 @@ class PostgresEventEvidenceRepository:
             if summary_prompt_version is None
             else summary_prompt_version
         )
-        cache_key = f"{document.content_hash}:{model}:{prompt_version}"
+        prompt_identity = summary_prompt_identity(task, prompt_version)
+        cache_key = f"{document.content_hash}:{model}:{prompt_identity}"
         _ = await connection.execute(
             text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
             {"key": cache_key},
@@ -189,13 +194,13 @@ class PostgresEventEvidenceRepository:
                     FROM tb_event_summary_cache
                     WHERE content_hash = :content_hash
                       AND model = :model
-                      AND prompt_version = :prompt_version
+                      AND prompt_version = :prompt_identity
                     """
                     ),
                     {
                         "content_hash": document.content_hash,
                         "model": model,
-                        "prompt_version": prompt_version,
+                        "prompt_identity": prompt_identity,
                     },
                 )
             )
@@ -205,7 +210,7 @@ class PostgresEventEvidenceRepository:
         if cached is not None:
             return _SummaryRow.model_validate(dict(cached)).summary_text
         summary = ""
-        with anyio.CancelScope(shield=True):
+        with anyio.fail_after(summary_timeout_seconds):
             result = await analyzer.analyze(task, prompt)
             summary = result.reason.strip()
             if not summary:
@@ -230,7 +235,7 @@ class PostgresEventEvidenceRepository:
                     "content_hash": document.content_hash,
                     "normalized_length": len(document.normalized_text),
                     "model": model,
-                    "prompt_version": prompt_version,
+                    "prompt_version": prompt_identity,
                     "summary_text": summary,
                 },
             )

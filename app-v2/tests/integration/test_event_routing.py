@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from typing_extensions import override
 
+from quantinue.events.evidence import EvidenceDocumentError, EvidenceErrorCode
 from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
 from quantinue.events.ingestion import (
     EventDocument,
@@ -23,7 +24,11 @@ from quantinue.events.routing_repository import (
     PostgresEventRoutingRepository,
     route_pending_events,
 )
-from quantinue.events.runtime import EventIngestionExecutor, EventIngestionRuntime
+from quantinue.events.runtime import (
+    EventIngestionExecutor,
+    EventIngestionRuntime,
+    EvidencePreparationRun,
+)
 from quantinue.llm.usage_limits import MaximumTokenUsage
 from quantinue.orchestration.job_runner import JobRunner
 from quantinue.orchestration.policy import EventIngestionConfig, JobsConfig
@@ -416,12 +421,12 @@ async def test_runtime_retries_evidence_after_durable_accepted_receipt(
             self,
             route: AcceptedRoute,
             analyzer: LlmAnalyzer,
-            *,
-            summary_prompt_version: str | None = None,
-        ) -> EvidencePack:
-            _ = route, analyzer, summary_prompt_version
-            message = "evidence interrupted"
-            raise RuntimeError(message)
+                *,
+                summary_prompt_version: str | None = None,
+                summary_timeout_seconds: float = 30.0,
+            ) -> EvidencePack:
+                _ = route, analyzer, summary_prompt_version, summary_timeout_seconds
+                raise EvidenceDocumentError(EvidenceErrorCode.OVERSIZED)
 
     analyzer = _NeverCalledAnalyzer()
     config = EventIngestionConfig()
@@ -438,8 +443,10 @@ async def test_runtime_retries_evidence_after_durable_accepted_receipt(
     )
 
     # When
-    with pytest.raises(RuntimeError, match="evidence interrupted"):
-        await interrupted.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    await interrupted.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    assert interrupted.last_evidence_runs == (
+        EvidencePreparationRun(prepared=0, failed=1),
+    )
     await interrupted.close()
     resumed = EventIngestionRuntime(
         config,

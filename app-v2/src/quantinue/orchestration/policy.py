@@ -137,6 +137,8 @@ class EventIngestionConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True, extra="forbid")
 
+    summary_timeout_seconds: float = Field(default=30.0, gt=0, le=300)
+
     sources: dict[str, EventSourceScheduleConfig] = Field(
         default_factory=_default_event_sources
     )
