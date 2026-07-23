@@ -330,21 +330,29 @@
 
   <!-- ── 히어로 ── -->
   <header class="hero">
-    <div class="eyebrow">Quantinue MVP-2 · v6.3 · 2026-07-23</div>
+    <div class="eyebrow">Quantinue MVP-2 · v6.4 · 2026-07-24</div>
     <h1>매일 아침 스스로 도는<br><span class="hl">AI 모의 운용</span> 시스템</h1>
     <p class="lede">
       시세·공시·뉴스는 <b>실물 데이터</b>로 받고, 판단은 <b>LLM 두 성향</b>이 내리고,
       크리틱이 반박하고, 돈은 <b>모의 계좌</b>에서만 움직인다.
-      사람이 누르는 버튼은 없다 — <b>JOB 12종(+조건부 1)</b>이 뉴욕 세션일마다 한 번씩 돌고,
+      사람이 누르는 버튼은 없다 — <b>등록 JOB 14종</b>이 각자의 주기에 맞춰 돌고,
       모든 판단은 자기 근거를 가리키는 <b>계보(FK)</b>로 원장에 남고, 하루의 결과는
       <b>텔레그램 한 통</b>으로 온다.
     </p>
     <div class="chips">
-      <span class="chip">JOB <b>12종+1</b> 자동 운행</span>
+      <span class="chip">JOB <b>14종</b> 등록</span>
       <span class="chip">투자 성향 <b>2종</b> (aggressive · conservative)</span>
       <span class="chip">체결 <b>MockBroker</b> 시뮬</span>
-      <span class="chip">테스트 <b>572 + 107</b> green</span>
-      <span class="chip">LLM <b>로컬</b> (oMLX · Qwen3.6-35B)</span>
+      <span class="chip">테스트 <b>756 + 186</b> green</span>
+      <span class="chip">LLM <b>OpenAI</b> · 일 $3 상한</span>
+    </div>
+    <div class="note">
+      <b>2026-07-24 로컬 개발 상태:</b> 일일 체인과 별도로 SEC 30분·뉴스 15분·
+      와이어 10분 증분 수집, 관련 종목의 전략가/critic 재판단, 변경 판단의
+      표적 모의 주문까지 구현·일회용 PostgreSQL에서 검증했다. 운영 기본값은
+      <code>watch=true</code>, <code>rejudge=false</code>,
+      <code>stream=false</code>다. 실제 5445 migration·8020 재기동·정규장
+      안정성 검증은 별도 운영 활성화 단계다.
     </div>
   </header>
 
@@ -372,14 +380,14 @@ flowchart LR
     <h3>1차(MVP-1)와 무엇이 다른가</h3>
     <p>
       1차는 <b>종목 하나</b>가 역할 01~11을 순서대로 통과하는 선형 러너였다.
-      2차는 그 러너를 삭제하고(커밋 <code>1a48aea</code>) <b>서로 독립인 JOB 12종</b>으로
+      2차는 그 러너를 삭제하고(커밋 <code>1a48aea</code>) <b>서로 독립인 등록 JOB 14종</b>으로
       재편했다. 이 문서에서 <span class="b b-new">2차 신규</span> 배지가 붙은 것은
       1차에 없던 구성 요소다.
     </p>
     <div class="twrap"><table>
       <thead><tr><th></th><th>1차 (MVP-1)</th><th>2차 (MVP-2, 현행)</th></tr></thead>
       <tbody>
-        <tr><td><b>실행 단위</b></td><td>종목 1개 × 역할 11단계 선형 런</td><td><b>JOB 12종</b> — 서로 독립, DB로만 통신 <span class="b b-new">2차 신규</span></td></tr>
+        <tr><td><b>실행 단위</b></td><td>종목 1개 × 역할 11단계 선형 런</td><td><b>등록 JOB 14종</b> — 서로 독립, DB로만 통신 <span class="b b-new">2차 신규</span></td></tr>
         <tr><td><b>실패 반경</b></td><td>한 단계가 죽으면 런 전체 실패</td><td>한 JOB이 죽어도 나머지는 어제 데이터로 돈다</td></tr>
         <tr><td><b>실행 방식</b></td><td>수동 트리거 + 사이클 스케줄러</td><td><code>mvp2.jobs.enabled=true</code> — 스스로 돈다, 수동 트리거 없음 <span class="b b-new">2차 신규</span></td></tr>
         <tr><td><b>멱등 축</b></td><td><code>pipeline_runs</code> (run_id · cycle_ts)</td><td><code>tb_job_run</code> PK <code>(job_name, slot_date)</code> = "JOB 하나는 하루 한 번" <span class="b b-new">2차 신규</span></td></tr>
@@ -2080,6 +2088,11 @@ erDiagram
     <div class="twrap"><table>
       <thead><tr><th>버전</th><th>날짜</th><th>내용</th></tr></thead>
       <tbody>
+        <tr class="r-new"><td class="mono"><b>v6.4</b></td><td class="mono">2026-07-24</td>
+          <td><b>로컬 개발 완료 경계 반영.</b> 장중 사건 증분 수집·관련 종목
+          at-most-once 재판단·표적 모의 주문과 source 상태 관측을 구현했다.
+          poll-only Gate A는 통과했으며 rejudge·stream과 운영 DB migration은
+          별도 활성화 단계로 남긴다.</td></tr>
         <tr class="r-new"><td class="mono"><b>v6.3</b></td><td class="mono">2026-07-23</td>
           <td><b>외부 dead-man heartbeat 반영.</b> 앱 내부 Telegram은 잡·매매 사건,
           Healthchecks.io는 8020/DB/WatchRunner가 통째로 침묵하는 경우를 맡는다.

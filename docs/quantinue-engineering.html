@@ -307,7 +307,7 @@
   <div class="wrap">
 
   <header class="hero">
-    <div class="eyebrow">Quantinue MVP-2 · 기술 부록 v1.3 · <span class="nowrap">2026-07-23</span></div>
+    <div class="eyebrow">Quantinue MVP-2 · 기술 부록 v1.4 · <span class="nowrap">2026-07-24</span></div>
     <h1>어떻게 여기까지 왔고,<br><span class="hl">내부는 어떻게</span> 생겼나</h1>
     <p class="lede">
       <a href="quantinue-integrated-design.html">설계 정본</a>이 "현재의 시스템"이라면, 이 문서는
@@ -320,6 +320,14 @@
       <span class="chip">커밋 <b>281</b></span>
       <span class="chip">결함 통산 <b>27건</b> + 1차 T13건</span>
       <span class="chip">테스트 <b>603 + 110</b> green</span>
+    </div>
+    <div class="note">
+      <b>현재 개발 경계:</b> 장중 사건 수집·정규화·증거 묶음·관련 종목 라우팅,
+      전략가/critic의 persona별 at-most-once 호출과 변경 판단의 기존 청산·배분
+      연결까지 로컬 구현을 마쳤다. fresh checkout에서 유닛/웹 756개,
+      PostgreSQL 통합 186개가 통과했다. 운영은
+      <code>rejudge=false</code>·<code>stream=false</code>이며 5445 migration과
+      8020 재기동은 이 코드 완료와 분리된 활성화 작업이다.
     </div>
   </header>
 
@@ -810,7 +818,7 @@ erDiagram
         <tr><td class="mono">app-v2/config/pipeline.yaml</td><td>정책 단일 소유자 — 문턱·주기·한도</td></tr>
       </tbody>
     </table></div>
-    <p class="small muted">부록 v1.3 · 2026-07-23 (v1.0: 07-20) · 작성: 문성혁 + Claude · 원천: dev-handoff.md ·
+    <p class="small muted">부록 v1.4 · 2026-07-24 (v1.0: 07-20) · 작성: 문성혁 + Claude · 원천: dev-handoff.md ·
     troubleshooting-log.md · git 이력 · app-v2 코드</p>
   </section>
 
