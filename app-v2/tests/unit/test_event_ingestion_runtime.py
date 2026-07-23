@@ -89,9 +89,15 @@ async def test_runtime_close_finishes_awaited_disposal_under_cancellation() -> N
 
 
 @pytest.mark.anyio
-async def test_executor_close_attempts_all_three_pools_once_and_raises_first_error() -> None:
+@pytest.mark.parametrize(
+    "first_errors",
+    [(RuntimeError("runtime"), ValueError("value"), OSError("os"))],
+)
+async def test_executor_close_attempts_all_three_pools_once_and_raises_first_error(
+    first_errors: tuple[Exception, ...],
+) -> None:
     class CloseRecorder:
-        def __init__(self, name: str, calls: list[str], error: RuntimeError | None) -> None:
+        def __init__(self, name: str, calls: list[str], error: Exception | None) -> None:
             self.name = name
             self.calls = calls
             self.error = error
@@ -101,30 +107,30 @@ async def test_executor_close_attempts_all_three_pools_once_and_raises_first_err
             if self.error is not None:
                 raise self.error
 
-    calls: list[str] = []
-    first_error = RuntimeError("ingestion close failed")
-    executor = EventIngestionExecutor(
-        config=EventIngestionConfig(),
-        sources={},
-        repository=cast(
-            "PostgresEventIngestionRepository",
-            cast("object", CloseRecorder("ingestion", calls, first_error)),
-        ),
-        routing_repository=cast(
-            "PostgresEventRoutingRepository",
-            cast("object", CloseRecorder("routing", calls, RuntimeError("routing close failed"))),
-        ),
-        evidence_repository=cast(
-            "PostgresEventEvidenceRepository",
-            cast("object", CloseRecorder("evidence", calls, RuntimeError("evidence close failed"))),
-        ),
-    )
+    for first_error in first_errors:
+        calls: list[str] = []
+        executor = EventIngestionExecutor(
+            config=EventIngestionConfig(),
+            sources={},
+            repository=cast(
+                "PostgresEventIngestionRepository",
+                cast("object", CloseRecorder("ingestion", calls, first_error)),
+            ),
+            routing_repository=cast(
+                "PostgresEventRoutingRepository",
+                cast("object", CloseRecorder("routing", calls, ValueError("routing failed"))),
+            ),
+            evidence_repository=cast(
+                "PostgresEventEvidenceRepository",
+                cast("object", CloseRecorder("evidence", calls, OSError("evidence failed"))),
+            ),
+        )
 
-    with pytest.raises(RuntimeError) as caught:
-        await executor.close()
+        with pytest.raises((RuntimeError, ValueError, OSError)) as caught:
+            await executor.close()
 
-    assert caught.value is first_error
-    assert calls == ["ingestion", "routing", "evidence"]
+        assert caught.value is first_error
+        assert calls == ["ingestion", "routing", "evidence"]
 
 
 @pytest.mark.anyio

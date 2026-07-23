@@ -584,39 +584,53 @@ async def test_cancelled_pass_restarts_without_duplicate_targets(
     )
 
     class CancellingRepository(PostgresEventRoutingRepository):
+        recorded = anyio.Event()
+
         @override
         async def record(self, decision: RoutingDecision, ticker: str) -> bool:
             recorded = await super().record(decision, ticker)
+            self.recorded.set()
             await anyio.sleep_forever()
             return recorded
 
     interrupted = CancellingRepository(routing_database_url)
 
     # When
-    with anyio.move_on_after(0.05) as cancellation:
-        _ = await route_pending_events(interrupted, date(2026, 7, 24))
+    try:
+        async with anyio.create_task_group() as task_group:
+            _ = task_group.start_soon(
+                route_pending_events,
+                interrupted,
+                date(2026, 7, 24),
+            )
+            await interrupted.recorded.wait()
+            task_group.cancel_scope.cancel()
+    finally:
+        await interrupted.close()
     resumed = PostgresEventRoutingRepository(routing_database_url)
-    run = await route_pending_events(resumed, date(2026, 7, 24))
+    try:
+        run = await route_pending_events(resumed, date(2026, 7, 24))
 
-    # Then
-    assert cancellation.cancel_called
-    assert run.accepted == 1
-    engine = create_async_engine(routing_database_url)
-    async with engine.connect() as connection:
-        targets = integer_value(
-            (
-                await connection.execute(
-                    text(
-                        """
-                        SELECT count(*) AS value
-                        FROM tb_event_processing_receipt
-                        WHERE persona LIKE 'routing:accepted:%'
-                        """
-                    )
+        # Then
+        assert run.accepted == 1
+        engine = create_async_engine(routing_database_url)
+        try:
+            async with engine.connect() as connection:
+                targets = integer_value(
+                    (
+                        await connection.execute(
+                            text(
+                                """
+                                SELECT count(*) AS value
+                                FROM tb_event_processing_receipt
+                                WHERE persona LIKE 'routing:accepted:%'
+                                """
+                            )
+                        )
+                    ).mappings().one()
                 )
-            ).mappings().one()
-        )
-    await engine.dispose()
-    await interrupted.close()
-    await resumed.close()
-    assert targets == 2
+        finally:
+            await engine.dispose()
+        assert targets == 2
+    finally:
+        await resumed.close()

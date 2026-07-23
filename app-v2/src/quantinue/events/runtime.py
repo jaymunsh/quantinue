@@ -110,7 +110,7 @@ class EventIngestionExecutor:
     async def close(self) -> None:
         """Attempt every pool once and raise the first cleanup failure."""
         with anyio.CancelScope(shield=True):
-            first_error: RuntimeError | None = None
+            first_error: Exception | None = None
             for repository in (
                 self.repository,
                 self.routing_repository,
@@ -120,7 +120,7 @@ class EventIngestionExecutor:
                     continue
                 try:
                     await repository.close()
-                except RuntimeError as error:
+                except Exception as error:  # noqa: BLE001 - 모든 일반 종료 오류 뒤에도 다음 풀을 닫는다
                     if first_error is None:
                         first_error = error
             if first_error is not None:
