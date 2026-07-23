@@ -6,7 +6,7 @@
 <title>Quantinue 하루의 해부 — 실측으로 따라가는 전체 흐름</title>
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="assets/quantinue-q-master.svg">
-<script>/* 초기 테마 (깜빡임 방지) */(function(){try{var t=localStorage.getItem('q-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>/* 초기 테마 (깜빡임 방지) */(function(){try{const t=localStorage.getItem('q-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <style>
 :root{
   --sans:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
@@ -24,7 +24,7 @@
 }
 *{box-sizing:border-box}
 html{scroll-behavior:smooth}
-body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.75;-webkit-font-smoothing:antialiased}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15.5px;line-height:1.75;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
 a{color:var(--accent);text-decoration:none}
 a:hover{text-decoration:underline}
 code{font-family:var(--mono);font-size:.86em;background:var(--accent-soft);padding:1px 6px;border-radius:5px}
@@ -74,7 +74,12 @@ td.mono,th.mono{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
 .chain .h{font-weight:700;margin:2px 0 4px}
 .chain .d{color:var(--ink-soft);font-size:14.2px;max-width:46em}
 .foot{margin-top:70px;padding-top:18px;border-top:1px solid var(--line);color:var(--ink-faint);font-size:12.5px;font-family:var(--mono)}
-@media (max-width:640px){body{font-size:15px}.hero h1{font-size:22px}}
+@media (max-width:640px){
+  body{font-size:15px}
+  .hero h1{font-size:22px}
+  .heartbeat-table{min-width:640px}
+  .topbar-in>a{display:none}
+}
 </style>
 </head>
 <body>
@@ -85,7 +90,7 @@ td.mono,th.mono{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
   <span class="sp"></span>
   <a href="quantinue-integrated-design.html" style="font-size:13px">설계서 ↗</a>
   <a href="quantinue-engineering.html" style="font-size:13px">기술 부록 ↗</a>
-  <button class="theme-btn" onclick="(function(){var r=document.documentElement,t=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',t);try{localStorage.setItem('q-theme',t)}catch(e){}})()">🌙</button>
+  <button class="theme-btn" type="button" onclick="(function(){var r=document.documentElement,t=r.getAttribute('data-theme')==='dark'?'light':'dark';r.setAttribute('data-theme',t);try{localStorage.setItem('q-theme',t)}catch(e){}})()">🌙</button>
 </div></div>
 
 <div class="wrap">
@@ -285,7 +290,7 @@ flowchart LR
 </section>
 
 <section id="watch">
-  <h2><span class="no">⑧</span>지켜보는 방법 — 화면 여섯, 알림 넷</h2>
+  <h2><span class="no">⑧</span>지켜보는 방법 — 화면 여섯, 알림 두 층</h2>
   <p>화면과 알림은 전부 <b>원장을 읽기만</b> 한다. 화면 문구와 숫자는 "원장이 답할 수 있는 것만"
   쓰는 것이 규칙이다.</p>
   <div class="tbl-wrap"><table>
@@ -298,14 +303,24 @@ flowchart LR
     <tr><td class="mono">/login</td><td>모두</td><td>로그인 — <code>/</code>는 역할별 갈림길 (관리자→관제실 · 유저→내 계좌)</td></tr>
   </table></div>
   <div class="tbl-wrap"><table>
-    <tr><th>텔레그램</th><th>언제</th><th>뜻</th></tr>
+    <tr><th>앱 내부 텔레그램</th><th>언제</th><th>뜻</th></tr>
     <tr><td>❌ 실패</td><td>잡이 죽은 즉시</td><td>어느 잡 · 어느 슬롯인지 즉시 지목</td></tr>
     <tr><td>✅ 일일 안내</td><td>평일 KST 13:20 전후</td><td>잡 n/12 성공 · 신규 매수 k건 — 체인 맨 끝에서 발송</td></tr>
     <tr><td>🛡 방어선</td><td>청산이 실제 발생 시</td><td>몇 건이 어떤 사유로 청산됐나</td></tr>
     <tr><td>🔌 기동 / ⚠️ 굳음</td><td>재기동·슬롯 정체 시</td><td>관측 인스턴스만 켜는 운영 알림 (<code>ops_alerts</code>)</td></tr>
   </table></div>
-  <p><b>평일 오후에 아무것도 안 오는 것이 가장 큰 신호다</b> — 알림을 보내는 주체가 앱이라,
-  앱이 죽으면 침묵한다. 침묵 자체가 장애 신호가 되도록 설계된 것이다.</p>
+  <div class="tbl-wrap"><table class="heartbeat-table">
+    <tr><th>외부 Healthchecks.io</th><th>판정</th><th>뜻</th></tr>
+    <tr><td>Success heartbeat</td><td>owner-only 5분 전송 계약</td><td>DB 5445를 읽을 수 있고 일일 잡·WatchRunner가 붙어 있으며 감시 상태가 정상</td></tr>
+    <tr><td><code>/fail</code></td><td>즉시 저하</td><td>프로세스는 살아 있지만 DB 또는 런타임 liveness가 비정상</td></tr>
+    <tr><td>Down / Up Webhook</td><td>Period 5분 + Grace 5분</td><td>기존 Telegram bot으로 침묵과 복구를 외부에서 알림</td></tr>
+  </table></div>
+  <p><b>침묵 판정을 외부 서비스로 옮겼다.</b> 앱 내부 알림은 잡 실행을 알린다.
+  매매 사건도 알린다. 앱·맥·네트워크가 통째로 죽은 경우는 Healthchecks.io가 맡는다.
+  Heartbeat reporter는 운영 owner에서만 만들어지고 개발용 8021은 만들지 않는다.
+  현재 8020의 실제 송신 여부는 외부 원장으로 별도 확인한다.</p>
+  <div class="note">2026-07-23 운영 보강. 이 절만 07-21 하루 기록 뒤의 현재 운영 구조를
+  덧붙였다. 실제 ping URL·bot token·chat ID는 비밀값이라 이 문서에 기록하지 않는다.</div>
 </section>
 
 <section id="now">

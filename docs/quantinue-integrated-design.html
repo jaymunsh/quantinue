@@ -10,7 +10,7 @@
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="assets/quantinue-q-master.svg">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon-180.png">
-<script>/* 초기 테마 (깜빡임 방지) */(function(){try{var t=localStorage.getItem('q-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>/* 초기 테마 (깜빡임 방지) */(function(){try{const t=localStorage.getItem('q-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <style>
   :root{
     /* 바탕·잉크 (라이트) */
@@ -54,10 +54,10 @@
   }
   @media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;scroll-behavior:auto!important} }
   *{box-sizing:border-box}
-  html{scroll-behavior:smooth;scroll-padding-top:24px}
+  html{scroll-behavior:smooth;scroll-padding-top:24px;overflow-x:clip}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
     font-size:15.5px;line-height:1.68;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word;
-    transition:background .2s,color .2s}
+    overflow-x:clip;transition:background .2s,color .2s}
   a{color:var(--teal);text-decoration:none}
   a:hover{text-decoration:underline}
   .muted{color:var(--ink-faint)}
@@ -248,6 +248,7 @@
   }
   @media (max-width:640px){
     .grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr}
+    .main,.wrap,section,details{min-width:0;max-width:100%}
   }
 </style>
 <!-- mermaid는 로컬 벤더링(assets/mermaid.min.js) — 오프라인에서도 다이어그램이 렌더된다 -->
@@ -271,7 +272,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v6.2 · MVP-2</span>
+    <span class="rail-ver">v6.3 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
@@ -319,7 +320,7 @@
 
   <!-- ── 히어로 ── -->
   <header class="hero">
-    <div class="eyebrow">Quantinue MVP-2 · v6.2 · 2026-07-21</div>
+    <div class="eyebrow">Quantinue MVP-2 · v6.3 · 2026-07-23</div>
     <h1>매일 아침 스스로 도는<br><span class="hl">AI 모의 운용</span> 시스템</h1>
     <p class="lede">
       시세·공시·뉴스는 <b>실물 데이터</b>로 받고, 판단은 <b>LLM 두 성향</b>이 내리고,
@@ -1701,25 +1702,28 @@ erDiagram
       출처: <code>src/quantinue/main.py</code>.
     </p>
 
-    <h3>알림 — 침묵이 신호다 <span class="b b-new">2차 신규</span></h3>
+    <h3>알림 — 앱 내부 사건과 외부 생존 감시 <span class="b b-new">v6.3 갱신</span></h3>
     <p>
-      화면을 매일 열지 않아도 되도록 텔레그램이 두 가지를 보낸다(<code>notify/telegram.py</code>):
+      화면을 매일 열지 않아도 되도록 알림을 두 층으로 나눈다. 앱 내부 Telegram은
+      <code>notify/telegram.py</code>, 외부 dead-man은 <code>notify/heartbeat.py</code>가 맡는다.
     </p>
     <div class="twrap"><table>
-      <thead><tr><th>언제</th><th>무엇</th></tr></thead>
+      <thead><tr><th>주체</th><th>언제</th><th>무엇</th></tr></thead>
       <tbody>
-        <tr><td>잡이 실패한 즉시</td><td class="mono">❌ news 실패 · 슬롯 2026-07-21</td></tr>
-        <tr><td>평일 KST 13:20 전후 (체인 맨 끝)</td><td class="mono">✅ 2026-07-21 슬롯 · 잡 12/12 성공 · 신규 매수 3건</td></tr>
+        <tr><td>앱 내부 Telegram</td><td>잡 실패·일일 체인 완료·실제 청산·기동/굳음</td><td>앱이 살아 있을 때의 실행·매매 사건</td></tr>
+        <tr><td>8020 heartbeat</td><td>5분마다</td><td>DB 5445 + 일일 잡 부착 + WatchRunner liveness가 정상이면 success, 저하면 <code>/fail</code></td></tr>
+        <tr><td>Healthchecks Webhook</td><td>Period 5분 + Grace 5분</td><td>heartbeat 중단 시 Down, 재개 시 Up을 기존 Telegram bot으로 전달</td></tr>
       </tbody>
     </table></div>
     <div class="note">
-      <b>설계 논거 — 부재를 경보로 만든다.</b> 평일 오후에 아무것도 안 오면 그게 신호다: 앱이 안 떴거나
-      맥이 꺼져 있었다는 뜻이다. 보내는 주체가 앱이라 앱이 죽으면 침묵하는데, <b>매일 오는 한 통을
-      정상으로 두면 침묵이 곧 경보가 된다.</b> launchd 워치독을 안 만든 이유가 이것이다 — 같은 맥에서
-      도는 워치독은 "맥이 꺼진 경우"를 어차피 못 잡는다. 일일 안내가 <b>잡</b>인 이유는 기능이 아니라
+      <b>설계 논거 — 침묵의 관찰자는 시스템 밖에 둔다.</b> 앱 내부 Telegram만으로는 앱·맥·네트워크가
+      통째로 죽었을 때 아무 말도 못 한다. 그래서 8020 단일 작업 소유자만 외부 heartbeat를 보내고,
+      8021 web-only는 같은 설정을 읽어도 reporter를 만들지 않는다. Healthchecks가 기존 Telegram bot을
+      Webhook으로 호출하므로 앱이 죽어도 Down을 보낼 수 있다. 일일 안내가 <b>잡</b>인 이유는 기능이 아니라
       멱등이다: 하루 한 번 보장을 <code>tb_job_run</code> PK가 DB로 강제하므로 앱을 껐다 켜도 두 번
       안 온다. 시각이 13시대인 이유는 슬롯이 <b>뉴욕 날짜</b> 기준이고 뉴욕 자정이 KST 13:00이기
-      때문이다. 봇 토큰·챗 ID 둘 중 하나라도 없으면 알림 경로 자체가 만들어지지 않는다(의도된 동작).
+      때문이다. heartbeat ping URL·bot token·chat ID는 비밀값으로 설정 화면과 <code>.env</code>에만 두고,
+      로그·문서·스크린샷에는 남기지 않는다.
     </div>
   </section>
 
@@ -1900,9 +1904,9 @@ erDiagram
         문턱(0.80/0.30)은 며칠 데이터를 쌓은 뒤 재조정해야 한다.</li>
       <li><b><code>premarket_gap_max</code>(0.03)는 잠정값.</b> 실제 갭 분포를 1~2주 관측한 뒤 조정한다.
         발동 사유는 <code>tb_order_plan</code>에 남는다.</li>
-      <li><b>LLM 예산 상한은 선언뿐.</b> <code>budget.daily_llm_usd</code>(3.0)는 config에 있지만
-        <code>tb_llm_usage</code> 기록·강제 배선이 없다. 로컬 LLM이라 당장 비용 0이지만, R3(다회 사이클)나
-        openai 전환 전에 반드시 배선해야 한다. 사용처 전수와 전환 검토:
+      <li><b>LLM 예산 상한은 강제된다.</b> <code>budget.daily_llm_usd</code>(3.0) 아래에서
+        유료 호출의 최대 비용을 먼저 예약하고 동시 호출을 직렬화한다. 사용량이 누락되면 예약 최대액을
+        보수적으로 비용 처리한다. 사용처 전수와 전환 검토:
         <code>llm-usage-guide.md</code> · <code>aws-migration-review.md</code>.</li>
       <li><b>재시도는 config 소유로 복원됐지만 openai에서 미검증.</b> 한때 로컬 경로에
         <code>retries=0</code>이 굳어 구조화 출력 1회 실패가 성향 22종목을 통째로 날렸다(결함 13) —
@@ -1923,11 +1927,12 @@ erDiagram
     <p class="sec-intro">
       <b>운영(켜고 보고 끄기)의 정본은 <code>docs/operations-runbook.md</code>다.</b>
       관측 인스턴스는 8020(<code>scripts/run_observation.sh</code>), 코드 작업은 8021로 분리한다.
-      계정: <code>admin</code>/<code>user1~5</code> — 비밀번호는 runbook §2-3.
+      외부 생존 감시는 owner-only heartbeat(5분/5분 + Telegram Webhook)로 구현돼 있다.
+      현재 8020의 송신 여부는 외부 원장으로 별도 확인한다. 자격 증명은 문서에 기록하지 않는다.
     </p>
     <div class="grid c3">
       <div class="stat"><div class="k">앱 (웹)</div><div class="v mono" style="font-size:16px">:8020</div><div class="d">FastAPI + Jinja2 서버 렌더 · 작업용은 :8021</div></div>
-      <div class="stat"><div class="k">DB (dev)</div><div class="v mono" style="font-size:16px">:5445</div><div class="d">PostgreSQL · 통합 테스트는 :5480</div></div>
+      <div class="stat"><div class="k">DB (dev)</div><div class="v mono" style="font-size:16px">:5445</div><div class="d">PostgreSQL · 격리 QA는 :5490</div></div>
       <div class="stat"><div class="k">LLM (로컬)</div><div class="v mono" style="font-size:16px">:8888</div><div class="d">oMLX · Qwen3.6-35B-A3B-OptiQ-4bit</div></div>
     </div>
     <div class="twrap"><table>
@@ -1956,6 +1961,11 @@ erDiagram
     <div class="twrap"><table>
       <thead><tr><th>버전</th><th>날짜</th><th>내용</th></tr></thead>
       <tbody>
+        <tr class="r-new"><td class="mono"><b>v6.3</b></td><td class="mono">2026-07-23</td>
+          <td><b>외부 dead-man heartbeat 반영.</b> 앱 내부 Telegram은 잡·매매 사건,
+          Healthchecks.io는 8020/DB/WatchRunner가 통째로 침묵하는 경우를 맡는다.
+          8020 owner만 5분마다 success/<code>/fail</code>을 보내고 8021은 보내지 않는다.
+          Period 5분 / Grace 5분과 기존 Telegram bot Webhook의 Down/Up 연결을 운영 기준으로 확정했다.</td></tr>
         <tr class="r-new"><td class="mono"><b>v6.2</b></td><td class="mono">2026-07-21 저녁</td>
           <td><b>화면 넷 → 여섯.</b> 운영 기준(<code>/admin/schedule</code>)과 작동 로그
           (<code>/admin/logs</code>) 신설 반영 — 전자는 "잡이 언제 도는가"의 화면 답이자
@@ -2003,7 +2013,7 @@ erDiagram
     function update(){
       ticking=false;
       var line=130, active=targets[0];              // 뷰포트 상단 130px 선을 지난 마지막 섹션 = 현재
-      for(var i=0;i<targets.length;i++){
+      for(let i=0;i<targets.length;i++){
         if(targets[i].el.getBoundingClientRect().top <= line) active=targets[i];
       }
       if(active.a===current) return;
@@ -2011,7 +2021,7 @@ erDiagram
       active.a.classList.add('active');
       current=active.a;
       if(rail && rail.scrollHeight > rail.clientHeight){   // 활성 항목을 사이드바 안에 유지
-        var r=active.a.getBoundingClientRect(), rr=rail.getBoundingClientRect();
+        const r=active.a.getBoundingClientRect(), rr=rail.getBoundingClientRect();
         if(r.top < rr.top+24) rail.scrollTop -= (rr.top+24 - r.top);
         else if(r.bottom > rr.bottom-24) rail.scrollTop += (r.bottom - (rr.bottom-24));
       }

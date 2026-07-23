@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <link rel="icon" href="assets/favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="assets/quantinue-q-master.svg">
-<script>/* 초기 테마 (깜빡임 방지) */(function(){try{var t=localStorage.getItem('q-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+<script>/* 초기 테마 (깜빡임 방지) */(function(){try{const t=localStorage.getItem('q-theme');if(t)document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
 <style>
   :root{
     /* 바탕·잉크 (라이트) */
@@ -56,7 +56,7 @@
   html{scroll-behavior:smooth;scroll-padding-top:24px}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);
     font-size:15.5px;line-height:1.68;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word;
-    transition:background .2s,color .2s}
+    overflow-x:hidden;transition:background .2s,color .2s}
   a{color:var(--teal);text-decoration:none}
   a:hover{text-decoration:underline}
   .muted{color:var(--ink-faint)}
@@ -247,6 +247,8 @@
   }
   @media (max-width:640px){
     .grid.c2,.grid.c3,.grid.c4{grid-template-columns:1fr}
+    .grid > *,.main,.wrap,section,details{min-width:0;max-width:100%}
+    .stat .d{overflow-wrap:anywhere}
   }
 </style>
 <!-- mermaid는 로컬 벤더링(assets/mermaid.min.js) — 오프라인에서도 렌더 -->
@@ -269,7 +271,7 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">부록 v1.2 · MVP-2</span>
+    <span class="rail-ver">부록 v1.3 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">이 문서</div>
@@ -304,7 +306,7 @@
   <div class="wrap">
 
   <header class="hero">
-    <div class="eyebrow">Quantinue MVP-2 · 기술 부록 v1.2 · 2026-07-21</div>
+    <div class="eyebrow">Quantinue MVP-2 · 기술 부록 v1.3 · 2026-07-23</div>
     <h1>어떻게 여기까지 왔고,<br><span class="hl">내부는 어떻게</span> 생겼나</h1>
     <p class="lede">
       <a href="quantinue-integrated-design.html">설계 정본</a>이 "현재의 시스템"이라면, 이 문서는
@@ -379,6 +381,12 @@
           <code>attempts</code> 신설) · <code>/admin/schedule</code>(운영 기준 + 용어집) ·
           LLM 지출 카드 · KST 시각과 3도시 시계 · 사이드바 공용 내비와 위계 ·
           <b>결함 27</b>(평가액 곡선의 min/max 정규화가 −0.01%를 절벽으로 그림).</td></tr>
+        <tr><td class="mono">07-22~23</td><td class="mono">운영 보강</td>
+          <td><b>장중 감시 후보 설정 + 외부 dead-man 구현.</b> 8020을 guarded 단일 작업 소유자로,
+          8021을 web-only 개발 인스턴스로 분리했다. 1분 poll과 WatchRunner 원장을 붙이고,
+          앱이 죽어 내부 텔레그램조차 못 보내는 구간은 Healthchecks.io가 맡는다. 8020 owner만
+          owner-only reporter가 DB 5445·일일 잡·WatchRunner liveness를 검사하도록 구현했다.
+          HEAD는 watch만 켠 후보이며, 기존 8020의 재로딩·외부 수신은 별도 원장으로 확인한다.</td></tr>
       </tbody>
     </table></div>
 
@@ -537,7 +545,7 @@
         <tr><td class="mono">market_data/</td><td>공개 시장 피드</td><td><code>alpaca_bars.py</code>(배치 일봉) · <code>alpaca_news.py</code> · <code>wire_news.py</code>(RSS) · <code>sec_daily_index.py</code>(공시) · <code>sec_ownership.py</code>(Form 4) · <code>fixture.py</code>(오프라인 기본)</td></tr>
         <tr><td class="mono">llm/</td><td>LLM 어댑터</td><td><code>provider.py</code>(openai·local·mock 3단) · <code>prompts.py</code> + <code>prompts/</code>(버전 관리 시스템 프롬프트)</td></tr>
         <tr><td class="mono">api/ · web/</td><td>HTTP·관제실</td><td><code>pipeline_day.py</code>(잡 원장 → 하루 뷰) · <code>account_roster.py</code>(계좌 총람) · <code>my_account.py</code>(유저 계좌) · <code>admin_accounts.py</code>(계좌 CRUD·슬롯 해제 — <b>유일한 쓰기</b>) · <code>route_guard.py</code>(3구역 기본 거부) · <code>review_runtime.py</code>(T+5 처리) · Jinja2 템플릿</td></tr>
-        <tr class="r-new"><td class="mono">notify/</td><td>텔레그램 알림</td><td><code>telegram.py</code> — 잡 실패 즉시 + 일일 안내(<code>daily_summary</code> 잡, 체인 맨 끝). 봇 토큰·챗 ID 둘 다 있어야 경로가 만들어진다(없으면 침묵이 정상) · <b>침묵이 신호</b> 설계: 매일 오는 한 통을 정상으로 두면 부재가 곧 경보다</td></tr>
+        <tr class="r-new"><td class="mono">notify/</td><td>내부 알림 + 외부 생존 신호</td><td><code>telegram.py</code> — 잡 실패·일일 안내·방어선·기동/굳음. <code>heartbeat.py</code> — 8020 owner만 DB 5445와 런타임 liveness를 확인해 Healthchecks.io로 5분마다 success/<code>/fail</code> 전송. 전자는 앱이 살아 있을 때의 사건, 후자는 앱·맥·네트워크가 통째로 침묵하는 경우를 맡는다</td></tr>
       </tbody>
     </table></div>
 
@@ -557,7 +565,7 @@
       <thead><tr><th>위치</th><th>규모</th><th>특징</th></tr></thead>
       <tbody>
         <tr><td class="mono">tests/unit/</td><td>55파일</td><td>계약·순수 규칙·JOB 단위. 네트워크 0</td></tr>
-        <tr><td class="mono">tests/integration/</td><td>25파일</td><td>실 PostgreSQL(5480) · <code>schema_sql_contract</code>가 DDL과 카탈로그를 대조(제약 159·인덱스 48)</td></tr>
+        <tr><td class="mono">tests/integration/</td><td>25파일</td><td>격리 PostgreSQL(5490) · <code>schema_sql_contract</code>가 DDL과 카탈로그를 대조(제약 159·인덱스 48)</td></tr>
         <tr><td class="mono">tests/real_key/</td><td>2파일</td><td>실 Alpaca·OpenAI 키 — <code>QUANTINUE_RUN_REAL_KEY_TESTS=1</code> opt-in 없으면 스킵</td></tr>
         <tr><td class="mono">tests/conftest.py</td><td>—</td><td><b>안전 게이트</b>: import 시점에 mock/fixture/memory/거래 비활성을 환경에 강제 주입 — 테스트가 실수로 돈·실 API에 닿을 수 없다</td></tr>
       </tbody>
@@ -704,6 +712,14 @@ erDiagram
       여기는 개발 명령과 함정만 담는다.
     </p>
 
+    <div class="note">
+      <b>알림도 소유권을 나눈다.</b> 내부 Telegram은 잡 실패·매매 사건처럼 앱이 살아 있어야
+      알 수 있는 일을 보낸다. 외부 Healthchecks.io는 8020의 heartbeat가 끊기거나
+      <code>/fail</code>을 받으면 기존 Telegram bot Webhook으로 Down/Up을 보낸다. 운영 기준은
+      Period 5분 / Grace 5분이다. ping URL·bot token·chat ID는 비밀값이며 문서·로그·스크린샷에
+      남기지 않는다. 8021은 같은 <code>.env</code>를 읽어도 heartbeat reporter를 만들지 않는다.
+    </div>
+
     <h3>실행 명령</h3>
     <div class="twrap"><table>
       <thead><tr><th>무엇</th><th>명령</th></tr></thead>
@@ -712,7 +728,7 @@ erDiagram
         <tr><td>dev DB (5445)</td><td class="mono">docker compose up -d db</td></tr>
         <tr><td>유닛 + 웹</td><td class="mono">uv run pytest tests/unit tests/test_pipeline_dashboard.py tests/test_my_account.py -q</td></tr>
         <tr><td>린트</td><td class="mono">uv run ruff check src tests scripts</td></tr>
-        <tr><td>통합 (새 컨테이너 5480)</td><td class="mono">docker run -d --name t … -p 127.0.0.1:5480:5432 postgres:17-alpine<br>docker exec -i t psql -q -U quantinue -d quantinue &lt; db/schema.sql<br>QUANTINUE_TEST_DATABASE_URL=… uv run pytest tests/integration -q -p no:unraisableexception</td></tr>
+        <tr><td>통합 (새 컨테이너 5490)</td><td class="mono">docker run -d --name t … -p 127.0.0.1:5490:5432 postgres:17-alpine<br>docker exec -i t psql -q -U quantinue -d quantinue &lt; db/schema.sql<br>QUANTINUE_TEST_DATABASE_URL=… uv run pytest tests/integration -q -p no:unraisableexception</td></tr>
       </tbody>
     </table></div>
 
@@ -774,7 +790,7 @@ erDiagram
     <div class="twrap"><table>
       <thead><tr><th>문서</th><th>역할</th></tr></thead>
       <tbody>
-        <tr class="r-new"><td class="mono">docs/quantinue-integrated-design.html</td><td><b>설계 정본 (v6.0)</b> — 현재의 시스템. 처음 보는 사람은 여기부터</td></tr>
+        <tr class="r-new"><td class="mono">docs/quantinue-integrated-design.html</td><td><b>설계 정본 (v6.3)</b> — 현재의 시스템. 처음 보는 사람은 여기부터</td></tr>
         <tr class="r-new"><td class="mono">docs/quantinue-engineering.html</td><td><b>이 문서</b> — 과정·코드·결함·런북. 개발을 이어받는 사람용</td></tr>
         <tr><td class="mono">docs/quantinue-integrated-design-mvp1.html</td><td>1차(MVP-1) 동결본 v3.8 — 수정 금지</td></tr>
         <tr><td class="mono">mvp2-planning/dev-handoff.md</td><td>세션 간 핸드오프 정본 — 현재 상태·결정·실측 전부. <b>이 부록의 1차 원천</b></td></tr>
@@ -786,7 +802,6 @@ erDiagram
         <tr class="r-new"><td class="mono">mvp2-planning/completion-plan.md</td><td>완성 계획 — "완성"의 정의 3조건과 남은 것의 순서</td></tr>
         <tr class="r-new"><td class="mono">mvp2-planning/open-items.md</td><td>열린 항목 정본 — 아직 안 끝난 것만</td></tr>
         <tr class="r-new"><td class="mono">mvp2-planning/how-to-check-guide.md</td><td>"로컬 기준 완성인가?"를 5분에 확인하는 법 (2026-07-21 신설)</td></tr>
-        <tr class="r-new"><td class="mono">docs/quantinue-integrated-design.html</td><td>설계 정본 <b>v6.2</b> — 화면 여섯 반영</td></tr>
         <tr class="r-new"><td class="mono">mvp2-planning/llm-usage-guide.md</td><td>LLM 사용처 전수 — 콜사이트 2곳·모드 배선·tier 제안 (2026-07-21 신설)</td></tr>
         <tr class="r-new"><td class="mono">mvp2-planning/aws-migration-review.md</td><td>AWS 이전 검토 — 10일 지평엔 비권고, openai 전환은 분리 선행 (2026-07-21 신설)</td></tr>
         <tr><td class="mono">mvp2-planning/NEXT-SESSION-PROMPT.md</td><td>다음 세션 시작 프롬프트</td></tr>
@@ -794,7 +809,7 @@ erDiagram
         <tr><td class="mono">app-v2/config/pipeline.yaml</td><td>정책 단일 소유자 — 문턱·주기·한도</td></tr>
       </tbody>
     </table></div>
-    <p class="small muted">부록 v1.2 · 2026-07-21 저녁 (v1.0: 07-20) · 작성: 문성혁 + Claude · 원천: dev-handoff.md ·
+    <p class="small muted">부록 v1.3 · 2026-07-23 (v1.0: 07-20) · 작성: 문성혁 + Claude · 원천: dev-handoff.md ·
     troubleshooting-log.md · git 이력 · app-v2 코드</p>
   </section>
 
@@ -814,7 +829,7 @@ erDiagram
     function update(){
       ticking=false;
       var line=130, active=targets[0];              // 뷰포트 상단 130px 선을 지난 마지막 섹션 = 현재
-      for(var i=0;i<targets.length;i++){
+      for(let i=0;i<targets.length;i++){
         if(targets[i].el.getBoundingClientRect().top <= line) active=targets[i];
       }
       if(active.a===current) return;
@@ -822,7 +837,7 @@ erDiagram
       active.a.classList.add('active');
       current=active.a;
       if(rail && rail.scrollHeight > rail.clientHeight){   // 활성 항목을 사이드바 안에 유지
-        var r=active.a.getBoundingClientRect(), rr=rail.getBoundingClientRect();
+        const r=active.a.getBoundingClientRect(), rr=rail.getBoundingClientRect();
         if(r.top < rr.top+24) rail.scrollTop -= (rr.top+24 - r.top);
         else if(r.bottom > rr.bottom-24) rail.scrollTop += (r.bottom - (rr.bottom-24));
       }

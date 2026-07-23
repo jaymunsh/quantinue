@@ -1,5 +1,34 @@
 # 개발 핸드오프 — 현재 상태
 
+> ## 🔄 2026-07-23 — 외부 dead-man heartbeat 연결
+>
+> 앱 내부 텔레그램이 잡 실패·굳음·청산을 알리고, 앱이 죽어 그 알림조차 못
+> 보내는 사각지대는 Healthchecks.io가 맡는다. `QUANTINUE_HEARTBEAT_URL`은
+> SecretStr로 파싱하며 정확한 `https://hc-ping.com/<UUID>`만 허용한다.
+> 8020 owner만 5분마다 DB 원장 읽기와 일일 잡/WatchRunner 부착·liveness를
+> 확인한다. 정상은 기본 URL, 저하는 `/fail`, 완전 종료는 ping 누락이다.
+> 8021은 URL이 보여도 reporter를 만들지 않는다. URL 자체는 비밀이라 문서·로그·
+> 테스트에 실값을 남기지 않는다. Healthchecks 호스팅판에서는 전용 Telegram
+> integration이 아니라 기존 bot의 `sendMessage`를 호출하는 Webhook으로 Down/Up을
+> 보낸다. 2026-07-23 Period 5분 / Grace 5분, 외부 `Up`, Webhook 연결까지 확인했다.
+> 운영 절차는 operations-runbook §2-1-1.
+
+> ## 🔄 2026-07-22 20:40 KST — guarded 8020 + poll-only 운영 활성화
+>
+> 8020은 로컬 단일-owner 잠금과 자식 프로세스 그룹을 가진 운영 작업 소유자다.
+> 8021은 web-only로 분리됐고 DB는 5445만 쓴다. 현재 HEAD의 정본 후보 설정은
+> **watch=true / rejudge=false / stream=false**다. 기존 8020이 이 설정을
+> 재로딩했다는 독립 증거는 없으므로, 실제 poll은 런타임 상태와 원장으로 확인한다.
+>
+> `tb_watch_sweep`, stale lease+attempt fencing, 부분 실패 재개, LLM 예산
+> 동시성 잠금, 실제 liveness 카드, 5445 백업·멱등 마이그레이션까지 반영됐다.
+> 다음 순서는 ① 07-22 22:30 KST 정규장 ready 2회 ② 07-23 13:00 KST clean
+> OpenAI 슬롯과 3-3 종료 ③ rejudge ④ stream ⑤ 최종 검토다. 아래 배너들은
+> 구현 이력이며 현재 상태는 이 배너가 우선한다.
+>
+> M5와 M6는 과거 한 커밋에 함께 들어간 원자성 예외다. 이력은 재작성하지 않으며,
+> 이후 작업은 런타임·문서·활성화 관문을 책임별 원자 커밋으로 분리한다.
+
 > ## 🟢 2026-07-22 정오 — 잔여 W3-4·SPY 벤치마크 완료
 >
 > 관제실에 **방어선 발동 내역**을 추가했다. 설정이나 주문 계획이 아니라 실제
@@ -63,8 +92,9 @@
 > 실제 tick 시각으로 다시 호출하고, 승인된 sell은 기존 `ExitJob`의 시그널→close
 > 주문→MockBroker→`tb_fill` 계보로 같은 tick에 닫는다.
 >
-> 일 LLM 예산의 20%는 매도성 재판단에 남긴다. 일반 판단은 80%를 쓴 시점부터
-> 멈추지만, 보유 종목의 판단과 그 매도 크리틱은 전체 상한까지 계속 돈다.
+> 일 LLM 예산의 마지막 20% 구간은 보유 종목 재판단에만 허용한다. 일반 판단은
+> 총예산의 80%를 쓴 시점부터 멈추지만, 보유 종목 재판단도 총 일일 상한을
+> 넘을 수는 없다. 이는 별도 20% 예산을 추가하는 의미가 아니다.
 > 유닛/웹 **610 green**, 통합 전체 green, 변경 파일 ruff clean. 8020은 건드리지
 > 않았다. 다음 본편은 M5 정기 스윕+장중 매수이고, M6 관제실이 그 뒤다.
 
