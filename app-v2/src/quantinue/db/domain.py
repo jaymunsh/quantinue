@@ -2240,19 +2240,17 @@ class PostgresDomainRepository:
             """
         )
         async with self._engine.begin() as connection:
-            return (
-                await connection.scalar(
-                    statement,
-                    {
-                        "sweep_at": sweep_at,
-                        "attempt": attempt,
-                        "ticker": ticker,
-                        "persona": persona,
-                        "now": now,
-                    },
-                )
-                == 1
+            result = await connection.execute(
+                statement,
+                {
+                    "sweep_at": sweep_at,
+                    "attempt": attempt,
+                    "ticker": ticker,
+                    "persona": persona,
+                    "now": now,
+                },
             )
+            return result.scalar_one_or_none() is not None
 
     async def dispatch_watch_sweep_item(
         self,
