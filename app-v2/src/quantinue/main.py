@@ -39,6 +39,7 @@ from quantinue.core.logging import configure_logging
 from quantinue.core.market_calendar import NEW_YORK
 from quantinue.db.store import build_run_store
 from quantinue.market_data.factory import build_market_data
+from quantinue.notify.heartbeat import RuntimeHealthProbe, build_heartbeat_reporter
 from quantinue.orchestration.job_factory import (
     JobSources,
     build_budgeted_analyzer,
@@ -333,6 +334,18 @@ def create_app(  # noqa: C901 - application composition root owns conditional ad
     attached_job_runner = job_runner if mvp2_config.jobs.enabled else None
     attached_watch_runner = watch_runner if mvp2_config.watch.enabled else None
     control_room_reads = getattr(selected_store, "domain", None)
+    heartbeat_reporter = (
+        None
+        if control_room_reads is None or attached_watch_runner is None
+        else build_heartbeat_reporter(
+            selected_settings,
+            RuntimeHealthProbe(
+                job_runs=control_room_reads,
+                snapshot=attached_watch_runner.snapshot,
+                daily_attached=attached_job_runner is not None,
+            ),
+        )
+    )
     app = FastAPI(
         title=selected_settings.app_name,
         lifespan=_lifespan_factory(
@@ -344,6 +357,7 @@ def create_app(  # noqa: C901 - application composition root owns conditional ad
                 for task in (
                     attached_job_runner,
                     attached_watch_runner,
+                    heartbeat_reporter,
                 )
                 if task is not None
             ),

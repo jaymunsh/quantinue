@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime
 from types import SimpleNamespace
+from typing import Self
 
 import pytest
 from pydantic import SecretStr
@@ -61,6 +62,54 @@ def test_no_telegram_keys_means_no_alert_path() -> None:
 
     # Then
     assert notifier is None
+
+
+@pytest.mark.anyio
+async def test_success_log_contains_only_stable_status_not_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[tuple[str, dict[str, str]]] = []
+
+    async def capture(event: str, **fields: str) -> None:
+        events.append((event, fields))
+
+    monkeypatch.setattr(
+        "quantinue.notify.telegram._logger.ainfo",
+        capture,
+    )
+    monkeypatch.setattr("quantinue.notify.telegram.httpx.AsyncClient", _SuccessfulClient)
+    notifier = build_failure_notifier(
+        IsolatedSettings(
+            app_name="t", telegram_bot_token=SecretStr("super-secret"), telegram_chat_id="chat-42"
+        )
+    )
+    assert notifier is not None
+
+    await notifier("message body")
+
+    assert events == [("notify.sent", {"status": "sent"})]
+    assert "super-secret" not in repr(events)
+    assert "chat-42" not in repr(events)
+
+class _SuccessfulResponse:
+    def raise_for_status(self) -> None:
+        return None
+
+
+class _SuccessfulClient:
+    def __init__(self, *, timeout: float) -> None:
+        assert timeout > 0
+
+    async def __aenter__(self) -> Self:
+        return self
+
+    async def __aexit__(self, *_args: object) -> None:
+        return None
+
+    async def post(self, url: str, *, json: dict[str, str]) -> _SuccessfulResponse:
+        assert url.startswith("https://api.telegram.org/")
+        assert json["text"] == "message body"
+        return _SuccessfulResponse()
 
 
 def test_a_half_configured_installation_still_has_no_path() -> None:

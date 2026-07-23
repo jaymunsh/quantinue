@@ -24,7 +24,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import httpx
-import structlog
+from structlog.stdlib import BoundLogger, get_logger
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from quantinue.core.config import Settings
 
 _TIMEOUT_SECONDS = 10.0
-_logger: structlog.stdlib.BoundLogger = structlog.get_logger("notify")
+_logger: BoundLogger = get_logger("notify")
 
 
 def build_failure_notifier(settings: Settings) -> Callable[[str], Awaitable[None]] | None:
@@ -49,7 +49,8 @@ def build_failure_notifier(settings: Settings) -> Callable[[str], Awaitable[None
                 response = await client.post(
                     url, json={"chat_id": chat_id, "text": message}
                 )
-                response.raise_for_status()
+                _ = response.raise_for_status()
+            await _logger.ainfo("notify.sent", status="sent")
         except Exception as error:  # noqa: BLE001 - 알림 실패가 매매를 멈추면 안 된다
             # URL을 찍지 않는다 — 거기에 토큰이 들어 있다.
             await _logger.awarning("notify.failed", reason=type(error).__name__)

@@ -60,6 +60,33 @@ def test_background_workers_rejects_a_malformed_environment_boolean(
         _ = IsolatedSettings()
 
 
+def test_heartbeat_url_defaults_to_disabled() -> None:
+    # Given / When
+    settings = IsolatedSettings()
+
+    # Then
+    assert settings.heartbeat_url is None
+
+
+def test_heartbeat_url_is_kept_as_a_secret() -> None:
+    # Given / When
+    check_id = "00000000-0000-4000-8000-000000000001"
+    settings = IsolatedSettings(
+        heartbeat_url=SecretStr(f"https://hc-ping.com/{check_id}")
+    )
+
+    # Then
+    assert settings.heartbeat_url is not None
+    assert settings.heartbeat_url.get_secret_value() == f"https://hc-ping.com/{check_id}"
+    assert check_id not in repr(settings)
+
+
+def test_heartbeat_url_rejects_non_healthchecks_endpoint() -> None:
+    # Given / When / Then
+    with pytest.raises(ValidationError, match="heartbeat_url"):
+        _ = IsolatedSettings(heartbeat_url=SecretStr("https://example.com/test-check"))
+
+
 def test_selected_openai_mode_rejects_empty_key_without_echoing_secret() -> None:
     with pytest.raises(ValidationError) as captured:
         _ = Settings.model_validate({"llm_mode": LlmMode.OPENAI, "openai_api_key": ""})

@@ -5,6 +5,8 @@ from __future__ import annotations
 from decimal import Decimal
 from enum import StrEnum, unique
 from typing import Annotated
+from urllib.parse import urlsplit
+from uuid import UUID
 
 from pydantic import (
     AnyHttpUrl,
@@ -120,7 +122,35 @@ class Settings(BaseSettings):
     # 코드 작업용(8021)이 같은 텔레그램 키로 뜨는데 --reload 재기동마다
     # "앱 기동"이 울리면 소음이 된다. 관측 기동 스크립트만 켠다.
     ops_alerts: bool = False
+    heartbeat_url: SecretStr | None = None
     simulated_account_opening_cash_usd: SimulatedAccountOpeningCashUsd = Decimal("1000000.00")
+
+    @field_validator("heartbeat_url")
+    @classmethod
+    def require_healthchecks_ping_url(cls, value: SecretStr | None) -> SecretStr | None:
+        """Accept only one credential-shaped Healthchecks.io UUID ping URL."""
+        if value is None:
+            return None
+        raw = value.get_secret_value()
+        parsed = urlsplit(raw)
+        try:
+            _ = UUID(parsed.path.strip("/"))
+        except ValueError as error:
+            msg = "heartbeat_url must contain one Healthchecks.io check UUID"
+            raise ValueError(msg) from error
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "hc-ping.com"
+            or parsed.port is not None
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or parsed.path.count("/") != 1
+        ):
+            msg = "heartbeat_url must be an exact hc-ping.com HTTPS endpoint"
+            raise ValueError(msg)
+        return value
 
     @field_validator("alpaca_base_url")
     @classmethod
