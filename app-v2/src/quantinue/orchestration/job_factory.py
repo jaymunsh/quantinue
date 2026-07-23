@@ -23,6 +23,7 @@ from quantinue.core.config import LlmMode
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.domain_records import DailyPickWrite
 from quantinue.events.adapters import NewsEventSourceAdapter, SecEventSourceAdapter
+from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
 from quantinue.events.ingestion import PostgresEventIngestionRepository
 from quantinue.events.routing_repository import PostgresEventRoutingRepository
 from quantinue.events.runtime import EventIngestionExecutor, EventIngestionRuntime
@@ -934,6 +935,7 @@ def _event_runtime(
         sources["news"] = NewsEventSourceAdapter(news, now)
     repository = PostgresEventIngestionRepository(str(settings.database_url))
     routing_repository = PostgresEventRoutingRepository(str(settings.database_url))
+    evidence_repository = PostgresEventEvidenceRepository(str(settings.database_url))
     return EventIngestionRuntime(
         config.event_ingestion,
         EventIngestionExecutor(
@@ -941,6 +943,8 @@ def _event_runtime(
             sources,
             repository,
             routing_repository,
+            evidence_repository,
+            selected.analyzer,
         ),
     )
 

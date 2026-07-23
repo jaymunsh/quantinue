@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from typing_extensions import override
 
+from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
 from quantinue.events.ingestion import (
     EventDocument,
     EventPage,
@@ -23,11 +24,14 @@ from quantinue.events.routing_repository import (
     route_pending_events,
 )
 from quantinue.events.runtime import EventIngestionExecutor, EventIngestionRuntime
+from quantinue.llm.usage_limits import MaximumTokenUsage
 from quantinue.orchestration.job_runner import JobRunner
 from quantinue.orchestration.policy import EventIngestionConfig, JobsConfig
 
 if TYPE_CHECKING:
-    from quantinue.events.routing import RoutingDecision
+    from quantinue.events.evidence import EvidencePack
+    from quantinue.events.routing import AcceptedRoute, RoutingDecision
+    from quantinue.llm.provider import AnalysisResult, AnalysisTask, LlmAnalyzer
 
 
 class _ReceiptRow(BaseModel):
@@ -38,6 +42,24 @@ class _ReceiptRow(BaseModel):
     ticker: str
     content_hash: str
 
+
+class _NeverCalledAnalyzer:
+    calls = 0
+
+    def maximum_usage(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> MaximumTokenUsage:
+        _ = task, prompt, profile
+        return MaximumTokenUsage(model="unused", input_tokens=1, output_tokens=1)
+
+    async def analyze(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> AnalysisResult:
+        _ = task, prompt, profile
+        self.calls += 1
+        message = "short evidence must not call the analyzer"
+        raise AssertionError(message)
+
 @pytest.fixture
 async def routing_database_url() -> str:
     url = "postgresql+asyncpg://postgres:test-only@127.0.0.1:5490/contracts"
@@ -47,7 +69,8 @@ async def routing_database_url() -> str:
             "tb_event_processing_receipt", "tb_normalized_event",
             "tb_event_raw_version", "tb_event_raw_document",
             "tb_event_source_cursor", "tb_daily_pick",
-            "tb_universe", "tb_llm_usage",
+            "tb_universe", "tb_llm_usage", "tb_event_evidence_pack",
+            "tb_event_summary_cache",
         ):
             _ = await connection.execute(text(f"TRUNCATE {table_name} CASCADE"))
         _ = await connection.execute(
@@ -313,6 +336,143 @@ async def test_scheduler_runtime_routes_newly_ingested_events_without_llm_or_ord
     await engine.dispose()
     await runtime.close()
     assert tuple(counts) == (1, 0, 0)
+
+
+@pytest.mark.anyio
+async def test_scheduler_runtime_prepares_evidence_after_accepted_routing(
+    routing_database_url: str,
+) -> None:
+    # Given
+    document = _document("runtime-evidence")
+
+    class OnePageSource:
+        async def fetch_page(
+            self,
+            cursor: SourceCursor | None,
+            page_token: str | None,
+            overlap: timedelta,
+        ) -> EventPage:
+            _ = cursor, page_token, overlap
+            return EventPage((document,), None, "2026-07-24T14:00:00+00:00")
+
+    analyzer = _NeverCalledAnalyzer()
+    config = EventIngestionConfig()
+    runtime = EventIngestionRuntime(
+        config,
+        EventIngestionExecutor(
+            config,
+            {"news": OnePageSource()},
+            PostgresEventIngestionRepository(routing_database_url),
+            PostgresEventRoutingRepository(routing_database_url),
+            PostgresEventEvidenceRepository(routing_database_url),
+            analyzer,
+        ),
+    )
+
+    # When
+    await runtime.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+
+    # Then
+    engine = create_async_engine(routing_database_url)
+    async with engine.connect() as connection:
+        counts = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT
+                      (SELECT count(*) FROM tb_event_processing_receipt
+                       WHERE persona = 'routing:accepted:guidance'),
+                      (SELECT count(*) FROM tb_event_evidence_pack)
+                    """
+                )
+            )
+        ).one()
+    await engine.dispose()
+    await runtime.close()
+    assert tuple(counts) == (1, 1)
+    assert analyzer.calls == 0
+
+
+@pytest.mark.anyio
+async def test_runtime_retries_evidence_after_durable_accepted_receipt(
+    routing_database_url: str,
+) -> None:
+    # Given
+    document = _document("runtime-evidence-retry")
+
+    class OnePageSource:
+        async def fetch_page(
+            self,
+            cursor: SourceCursor | None,
+            page_token: str | None,
+            overlap: timedelta,
+        ) -> EventPage:
+            _ = cursor, page_token, overlap
+            return EventPage((document,), None, "2026-07-24T14:00:00+00:00")
+
+    class FailingEvidence(PostgresEventEvidenceRepository):
+        @override
+        async def prepare(
+            self,
+            route: AcceptedRoute,
+            analyzer: LlmAnalyzer,
+            *,
+            summary_prompt_version: str | None = None,
+        ) -> EvidencePack:
+            _ = route, analyzer, summary_prompt_version
+            message = "evidence interrupted"
+            raise RuntimeError(message)
+
+    analyzer = _NeverCalledAnalyzer()
+    config = EventIngestionConfig()
+    interrupted = EventIngestionRuntime(
+        config,
+        EventIngestionExecutor(
+            config,
+            {"news": OnePageSource()},
+            PostgresEventIngestionRepository(routing_database_url),
+            PostgresEventRoutingRepository(routing_database_url),
+            FailingEvidence(routing_database_url),
+            analyzer,
+        ),
+    )
+
+    # When
+    with pytest.raises(RuntimeError, match="evidence interrupted"):
+        await interrupted.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    await interrupted.close()
+    resumed = EventIngestionRuntime(
+        config,
+        EventIngestionExecutor(
+            config,
+            {"news": OnePageSource()},
+            PostgresEventIngestionRepository(routing_database_url),
+            PostgresEventRoutingRepository(routing_database_url),
+            PostgresEventEvidenceRepository(routing_database_url),
+            analyzer,
+        ),
+    )
+    await resumed.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+
+    # Then
+    engine = create_async_engine(routing_database_url)
+    async with engine.connect() as connection:
+        counts = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT
+                      (SELECT count(*) FROM tb_event_processing_receipt
+                       WHERE persona = 'routing:accepted:guidance'),
+                      (SELECT count(*) FROM tb_event_evidence_pack)
+                    """
+                )
+            )
+        ).one()
+    await engine.dispose()
+    await resumed.close()
+    assert tuple(counts) == (1, 1)
+    assert analyzer.calls == 0
 
 
 @pytest.mark.anyio

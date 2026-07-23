@@ -33,6 +33,18 @@ class _TickerValue(BaseModel):
     ticker: str
 
 
+class _AcceptedRouteRow(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    event_id: int
+    raw_version_id: int
+    content_hash: str
+    source_name: str
+    source_sequence: str
+    ticker: str
+    event_type: str
+
+
 @dataclass(frozen=True, slots=True)
 class RoutingRun:
     """Durable routing decisions created during one pass."""
@@ -99,6 +111,49 @@ class PostgresEventRoutingRepository:
             ).mappings()
         return frozenset(
             _TickerValue.model_validate(dict(row)).ticker for row in rows
+        )
+
+    async def accepted_without_evidence(self) -> tuple[AcceptedRoute, ...]:
+        """Return accepted immutable versions whose evidence is not durable yet."""
+        async with self._engine.connect() as connection:
+            rows = (
+                await connection.execute(
+                    text(
+                        """
+                        SELECT event.event_id, event.raw_version_id,
+                               version.content_hash, event.source_name,
+                               event.source_sequence,
+                               receipt.ticker,
+                               replace(receipt.persona, 'routing:accepted:', '')
+                                 AS event_type
+                        FROM tb_normalized_event AS event
+                        JOIN tb_event_raw_version AS version USING (raw_version_id)
+                        JOIN tb_event_processing_receipt AS receipt USING (event_id)
+                        WHERE receipt.persona LIKE 'routing:accepted:%'
+                          AND NOT EXISTS (
+                            SELECT 1 FROM tb_event_evidence_pack AS evidence
+                            WHERE evidence.event_id = event.event_id
+                              AND evidence.raw_version_id = event.raw_version_id
+                          )
+                        ORDER BY event.occurred_at, event.event_id
+                        """
+                    )
+                )
+            ).mappings()
+        parsed = tuple(
+            _AcceptedRouteRow.model_validate(dict(row)) for row in rows
+        )
+        return tuple(
+            AcceptedRoute(
+                event_id=row.event_id,
+                raw_version_id=row.raw_version_id,
+                content_hash=row.content_hash,
+                source_name=row.source_name,
+                source_sequence=row.source_sequence,
+                ticker=row.ticker,
+                event_type=row.event_type,
+            )
+            for row in parsed
         )
 
     async def record(self, decision: RoutingDecision, ticker: str) -> bool:

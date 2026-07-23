@@ -1,9 +1,10 @@
 """Minute-cadence runtime for incremental event sources."""
 
-from collections.abc import Mapping
+from __future__ import annotations
+
 from dataclasses import dataclass, field, replace
 from datetime import UTC, date, datetime
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from quantinue.core.market_calendar import NEW_YORK
 from quantinue.events.adapters import NewsEventSourceAdapter, SecEventSourceAdapter
@@ -16,7 +17,13 @@ from quantinue.events.routing_repository import (
     PostgresEventRoutingRepository,
     route_pending_events,
 )
-from quantinue.orchestration.policy import EventIngestionConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+
+    from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
+    from quantinue.llm.provider import LlmAnalyzer
+    from quantinue.orchestration.policy import EventIngestionConfig
 
 
 class EventIngestor(Protocol):
@@ -39,6 +46,8 @@ class EventIngestionExecutor:
     sources: Mapping[str, IncrementalEventSource]
     repository: PostgresEventIngestionRepository
     routing_repository: PostgresEventRoutingRepository
+    evidence_repository: PostgresEventEvidenceRepository | None = None
+    analyzer: LlmAnalyzer | None = None
 
     async def ingest(self, source_name: str, as_of: date) -> None:
         """Ingest one source, then route every durable pending event."""
@@ -57,13 +66,22 @@ class EventIngestionExecutor:
             self.config.sources[source_name].overlap,
         )
         _ = await route_pending_events(self.routing_repository, as_of)
+        if self.evidence_repository is None or self.analyzer is None:
+            return
+        routes = await self.routing_repository.accepted_without_evidence()
+        for route in routes:
+            _ = await self.evidence_repository.prepare(route, self.analyzer)
 
     async def close(self) -> None:
         """Dispose both database pools even if the first close fails."""
         try:
             await self.repository.close()
         finally:
-            await self.routing_repository.close()
+            try:
+                await self.routing_repository.close()
+            finally:
+                if self.evidence_repository is not None:
+                    await self.evidence_repository.close()
 
 
 @dataclass
