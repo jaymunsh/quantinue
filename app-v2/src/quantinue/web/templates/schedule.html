@@ -15,10 +15,37 @@
 {% endblock %}
 {% block main %}
 
+<section class="panel runtime-status" aria-labelledby="runtime-title">
+  <div class="panel__head">
+    <div>
+      <h2 id="runtime-title">이 프로세스의 자동 작업</h2>
+      <p>설정값과 이 웹 프로세스가 실제로 붙잡고 있는 작업을 구분합니다.</p>
+    </div>
+    <span class="badge {% if schedule.runtime.snapshot.background_workers %}badge--success{% endif %}">
+      자동 작업 {% if schedule.runtime.snapshot.background_workers %}소유 중{% else %}꺼짐{% endif %}
+    </span>
+  </div>
+  <dl class="equity-facts runtime-status__facts">
+    <dt>일일 잡</dt><dd>{% if schedule.runtime.snapshot.daily_attached %}연결됨{% else %}연결 안 됨{% endif %}</dd>
+    <dt>장중 감시</dt>
+    <dd data-runtime-watch="{{ schedule.runtime.watch_status }}">
+      <span class="badge {% if schedule.runtime.watch_status == 'ready' %}badge--success{% elif schedule.runtime.watch_status == 'attention' %}badge--warning{% endif %}">
+        {{ schedule.runtime.watch_status }}
+      </span>
+    </dd>
+    <dt>재판단 설정</dt><dd>{% if schedule.runtime.snapshot.rejudge_configured %}켜짐{% else %}꺼짐{% endif %}</dd>
+    <dt>스트림</dt><dd>{% if schedule.runtime.snapshot.stream_configured %}{{ schedule.runtime.snapshot.stream_state }}{% else %}꺼짐{% endif %}</dd>
+    <dt>최근 폴링 시도</dt><dd>{{ schedule.runtime.snapshot.last_poll_attempt | kst_stamp if schedule.runtime.snapshot.last_poll_attempt else '없음' }}</dd>
+    <dt>최근 ready 폴링</dt><dd>{{ schedule.runtime.snapshot.last_ready_poll | kst_stamp if schedule.runtime.snapshot.last_ready_poll else '없음' }}</dd>
+    <dt>최근 결과</dt><dd>{{ schedule.runtime.snapshot.last_outcome }}</dd>
+    <dt>연속 실패</dt><dd>{{ schedule.runtime.snapshot.consecutive_failures }}회</dd>
+  </dl>
+</section>
+
 {# ── 시계 기준 ─────────────────────────────────────────────────
    이 시스템에서 가장 자주 되묻는 것이 "왜 오후 1시인가"다. 답을 화면
    맨 위에 둔다 — 슬롯이 뉴욕 날짜라서다. #}
-<section class="panel basis" aria-labelledby="clock-title">
+<section class="panel basis" style="margin-top:18px" aria-labelledby="clock-title">
   <div class="panel__head">
     <div>
       <h2 id="clock-title">하루는 뉴욕에서 바뀝니다</h2>

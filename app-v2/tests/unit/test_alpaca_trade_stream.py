@@ -24,6 +24,7 @@ class _Socket:
             return next(self._messages)
         except StopIteration:
             await anyio.sleep_forever()
+            raise AssertionError from None
 
 
 @pytest.mark.anyio
@@ -75,3 +76,138 @@ async def test_stream_authenticates_subscribes_and_emits_a_normalized_trade() ->
             source="alpaca-iex-stream",
         )
     ]
+
+
+@pytest.mark.anyio
+async def test_three_consecutive_connection_failures_enter_failed_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _StopProbeError(RuntimeError):
+        pass
+
+    @asynccontextmanager
+    async def connect() -> AsyncGenerator[_Socket]:
+        should_fail = True
+        if should_fail:
+            raise OSError
+        yield _Socket(())
+
+    stream = AlpacaTradeStream(
+        key_id="key",
+        secret_key="secret",
+        config=WatchStreamConfig(enabled=True, reconnect_seconds=1),
+        connector=connect,
+    )
+    observed: list[str] = []
+
+    async def observe_sleep(_: float) -> None:
+        observed.append(stream.state)
+        if len(observed) == 3:
+            raise _StopProbeError
+
+    monkeypatch.setattr("quantinue.market_data.alpaca_stream.anyio.sleep", observe_sleep)
+
+    async def tickers() -> tuple[str, ...]:
+        return ()
+
+    async def consume(_: LatestTrade) -> None:
+        return None
+
+    with pytest.raises(_StopProbeError):
+        await stream.run(tickers, consume)
+
+    assert observed == ["reconnecting", "reconnecting", "failed"]
+
+
+@pytest.mark.anyio
+async def test_zero_holdings_connect_without_a_subscription() -> None:
+    # Given
+    socket = _Socket(
+        (
+            '[{"T":"success","msg":"connected"}]',
+            '[{"T":"success","msg":"authenticated"}]',
+        )
+    )
+    stream = AlpacaTradeStream(
+        key_id="key",
+        secret_key="secret",
+        config=WatchStreamConfig(enabled=True),
+    )
+
+    async def tickers() -> tuple[str, ...]:
+        return ()
+
+    async def consume(_: LatestTrade) -> None:
+        return None
+
+    # When
+    async with anyio.create_task_group() as task_group:
+        _ = task_group.start_soon(stream._run_session, socket, tickers, consume)
+        await anyio.lowlevel.checkpoint()
+        task_group.cancel_scope.cancel()
+
+    # Then
+    assert stream.state == "connected"
+    assert len(socket.sent) == 1
+    assert '"action":"auth"' in socket.sent[0]
+
+
+@pytest.mark.anyio
+async def test_holding_changes_reconcile_on_the_configured_sixty_second_boundary() -> None:
+    # Given
+    socket = _Socket(())
+    stream = AlpacaTradeStream(
+        key_id="key",
+        secret_key="secret",
+        config=WatchStreamConfig(enabled=True, resubscribe_seconds=60),
+    )
+
+    # When
+    subscribed = await stream._sync(socket, frozenset({"AAPL"}), ("MSFT",))
+
+    # Then
+    assert stream.config.resubscribe_seconds <= 60
+    assert subscribed == frozenset({"MSFT"})
+    assert socket.sent == [
+        '{"action":"unsubscribe","trades":["AAPL"]}',
+        '{"action":"subscribe","trades":["MSFT"]}',
+    ]
+
+
+@pytest.mark.anyio
+async def test_failed_connection_waits_exactly_five_seconds_before_reconnect(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given
+    class _StopProbeError(RuntimeError):
+        pass
+
+    @asynccontextmanager
+    async def connect() -> AsyncGenerator[_Socket]:
+        raise OSError
+        yield _Socket(())
+
+    stream = AlpacaTradeStream(
+        key_id="key",
+        secret_key="secret",
+        config=WatchStreamConfig(enabled=True, reconnect_seconds=5),
+        connector=connect,
+    )
+    waits: list[float] = []
+
+    async def observe_sleep(seconds: float) -> None:
+        waits.append(seconds)
+        raise _StopProbeError
+
+    monkeypatch.setattr("quantinue.market_data.alpaca_stream.anyio.sleep", observe_sleep)
+
+    async def tickers() -> tuple[str, ...]:
+        return ()
+
+    async def consume(_: LatestTrade) -> None:
+        return None
+
+    # When / Then
+    with pytest.raises(_StopProbeError):
+        await stream.run(tickers, consume)
+    assert waits == [5]

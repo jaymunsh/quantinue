@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Awaitable, Callable
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal  # noqa: TC003 - Pydantic resolves this field at runtime.
 from typing import TYPE_CHECKING, Final, Literal, Protocol, TypeAlias
 
@@ -21,9 +21,11 @@ from quantinue.market_data.symbols import from_venue_symbol, to_venue_symbol
 
 if TYPE_CHECKING:
     from quantinue.orchestration.watch_policy import WatchStreamConfig
+    from quantinue.runtime_status import StreamState
 
 _STREAM_URL: Final = "wss://stream.data.alpaca.markets/v2/iex"
 _SOURCE: Final = "alpaca-iex-stream"
+_FAILURE_THRESHOLD: Final = 3
 
 
 class _StreamSocket(Protocol):
@@ -68,6 +70,13 @@ class AlpacaTradeStream:
     secret_key: str
     config: WatchStreamConfig
     connector: StreamConnector | None = None
+    _runtime: list[StreamState] = field(default_factory=lambda: ["off"])
+    _failures: list[int] = field(default_factory=lambda: [0])
+
+    @property
+    def state(self) -> StreamState:
+        """Return the current connection lifecycle state."""
+        return self._runtime[0]
 
     async def run(
         self,
@@ -76,8 +85,10 @@ class AlpacaTradeStream:
     ) -> None:
         """Reconnect until cancelled while polling remains the safety fallback."""
         logger: BoundLogger = get_logger("watch.stream")
+        self._runtime[0] = "connecting"
         while True:
             try:
+                self._runtime[0] = "connecting"
                 connector = self.connector or self._connect
                 async with connector() as socket:
                     await self._run_session(socket, tickers, consume)
@@ -88,6 +99,12 @@ class AlpacaTradeStream:
                 TimeoutError,
                 _StreamProtocolError,
             ) as error:
+                self._failures[0] += 1
+                self._runtime[0] = (
+                    "failed"
+                    if self._failures[0] >= _FAILURE_THRESHOLD
+                    else "reconnecting"
+                )
                 await logger.awarning("watch.stream.reconnect", error_type=type(error).__name__)
                 await anyio.sleep(self.config.reconnect_seconds)
 
@@ -108,6 +125,8 @@ class AlpacaTradeStream:
             )
         )
         self._expect_success(await socket.recv(), "authenticated")
+        self._failures[0] = 0
+        self._runtime[0] = "connected"
         subscribed = await self._sync(socket, frozenset(), await tickers())
         while True:
             message: str | bytes = b"[]"

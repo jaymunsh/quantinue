@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from quantinue.core.market_calendar import NEW_YORK, NyseCalendar
 from quantinue.orchestration.job_cadence import is_job_due
+from quantinue.runtime_status import RuntimeSnapshot, RuntimeView, present_runtime
 
 if TYPE_CHECKING:
     from quantinue.orchestration.policy import JobsConfig
@@ -79,6 +80,7 @@ class ScheduleView(BaseModel):
     is_trading_day: bool
     jobs_enabled: bool
     tick_seconds: int = Field(ge=1)
+    runtime: RuntimeView
     jobs: tuple[ScheduledJobView, ...] = ()
 
 
@@ -93,12 +95,13 @@ def _next_due(last_success: date | None, slot: date, interval_days: int) -> date
     return max(last_success + timedelta(days=interval_days), slot)
 
 
-async def build_schedule(
+async def build_schedule(  # noqa: PLR0913 - presentation needs policy, ledger, clock and runtime
     *,
     job_names: tuple[str, ...],
     config: JobsConfig,
     ledger: ScheduleLedger,
     now: datetime,
+    runtime: RuntimeSnapshot | None = None,
     calendar: NyseCalendar | None = None,
 ) -> ScheduleView:
     """Project the registered jobs into their operating basis."""
@@ -131,5 +134,14 @@ async def build_schedule(
         is_trading_day=market.is_trading_day(slot),
         jobs_enabled=config.enabled,
         tick_seconds=config.tick_seconds,
+        runtime=present_runtime(
+            runtime
+            or RuntimeSnapshot.web_only(
+                rejudge_configured=False,
+                stream_configured=False,
+            ),
+            now=now,
+            calendar=market,
+        ),
         jobs=tuple(jobs),
     )

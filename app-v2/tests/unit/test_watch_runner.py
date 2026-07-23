@@ -1,14 +1,17 @@
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import replace
 from datetime import UTC, date, datetime
 from decimal import Decimal
 
+import anyio
 import pytest
 
 from quantinue.market_data.models import LatestTrade
 from quantinue.orchestration.policy import RejudgeConfig, WatchConfig
 from quantinue.orchestration.watch_policy import WatchStreamConfig
-from quantinue.orchestration.watch_runner import WatchRunner
+from quantinue.orchestration.watch_runner import WatchOutcome, WatchRunner
 from quantinue.roles.exits import ExitDecision, ExitReason, OpenPosition
+from quantinue.runtime_status import StreamState
 
 
 def _position() -> OpenPosition:
@@ -283,6 +286,102 @@ async def test_stream_ignores_an_out_of_order_trade_for_the_same_ticker() -> Non
     # Then
     assert outcome.watched == 0
     assert exits.calls == [(date(2026, 7, 20), {"NVDA": Decimal("100.00")})]
+
+
+@pytest.mark.anyio
+async def test_polling_continues_while_stream_reconnects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given
+    class _ReconnectingStream:
+        state: StreamState = "reconnecting"
+
+        async def run(
+            self,
+            tickers: Callable[[], Awaitable[tuple[str, ...]]],
+            consume: Callable[[LatestTrade], Awaitable[None]],
+        ) -> None:
+            del tickers, consume
+            await anyio.sleep_forever()
+
+    runner = WatchRunner(
+        WatchConfig(
+            enabled=True,
+            stream=WatchStreamConfig(enabled=True),
+        ),
+        domain=_Domain(),
+        quotes=_Quotes(),
+        exits=_NoExit(),
+        stream=_ReconnectingStream(),
+    )
+    ticks = 0
+
+    async def tick(_: datetime) -> WatchOutcome:
+        nonlocal ticks
+        ticks += 1
+        if ticks == 2:
+            raise anyio.get_cancelled_exc_class()
+        return WatchOutcome("ready")
+
+    runner.tick = tick
+
+    async def advance_interval(_: float) -> None:
+        return None
+
+    monkeypatch.setattr("quantinue.orchestration.watch_runner.anyio.sleep", advance_interval)
+
+    # When
+    await runner.run_forever()
+
+    # Then
+    assert ticks == 2
+
+
+@pytest.mark.anyio
+async def test_simultaneous_stream_and_poll_prices_close_a_position_once() -> None:
+    # Given
+    class _IdempotentExit:
+        def __init__(self) -> None:
+            self.closed = False
+            self.close_count = 0
+
+        async def run_brackets(
+            self, *, as_of: date, prices: Mapping[str, Decimal]
+        ) -> tuple[ExitDecision, ...]:
+            del as_of, prices
+            if self.closed:
+                return ()
+            self.closed = True
+            self.close_count += 1
+            return ()
+
+    exits = _IdempotentExit()
+    runner = WatchRunner(
+        WatchConfig(enabled=True, stream=WatchStreamConfig(enabled=True)),
+        domain=_Domain(),
+        quotes=_Quotes(),
+        exits=exits,
+    )
+    trade = LatestTrade(
+        ticker="NVDA",
+        price=Decimal("84.00"),
+        observed_at=datetime(2026, 7, 20, 14, 0, tzinfo=UTC),
+        source="alpaca-iex-stream",
+    )
+
+    async def poll() -> None:
+        _ = await runner.tick(trade.observed_at)
+
+    async def push() -> None:
+        _ = await runner.ingest_stream_trade(trade)
+
+    # When
+    async with anyio.create_task_group() as task_group:
+        _ = task_group.start_soon(poll)
+        _ = task_group.start_soon(push)
+
+    # Then
+    assert exits.close_count == 1
 
 
 async def _latest_trade(

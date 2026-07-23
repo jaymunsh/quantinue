@@ -44,8 +44,9 @@ from quantinue.orchestration.job_factory import (
     build_budgeted_analyzer,
     build_job_runner,
 )
-from quantinue.orchestration.policy import load_mvp2_config
+from quantinue.orchestration.policy import Mvp2Config, load_mvp2_config
 from quantinue.orchestration.watch_factory import build_watch_runner
+from quantinue.runtime_status import RuntimeSnapshot, RuntimeView, present_runtime
 from quantinue.web.timefmt import register_filters
 
 if TYPE_CHECKING:
@@ -55,6 +56,7 @@ if TYPE_CHECKING:
     from quantinue.db.contracts import RunStore
     from quantinue.db.users import UserAccount
     from quantinue.orchestration.job_runner import JobRunner
+    from quantinue.orchestration.watch_runner import WatchRunner
 
 # 타임라인에 몇 건을 보여줄지. 판단 문턱이 아니라 표시용 창이라 config가
 # 아니라 여기 산다 — 어떤 매매 결정에도 들어가지 않는다.
@@ -135,29 +137,60 @@ def _mount_schedule(  # noqa: PLR0913 - 협력자 나열이지 분기 아님
     templates: Jinja2Templates,
     reads: object | None,
     settings: Settings,
-    config: object,
+    config: Mvp2Config,
     job_runner: JobRunner | None,
+    watch_runner: WatchRunner | None,
 ) -> None:
     """Mount the operating-basis page: when jobs run and on whose clock."""
 
+    def runtime_snapshot() -> RuntimeSnapshot:
+        if not settings.background_workers:
+            return RuntimeSnapshot.web_only(
+                rejudge_configured=config.watch.rejudge.enabled,
+                stream_configured=config.watch.stream.enabled,
+            )
+        if watch_runner is None:
+            return RuntimeSnapshot.owner(
+                daily_attached=job_runner is not None and config.jobs.enabled,
+                watch_attached=False,
+                rejudge_configured=config.watch.rejudge.enabled,
+                stream_configured=config.watch.stream.enabled,
+            )
+        return watch_runner.snapshot().model_copy(
+            update={"daily_attached": job_runner is not None and config.jobs.enabled}
+        )
+
+    @app.get("/api/runtime/status", response_model=RuntimeView)
+    async def runtime_status() -> RuntimeView:
+        return present_runtime(runtime_snapshot(), now=datetime.now(UTC))
+
+    @app.get("/schedule", response_class=HTMLResponse)
     @app.get("/admin/schedule", response_class=HTMLResponse)
     async def schedule(request: Request) -> HTMLResponse:
         # 잡 이름은 러너에게 묻는다. 화면이 자기 목록을 들면 등록이 갈리는
         # 설치(자격증명 없음)에서 화면과 실행이 다른 이야기를 한다.
-        names = () if job_runner is None else tuple(job.name for job in job_runner.jobs)
+        names = (
+            tuple(config.jobs.cadences)
+            if job_runner is None
+            else tuple(job.name for job in job_runner.jobs)
+        )
+        now = datetime.now(UTC)
+        runtime = runtime_snapshot()
         view = (
             ScheduleView(
-                slot_date=datetime.now(UTC).astimezone(NEW_YORK).date(),
+                slot_date=now.astimezone(NEW_YORK).date(),
                 is_trading_day=False,
                 jobs_enabled=False,
                 tick_seconds=60,
+                runtime=present_runtime(runtime, now=now),
             )
             if reads is None
             else await build_schedule(
                 job_names=names,
                 config=config.jobs,
                 ledger=reads,
-                now=datetime.now(UTC),
+                now=now,
+                runtime=runtime,
             )
         )
         return templates.TemplateResponse(
@@ -397,7 +430,15 @@ def create_app(  # noqa: C901 - application composition root owns conditional ad
             },
         )
 
-    _mount_schedule(app, templates, control_room_reads, selected_settings, mvp2_config, job_runner)
+    _mount_schedule(
+        app,
+        templates,
+        control_room_reads,
+        selected_settings,
+        mvp2_config,
+        attached_job_runner,
+        attached_watch_runner,
+    )
     _mount_ops_log(app, templates, control_room_reads, selected_settings)
 
     @app.get("/api/accounts", response_model=AccountRosterView)

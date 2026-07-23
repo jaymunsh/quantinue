@@ -891,6 +891,8 @@ select:focus-visible { outline: 2px solid var(--focus-input); outline-offset: 1p
 .basis-steps strong { color: var(--accent-ink); font-weight: 700; }
 .basis-steps code { padding: 1px 6px; background: var(--surface); border: 1px solid var(--border); border-radius: 5px; font: 500 12px var(--font-mono); }
 .basis-state { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.runtime-status__facts { grid-template-columns: minmax(8rem, auto) minmax(0, 1fr); }
+.runtime-status__facts dd { overflow-wrap: anywhere; }
 
 /* ═══ 계좌 개설 폼 ════════════════════════════════════════════
    한 줄에 한 칸씩 늘어놓으면 여섯 칸이 긴 띠가 되어 무엇과 무엇이 한 벌인지

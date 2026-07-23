@@ -12,6 +12,7 @@ import structlog
 
 from quantinue.core.market_calendar import NEW_YORK, NyseCalendar
 from quantinue.roles.exits.alerts import format_exit_alert
+from quantinue.runtime_status import RuntimeSnapshot, StreamState, WatchRuntimeState
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable, Mapping
@@ -53,6 +54,11 @@ class LiveTradeStream(Protocol):
         consume: Callable[[LatestTrade], Awaitable[None]],
     ) -> None:
         """Keep subscriptions synchronized until application cancellation."""
+        ...
+
+    @property
+    def state(self) -> StreamState:
+        """Return the current transport lifecycle state."""
         ...
 
 
@@ -112,9 +118,32 @@ class WatchRunner:
         self._completed_sweeps: set[tuple[date, str]] = set()
         self._evaluation_lock = anyio.Lock()
         self._logger: structlog.stdlib.BoundLogger = structlog.get_logger("watch")
+        self._runtime = WatchRuntimeState(
+            rejudge_configured=config.rejudge.enabled,
+            stream_configured=config.stream.enabled,
+        )
+        self._stream_state: StreamState = "off"
+
+    def snapshot(self) -> RuntimeSnapshot:
+        """Return an immutable copy of current runner liveness."""
+        stream_state = (
+            self._stream_state
+            if self._stream is None
+            else self._stream.state
+        )
+        return self._runtime.snapshot(stream_state=stream_state)
 
     async def tick(self, now: datetime) -> WatchOutcome:
-        """Apply the switch and session gate; later milestones add watch work."""
+        """Run one polling boundary and record its observable result."""
+        try:
+            outcome = await self._tick(now)
+        except BaseException:
+            self._runtime.record(now, "failed")
+            raise
+        self._runtime.record(now, outcome.reason)
+        return outcome
+
+    async def _tick(self, now: datetime) -> WatchOutcome:
         if not self._config.enabled:
             return WatchOutcome("disabled")
         if not self._calendar.is_market_open(now):
@@ -260,8 +289,9 @@ class WatchRunner:
 
     async def _poll_forever(self) -> None:
         while True:
+            attempted_at = datetime.now(UTC)
             try:
-                outcome = await self.tick(datetime.now(UTC))
+                outcome = await self.tick(attempted_at)
                 if outcome.reason == "ready":
                     await self._logger.ainfo("watch.tick", reason=outcome.reason)
             except Exception:  # noqa: BLE001 - 한 틱 실패가 다음 감시 기회를 없애면 안 된다.

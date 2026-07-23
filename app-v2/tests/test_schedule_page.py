@@ -8,15 +8,26 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 
 import pytest
 from fastapi.testclient import TestClient
 
+from quantinue import main
 from quantinue.api.schedule import build_schedule
 from quantinue.core.config import Settings
 from quantinue.db.memory import InMemoryRunStore
 from quantinue.main import create_app
-from quantinue.orchestration.policy import JobCadenceConfig, JobsConfig
+from quantinue.orchestration.policy import (
+    JobCadenceConfig,
+    JobsConfig,
+    Mvp2Config,
+    load_mvp2_config,
+)
+from quantinue.runtime_status import RuntimeView
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 # 2026-07-21 04:00 UTC = 뉴욕 00:00 = 서울 13:00 — 슬롯이 막 바뀐 시각
 _NOW = datetime(2026, 7, 21, 4, 0, tzinfo=UTC)
@@ -102,7 +113,7 @@ class _Store(InMemoryRunStore):
 def test_the_schedule_page_explains_the_clock_and_lists_the_jobs() -> None:
     client = TestClient(create_app(Settings(app_name="Quantinue Test"), store=_Store()))
 
-    response = client.get("/admin/schedule")
+    response = client.get("/schedule")
 
     assert response.status_code == 200
     body = response.text
@@ -110,3 +121,34 @@ def test_the_schedule_page_explains_the_clock_and_lists_the_jobs() -> None:
     assert "13:00" in body  # 서울에서 하루가 바뀌는 시각
     # "매일"은 하루 몇 번인지 말하지 않는다 — 1회 보장이 화면에 있어야 한다.
     assert "거래일마다 1회" in body
+    assert "자동 작업 꺼짐" in body
+    assert "일일 잡</dt><dd>연결 안 됨" in body
+
+
+def test_runtime_status_api_distinguishes_configured_policy_from_attached_workers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given
+    def configured_policy(path: Path) -> Mvp2Config:
+        config = load_mvp2_config(path)
+        watch = config.watch.model_copy(
+            update={"rejudge": config.watch.rejudge.model_copy(update={"enabled": True})}
+        )
+        return config.model_copy(update={"watch": watch})
+
+    monkeypatch.setattr(main, "load_mvp2_config", configured_policy)
+    client = TestClient(create_app(Settings(app_name="Quantinue Test")))
+
+    # When
+    response = client.get("/api/runtime/status")
+
+    # Then
+    assert response.status_code == 200
+    payload = RuntimeView.model_validate(response.json())
+    assert payload.watch_status == "off"
+    assert payload.snapshot.background_workers is False
+    assert payload.snapshot.watch_attached is False
+    assert payload.snapshot.rejudge_configured is True
+    assert payload.snapshot.last_poll_attempt is None
+    assert payload.snapshot.last_ready_poll is None
+    assert payload.snapshot.consecutive_failures == 0
