@@ -141,6 +141,144 @@ async def _seed_analysis_scope(database_url: str) -> None:
     await engine.dispose()
 
 
+def _event_config(*, enabled: bool, daily_limit: float = 3) -> Mvp2Config:
+    return Mvp2Config(
+        profiles={"aggressive": ProfileConfig()},
+        jobs=JobsConfig(
+            enabled=True,
+            cadences={
+                name: JobCadenceConfig(enabled=False)
+                for name in (
+                    "disclosures",
+                    "news",
+                    "news_wire",
+                    "screening",
+                    "insider_scoring",
+                    "analysis:aggressive",
+                    "exits",
+                    "allocation",
+                )
+            },
+        ),
+        watch=WatchConfig(rejudge=RejudgeConfig(enabled=enabled)),
+        budget=BudgetConfig(
+            daily_llm_usd=daily_limit,
+            model_pricing={
+                "transport-double": ModelPrice(
+                    input_usd_per_1m=Decimal(100),
+                    output_usd_per_1m=Decimal(100),
+                )
+            },
+        ),
+    )
+
+
+async def _event_ledger_counts() -> tuple[int, ...]:
+    engine = create_async_engine(_DATABASE_URL)
+    async with engine.connect() as connection:
+        row = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT
+                      (SELECT count(*) FROM tb_llm_usage),
+                      (SELECT count(*) FROM tb_event_processing_receipt
+                         WHERE persona LIKE 'analysis:%'),
+                      (SELECT count(*) FROM tb_rejudgement_cooldown),
+                      (SELECT count(*) FROM tb_strategist_signals),
+                      (SELECT count(*) FROM tb_critic_verdict),
+                      (SELECT count(*) FROM tb_order)
+                    """
+                )
+            )
+        ).one()
+    await engine.dispose()
+    return tuple(int(value) for value in row)
+
+
+@pytest.mark.anyio
+async def test_public_runner_feature_flag_off_has_no_event_side_effects() -> None:
+    await _reset_database()
+    await _seed_analysis_scope(_DATABASE_URL)
+    article = RawNewsWrite(
+        article_id=7101,
+        ticker="AAPL",
+        trade_date=datetime(2026, 7, 24, tzinfo=UTC).date(),
+        headline="Apple raises guidance",
+        source="Reuters",
+        url="https://reuters.com/markets/flag-off",
+        published_at=datetime(2026, 7, 24, 13, 30, tzinfo=UTC),
+    )
+    transport = _TransportAnalyzer()
+    store = PostgresRunStore(_DATABASE_URL)
+    await store.initialize()
+    runner = build_job_runner(
+        _IsolatedSettings(database_url=PostgresDsn(_DATABASE_URL)),
+        _event_config(enabled=False),
+        store=store,
+        sources=JobSources(
+            analyzer=transport,
+            disclosures=_EmptyDisclosureSource(),
+            news=_ArticleSource(article),
+            wire_news=_EmptyNewsSource(),
+            ownership=object(),
+        ),
+    )
+    assert runner is not None
+    _ = await runner.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
+    assert transport.calls == []
+    assert await _event_ledger_counts() == (0, 0, 0, 0, 0, 0)
+    if runner.event_runtime is not None:
+        await runner.event_runtime.close()
+    await store.close()
+
+
+@pytest.mark.anyio
+async def test_public_runner_budget_refusal_releases_cooldown_for_next_event() -> None:
+    await _reset_database()
+    await _seed_analysis_scope(_DATABASE_URL)
+    article = RawNewsWrite(
+        article_id=7102,
+        ticker="AAPL",
+        trade_date=datetime(2026, 7, 24, tzinfo=UTC).date(),
+        headline="Apple raises guidance again",
+        source="Reuters",
+        url="https://reuters.com/markets/budget-refusal",
+        published_at=datetime(2026, 7, 24, 13, 31, tzinfo=UTC),
+    )
+    transport = _TransportAnalyzer()
+    store = PostgresRunStore(_DATABASE_URL)
+    await store.initialize()
+    analyzer = BudgetedAnalyzer(
+        transport,
+        ledger=store.domain,
+        daily_limit_usd=0.000001,
+        pricing=_event_config(enabled=True).budget.model_pricing,
+    )
+    runner = build_job_runner(
+        _IsolatedSettings(database_url=PostgresDsn(_DATABASE_URL)),
+        _event_config(enabled=True, daily_limit=0.000001),
+        store=store,
+        sources=JobSources(
+            analyzer=analyzer,
+            disclosures=_EmptyDisclosureSource(),
+            news=_ArticleSource(article),
+            wire_news=_EmptyNewsSource(),
+            ownership=object(),
+        ),
+    )
+    assert runner is not None
+    now = datetime(2026, 7, 24, 14, tzinfo=UTC)
+    _ = await runner.tick(now)
+    assert transport.calls == []
+    assert runner.last_event_analysis_run is not None
+    assert runner.last_event_analysis_run.reason == "strategist_budget_refused"
+    assert await _event_ledger_counts() == (0, 1, 0, 0, 0, 0)
+    assert runner.event_runtime is not None
+    await runner.event_runtime.close()
+    await store.close()
+
+
 @pytest.mark.anyio
 async def test_owner_transitions_acknowledge_exact_generation() -> None:
     await _reset_database()
