@@ -284,8 +284,14 @@ CHECKS: dict[str, dict[tuple[str, ...], tuple[str, ...]]] = {
         ("status", "completed_at"): ("'completed'", "completed_at is not null"),
     },
     "tb_rejudgement_cooldown": {
-        ("status",): ("'claimed'", "'completed'"),
-        ("status", "completed_at"): ("'completed'", "completed_at is not null"),
+        ("status",): ("'claimed'", "'dispatched'", "'completed'"),
+        ("status", "completed_at"): (
+            "'claimed'",
+            "'dispatched'",
+            "completed_at is null",
+            "'completed'",
+            "completed_at is not null",
+        ),
     },
     "tb_llm_budget_reservation": {
         ("reserve_class",): ("'general'", "'sell'"),

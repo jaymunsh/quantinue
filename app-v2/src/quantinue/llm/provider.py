@@ -121,6 +121,14 @@ class LlmAnalyzer(Protocol):
         ...
 
 
+class ProviderCallBoundary(Protocol):
+    """Ownership transition executed at transport initiation."""
+
+    async def dispatched(self) -> None:
+        """Persist ownership immediately before transport initiation."""
+        ...
+
+
 def _metadata(
     model: str, provider: ModelProvider, system_prompt: SystemPrompt, prompt: str
 ) -> AnalysisMetadata:
@@ -225,6 +233,27 @@ class PydanticAiAnalyzer:
         self, task: AnalysisTask, prompt: str, *, profile: str | None = None
     ) -> AnalysisResult:
         """Run one schema-constrained call with external text isolated as data."""
+        return await self._analyze(task, prompt, profile=profile, boundary=None)
+
+    async def analyze_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None = None,
+        boundary: ProviderCallBoundary,
+    ) -> AnalysisResult:
+        """Acknowledge durable ownership at transport initiation."""
+        return await self._analyze(task, prompt, profile=profile, boundary=boundary)
+
+    async def _analyze(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: ProviderCallBoundary | None,
+    ) -> AnalysisResult:
         system_prompt = load_system_prompt(task.value, profile=profile)
         agent = Agent(
             self._model,
@@ -246,6 +275,8 @@ class PydanticAiAnalyzer:
                         self._config.usage_limit.count_input_before_request
                     ),
                 )
+            if boundary is not None:
+                await boundary.dispatched()
             result = await agent.run(
                 ModelInput(external_data=prompt).model_dump_json(),
                 usage_limits=usage_limits,

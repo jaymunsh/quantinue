@@ -25,7 +25,12 @@ from quantinue.events.analysis_repository import (
     PostgresEventAnalysisReceiptRepository,
 )
 from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
-from quantinue.llm.budget import BudgetedAnalyzer, LlmUsageRecord, ModelPrice
+from quantinue.llm.budget import (
+    BudgetedAnalyzer,
+    LlmUsageRecord,
+    ModelPrice,
+    PaidCallBoundary,
+)
 from quantinue.llm.provider import (
     AnalysisMetadata,
     AnalysisResult,
@@ -105,6 +110,17 @@ class _TransportAnalyzer:
                 input_hash=("a" if task is AnalysisTask.STRATEGY else "b") * 64,
             ),
         )
+
+    async def analyze_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        await boundary.dispatched()
+        return await self.analyze(task, prompt, profile=profile)
 
 
 async def _seed_analysis_scope(database_url: str) -> None:
@@ -398,6 +414,22 @@ async def test_public_job_runner_executes_event_analysis_once_end_to_end() -> No
     assert len(transport.calls) == 2
     assert restarted.last_event_analysis_run is not None
     assert restarted.last_event_analysis_run.completed == 0
+    async with engine.connect() as connection:
+        replay_counts = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT
+                      (SELECT count(*) FROM tb_llm_usage),
+                      (SELECT count(*) FROM tb_strategist_signals
+                         WHERE evidence_id LIKE 'event:%'),
+                      (SELECT count(*) FROM tb_critic_verdict
+                         WHERE evidence_id LIKE 'event:%')
+                    """
+                )
+            )
+        ).one()
+    assert tuple(replay_counts) == (2, 1, 1)
     assert restarted.event_runtime is not None
     await restarted.event_runtime.close()
     await engine.dispose()

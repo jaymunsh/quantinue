@@ -145,6 +145,17 @@ class _EventPaidBoundary(PaidCallBoundary):
 
 
 @dataclass(slots=True)
+class _LeasePaidBoundary(PaidCallBoundary):
+    lease: WorkLease
+    ticker: str
+    persona: str
+
+    @override
+    async def dispatched(self) -> None:
+        await self.lease.mark_dispatched(self.ticker, self.persona)
+
+
+@dataclass(slots=True)
 class _EventAnalyzer(LlmAnalyzer):
     inner: LlmAnalyzer
     receipts: EventAnalysisReceiptRepository
@@ -187,7 +198,7 @@ class _EventAnalyzer(LlmAnalyzer):
     ) -> AnalysisResult:
         return await self._analyze_stage(task, prompt, profile=profile, reserved=True)
 
-    async def _analyze_stage(  # noqa: C901, PLR0912 - exhaustive receipt state machine
+    async def _analyze_stage(  # noqa: C901, PLR0912, PLR0915
         self,
         task: AnalysisTask,
         prompt: str,
@@ -235,7 +246,7 @@ class _EventAnalyzer(LlmAnalyzer):
                     self.attempted += 1
                 case EventAnalysisReceiptClaim.COOLDOWN | EventAnalysisReceiptClaim.SUPPRESSED:
                     self.suppressed += 1
-                    raise _EventStageStoppedError(
+                    raise _EventStageStoppedError(  # noqa: TRY301
                         EventAnalysisRun(
                             attempted=self.attempted,
                             completed=self.completed,
@@ -245,7 +256,7 @@ class _EventAnalyzer(LlmAnalyzer):
                         )
                     )
                 case EventAnalysisReceiptClaim.UNCERTAIN:
-                    raise _EventStageStoppedError(
+                    raise _EventStageStoppedError(  # noqa: TRY301
                         EventAnalysisRun(
                             attempted=self.attempted,
                             completed=self.completed,
@@ -255,7 +266,7 @@ class _EventAnalyzer(LlmAnalyzer):
                         )
                     )
                 case EventAnalysisReceiptClaim.DUPLICATE:
-                    raise _EventStageStoppedError(
+                    raise _EventStageStoppedError(  # noqa: TRY301
                         EventAnalysisRun(
                             attempted=self.attempted,
                             completed=self.completed,
@@ -283,7 +294,7 @@ class _EventAnalyzer(LlmAnalyzer):
                     owner_token,
                 )
             if not completed:
-                raise _EventStageStoppedError(
+                raise _EventStageStoppedError(  # noqa: TRY301
                     EventAnalysisRun(uncertain=1, reason=f"{stage.value}_ownership_lost")
                 )
             self.completed += 1
@@ -329,6 +340,17 @@ class _EventAnalyzer(LlmAnalyzer):
                 )
             ) from None
         except anyio.get_cancelled_exc_class():
+            if not boundary.crossed:
+                with anyio.CancelScope(shield=True):
+                    _ = await self.receipts.release_unbilled(
+                        self.pack.document.event_id,
+                        self.pack.document.ticker,
+                        self.persona,
+                        stage,
+                        owner_token,
+                    )
+            raise
+        except Exception:
             if not boundary.crossed:
                 with anyio.CancelScope(shield=True):
                     _ = await self.receipts.release_unbilled(
@@ -688,14 +710,38 @@ class AnalysisJob:
         evidence_ids = evidence_ids_override or (f"{run_id}:{subject.ticker}",)
         analyzer = analyzer_override or self.analyzer
         strategy_prompt = analysis_prompt(subject, holding, filings, headlines, indicators)
-        if lease is not None:
-            await lease.mark_dispatched(subject.ticker, self.profile_name)
         reserved_analyze = getattr(analyzer, "analyze_reserved", None)
-        if holding.quantity > 0 and reserved_analyze is not None:
+        lease_boundary = (
+            _LeasePaidBoundary(lease, subject.ticker, self.profile_name)
+            if lease is not None
+            else None
+        )
+        if isinstance(analyzer, BudgetedAnalyzer) and lease_boundary is not None:
+            if holding.quantity > 0:
+                evidence = await analyzer.analyze_reserved_with_boundary(
+                    AnalysisTask.STRATEGY,
+                    strategy_prompt,
+                    profile=self.profile_name,
+                    boundary=lease_boundary,
+                )
+            else:
+                evidence = await analyzer.analyze_with_boundary(
+                    AnalysisTask.STRATEGY,
+                    strategy_prompt,
+                    profile=self.profile_name,
+                    boundary=lease_boundary,
+                )
+        elif holding.quantity > 0 and reserved_analyze is not None:
+            if lease_boundary is not None:
+                with anyio.CancelScope(shield=True):
+                    await lease_boundary.dispatched()
             evidence = await reserved_analyze(
                 AnalysisTask.STRATEGY, strategy_prompt, profile=self.profile_name
             )
         else:
+            if lease_boundary is not None:
+                with anyio.CancelScope(shield=True):
+                    await lease_boundary.dispatched()
             evidence = await analyzer.analyze(
                 AnalysisTask.STRATEGY,
                 strategy_prompt,
@@ -782,7 +828,7 @@ class AnalysisJob:
                 model_name=evidence.metadata.model,
                 prompt_version=evidence.metadata.prompt_version,
                 input_hash=evidence.metadata.input_hash,
-                source="event" if evidence_ids_override is not None else None,
+                lineage_source="event" if evidence_ids_override is not None else None,
                 source_ref=evidence_ids[0] if evidence_ids_override is not None else None,
                 captured_at=cycle_ts if evidence_ids_override is not None else None,
                 evidence_id=(
@@ -815,7 +861,7 @@ class AnalysisJob:
                 confidence=Decimal(str(verdict.confidence)),
                 decided_layer=verdict.decided_layer,
                 skipped_rules=verdict.skipped_rules,
-                source="event" if evidence_ids_override is not None else None,
+                lineage_source="event" if evidence_ids_override is not None else None,
                 source_ref=evidence_ids[0] if evidence_ids_override is not None else None,
                 captured_at=cycle_ts if evidence_ids_override is not None else None,
                 evidence_id=(

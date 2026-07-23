@@ -1689,7 +1689,7 @@ class PostgresDomainRepository:
                 model_name=value.model_name,
                 prompt_version=value.prompt_version,
                 input_hash=value.input_hash,
-                source=value.source,
+                source=value.lineage_source,
                 source_ref=value.source_ref,
                 captured_at=value.captured_at,
                 evidence_id=value.evidence_id,
@@ -1706,7 +1706,7 @@ class PostgresDomainRepository:
                 high_52w=value.decision_close,
                 low_52w=value.decision_close,
             )
-            .on_conflict_do_nothing(index_elements=["ticker", "cycle_ts", "inv_type"])
+            .on_conflict_do_nothing()
         )
         async with self._engine.begin() as connection:
             _ = await connection.execute(statement)
@@ -1714,9 +1714,13 @@ class PostgresDomainRepository:
                 {
                     "value": await connection.scalar(
                         select(table.c.id).where(
-                            table.c.ticker == value.ticker,
-                            table.c.cycle_ts == value.cycle_ts,
-                            table.c.inv_type == value.inv_type,
+                            table.c.evidence_id == value.evidence_id
+                            if value.evidence_id is not None
+                            else and_(
+                                table.c.ticker == value.ticker,
+                                table.c.cycle_ts == value.cycle_ts,
+                                table.c.inv_type == value.inv_type,
+                            )
                         )
                     )
                 }
@@ -2036,7 +2040,7 @@ class PostgresDomainRepository:
             "decided_layer": value.decided_layer,
             "verdict_source": value.verdict_source,
             "skipped_rules": list(value.skipped_rules),
-            "source": value.source,
+            "source": value.lineage_source,
             "source_ref": value.source_ref,
             "captured_at": value.captured_at,
             "evidence_id": value.evidence_id,
@@ -2158,6 +2162,21 @@ class PostgresDomainRepository:
             _ = await connection.execute(
                 text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
                 {"key": f"llm-budget:{budget_day.isoformat()}"},
+            )
+            _ = await connection.execute(
+                text(
+                    """
+                    UPDATE tb_llm_budget_reservation
+                    SET state='released', released_at=:claimed_at
+                    WHERE budget_day=:budget_day AND state='claimed'
+                      AND claimed_at <= :stale_before
+                    """
+                ),
+                {
+                    "budget_day": budget_day,
+                    "claimed_at": claimed_at,
+                    "stale_before": claimed_at - timedelta(minutes=5),
+                },
             )
             row = (
                 await connection.execute(

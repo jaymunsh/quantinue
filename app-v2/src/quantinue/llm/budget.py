@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
@@ -139,6 +140,45 @@ class PaidCallBoundary(Protocol):
         ...
 
 
+@runtime_checkable
+class BoundaryAwareAnalyzer(Protocol):
+    """Provider adapter that acknowledges actual transport initiation."""
+
+    async def analyze_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        """Initiate transport through the supplied ownership boundary."""
+        ...
+
+
+@dataclass(slots=True)
+class _BudgetDispatchBoundary:
+    durable: AtomicLlmBudgetReservations | None
+    reservation: LlmBudgetReservation | None
+    external: PaidCallBoundary | None
+    dispatched_at: datetime
+    crossed: bool = False
+
+    async def dispatched(self) -> None:
+        if (
+            self.durable is not None
+            and self.reservation is not None
+            and not await self.durable.dispatch_llm_budget(
+                self.reservation, dispatched_at=self.dispatched_at
+            )
+        ):
+            message = "llm budget reservation ownership lost"
+            raise LlmBudgetExceededError(message)
+        if self.external is not None:
+            await self.external.dispatched()
+        self.crossed = True
+
+
 class BudgetedAnalyzer:
     """Wraps an analyzer so every billable call is counted and capped."""
 
@@ -249,15 +289,31 @@ class BudgetedAnalyzer:
         durable = self._ledger if isinstance(self._ledger, AtomicLlmBudgetReservations) else None
         durable_reservation: LlmBudgetReservation | None = None
         if durable is not None:
-            durable_reservation = await durable.reserve_llm_budget(
-                reservation_id=uuid4().hex,
-                owner_token=uuid4().hex,
+            reservation_id = uuid4().hex
+            owner_token = uuid4().hex
+            provisional = LlmBudgetReservation(
                 budget_day=day,
-                reserve_class="sell" if spending_limit == self._limit else "general",
+                reservation_id=reservation_id,
+                owner_token=owner_token,
                 max_cost_usd=reservation,
-                spending_limit=spending_limit,
-                claimed_at=called_at,
             )
+            try:
+                with anyio.CancelScope(shield=True):
+                    durable_reservation = await durable.reserve_llm_budget(
+                        reservation_id=reservation_id,
+                        owner_token=owner_token,
+                        budget_day=day,
+                        reserve_class="sell" if spending_limit == self._limit else "general",
+                        max_cost_usd=reservation,
+                        spending_limit=spending_limit,
+                        claimed_at=called_at,
+                    )
+            except BaseException:
+                with anyio.CancelScope(shield=True):
+                    _ = await durable.release_llm_budget(
+                        provisional, released_at=self._now()
+                    )
+                raise
             if durable_reservation is None:
                 message = "daily llm budget exhausted"
                 raise LlmBudgetExceededError(message)
@@ -265,19 +321,18 @@ class BudgetedAnalyzer:
             await self._reserve_local(day, reservation, spending_limit)
 
         reservation_active = True
-        dispatched = False
+        dispatch_boundary = _BudgetDispatchBoundary(
+            durable, durable_reservation, boundary, called_at
+        )
         try:
-            with anyio.CancelScope(shield=True):
-                if boundary is not None:
-                    await boundary.dispatched()
-                if durable is not None and durable_reservation is not None:
-                    if not await durable.dispatch_llm_budget(
-                        durable_reservation, dispatched_at=called_at
-                    ):
-                        message = "llm budget reservation ownership lost"
-                        raise LlmBudgetExceededError(message)
-                    dispatched = True
-            result = await self._inner.analyze(task, prompt, profile=profile)
+            if not isinstance(self._inner, BoundaryAwareAnalyzer):
+                with anyio.CancelScope(shield=True):
+                    await dispatch_boundary.dispatched()
+                result = await self._inner.analyze(task, prompt, profile=profile)
+            else:
+                result = await self._inner.analyze_with_boundary(
+                    task, prompt, profile=profile, boundary=dispatch_boundary
+                )
             usage = result.usage
             if usage is None:
                 if reservation == 0:
@@ -339,7 +394,7 @@ class BudgetedAnalyzer:
             if reservation_active:
                 with anyio.CancelScope(shield=True):
                     if durable is not None and durable_reservation is not None:
-                        if dispatched:
+                        if dispatch_boundary.crossed:
                             _ = await durable.settle_llm_budget(
                                 durable_reservation,
                                 LlmUsageRecord(

@@ -42,14 +42,28 @@ CREATE TABLE IF NOT EXISTS tb_rejudgement_cooldown (
   claimed_at TIMESTAMPTZ NOT NULL,
   completed_at TIMESTAMPTZ,
   PRIMARY KEY (ticker, persona),
-  CHECK ((status = 'dispatched') = (completed_at IS NULL AND status <> 'claimed')),
-  CHECK ((status = 'completed') = (completed_at IS NOT NULL))
+  CHECK (
+    (status IN ('claimed','dispatched') AND completed_at IS NULL)
+    OR (status = 'completed' AND completed_at IS NOT NULL)
+  )
 );
 ALTER TABLE tb_rejudgement_cooldown
   DROP CONSTRAINT IF EXISTS tb_rejudgement_cooldown_status_check;
 ALTER TABLE tb_rejudgement_cooldown
+  DROP CONSTRAINT IF EXISTS tb_rejudgement_cooldown_check;
+ALTER TABLE tb_rejudgement_cooldown
+  DROP CONSTRAINT IF EXISTS tb_rejudgement_cooldown_check1;
+ALTER TABLE tb_rejudgement_cooldown
+  DROP CONSTRAINT IF EXISTS tb_rejudgement_cooldown_lifecycle_check;
+ALTER TABLE tb_rejudgement_cooldown
   ADD CONSTRAINT tb_rejudgement_cooldown_status_check
   CHECK (status IN ('claimed','dispatched','completed'));
+ALTER TABLE tb_rejudgement_cooldown
+  ADD CONSTRAINT tb_rejudgement_cooldown_lifecycle_check
+  CHECK (
+    (status IN ('claimed','dispatched') AND completed_at IS NULL)
+    OR (status = 'completed' AND completed_at IS NOT NULL)
+  );
 
 -- 1. reason TEXT -> JSONB (4 tables). Legacy prose is preserved under "legacy".
 DO $$
@@ -134,6 +148,10 @@ ALTER TABLE tb_critic_verdict
   ADD COLUMN IF NOT EXISTS prompt_version TEXT,
   ADD COLUMN IF NOT EXISTS policy_version TEXT,
   ADD COLUMN IF NOT EXISTS input_hash TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_strategist_event_evidence
+  ON tb_strategist_signals(evidence_id) WHERE evidence_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_critic_event_evidence
+  ON tb_critic_verdict(evidence_id) WHERE evidence_id IS NOT NULL;
 
 -- 6. New tables: users, LLM spend ledger, benchmark closes.
 CREATE TABLE IF NOT EXISTS tb_user (

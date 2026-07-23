@@ -386,7 +386,23 @@ class PostgresEventAnalysisReceiptRepository:
                 ),
                 {**self._key(event_id, ticker, persona, stage), "owner_token": owner_token},
             )
-            return result.rowcount == 1
+            if result.rowcount != 1:
+                return False
+            if stage is EventAnalysisStage.STRATEGIST:
+                cooldown = await connection.execute(
+                    text(
+                        """
+                        DELETE FROM tb_rejudgement_cooldown
+                        WHERE ticker=:ticker AND persona=:persona
+                          AND owner_token=:owner_token AND status='claimed'
+                        """
+                    ),
+                    {"ticker": ticker, "persona": persona, "owner_token": owner_token},
+                )
+                if cooldown.rowcount != 1:
+                    message = "suppressed receipt/cooldown ownership diverged"
+                    raise RuntimeError(message)
+            return True
 
     @staticmethod
     def _persona(persona: str, stage: EventAnalysisStage) -> str:

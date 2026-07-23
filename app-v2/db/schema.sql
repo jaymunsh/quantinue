@@ -122,6 +122,10 @@ CREATE TABLE IF NOT EXISTS tb_critic_verdict (
   prompt_version TEXT, policy_version TEXT, input_hash TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS uq_strategist_event_evidence
+  ON tb_strategist_signals(evidence_id) WHERE evidence_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_critic_event_evidence
+  ON tb_critic_verdict(evidence_id) WHERE evidence_id IS NOT NULL;
 CREATE TABLE IF NOT EXISTS tb_user (
   user_id BIGSERIAL PRIMARY KEY, login_id TEXT NOT NULL UNIQUE, display_name TEXT NOT NULL,
   role TEXT NOT NULL CHECK (role IN ('admin','user')),
@@ -330,8 +334,10 @@ CREATE TABLE IF NOT EXISTS tb_rejudgement_cooldown (
   claimed_at TIMESTAMPTZ NOT NULL,
   completed_at TIMESTAMPTZ,
   PRIMARY KEY (ticker, persona),
-  CHECK ((status = 'dispatched') = (completed_at IS NULL AND status <> 'claimed')),
-  CHECK ((status = 'completed') = (completed_at IS NOT NULL))
+  CHECK (
+    (status IN ('claimed','dispatched') AND completed_at IS NULL)
+    OR (status = 'completed' AND completed_at IS NOT NULL)
+  )
 );
 
 -- 공시 원시 원장. tb_disclosure(채점 결과)와 따로 두는 이유는 FK다 — 그쪽은
