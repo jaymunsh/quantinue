@@ -8,6 +8,7 @@ from .event_schema_expectations import (
     EVENT_FK,
     EVENT_PK,
     EVENT_TABLES,
+    EVENT_TRIGGERS,
     EVENT_UNIQUE,
 )
 
@@ -403,3 +404,4 @@ PK.update(EVENT_PK)
 UNIQUE.update(EVENT_UNIQUE)
 FK.update(EVENT_FK)
 CHECKS.update(EVENT_CHECKS)
+TRIGGERS = EVENT_TRIGGERS

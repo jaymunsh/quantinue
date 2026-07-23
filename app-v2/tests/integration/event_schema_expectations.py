@@ -81,6 +81,7 @@ EVENT_CHECKS = {
     },
     "tb_normalized_event": {
         ("event_key",): ("length(btrim(event_key)) > 0",),
+        ("source_name",): ("length(btrim(source_name)) > 0",),
         ("source_sequence",): ("length(btrim(source_sequence)) > 0",),
         ("event_type",): ("length(btrim(event_type)) > 0",),
     },
@@ -104,4 +105,35 @@ EVENT_CHECKS = {
         ("status",): ("'claimed'", "'processed'", "'skipped'", "'ordered'"),
         ("status", "order_id"): ("'ordered'", "order_id is not null"),
     },
+}
+
+EVENT_TRIGGERS = {
+    "trg_normalized_event_source": (
+        "before insert",
+        "enforce_normalized_event_source()",
+    ),
+    "trg_event_evidence_span": (
+        "before insert",
+        "enforce_event_evidence_span()",
+    ),
+    "trg_event_raw_document_immutable": (
+        "before delete or update",
+        "reject_event_provenance_mutation()",
+    ),
+    "trg_event_raw_version_immutable": (
+        "before delete or update",
+        "reject_event_provenance_mutation()",
+    ),
+    "trg_normalized_event_immutable": (
+        "before delete or update",
+        "reject_event_provenance_mutation()",
+    ),
+    "trg_event_evidence_immutable": (
+        "before delete or update",
+        "reject_event_provenance_mutation()",
+    ),
+    "trg_event_summary_immutable": (
+        "before delete or update",
+        "reject_event_provenance_mutation()",
+    ),
 }

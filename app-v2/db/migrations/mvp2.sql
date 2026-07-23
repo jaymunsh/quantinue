@@ -306,6 +306,8 @@ ALTER TABLE tb_user
 
 -- 장중 사건 저장 계약. 모두 IF NOT EXISTS 또는 재생성 가능한 trigger라 재개 시
 -- 중단 지점과 무관하게 같은 카탈로그로 수렴한다.
+BEGIN;
+
 CREATE TABLE IF NOT EXISTS tb_event_source_cursor (
   source_name TEXT PRIMARY KEY,
   cursor_value TEXT NOT NULL,
@@ -354,17 +356,12 @@ CREATE TABLE IF NOT EXISTS tb_event_raw_version (
     )
 );
 
-CREATE OR REPLACE FUNCTION reject_event_raw_version_mutation()
+CREATE OR REPLACE FUNCTION reject_event_provenance_mutation()
 RETURNS trigger LANGUAGE plpgsql AS $$
 BEGIN
-  RAISE EXCEPTION 'tb_event_raw_version is immutable';
+  RAISE EXCEPTION '% is immutable', TG_TABLE_NAME;
 END;
 $$;
-
-DROP TRIGGER IF EXISTS trg_event_raw_version_immutable ON tb_event_raw_version;
-CREATE TRIGGER trg_event_raw_version_immutable
-BEFORE UPDATE OR DELETE ON tb_event_raw_version
-FOR EACH ROW EXECUTE FUNCTION reject_event_raw_version_mutation();
 
 CREATE TABLE IF NOT EXISTS tb_normalized_event (
   event_id BIGSERIAL PRIMARY KEY,
@@ -380,6 +377,8 @@ CREATE TABLE IF NOT EXISTS tb_normalized_event (
   CONSTRAINT uq_normalized_event_source_order UNIQUE (source_name, source_sequence),
   CONSTRAINT tb_normalized_event_event_key_check
     CHECK (length(btrim(event_key)) > 0),
+  CONSTRAINT tb_normalized_event_source_name_check
+    CHECK (length(btrim(source_name)) > 0),
   CONSTRAINT tb_normalized_event_source_sequence_check
     CHECK (length(btrim(source_sequence)) > 0),
   CONSTRAINT tb_normalized_event_event_type_check
@@ -447,3 +446,127 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
   CONSTRAINT tb_event_processing_receipt_order_check
     CHECK ((status = 'ordered') = (order_id IS NOT NULL))
 );
+
+DO $$
+DECLARE
+  missing_contract TEXT;
+BEGIN
+  SELECT string_agg(expected.table_name || '.' || expected.column_name, ', ')
+    INTO missing_contract
+  FROM (
+    VALUES
+      ('tb_event_source_cursor', 'source_name'),
+      ('tb_event_source_cursor', 'cursor_value'),
+      ('tb_event_raw_document', 'document_id'),
+      ('tb_event_raw_document', 'source_name'),
+      ('tb_event_raw_document', 'source_document_id'),
+      ('tb_event_raw_version', 'raw_version_id'),
+      ('tb_event_raw_version', 'document_id'),
+      ('tb_event_raw_version', 'normalized_length'),
+      ('tb_normalized_event', 'event_id'),
+      ('tb_normalized_event', 'raw_version_id'),
+      ('tb_normalized_event', 'source_name'),
+      ('tb_event_evidence_pack', 'event_id'),
+      ('tb_event_evidence_pack', 'raw_version_id'),
+      ('tb_event_evidence_pack', 'end_offset'),
+      ('tb_event_summary_cache', 'raw_version_id'),
+      ('tb_event_summary_cache', 'content_hash'),
+      ('tb_event_processing_receipt', 'event_id'),
+      ('tb_event_processing_receipt', 'status')
+  ) AS expected(table_name, column_name)
+  LEFT JOIN information_schema.columns AS actual
+    ON actual.table_schema = 'public'
+    AND actual.table_name = expected.table_name
+    AND actual.column_name = expected.column_name
+  WHERE actual.column_name IS NULL;
+  IF missing_contract IS NOT NULL THEN
+    RAISE EXCEPTION 'incompatible partial event schema: %', missing_contract;
+  END IF;
+END;
+$$;
+
+ALTER TABLE tb_normalized_event
+  DROP CONSTRAINT IF EXISTS tb_normalized_event_source_name_check;
+ALTER TABLE tb_normalized_event
+  ADD CONSTRAINT tb_normalized_event_source_name_check
+    CHECK (length(btrim(source_name)) > 0);
+
+CREATE OR REPLACE FUNCTION enforce_normalized_event_source()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  expected_source TEXT;
+BEGIN
+  SELECT document.source_name INTO expected_source
+  FROM tb_event_raw_version AS version
+  JOIN tb_event_raw_document AS document
+    ON document.document_id = version.document_id
+  WHERE version.raw_version_id = NEW.raw_version_id;
+  IF expected_source IS DISTINCT FROM NEW.source_name THEN
+    RAISE EXCEPTION 'normalized event source does not match raw document';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION enforce_event_evidence_span()
+RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE
+  expected_version BIGINT;
+  text_length INT;
+BEGIN
+  SELECT event.raw_version_id, version.normalized_length
+    INTO expected_version, text_length
+  FROM tb_normalized_event AS event
+  JOIN tb_event_raw_version AS version
+    ON version.raw_version_id = event.raw_version_id
+  WHERE event.event_id = NEW.event_id;
+  IF expected_version IS DISTINCT FROM NEW.raw_version_id THEN
+    RAISE EXCEPTION 'evidence raw version does not match normalized event';
+  END IF;
+  IF NEW.end_offset > text_length THEN
+    RAISE EXCEPTION 'evidence span exceeds normalized text length';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_event_raw_document_immutable
+  ON tb_event_raw_document;
+DROP TRIGGER IF EXISTS trg_event_raw_version_immutable
+  ON tb_event_raw_version;
+DROP TRIGGER IF EXISTS trg_normalized_event_source
+  ON tb_normalized_event;
+DROP TRIGGER IF EXISTS trg_normalized_event_immutable
+  ON tb_normalized_event;
+DROP TRIGGER IF EXISTS trg_event_evidence_span
+  ON tb_event_evidence_pack;
+DROP TRIGGER IF EXISTS trg_event_evidence_immutable
+  ON tb_event_evidence_pack;
+DROP TRIGGER IF EXISTS trg_event_summary_immutable
+  ON tb_event_summary_cache;
+
+CREATE TRIGGER trg_normalized_event_source
+BEFORE INSERT ON tb_normalized_event
+FOR EACH ROW EXECUTE FUNCTION enforce_normalized_event_source();
+CREATE TRIGGER trg_event_evidence_span
+BEFORE INSERT ON tb_event_evidence_pack
+FOR EACH ROW EXECUTE FUNCTION enforce_event_evidence_span();
+CREATE TRIGGER trg_event_raw_document_immutable
+BEFORE UPDATE OR DELETE ON tb_event_raw_document
+FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+CREATE TRIGGER trg_event_raw_version_immutable
+BEFORE UPDATE OR DELETE ON tb_event_raw_version
+FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+CREATE TRIGGER trg_normalized_event_immutable
+BEFORE UPDATE OR DELETE ON tb_normalized_event
+FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+CREATE TRIGGER trg_event_evidence_immutable
+BEFORE UPDATE OR DELETE ON tb_event_evidence_pack
+FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+CREATE TRIGGER trg_event_summary_immutable
+BEFORE UPDATE OR DELETE ON tb_event_summary_cache
+FOR EACH ROW EXECUTE FUNCTION reject_event_provenance_mutation();
+
+DROP FUNCTION IF EXISTS reject_event_raw_version_mutation();
+
+COMMIT;

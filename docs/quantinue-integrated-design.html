@@ -936,11 +936,11 @@ erDiagram
         <tr><td rowspan="2">원시 원장</td><td class="mono r-new" style="background:var(--buy-bg)">tb_disclosure_raw</td><td>전 시장 공시 + 하드 이벤트 플래그</td><td>FK 없음 — 분석 범위 <b>밖</b>을 담는 게 존재 이유</td></tr>
         <tr class="r-new"><td class="mono">tb_news_raw</td><td>전 시장 헤드라인 (Alpaca + 와이어 RSS)</td><td class="mono">PK(article_id,ticker) · FK 없음</td></tr>
         <tr class="r-new"><td class="mono">tb_event_source_cursor</td><td>소스별 증분 수집 체크포인트</td><td class="mono">PK(source_name) · 빈 cursor 금지</td></tr>
-        <tr class="r-new"><td class="mono">tb_event_raw_document</td><td>공급자 문서의 안정 식별자</td><td class="mono">UNIQUE(source_name,source_document_id)</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_raw_document</td><td>공급자 문서의 안정 식별자</td><td class="mono">UNIQUE(source_name,source_document_id) · UPDATE/DELETE 거부</td></tr>
         <tr class="r-new"><td class="mono">tb_event_raw_version</td><td>원문·정규화 본문의 불변 버전</td><td class="mono">UPDATE/DELETE 거부 · 문서별 version/hash UNIQUE</td></tr>
-        <tr class="r-new"><td class="mono">tb_normalized_event</td><td>결정론적 장중 사건과 공급자 순서</td><td class="mono">event_key · source order UNIQUE</td></tr>
-        <tr class="r-new"><td class="mono">tb_event_evidence_pack</td><td>사건 판단의 불변 원문 span</td><td class="mono">FK → event + raw version · offset CHECK</td></tr>
-        <tr class="r-new"><td class="mono">tb_event_summary_cache</td><td>12,000자 초과 문서의 모델 요약 캐시</td><td class="mono">UNIQUE(hash,model,prompt) · length &gt; 12000</td></tr>
+        <tr class="r-new"><td class="mono">tb_normalized_event</td><td>결정론적 장중 사건과 공급자 순서</td><td class="mono">source=raw document · event/source order UNIQUE · append-only</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_evidence_pack</td><td>사건 판단의 불변 원문 span</td><td class="mono">raw version=event version · end≤본문 길이 · append-only</td></tr>
+        <tr class="r-new"><td class="mono">tb_event_summary_cache</td><td>12,000자 초과 문서의 모델 요약 캐시</td><td class="mono">UNIQUE(hash,model,prompt) · length &gt; 12000 · append-only</td></tr>
         <tr class="r-new"><td class="mono">tb_event_processing_receipt</td><td>사건·종목·성향별 처리/주문 영수증</td><td class="mono">UNIQUE(event,ticker,persona) · FK → order</td></tr>
         <tr><td rowspan="2">선별</td><td class="mono">tb_daily_pick</td><td>오늘의 분석 범위 (랭킹 상위 + 보유)</td><td class="mono">FK → tb_universe · rank 상한 없음</td></tr>
         <tr class="r-chg"><td class="mono">tb_disclosure_signal</td><td>공시 채점 — 현행은 <b>인사이더 표</b>가 여기 앉는다 (<code>sentiment_score</code>)</td><td class="mono">UNIQUE(ticker,cycle_ts) · FK → pick</td></tr>
@@ -1458,7 +1458,7 @@ erDiagram
         <tr><td>source_url</td><td class="mono">TEXT NOT NULL</td><td>출처 감사 링크</td></tr>
         <tr><td>published_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>사건 시간 정규화</td></tr>
         <tr><td>first_seen_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>수집 지연 관측</td></tr>
-        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(source_name, source_document_id)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(source_name, source_document_id) · UPDATE/DELETE 거부</td></tr>
       </tbody></table></div>
     </details>
     <details class="schema">
@@ -1482,13 +1482,13 @@ erDiagram
         <tr><td>event_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>근거·처리 영수증 FK</td></tr>
         <tr><td>raw_version_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_event_raw_version</td><td>원문 계보</td></tr>
         <tr><td>event_key</td><td class="mono">TEXT NOT NULL UNIQUE · non-empty</td><td>겹친 창 사건 dedupe</td></tr>
-        <tr><td>source_name</td><td class="mono">TEXT NOT NULL</td><td>소스 라우팅</td></tr>
+        <tr><td>source_name</td><td class="mono">TEXT NOT NULL · non-empty · raw document와 일치</td><td>소스 라우팅과 원문 계보 일치 검증</td></tr>
         <tr><td>source_sequence</td><td class="mono">TEXT NOT NULL · non-empty</td><td>공급자 순서 계보</td></tr>
         <tr><td>event_type</td><td class="mono">TEXT NOT NULL · non-empty</td><td>materiality 라우팅</td></tr>
         <tr><td>occurred_at</td><td class="mono">TIMESTAMPTZ NOT NULL</td><td>장중 시간순 처리</td></tr>
         <tr><td>payload</td><td class="mono">JSONB NOT NULL</td><td>정규화 필드 소비자</td></tr>
         <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>처리 지연 관측</td></tr>
-        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(event_key) · UNIQUE(source_name,source_sequence)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">UNIQUE(event_key) · UNIQUE(source_name,source_sequence) · UPDATE/DELETE 거부</td></tr>
       </tbody></table></div>
     </details>
     <details class="schema">
@@ -1496,11 +1496,12 @@ erDiagram
       <div class="twrap"><table><thead><tr><th>컬럼</th><th>정의</th><th>소비자</th></tr></thead><tbody>
         <tr><td>evidence_id</td><td class="mono">BIGSERIAL PRIMARY KEY</td><td>판단 근거 식별자</td></tr>
         <tr><td>event_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_normalized_event</td><td>사건 근거 묶음</td></tr>
-        <tr><td>raw_version_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_event_raw_version</td><td>불변 원문 버전</td></tr>
+        <tr><td>raw_version_id</td><td class="mono">BIGINT NOT NULL REFERENCES tb_event_raw_version · event 버전과 일치</td><td>사건이 실제 사용한 불변 원문 버전</td></tr>
         <tr><td>start_offset</td><td class="mono">INT NOT NULL CHECK (&gt;= 0)</td><td>근거 시작 위치</td></tr>
-        <tr><td>end_offset</td><td class="mono">INT NOT NULL CHECK (&gt; start)</td><td>근거 끝 위치</td></tr>
+        <tr><td>end_offset</td><td class="mono">INT NOT NULL CHECK (&gt; start) · normalized_length 이하</td><td>본문 범위를 넘지 않는 근거 끝 위치</td></tr>
         <tr><td>quote_hash</td><td class="mono">TEXT NOT NULL · non-empty</td><td>span 변조 검증</td></tr>
         <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>근거 생성 시각</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">event.raw_version_id 일치 · end_offset ≤ normalized_length · UPDATE/DELETE 거부</td></tr>
       </tbody></table></div>
     </details>
     <details class="schema">
@@ -1514,7 +1515,7 @@ erDiagram
         <tr><td>prompt_version</td><td class="mono">TEXT NOT NULL · non-empty</td><td>프롬프트별 캐시 무효화</td></tr>
         <tr><td>summary_text</td><td class="mono">TEXT NOT NULL · non-empty</td><td>후속 사건 분석 입력</td></tr>
         <tr><td>created_at</td><td class="mono">TIMESTAMPTZ NOT NULL DEFAULT now()</td><td>캐시 생성 시각</td></tr>
-        <tr><td class="muted">제약</td><td class="mono" colspan="2">FK(version,hash,length) · UNIQUE(content_hash,model,prompt_version)</td></tr>
+        <tr><td class="muted">제약</td><td class="mono" colspan="2">FK(version,hash,length) · UNIQUE(content_hash,model,prompt_version) · UPDATE/DELETE 거부</td></tr>
       </tbody></table></div>
     </details>
     <details class="schema">

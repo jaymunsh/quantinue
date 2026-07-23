@@ -32,6 +32,7 @@ class Catalog:
     order_columns: set[str]
     provenance_columns: dict[str, set[tuple[str, str]]]
     user_columns: set[tuple[str, str]]
+    triggers: dict[str, str]
 
 
 def _run(docker: str, arguments: list[str]) -> subprocess.CompletedProcess[str]:
@@ -87,6 +88,44 @@ def _column_nullability_catalog(
         if table in wanted:
             columns[table].add((column, nullable))
     return dict(columns)
+
+
+def _trigger_catalog(docker: str, name: str) -> dict[str, str]:
+    rows = _run(
+        docker,
+        [
+            "exec",
+            name,
+            "psql",
+            "-U",
+            "postgres",
+            "-d",
+            "contracts",
+            "-At",
+            "-F",
+            "|",
+            "-c",
+            (
+                "SELECT t.tgname,lower(pg_get_triggerdef(t.oid)) "
+                "FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid "
+                "JOIN pg_namespace n ON n.oid=c.relnamespace "
+                "WHERE n.nspname='public' AND NOT t.tgisinternal "
+                "ORDER BY t.tgname"
+            ),
+        ],
+    ).stdout.splitlines()
+    return dict(row.split("|", maxsplit=1) for row in rows)
+
+
+def _audited_columns(
+    docker: str,
+    name: str,
+) -> tuple[dict[str, set[tuple[str, str]]], set[tuple[str, str]]]:
+    provenance = _column_nullability_catalog(docker, name, PROVENANCE_TABLES)
+    users = _column_nullability_catalog(docker, name, ("tb_user",)).get(
+        "tb_user", set()
+    )
+    return provenance, users
 
 
 @pytest.fixture(scope="module")
@@ -243,10 +282,8 @@ def postgres_catalog() -> Iterator[Catalog]:
                 ],
             ).stdout.splitlines()
         )
-        provenance_columns = _column_nullability_catalog(docker, name, PROVENANCE_TABLES)
-        user_columns = _column_nullability_catalog(docker, name, ("tb_user",)).get(
-            "tb_user", set()
-        )
+        provenance_columns, user_columns = _audited_columns(docker, name)
+        triggers = _trigger_catalog(docker, name)
         yield Catalog(
             tables,
             pk,
@@ -257,6 +294,7 @@ def postgres_catalog() -> Iterator[Catalog]:
             order_columns,
             provenance_columns,
             user_columns,
+            triggers,
         )
     finally:
         _ = subprocess.run(  # noqa: S603 - cleanup only the UUID task container

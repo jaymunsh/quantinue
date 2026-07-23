@@ -8,6 +8,7 @@ from .schema_sql_expectations import (
     PK,
     PROVENANCE_COLUMNS,
     TABLES,
+    TRIGGERS,
     UNIQUE,
     USER_CREDENTIAL_COLUMNS,
 )
@@ -87,3 +88,15 @@ def test_catalog_requires_auditable_provenance_columns(postgres_catalog: Catalog
     # Then
     for table, expected_columns in PROVENANCE_COLUMNS.items():
         assert expected_columns <= actual.get(table, set())
+
+
+def test_event_catalog_enforces_cross_row_and_append_only_contracts(
+    postgres_catalog: Catalog,
+) -> None:
+    # Given / When
+    actual = postgres_catalog.triggers
+
+    # Then
+    assert set(actual) == set(TRIGGERS)
+    for trigger, fragments in TRIGGERS.items():
+        assert all(fragment in actual[trigger] for fragment in fragments)

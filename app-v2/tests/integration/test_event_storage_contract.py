@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
 SCHEMA = Path("db/schema.sql").resolve()
+MIGRATION = Path("db/migrations/mvp2.sql").resolve()
 
 
 def _docker(arguments: list[str], *, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -46,6 +47,8 @@ def event_database() -> Iterator[str]:
             "POSTGRES_DB=contracts",
             "-v",
             f"{SCHEMA}:/docker-entrypoint-initdb.d/001.sql:ro",
+            "-v",
+            f"{MIGRATION}:/migration.sql:ro",
             "postgres:16-alpine",
         ]
     )
@@ -81,7 +84,7 @@ def event_database() -> Iterator[str]:
         _ = _docker(["rm", "-f", name], check=False)
 
 
-def _psql(name: str, sql: str, *, check: bool = True) -> subprocess.CompletedProcess[str]:
+def run_psql(name: str, sql: str, *, check: bool = True) -> subprocess.CompletedProcess[str]:
     return _docker(
         [
             "exec",
@@ -101,8 +104,27 @@ def _psql(name: str, sql: str, *, check: bool = True) -> subprocess.CompletedPro
     )
 
 
-def _seed_short_document(name: str) -> None:
-    _ = _psql(
+def run_migration(name: str, *, check: bool = True) -> subprocess.CompletedProcess[str]:
+    return _docker(
+        [
+            "exec",
+            name,
+            "psql",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-U",
+            "postgres",
+            "-d",
+            "contracts",
+            "-f",
+            "/migration.sql",
+        ],
+        check=check,
+    )
+
+
+def seed_short_document(name: str) -> None:
+    _ = run_psql(
         name,
         """
         INSERT INTO tb_event_raw_document
@@ -120,10 +142,10 @@ def test_raw_versions_preserve_prior_hash_when_source_is_corrected(
     event_database: str,
 ) -> None:
     # Given
-    _seed_short_document(event_database)
+    seed_short_document(event_database)
 
     # When
-    _ = _psql(
+    _ = run_psql(
         event_database,
         """
         INSERT INTO tb_event_raw_version
@@ -134,7 +156,7 @@ def test_raw_versions_preserve_prior_hash_when_source_is_corrected(
     )
 
     # Then
-    rows = _psql(
+    rows = run_psql(
         event_database,
         "SELECT version_no || ':' || content_hash FROM tb_event_raw_version ORDER BY version_no",
     )
@@ -143,9 +165,9 @@ def test_raw_versions_preserve_prior_hash_when_source_is_corrected(
 
 def test_raw_version_hash_cannot_be_overwritten(event_database: str) -> None:
     # Given
-    _seed_short_document(event_database)
+    seed_short_document(event_database)
     # When
-    changed = _psql(
+    changed = run_psql(
         event_database,
         "UPDATE tb_event_raw_version SET content_hash='overwritten' WHERE raw_version_id=1",
         check=False,
@@ -158,9 +180,9 @@ def test_raw_version_hash_cannot_be_overwritten(event_database: str) -> None:
 
 def test_short_document_cannot_have_summary(event_database: str) -> None:
     # Given
-    _seed_short_document(event_database)
+    seed_short_document(event_database)
     # When
-    inserted = _psql(
+    inserted = run_psql(
         event_database,
         """
         INSERT INTO tb_event_summary_cache
@@ -178,7 +200,7 @@ def test_long_document_has_exactly_one_summary_per_cache_key(
     event_database: str,
 ) -> None:
     # Given
-    _ = _psql(
+    _ = run_psql(
         event_database,
         """
         INSERT INTO tb_event_raw_document
@@ -192,7 +214,7 @@ def test_long_document_has_exactly_one_summary_per_cache_key(
     )
 
     # When
-    _ = _psql(
+    _ = run_psql(
         event_database,
         """
         INSERT INTO tb_event_summary_cache
@@ -200,7 +222,7 @@ def test_long_document_has_exactly_one_summary_per_cache_key(
         VALUES (3, 'hash-long', 12001, 'model-a', 'prompt-v1', 'one summary');
         """,
     )
-    duplicate = _psql(
+    duplicate = run_psql(
         event_database,
         """
         INSERT INTO tb_event_summary_cache
@@ -212,14 +234,14 @@ def test_long_document_has_exactly_one_summary_per_cache_key(
 
     # Then
     assert duplicate.returncode != 0
-    count = _psql(event_database, "SELECT count(*) FROM tb_event_summary_cache")
+    count = run_psql(event_database, "SELECT count(*) FROM tb_event_summary_cache")
     assert count.stdout.strip() == "1"
 
 
 def test_duplicate_event_and_orphan_evidence_are_rejected(event_database: str) -> None:
     # Given
-    _seed_short_document(event_database)
-    _ = _psql(
+    seed_short_document(event_database)
+    _ = run_psql(
         event_database,
         """
         INSERT INTO tb_normalized_event
@@ -230,7 +252,7 @@ def test_duplicate_event_and_orphan_evidence_are_rejected(event_database: str) -
     )
 
     # When
-    duplicate = _psql(
+    duplicate = run_psql(
         event_database,
         """
         INSERT INTO tb_normalized_event
@@ -240,7 +262,7 @@ def test_duplicate_event_and_orphan_evidence_are_rejected(event_database: str) -
         """,
         check=False,
     )
-    orphan = _psql(
+    orphan = run_psql(
         event_database,
         """
         INSERT INTO tb_event_evidence_pack
@@ -259,8 +281,8 @@ def test_processing_receipt_deduplicates_persona_and_keeps_order_lineage(
     event_database: str,
 ) -> None:
     # Given
-    _seed_short_document(event_database)
-    _ = _psql(
+    seed_short_document(event_database)
+    _ = run_psql(
         event_database,
         """
         INSERT INTO tb_normalized_event
@@ -269,7 +291,7 @@ def test_processing_receipt_deduplicates_persona_and_keeps_order_lineage(
         VALUES (1, 1, 'event-1', 'wire', '0001', 'headline', now(), '{}'::jsonb);
         """,
     )
-    _ = _psql(
+    _ = run_psql(
         event_database,
         """
         INSERT INTO tb_event_processing_receipt
@@ -279,7 +301,7 @@ def test_processing_receipt_deduplicates_persona_and_keeps_order_lineage(
     )
 
     # When
-    duplicate = _psql(
+    duplicate = run_psql(
         event_database,
         """
         INSERT INTO tb_event_processing_receipt
@@ -288,7 +310,7 @@ def test_processing_receipt_deduplicates_persona_and_keeps_order_lineage(
         """,
         check=False,
     )
-    missing_order = _psql(
+    missing_order = run_psql(
         event_database,
         """
         INSERT INTO tb_event_processing_receipt
