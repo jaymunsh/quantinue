@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Protocol
 
+import anyio
 from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
@@ -90,6 +91,13 @@ class BudgetedAnalyzer:
         )
         self._pricing = pricing
         self._now = now
+        self._spend_lock = anyio.Lock()
+        self._reserved_by_day: dict[date, Decimal] = {}
+
+    @property
+    def reserved_usd(self) -> Decimal:
+        """Return process-local spend currently reserved by in-flight calls."""
+        return sum(self._reserved_by_day.values(), Decimal(0))
 
     async def analyze(
         self, task: AnalysisTask, prompt: str, *, profile: str | None = None
@@ -116,29 +124,57 @@ class BudgetedAnalyzer:
         spending_limit: Decimal,
     ) -> AnalysisResult:
         called_at = self._now()
-        spent = await self._ledger.llm_spend_on(called_at.date())
-        if spent >= spending_limit:
-            # 남은 예산으로 살 수 없으면 **안 산다**. 여기서 중립 결과를
-            # 지어내 돌려주면 판단 없이 주문이 나가는 길이 열린다 —
-            # 분석 잡은 예외를 종목 단위로 격리하므로 이 종목만 건너뛴다.
-            message = f"daily llm budget exhausted: {spent} >= {spending_limit}"
-            raise LlmBudgetExceededError(message)
-        result = await self._inner.analyze(task, prompt, profile=profile)
-        usage = result.usage
-        if usage is None:
+        day = called_at.date()
+        async with self._spend_lock:
+            committed = await self._ledger.llm_spend_on(day)
+            reserved = self._reserved_by_day.get(day, Decimal(0))
+            available = spending_limit - committed - reserved
+            if available <= 0:
+                # 남은 예산으로 살 수 없으면 **안 산다**. 여기서 중립 결과를
+                # 지어내 돌려주면 판단 없이 주문이 나가는 길이 열린다 —
+                # 분석 잡은 예외를 종목 단위로 격리하므로 이 종목만 건너뛴다.
+                message = (
+                    "daily llm budget exhausted: "
+                    f"{committed} committed + {reserved} reserved >= {spending_limit}"
+                )
+                raise LlmBudgetExceededError(message)
+            self._reserved_by_day[day] = reserved + available
+
+        reservation_active = True
+        try:
+            result = await self._inner.analyze(task, prompt, profile=profile)
+            usage = result.usage
+            if usage is None:
+                return result
+            model = result.metadata.model
+            cost = self._cost(model, usage.input_tokens, usage.output_tokens)
+            with anyio.CancelScope(shield=True):
+                async with self._spend_lock:
+                    await self._ledger.record_llm_usage(
+                        LlmUsageRecord(
+                            called_at=called_at,
+                            task=task.value,
+                            model=model,
+                            prompt_tokens=usage.input_tokens,
+                            completion_tokens=usage.output_tokens,
+                            est_cost_usd=cost,
+                        )
+                    )
+                    self._release(day, available)
+                    reservation_active = False
             return result
-        model = result.metadata.model
-        await self._ledger.record_llm_usage(
-            LlmUsageRecord(
-                called_at=called_at,
-                task=task.value,
-                model=model,
-                prompt_tokens=usage.input_tokens,
-                completion_tokens=usage.output_tokens,
-                est_cost_usd=self._cost(model, usage.input_tokens, usage.output_tokens),
-            )
-        )
-        return result
+        finally:
+            if reservation_active:
+                with anyio.CancelScope(shield=True):
+                    async with self._spend_lock:
+                        self._release(day, available)
+
+    def _release(self, day: date, amount: Decimal) -> None:
+        remaining = self._reserved_by_day[day] - amount
+        if remaining == 0:
+            del self._reserved_by_day[day]
+        else:
+            self._reserved_by_day[day] = remaining
 
     def _cost(self, model: str, input_tokens: int, output_tokens: int) -> Decimal:
         """Estimate one call's cost from the configured per-model rates.

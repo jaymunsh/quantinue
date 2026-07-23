@@ -4,9 +4,12 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 from hashlib import sha256
 
+import anyio
 import pytest
+from anyio.lowlevel import checkpoint
 from pydantic import SecretStr
 from pydantic_settings import SettingsConfigDict
+from typing_extensions import override
 
 from quantinue.core.config import LlmMode, Settings
 from quantinue.core.ontology import ModelProvider
@@ -48,7 +51,7 @@ def _result(model: str, usage: TokenUsage | None) -> AnalysisResult:
 class RecordingLedger:
     """In-memory stand-in for the tb_llm_usage ledger."""
 
-    def __init__(self, opening_spend: float = 0.0) -> None:
+    def __init__(self, opening_spend: Decimal | float = 0.0) -> None:
         """Start with an already-spent amount for the day under test."""
         self.records: list[LlmUsageRecord] = []
         self._opening = Decimal(str(opening_spend))
@@ -70,7 +73,7 @@ class StubAnalyzer:
 
     def __init__(self, usage: TokenUsage | None, model: str = "gpt-x") -> None:
         """Count calls so the guard can be proven to short-circuit."""
-        self.calls = 0
+        self.calls: int = 0
         self._usage = usage
         self._model = model
 
@@ -80,6 +83,23 @@ class StubAnalyzer:
         """Return a fixed result and remember that it was reached."""
         _ = (task, prompt, profile)
         self.calls += 1
+        return _result(self._model, self._usage)
+
+
+class _BlockingAnalyzer(StubAnalyzer):
+    def __init__(self, prompts: tuple[str, ...]) -> None:
+        super().__init__(TokenUsage(input_tokens=1_000, output_tokens=500))
+        self.entered = {prompt: anyio.Event() for prompt in prompts}
+        self.released = {prompt: anyio.Event() for prompt in prompts}
+
+    @override
+    async def analyze(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> AnalysisResult:
+        _ = (task, profile)
+        self.calls += 1
+        self.entered[prompt].set()
+        await self.released[prompt].wait()
         return _result(self._model, self._usage)
 
 
@@ -120,11 +140,11 @@ async def test_billable_call_lands_in_the_spend_ledger() -> None:
 @pytest.mark.anyio
 async def test_exhausted_budget_stops_the_call_before_the_model_is_reached() -> None:
     """초과했으면 '판단 없이 사는' 게 아니라 '안 사는' 쪽이어야 한다."""
-    ledger = RecordingLedger(opening_spend=3.0)
+    ledger = RecordingLedger()
     inner = StubAnalyzer(TokenUsage(input_tokens=1_000, output_tokens=500))
 
     with pytest.raises(LlmBudgetExceededError):
-        await _analyzer(inner, ledger, limit=3.0).analyze(AnalysisTask.STRATEGY, "p")
+        await _analyzer(inner, ledger, limit=0).analyze(AnalysisTask.STRATEGY, "p")
 
     assert inner.calls == 0
     assert ledger.records == []
@@ -144,6 +164,93 @@ async def test_sell_reserve_blocks_general_calls_but_keeps_sell_calls_open() -> 
 
     assert result.score == 0.5
     assert inner.calls == 1
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("run", range(12))
+async def test_concurrent_calls_cannot_spend_the_same_remaining_budget(run: int) -> None:
+    # Given
+    ledger = RecordingLedger(opening_spend=Decimal("2.997"))
+    losers = tuple(f"loser-{run}-{contender}" for contender in range(15))
+    inner = _BlockingAnalyzer(("winner", *losers))
+    for contender in range(15):
+        loser = f"loser-{run}-{contender}"
+        inner.released[loser].set()
+    analyzer = _analyzer(inner, ledger)
+    outcomes: list[str] = []
+
+    async def call(prompt: str) -> None:
+        try:
+            _ = await analyzer.analyze(AnalysisTask.STRATEGY, prompt)
+            outcomes.append("succeeded")
+        except LlmBudgetExceededError:
+            outcomes.append("exhausted")
+
+    # When
+    async with anyio.create_task_group() as task_group:
+        _ = task_group.start_soon(call, "winner")
+        await inner.entered["winner"].wait()
+        for contender in range(15):
+            _ = task_group.start_soon(call, f"loser-{run}-{contender}")
+        await checkpoint()
+        inner.released["winner"].set()
+
+    # Then
+    committed = await ledger.llm_spend_on(date(2026, 7, 21))
+    assert sorted(outcomes) == ["exhausted"] * 15 + ["succeeded"]
+    assert (inner.calls, committed, analyzer.reserved_usd) == (1, 3, 0)
+
+
+@pytest.mark.anyio
+async def test_cancellation_releases_only_the_callers_reservation() -> None:
+    # Given
+    ledger = RecordingLedger()
+    prompts = ("general-1", "sell", "general-2", "general-3")
+    inner = _BlockingAnalyzer(prompts)
+    analyzer = _analyzer(inner, ledger, reserve=0.20)
+    completed = {prompt: anyio.Event() for prompt in prompts}
+    scopes = {prompt: anyio.CancelScope() for prompt in ("general-1", "general-2")}
+
+    async def call(prompt: str, *, reserved: bool = False) -> None:
+        try:
+            with scopes.get(prompt, anyio.CancelScope()):
+                if reserved:
+                    _ = await analyzer.analyze_reserved(AnalysisTask.STRATEGY, prompt)
+                else:
+                    _ = await analyzer.analyze(AnalysisTask.STRATEGY, prompt)
+        finally:
+            completed[prompt].set()
+
+    async def call_sell() -> None:
+        await call("sell", reserved=True)
+
+    # When / Then
+    async with anyio.create_task_group() as task_group:
+        _ = task_group.start_soon(call, "general-1")
+        await inner.entered["general-1"].wait()
+        _ = task_group.start_soon(call_sell)
+        await inner.entered["sell"].wait()
+        assert analyzer.reserved_usd == Decimal(3)
+
+        scopes["general-1"].cancel()
+        await completed["general-1"].wait()
+        assert analyzer.reserved_usd == Decimal("0.6")
+
+        _ = task_group.start_soon(call, "general-2")
+        await inner.entered["general-2"].wait()
+        assert analyzer.reserved_usd == Decimal("2.4")
+        scopes["general-2"].cancel()
+        await completed["general-2"].wait()
+        assert analyzer.reserved_usd == Decimal("0.6")
+
+        _ = task_group.start_soon(call, "general-3")
+        await inner.entered["general-3"].wait()
+        inner.released["general-3"].set()
+        await completed["general-3"].wait()
+        inner.released["sell"].set()
+
+    assert (analyzer.reserved_usd, inner.calls) == (Decimal(0), 4)
+    assert await ledger.llm_spend_on(date(2026, 7, 21)) == Decimal("0.006")
 
 
 @pytest.mark.anyio
