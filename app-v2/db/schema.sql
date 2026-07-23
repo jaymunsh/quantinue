@@ -540,6 +540,21 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_event_raw_document_immutable
+  ON tb_event_raw_document;
+DROP TRIGGER IF EXISTS trg_event_raw_version_immutable
+  ON tb_event_raw_version;
+DROP TRIGGER IF EXISTS trg_normalized_event_source
+  ON tb_normalized_event;
+DROP TRIGGER IF EXISTS trg_normalized_event_immutable
+  ON tb_normalized_event;
+DROP TRIGGER IF EXISTS trg_event_evidence_span
+  ON tb_event_evidence_pack;
+DROP TRIGGER IF EXISTS trg_event_evidence_immutable
+  ON tb_event_evidence_pack;
+DROP TRIGGER IF EXISTS trg_event_summary_immutable
+  ON tb_event_summary_cache;
+
 CREATE TRIGGER trg_normalized_event_source
 BEFORE INSERT ON tb_normalized_event
 FOR EACH ROW EXECUTE FUNCTION enforce_normalized_event_source();
