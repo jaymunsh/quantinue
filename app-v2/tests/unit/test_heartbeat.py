@@ -120,7 +120,9 @@ async def test_network_failures_are_sanitized_and_recovery_keeps_loop_alive(
             if len(attempts) < 3:
                 request = httpx2.Request("GET", url)
                 message = "token=do-not-log"
-                raise httpx2.ConnectError(message, request=request)
+                if len(attempts) == 1:
+                    raise httpx2.ConnectError(message, request=request)
+                raise httpx2.ReadTimeout(message, request=request)
             raise anyio.get_cancelled_exc_class()
 
     async def capture(event: str, **fields: str) -> None:
@@ -144,10 +146,56 @@ async def test_network_failures_are_sanitized_and_recovery_keeps_loop_alive(
     assert len(attempts) == 3
     assert events == [
         ("heartbeat.send.failed", {"reason": "ConnectError"}),
-        ("heartbeat.send.failed", {"reason": "ConnectError"}),
+        ("heartbeat.send.failed", {"reason": "ReadTimeout"}),
     ]
     assert "00000000-0000-4000-8000-000000000099" not in repr(events)
     assert "do-not-log" not in repr(events)
+
+
+@pytest.mark.anyio
+async def test_probe_failure_is_sanitized_and_next_iteration_recovers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Given
+    events: list[tuple[str, dict[str, str]]] = []
+    probe_calls = 0
+    sender = _RecordingSender()
+
+    async def capture(event: str, **fields: str) -> None:
+        events.append((event, fields))
+
+    async def fails_once() -> bool:
+        nonlocal probe_calls
+        probe_calls += 1
+        if probe_calls == 1:
+            message = "synthetic-secret-must-not-escape"
+            raise RuntimeError(message)
+        return True
+
+    monkeypatch.setattr("quantinue.notify.heartbeat._logger.awarning", capture)
+    reporter = HeartbeatReporter(
+        ping_url="https://hc-ping.com/00000000-0000-4000-8000-000000000088",
+        probe=fails_once,
+        sender=sender,
+        interval_seconds=0,
+    )
+
+    # When
+    async with anyio.create_task_group() as task_group:
+        _ = task_group.start_soon(reporter.run_forever)
+        while not sender.urls:
+            await checkpoint()
+        task_group.cancel_scope.cancel()
+
+    # Then
+    assert sender.urls == [
+        "https://hc-ping.com/00000000-0000-4000-8000-000000000088"
+    ]
+    assert events == [
+        ("heartbeat.iteration.failed", {"reason": "RuntimeError"})
+    ]
+    assert "synthetic-secret-must-not-escape" not in repr(events)
+    assert "00000000-0000-4000-8000-000000000088" not in repr(events)
 
 
 @pytest.mark.anyio

@@ -114,6 +114,10 @@ class HeartbeatReporter:
                 await _logger.awarning(
                     "heartbeat.send.failed", reason=type(error).__name__
                 )
+            except Exception as error:  # noqa: BLE001 - lifespan worker isolation boundary
+                await _logger.awarning(
+                    "heartbeat.iteration.failed", reason=type(error).__name__
+                )
             await anyio.sleep(self.interval_seconds)
 
 
