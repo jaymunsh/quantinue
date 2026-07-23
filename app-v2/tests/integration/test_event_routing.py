@@ -473,7 +473,7 @@ async def test_runtime_retries_evidence_after_durable_accepted_receipt(
     # When
     await interrupted.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
     assert interrupted.last_evidence_run == EvidencePreparationRun(
-        prepared=1, failed=1
+        prepared=1, failed=1, reason="rejudge_disabled"
     )
     await interrupted.close()
     resumed = EventIngestionRuntime(

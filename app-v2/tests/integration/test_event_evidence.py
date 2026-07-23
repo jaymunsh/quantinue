@@ -16,6 +16,7 @@ from typing_extensions import override
 from quantinue.core.ontology import ModelProvider
 from quantinue.events.analysis_repository import (
     EventAnalysisReceiptClaim,
+    EventAnalysisStage,
     PostgresEventAnalysisReceiptRepository,
 )
 from quantinue.events.evidence import (
@@ -252,8 +253,19 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
     now = datetime(2026, 7, 24, 14, tzinfo=UTC)
 
     # When
-    first = await repository.claim(pack, "aggressive", now, timedelta(minutes=30))
-    await repository.mark_charged(route.event_id, route.ticker, "aggressive")
+    first = await repository.claim(
+        pack,
+        "aggressive",
+        EventAnalysisStage.STRATEGIST,
+        now,
+        timedelta(minutes=30),
+    )
+    await repository.mark_dispatched(
+        route.event_id,
+        route.ticker,
+        "aggressive",
+        EventAnalysisStage.STRATEGIST,
+    )
     engine = create_async_engine(_DATABASE_URL)
     async with engine.connect() as connection:
         charged = (
@@ -262,18 +274,29 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
                     """
                     SELECT status, completed_at IS NOT NULL
                     FROM tb_event_processing_receipt
-                    WHERE event_id=:event_id AND persona='analysis:aggressive'
+                    WHERE event_id=:event_id
+                      AND persona='analysis:aggressive:strategist'
                     """
                 ),
                 {"event_id": route.event_id},
             )
         ).one()
     await engine.dispose()
-    await repository.complete(route.event_id, route.ticker, "aggressive")
+    await repository.complete(
+        route.event_id,
+        route.ticker,
+        "aggressive",
+        EventAnalysisStage.STRATEGIST,
+        {"result": {"score": 1}},
+    )
     await repository.close()
     restarted = PostgresEventAnalysisReceiptRepository(_DATABASE_URL)
     duplicate = await restarted.claim(
-        pack, "aggressive", now + timedelta(minutes=1), timedelta(minutes=30)
+        pack,
+        "aggressive",
+        EventAnalysisStage.STRATEGIST,
+        now + timedelta(minutes=1),
+        timedelta(minutes=30),
     )
     second_route = await _accepted_route(
         "receipt-02",
@@ -283,6 +306,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
     cooldown = await restarted.claim(
         second_pack,
         "aggressive",
+        EventAnalysisStage.STRATEGIST,
         now + timedelta(minutes=2),
         timedelta(minutes=30),
     )
@@ -290,21 +314,25 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
     # Then
     assert first is EventAnalysisReceiptClaim.CLAIMED
     assert tuple(charged) == ("claimed", True)
-    assert duplicate is EventAnalysisReceiptClaim.DUPLICATE
+    assert duplicate is EventAnalysisReceiptClaim.COMPLETED
     assert cooldown is EventAnalysisReceiptClaim.COOLDOWN
     engine = create_async_engine(_DATABASE_URL)
     async with engine.connect() as connection:
         rows = (
-            await connection.execute(
-                text(
-                    """
+            (
+                await connection.execute(
+                    text(
+                        """
                     SELECT status FROM tb_event_processing_receipt
-                    WHERE persona='analysis:aggressive'
+                    WHERE persona='analysis:aggressive:strategist'
                     ORDER BY event_id
                     """
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
     await engine.dispose()
     assert rows == ["processed", "skipped"]
     await restarted.close()

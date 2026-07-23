@@ -29,7 +29,12 @@ from quantinue.orchestration.job_factory import (
     build_news_job,
     build_universe_job,
 )
-from quantinue.orchestration.policy import Mvp2Config, ScreeningConfig, WatchConfig
+from quantinue.orchestration.policy import (
+    Mvp2Config,
+    RejudgeConfig,
+    ScreeningConfig,
+    WatchConfig,
+)
 from quantinue.orchestration.watch_factory import build_watch_runner
 from quantinue.orchestration.watch_policy import WatchStreamConfig
 from quantinue.roles.exits import DailyObservation
@@ -912,3 +917,25 @@ def test_factory_injects_evidence_repository_and_selected_analyzer() -> None:
     assert isinstance(executor, EventIngestionExecutor)
     assert isinstance(executor.evidence_repository, PostgresEventEvidenceRepository)
     assert executor.analyzer is analyzer
+    assert executor.analysis_dispatcher is None
+
+
+def test_factory_builds_targeted_analysis_only_when_rejudge_is_enabled() -> None:
+    analyzer = DeterministicAnalyzer()
+    config = Mvp2Config(
+        watch=WatchConfig(rejudge=RejudgeConfig(enabled=True)),
+    )
+
+    runner = build_job_runner(
+        _settings(),
+        config,
+        store=_Store(_HoldingDomain(())),
+        sources=JobSources(analyzer=analyzer),
+    )
+
+    assert runner is not None
+    runtime = runner.event_runtime
+    assert isinstance(runtime, EventIngestionRuntime)
+    executor = runtime.ingestor
+    assert isinstance(executor, EventIngestionExecutor)
+    assert executor.analysis_dispatcher is not None

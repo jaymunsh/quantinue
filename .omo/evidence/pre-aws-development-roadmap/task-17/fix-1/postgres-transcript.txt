@@ -1,0 +1,31 @@
+PostgreSQL 16 task container: qn-task17-fix1
+Database: contracts
+Address: 127.0.0.1:5490
+
+Migration convergence:
+- db/migrations/mvp2.sql applied twice with ON_ERROR_STOP=1
+- tests/integration/test_schema_sql.py invoked twice
+- result: 7 passed
+
+Durable receipt query after restart/cooldown integration test:
+
+ event_id | ticker |            persona             |  status   | has_result
+----------+--------+--------------------------------+-----------+------------
+       75 | AAPL   | analysis:aggressive:strategist | processed | t
+       75 | AAPL   | ingestion                      | processed | f
+       75 | AAPL   | routing:accepted:guidance      | processed | f
+       76 | AAPL   | analysis:aggressive:strategist | skipped   | f
+       76 | AAPL   | ingestion                      | processed | f
+       76 | AAPL   | routing:accepted:guidance      | processed | f
+
+Order-side-effect query:
+
+ orders
+--------
+      0
+
+Schema catalog query:
+
+  column_name   | data_type | is_nullable
+----------------+-----------+-------------
+ result_payload | jsonb     | YES

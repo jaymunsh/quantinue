@@ -22,10 +22,25 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Final, Protocol, runtime_checkable
 
 import anyio
+from pydantic import BaseModel, ConfigDict
+from typing_extensions import override
 
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.domain_records import CriticVerdictWrite, StrategistSignalWrite
-from quantinue.llm.provider import AnalysisTask
+from quantinue.events.analysis import (
+    EventAnalysisReceiptRepository,
+    EventAnalysisRun,
+)
+from quantinue.events.analysis_repository import (
+    EventAnalysisReceiptClaim,
+    EventAnalysisStage,
+)
+from quantinue.llm.budget import (
+    BudgetedAnalyzer,
+    LlmBudgetExceededError,
+    PaidCallBoundary,
+)
+from quantinue.llm.provider import AnalysisResult, AnalysisTask, LlmAnalyzer
 from quantinue.roles.analysis.contracts import (
     HoldingContext,
     analysis_prompt,
@@ -45,11 +60,11 @@ _REGIMES: Final = {
 }
 
 if TYPE_CHECKING:
-    from datetime import date
+    from datetime import date, timedelta
 
     from quantinue.db.domain_records import MacroSnapshot
     from quantinue.events.evidence import EvidencePack
-    from quantinue.llm.provider import LlmAnalyzer
+    from quantinue.llm.usage_limits import MaximumTokenUsage
     from quantinue.orchestration.policy import GatesConfig, ProfileConfig
     from quantinue.orchestration.work_lease import WorkLease
     from quantinue.roles.analysis.contracts import AnalysisSubject
@@ -60,9 +75,7 @@ if TYPE_CHECKING:
 class IntradayCompletionReader(Protocol):
     """Typed optional capability for retrying a partially durable sweep."""
 
-    async def completed_intraday_tickers(
-        self, cycle_ts: datetime, inv_type: str
-    ) -> frozenset[str]:
+    async def completed_intraday_tickers(self, cycle_ts: datetime, inv_type: str) -> frozenset[str]:
         """Return persona-ticker work already committed for this cycle."""
         ...
 
@@ -88,6 +101,251 @@ class AnalysisRun:
 
     outcomes: tuple[AnalysisOutcome, ...]
     skipped: int = 0
+
+
+class _EventProviderPayload(BaseModel):
+    model_config = ConfigDict(frozen=True, strict=True)
+
+    result: AnalysisResult
+
+
+class _EventStageStoppedError(RuntimeError):
+    def __init__(self, run: EventAnalysisRun) -> None:
+        super().__init__(run.reason)
+        self.run = run
+
+
+@dataclass(slots=True)
+class _EventPaidBoundary(PaidCallBoundary):
+    receipts: EventAnalysisReceiptRepository
+    event_id: int
+    ticker: str
+    persona: str
+    stage: EventAnalysisStage
+    crossed: bool = False
+
+    @override
+    async def dispatched(self) -> None:
+        await self.receipts.mark_dispatched(
+            self.event_id,
+            self.ticker,
+            self.persona,
+            self.stage,
+        )
+        self.crossed = True
+
+
+@dataclass(slots=True)
+class _EventAnalyzer(LlmAnalyzer):
+    inner: LlmAnalyzer
+    receipts: EventAnalysisReceiptRepository
+    pack: EvidencePack
+    persona: str
+    now: datetime
+    cooldown: timedelta
+    attempted: int = 0
+    completed: int = 0
+    suppressed: int = 0
+
+    @override
+    def maximum_usage(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None = None,
+    ) -> MaximumTokenUsage:
+        return self.inner.maximum_usage(task, prompt, profile=profile)
+
+    @override
+    async def analyze(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None = None,
+    ) -> AnalysisResult:
+        return await self._analyze_stage(task, prompt, profile=profile, reserved=False)
+
+    async def analyze_reserved(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None = None,
+    ) -> AnalysisResult:
+        return await self._analyze_stage(task, prompt, profile=profile, reserved=True)
+
+    async def _analyze_stage(  # noqa: C901 - exhaustive receipt state machine
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        reserved: bool,
+    ) -> AnalysisResult:
+        match task:
+            case AnalysisTask.STRATEGY:
+                stage = EventAnalysisStage.STRATEGIST
+            case AnalysisTask.CRITIC:
+                stage = EventAnalysisStage.CRITIC
+            case _:
+                return await self.inner.analyze(task, prompt, profile=profile)
+        claim = await self.receipts.claim(
+            self.pack,
+            self.persona,
+            stage,
+            self.now,
+            self.cooldown,
+        )
+        match claim:
+            case EventAnalysisReceiptClaim.COMPLETED:
+                payload = await self.receipts.result(
+                    self.pack.document.event_id,
+                    self.pack.document.ticker,
+                    self.persona,
+                    stage,
+                )
+                self.completed += 1
+                return _EventProviderPayload.model_validate(payload).result
+            case EventAnalysisReceiptClaim.CLAIMED:
+                self.attempted += 1
+            case EventAnalysisReceiptClaim.COOLDOWN | EventAnalysisReceiptClaim.SUPPRESSED:
+                self.suppressed += 1
+                raise _EventStageStoppedError(
+                    EventAnalysisRun(
+                        attempted=self.attempted,
+                        completed=self.completed,
+                        suppressed=self.suppressed,
+                        reason=f"{stage.value}_suppressed",
+                    )
+                )
+            case EventAnalysisReceiptClaim.UNCERTAIN:
+                raise _EventStageStoppedError(
+                    EventAnalysisRun(
+                        attempted=self.attempted,
+                        completed=self.completed,
+                        uncertain=1,
+                        reason=f"{stage.value}_uncertain",
+                    )
+                )
+            case EventAnalysisReceiptClaim.DUPLICATE:
+                raise _EventStageStoppedError(
+                    EventAnalysisRun(
+                        attempted=self.attempted,
+                        completed=self.completed,
+                        suppressed=1,
+                        reason=f"{stage.value}_in_flight",
+                    )
+                )
+        boundary = _EventPaidBoundary(
+            self.receipts,
+            self.pack.document.event_id,
+            self.pack.document.ticker,
+            self.persona,
+            stage,
+        )
+        try:
+            result = await self._call_inner(
+                task,
+                prompt,
+                profile=profile,
+                reserved=reserved,
+                boundary=boundary,
+            )
+            with anyio.CancelScope(shield=True):
+                await self.receipts.complete(
+                    self.pack.document.event_id,
+                    self.pack.document.ticker,
+                    self.persona,
+                    stage,
+                    _EventProviderPayload(result=result).model_dump(mode="json"),
+                )
+            self.completed += 1
+            return result  # noqa: TRY300 - success must update counters before return
+        except LlmBudgetExceededError:
+            with anyio.CancelScope(shield=True):
+                await self.receipts.suppress(
+                    self.pack.document.event_id,
+                    self.pack.document.ticker,
+                    self.persona,
+                    stage,
+                )
+            self.suppressed += 1
+            raise _EventStageStoppedError(
+                EventAnalysisRun(
+                    attempted=self.attempted,
+                    completed=self.completed,
+                    suppressed=self.suppressed,
+                    reason=f"{stage.value}_budget_refused",
+                )
+            ) from None
+        except anyio.get_cancelled_exc_class():
+            if not boundary.crossed:
+                with anyio.CancelScope(shield=True):
+                    await self.receipts.release_unbilled(
+                        self.pack.document.event_id,
+                        self.pack.document.ticker,
+                        self.persona,
+                        stage,
+                    )
+            raise
+
+    async def _call_inner(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        reserved: bool,
+        boundary: _EventPaidBoundary,
+    ) -> AnalysisResult:
+        if isinstance(self.inner, BudgetedAnalyzer):
+            if reserved:
+                return await self.inner.analyze_reserved_with_boundary(
+                    task,
+                    prompt,
+                    profile=profile,
+                    boundary=boundary,
+                )
+            return await self.inner.analyze_with_boundary(
+                task,
+                prompt,
+                profile=profile,
+                boundary=boundary,
+            )
+        with anyio.CancelScope(shield=True):
+            await boundary.dispatched()
+        reserved_analyze = getattr(self.inner, "analyze_reserved", None)
+        if reserved and reserved_analyze is not None:
+            return await reserved_analyze(task, prompt, profile=profile)
+        return await self.inner.analyze(task, prompt, profile=profile)
+
+    async def complete_unbilled_critic(self) -> None:
+        """Persist a critic hard-gate result that required no provider call."""
+        stage = EventAnalysisStage.CRITIC
+        claim = await self.receipts.claim(
+            self.pack,
+            self.persona,
+            stage,
+            self.now,
+            self.cooldown,
+        )
+        if claim is EventAnalysisReceiptClaim.COMPLETED:
+            self.completed += 1
+            return
+        if claim is not EventAnalysisReceiptClaim.CLAIMED:
+            return
+        self.attempted += 1
+        with anyio.CancelScope(shield=True):
+            await self.receipts.complete(
+                self.pack.document.event_id,
+                self.pack.document.ticker,
+                self.persona,
+                stage,
+                {"gate_result": True},
+            )
+        self.completed += 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,9 +382,7 @@ class AnalysisJob:
         as_of = now.astimezone(UTC).date()
         session = self.calendar.previous_trading_day(as_of)
         scoped = [
-            ticker
-            for ticker in prices
-            if await domain.ensure_holding_in_scope(as_of, ticker)
+            ticker for ticker in prices if await domain.ensure_holding_in_scope(as_of, ticker)
         ]
         completed: frozenset[str] = (
             await domain.completed_intraday_tickers(now, self.profile_name)
@@ -158,8 +414,9 @@ class AnalysisJob:
         pack: EvidencePack,
         *,
         now: datetime,
-        lease: WorkLease | None = None,
-    ) -> AnalysisRun:
+        receipts: EventAnalysisReceiptRepository,
+        cooldown: timedelta,
+    ) -> EventAnalysisRun:
         """Rejudge one canonical daily subject from one routed event."""
         domain = getattr(self.store, "domain", self.store)
         as_of = now.astimezone(UTC).date()
@@ -168,36 +425,54 @@ class AnalysisJob:
         ticker = pack.document.ticker
         subject = next((item for item in subjects if item.ticker == ticker), None)
         if subject is None:
-            return AnalysisRun(())
+            return EventAnalysisRun(reason="subject_missing")
         holdings = await self._holdings(domain, as_of)
         macro = await self._macro(domain, as_of)
         indicators = await self._indicators(domain, as_of, session)
         disclosure_scores = await domain.disclosure_scores(as_of)
-        outcome = await self._analyse(
-            domain,
-            subject,
-            holdings.get(ticker, HoldingContext()),
-            (pack.strategy_input,),
-            (),
-            macro,
-            indicators.get(ticker),
-            as_of=as_of,
-            cycle_ts=now,
-            disclosure_score=disclosure_scores.get(ticker),
-            lease=lease,
-            run_id_override=(
-                f"event:{pack.document.event_id}:{pack.document.raw_version_id}:"
-                f"{self.profile_name}"
-            ),
-            evidence_ids_override=tuple(
-                (
-                    f"event:{pack.document.event_id}:{pack.document.raw_version_id}:"
-                    f"{self.profile_name}:span:{span.start_offset}:{span.end_offset}"
-                )
-                for span in pack.spans
-            ),
+        event_analyzer = _EventAnalyzer(
+            self.analyzer,
+            receipts,
+            pack,
+            self.profile_name,
+            now,
+            cooldown,
         )
-        return AnalysisRun(()) if outcome is None else AnalysisRun((outcome,))
+        try:
+            outcome = await self._analyse(
+                domain,
+                subject,
+                holdings.get(ticker, HoldingContext()),
+                (pack.strategy_input,),
+                (),
+                macro,
+                indicators.get(ticker),
+                as_of=as_of,
+                cycle_ts=now,
+                disclosure_score=disclosure_scores.get(ticker),
+                analyzer_override=event_analyzer,
+                run_id_override=(
+                    f"event:{pack.document.event_id}:{pack.document.raw_version_id}:"
+                    f"{self.profile_name}"
+                ),
+                evidence_ids_override=tuple(
+                    (
+                        f"event:{pack.document.event_id}:{pack.document.raw_version_id}:"
+                        f"{self.profile_name}:span:{span.start_offset}:{span.end_offset}"
+                    )
+                    for span in pack.spans
+                ),
+            )
+        except _EventStageStoppedError as stopped:
+            return stopped.run
+        if event_analyzer.completed == 1:
+            await event_analyzer.complete_unbilled_critic()
+        return EventAnalysisRun(
+            attempted=event_analyzer.attempted,
+            completed=event_analyzer.completed,
+            suppressed=event_analyzer.suppressed,
+            reason="completed" if outcome is not None else "no_outcome",
+        )
 
     async def _run_subjects(  # noqa: C901, PLR0913 - lease fencing adds one branch
         self,
@@ -214,9 +489,7 @@ class AnalysisJob:
             return AnalysisRun(())
         tickers = tuple(subject.ticker for subject in subjects)
         filings = await domain.disclosure_evidence(session, tickers)
-        headlines = await domain.news_evidence(
-            session, tickers, self.headlines_per_ticker
-        )
+        headlines = await domain.news_evidence(session, tickers, self.headlines_per_ticker)
         holdings = await self._holdings(domain, as_of)
         # 매크로는 종목마다 같으므로 한 번만 읽는다. 이 값이 없으면 감점도
         # 차단도 없다 — 모르는 것을 근거로 막지 않는다.
@@ -332,6 +605,7 @@ class AnalysisJob:
         cycle_ts: datetime,
         disclosure_score: float | None = None,
         lease: WorkLease | None = None,
+        analyzer_override: LlmAnalyzer | None = None,
         run_id_override: str | None = None,
         evidence_ids_override: tuple[str, ...] | None = None,
     ) -> AnalysisOutcome | None:
@@ -343,16 +617,17 @@ class AnalysisJob:
             else f"rejudge:{cycle_ts.isoformat()}:{self.profile_name}"
         )
         evidence_ids = evidence_ids_override or (f"{run_id}:{subject.ticker}",)
+        analyzer = analyzer_override or self.analyzer
         strategy_prompt = analysis_prompt(subject, holding, filings, headlines, indicators)
         if lease is not None:
             await lease.mark_dispatched(subject.ticker, self.profile_name)
-        reserved_analyze = getattr(self.analyzer, "analyze_reserved", None)
+        reserved_analyze = getattr(analyzer, "analyze_reserved", None)
         if holding.quantity > 0 and reserved_analyze is not None:
             evidence = await reserved_analyze(
                 AnalysisTask.STRATEGY, strategy_prompt, profile=self.profile_name
             )
         else:
-            evidence = await self.analyzer.analyze(
+            evidence = await analyzer.analyze(
                 AnalysisTask.STRATEGY,
                 strategy_prompt,
                 # 성향이 여기서 끊기면 두 페르소나가 같은 시스템 프롬프트로 돌고,
@@ -387,15 +662,11 @@ class AnalysisJob:
             # 있었다 — 표를 고쳐도 아무 일이 일어나지 않았다는 뜻이다.
             macro_risk_score=0.0 if macro is None else macro.risk_score,
             held_quantity=holding.quantity,
-            entry_price=(
-                None if holding.entry_price is None else float(holding.entry_price)
-            ),
+            entry_price=(None if holding.entry_price is None else float(holding.entry_price)),
             business_days_held=holding.business_days_held,
             evidence_ids=evidence_ids,
         )
-        conviction = StrategyOutput.vote_conviction(
-            strategy_input, self.gates, evidence.score
-        )
+        conviction = StrategyOutput.vote_conviction(strategy_input, self.gates, evidence.score)
         decision = StrategyOutput.from_model(
             strategy_input,
             conviction,
@@ -405,9 +676,7 @@ class AnalysisJob:
             # 하방은 상방과 다른 저울로 잰다. 확신도에는 스크리닝 점수가 섞여
             # 있는데, 픽은 정의상 그 점수 상위라 보유 종목의 여집합은 낮게
             # 눌린다 — 그대로 두면 매도가 산술적으로 발동하지 않는다.
-            bearishness=StrategyOutput.vote_bearishness(
-                strategy_input, self.gates, evidence.score
-            ),
+            bearishness=StrategyOutput.vote_bearishness(strategy_input, self.gates, evidence.score),
         )
         signal_id = await domain.save_signal(
             StrategistSignalWrite(
@@ -449,7 +718,14 @@ class AnalysisJob:
         if lease is not None:
             await lease.renew()
         verdict = await self._verify(
-            subject, decision, signal_id, cycle_ts, run_id, macro, indicators
+            subject,
+            decision,
+            signal_id,
+            cycle_ts,
+            run_id,
+            macro,
+            indicators,
+            analyzer=analyzer,
         )
         _ = await domain.save_verdict(
             CriticVerdictWrite(
@@ -481,6 +757,8 @@ class AnalysisJob:
         run_id: str,
         macro: MacroSnapshot | None,
         indicators: RankedCandidate | None,
+        *,
+        analyzer: LlmAnalyzer | None = None,
     ) -> CriticVerdict:
         """Critique the proposal, or record why no critique was needed.
 
@@ -531,11 +809,12 @@ class AnalysisJob:
             decision.summary,
             indicators,
         )
-        reserved_analyze = getattr(self.analyzer, "analyze_reserved", None)
+        selected_analyzer = analyzer or self.analyzer
+        reserved_analyze = getattr(selected_analyzer, "analyze_reserved", None)
         if decision.side == "sell" and reserved_analyze is not None:
             review = await reserved_analyze(AnalysisTask.CRITIC, prompt)
         else:
-            review = await self.analyzer.analyze(AnalysisTask.CRITIC, prompt)
+            review = await selected_analyzer.analyze(AnalysisTask.CRITIC, prompt)
         threshold = max(self.gates.critic_approval, 0.0)
         if decision.conviction >= self.gates.overconfidence_conviction:
             # 과신할수록 반박을 더 세게 통과해야 한다(M4 승인 문턱 규칙 승계).

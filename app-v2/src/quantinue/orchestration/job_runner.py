@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
     from datetime import date
 
+    from quantinue.events.analysis import EventAnalysisRun
     from quantinue.orchestration.policy import JobsConfig
 
 
@@ -62,6 +63,11 @@ class EventRuntime(Protocol):
 
     async def close(self) -> None:
         """Release resources owned by the event runtime."""
+        ...
+
+    @property
+    def last_analysis_run(self) -> EventAnalysisRun | None:
+        """Return the latest event analysis counters and reason."""
         ...
 
 
@@ -109,6 +115,7 @@ class JobRunner:
         # 어느 인스턴스가 보내든 실패는 실패다.
         self._ops_alerts = ops_alerts
         self._event_runtime = event_runtime
+        self._last_event_analysis_run: EventAnalysisRun | None = None
         # 같은 굳음을 틱마다 반복 알리지 않기 위한 메모리. 재시작하면 비는데,
         # 그때 한 번 더 오는 것은 결함이 아니라 확인이다 — 굳음은 지속 상태다.
         self._stuck_alerted: set[tuple[str, date]] = set()
@@ -124,6 +131,11 @@ class JobRunner:
         """Runtime assembled for durable event processing."""
         return self._event_runtime
 
+    @property
+    def last_event_analysis_run(self) -> EventAnalysisRun | None:
+        """Return telemetry copied from the latest event-runtime tick."""
+        return self._last_event_analysis_run
+
     async def tick(self, now: datetime) -> tuple[JobOutcome, ...]:
         """Decide and run whatever is due, returning one outcome per job."""
         if not self._config.enabled:
@@ -137,6 +149,9 @@ class JobRunner:
         session = self._calendar.current_session(now)
         if self._event_runtime is not None and session in {Session.PRE, Session.REGULAR}:
             await self._event_runtime.tick(now)
+            self._last_event_analysis_run = getattr(
+                self._event_runtime, "last_analysis_run", None
+            )
         await self._announce_stuck(as_of, now)
         return tuple([await self._run_one(job, as_of) for job in self._jobs])
 
@@ -156,17 +171,13 @@ class JobRunner:
         try:
             detail = await job.run(as_of)
         except Exception as error:  # noqa: BLE001 — 한 잡의 실패가 나머지를 끊지 않게
-            await self._ledger.finish_job_run(
-                job.name, as_of, succeeded=False, detail=str(error)
-            )
+            await self._ledger.finish_job_run(job.name, as_of, succeeded=False, detail=str(error))
             await self._logger.aexception("jobs.failed", job=job.name)
             # 원장에 적은 **뒤에** 알린다. 알림이 먼저면 전송이 걸려 있는 동안
             # 실패 사실이 원장에 없고, 그 사이 재시도 판정이 옛 상태를 본다.
             await self._announce(f"❌ {job.name} 실패 · 슬롯 {as_of}\n{error}")
             return JobOutcome(job.name, "failed", str(error))
-        await self._ledger.finish_job_run(
-            job.name, as_of, succeeded=True, detail=detail
-        )
+        await self._ledger.finish_job_run(job.name, as_of, succeeded=True, detail=detail)
         return JobOutcome(job.name, "ran", detail)
 
     async def _announce(self, message: str) -> None:
@@ -200,9 +211,7 @@ class JobRunner:
                 interval_days=cadence.interval_days,
             ):
                 due += 1
-        await self._announce(
-            f"🔌 앱 기동 · 슬롯 {as_of} · 대기 잡 {due}/{len(self._jobs)}"
-        )
+        await self._announce(f"🔌 앱 기동 · 슬롯 {as_of} · 대기 잡 {due}/{len(self._jobs)}")
 
     async def _announce_stuck(self, as_of: date, now: datetime) -> None:
         """Report a slot frozen in running — the one failure retries cannot fix.

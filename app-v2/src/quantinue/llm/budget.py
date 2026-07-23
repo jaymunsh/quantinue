@@ -82,6 +82,14 @@ class LlmUsageLedger(Protocol):
         ...
 
 
+class PaidCallBoundary(Protocol):
+    """Durable callback invoked immediately before a provider call."""
+
+    async def dispatched(self) -> None:
+        """Persist the point after which cancellation is billing-ambiguous."""
+        ...
+
+
 class BudgetedAnalyzer:
     """Wraps an analyzer so every billable call is counted and capped."""
 
@@ -99,9 +107,7 @@ class BudgetedAnalyzer:
         self._inner = inner
         self._ledger = ledger
         self._limit = Decimal(str(daily_limit_usd))
-        self._general_limit = self._limit * (
-            Decimal(1) - Decimal(str(sell_budget_reserve_ratio))
-        )
+        self._general_limit = self._limit * (Decimal(1) - Decimal(str(sell_budget_reserve_ratio)))
         self._pricing = pricing
         self._now = now
         self._spend_lock = anyio.Lock()
@@ -124,7 +130,11 @@ class BudgetedAnalyzer:
     ) -> AnalysisResult:
         """Refuse, or run the wrapped call and write what it cost to the ledger."""
         return await self._analyze(
-            task, prompt, profile=profile, spending_limit=self._general_limit
+            task,
+            prompt,
+            profile=profile,
+            spending_limit=self._general_limit,
+            boundary=None,
         )
 
     async def analyze_reserved(
@@ -132,7 +142,45 @@ class BudgetedAnalyzer:
     ) -> AnalysisResult:
         """Use the sell-only reserve for a holding rejudgement call."""
         return await self._analyze(
-            task, prompt, profile=profile, spending_limit=self._limit
+            task,
+            prompt,
+            profile=profile,
+            spending_limit=self._limit,
+            boundary=None,
+        )
+
+    async def analyze_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        """Run a general-budget call with a durable provider-boundary callback."""
+        return await self._analyze(
+            task,
+            prompt,
+            profile=profile,
+            spending_limit=self._general_limit,
+            boundary=boundary,
+        )
+
+    async def analyze_reserved_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        """Run a reserve-eligible call with a durable provider-boundary callback."""
+        return await self._analyze(
+            task,
+            prompt,
+            profile=profile,
+            spending_limit=self._limit,
+            boundary=boundary,
         )
 
     async def _analyze(
@@ -142,6 +190,7 @@ class BudgetedAnalyzer:
         *,
         profile: str | None,
         spending_limit: Decimal,
+        boundary: PaidCallBoundary | None,
     ) -> AnalysisResult:
         called_at = self._now()
         day = called_at.date()
@@ -149,9 +198,7 @@ class BudgetedAnalyzer:
         reservation = self._usage_cost(maximum)
         async with self._spend_lock:
             ledger_committed = await self._ledger.llm_spend_on(day)
-            committed = max(
-                ledger_committed, self._committed_by_day.get(day, Decimal(0))
-            )
+            committed = max(ledger_committed, self._committed_by_day.get(day, Decimal(0)))
             self._committed_by_day[day] = committed
             reserved = self._reserved_by_day.get(day, Decimal(0))
             if committed + reserved + reservation > spending_limit:
@@ -168,6 +215,9 @@ class BudgetedAnalyzer:
 
         reservation_active = True
         try:
+            if boundary is not None:
+                with anyio.CancelScope(shield=True):
+                    await boundary.dispatched()
             result = await self._inner.analyze(task, prompt, profile=profile)
             usage = result.usage
             if usage is None:
@@ -211,10 +261,7 @@ class BudgetedAnalyzer:
                     self._release(day, reservation)
                     reservation_active = False
             if cost > reservation:
-                message = (
-                    f"provider usage cost {cost} exceeded reserved maximum "
-                    f"{reservation}"
-                )
+                message = f"provider usage cost {cost} exceeded reserved maximum {reservation}"
                 raise LlmUsageBoundExceededError(message)
             return result
         finally:

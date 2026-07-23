@@ -947,7 +947,7 @@ def _event_runtime(
     evidence_repository = PostgresEventEvidenceRepository(str(settings.database_url))
     analysis_dispatcher = (
         None
-        if selected.analyzer is None
+        if selected.analyzer is None or not config.watch.rejudge.enabled
         else EventAnalysisDispatcher(
             PostgresEventAnalysisReceiptRepository(str(settings.database_url)),
             tuple(

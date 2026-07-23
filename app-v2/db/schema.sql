@@ -479,6 +479,7 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
   ticker TEXT NOT NULL,
   persona TEXT NOT NULL,
   status TEXT NOT NULL,
+  result_payload JSONB,
   order_id BIGINT REFERENCES tb_order(id),
   claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ,

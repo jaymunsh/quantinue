@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from quantinue.events.analysis import EventAnalysisRun
 from quantinue.orchestration.job_runner import JobDefinition, JobRunner
 from quantinue.orchestration.policy import JobCadenceConfig, JobsConfig
 
@@ -53,6 +54,17 @@ class _Ledger:
         return self.successes.get(job_name)
 
 
+class _EventRuntime:
+    def __init__(self, run: EventAnalysisRun) -> None:
+        self.last_analysis_run = run
+
+    async def tick(self, now: datetime) -> None:
+        _ = now
+
+    async def close(self) -> None:
+        return
+
+
 def _runner(
     jobs: Sequence[JobDefinition],
     ledger: _Ledger,
@@ -89,6 +101,26 @@ async def test_a_due_job_runs_and_is_recorded_as_succeeded() -> None:
     assert calls == [date(2026, 7, 20)]
     assert [(o.name, o.reason) for o in outcomes] == [("collect", "ran")]
     assert ledger.finished == [("collect", date(2026, 7, 20), True, "collect ok")]
+
+
+@pytest.mark.anyio
+async def test_event_analysis_counters_propagate_to_job_runner() -> None:
+    event_run = EventAnalysisRun(
+        attempted=2,
+        completed=1,
+        suppressed=1,
+        reason="critic_budget_refused",
+    )
+    runner = JobRunner(
+        JobsConfig(enabled=True),
+        _Ledger(),
+        (),
+        event_runtime=_EventRuntime(event_run),
+    )
+
+    _ = await runner.tick(_MONDAY.replace(hour=14))
+
+    assert runner.last_event_analysis_run == event_run
 
 
 @pytest.mark.anyio

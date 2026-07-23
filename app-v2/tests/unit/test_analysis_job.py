@@ -2,15 +2,22 @@
 
 from __future__ import annotations
 
-from datetime import UTC, date, datetime, time
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+import anyio
 import pytest
 
 from quantinue.db.domain_records import MacroSnapshot
+from quantinue.events.analysis_repository import (
+    EventAnalysisReceiptClaim,
+    EventAnalysisStage,
+)
 from quantinue.events.evidence import EvidencePack, EvidenceSpan, RawEvidenceDocument
+from quantinue.llm.budget import BudgetedAnalyzer, LlmBudgetExceededError, PaidCallBoundary
 from quantinue.llm.provider import AnalysisMetadata, AnalysisResult, AnalysisTask
+from quantinue.llm.usage_limits import MaximumTokenUsage
 from quantinue.orchestration.policy import GatesConfig, ProfileConfig
 from quantinue.roles.analysis.contracts import AnalysisSubject
 from quantinue.roles.analysis.job import AnalysisJob
@@ -32,6 +39,12 @@ class _Analyzer:
         self.prompts: list[tuple[AnalysisTask, str]] = []
         self.profiles: list[tuple[AnalysisTask, str | None]] = []
 
+    def maximum_usage(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> MaximumTokenUsage:
+        _ = task, prompt, profile
+        return MaximumTokenUsage(model="test", input_tokens=0, output_tokens=0)
+
     async def analyze(
         self, task: AnalysisTask, prompt: str, *, profile: str | None = None
     ) -> AnalysisResult:
@@ -49,6 +62,80 @@ class _Analyzer:
                 input_hash="0" * 64,
             ),
         )
+
+
+class _ControlledBudgetedAnalyzer(BudgetedAnalyzer):
+    def __init__(self, mode: str = "normal") -> None:
+        self.mode = mode
+        self.calls: list[AnalysisTask] = []
+
+    def maximum_usage(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> MaximumTokenUsage:
+        _ = task, prompt, profile
+        return MaximumTokenUsage(model="test", input_tokens=1, output_tokens=1)
+
+    async def analyze(
+        self, task: AnalysisTask, prompt: str, *, profile: str | None = None
+    ) -> AnalysisResult:
+        _ = prompt, profile
+        self.calls.append(task)
+        return _analysis_result()
+
+    async def analyze_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        return await self._controlled_call(task, prompt, profile, boundary)
+
+    async def analyze_reserved_with_boundary(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        return await self._controlled_call(task, prompt, profile, boundary)
+
+    async def _controlled_call(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        profile: str | None,
+        boundary: PaidCallBoundary,
+    ) -> AnalysisResult:
+        _ = prompt, profile
+        if self.mode == "critic_budget" and task is AnalysisTask.CRITIC:
+            raise LlmBudgetExceededError
+        if self.mode == "pre_cancel" or (
+            self.mode == "critic_pre_cancel" and task is AnalysisTask.CRITIC
+        ):
+            raise anyio.get_cancelled_exc_class()
+        await boundary.dispatched()
+        self.calls.append(task)
+        if self.mode == "in_call_cancel":
+            raise anyio.get_cancelled_exc_class()
+        return _analysis_result()
+
+
+def _analysis_result() -> AnalysisResult:
+    return AnalysisResult(
+        score=0.9,
+        label="ok",
+        reason="fixture rationale",
+        metadata=AnalysisMetadata(
+            model="test",
+            provider="mock",
+            prompt_version="v1",
+            policy_version="v1",
+            input_hash="0" * 64,
+        ),
+    )
 
 
 class _FragileAnalyzer(_Analyzer):
@@ -92,6 +179,26 @@ def _subject(ticker: str, rank: int = 1, score: float = 0.9) -> AnalysisSubject:
         high=Decimal("101.00"),
         low=Decimal("99.00"),
         close_prev=Decimal("99.50"),
+    )
+
+
+def _event_pack() -> EvidencePack:
+    document = RawEvidenceDocument(
+        event_id=41,
+        raw_version_id=9,
+        content_hash="a" * 64,
+        source_name="sec",
+        source_document_id="filing-41",
+        source_url="https://example.test/filing-41",
+        source_sequence="41",
+        ticker="AAA",
+        normalized_text="material filing",
+    )
+    return EvidencePack(
+        document,
+        (EvidenceSpan(0, 15, "material filing", "b" * 64),),
+        None,
+        "source=sec quote=material filing",
     )
 
 
@@ -166,11 +273,88 @@ class _Domain:
 
 
 class _CompletedDomain(_Domain):
-    async def completed_intraday_tickers(
-        self, cycle_ts: datetime, inv_type: str
-    ) -> frozenset[str]:
+    async def completed_intraday_tickers(self, cycle_ts: datetime, inv_type: str) -> frozenset[str]:
         _ = (cycle_ts, inv_type)
         return frozenset({"HELD"})
+
+
+class _EventReceipts:
+    def __init__(self) -> None:
+        self.states: dict[EventAnalysisStage, EventAnalysisReceiptClaim] = {}
+        self.results: dict[EventAnalysisStage, dict[str, object]] = {}
+        self.dispatched: list[EventAnalysisStage] = []
+        self.released: list[EventAnalysisStage] = []
+        self.suppressed: list[EventAnalysisStage] = []
+
+    async def claim(
+        self,
+        pack: EvidencePack,
+        persona: str,
+        stage: EventAnalysisStage,
+        now: datetime,
+        cooldown: timedelta,
+    ) -> EventAnalysisReceiptClaim:
+        _ = pack, persona, now, cooldown
+        if stage in self.dispatched and stage not in self.states:
+            return EventAnalysisReceiptClaim.UNCERTAIN
+        return self.states.get(stage, EventAnalysisReceiptClaim.CLAIMED)
+
+    async def result(
+        self,
+        event_id: int,
+        ticker: str,
+        persona: str,
+        stage: EventAnalysisStage,
+    ) -> dict[str, object]:
+        _ = event_id, ticker, persona
+        return self.results[stage]
+
+    async def mark_dispatched(
+        self,
+        event_id: int,
+        ticker: str,
+        persona: str,
+        stage: EventAnalysisStage,
+    ) -> None:
+        _ = event_id, ticker, persona
+        self.dispatched.append(stage)
+
+    async def complete(
+        self,
+        event_id: int,
+        ticker: str,
+        persona: str,
+        stage: EventAnalysisStage,
+        result_payload: dict[str, object],
+    ) -> None:
+        _ = event_id, ticker, persona
+        self.states[stage] = EventAnalysisReceiptClaim.COMPLETED
+        self.results[stage] = result_payload
+
+    async def release_unbilled(
+        self,
+        event_id: int,
+        ticker: str,
+        persona: str,
+        stage: EventAnalysisStage,
+    ) -> None:
+        _ = event_id, ticker, persona
+        self.released.append(stage)
+        self.states.pop(stage, None)
+
+    async def suppress(
+        self,
+        event_id: int,
+        ticker: str,
+        persona: str,
+        stage: EventAnalysisStage,
+    ) -> None:
+        _ = event_id, ticker, persona
+        self.suppressed.append(stage)
+        self.states[stage] = EventAnalysisReceiptClaim.SUPPRESSED
+
+    async def close(self) -> None:
+        return
 
 
 class _LostLease:
@@ -274,9 +458,7 @@ async def test_intraday_rejudge_persists_the_current_price_and_tick_time() -> No
 @pytest.mark.anyio
 async def test_intraday_retry_skips_already_durable_persona_ticker() -> None:
     # Given
-    domain = _CompletedDomain(
-        (_subject("HELD", rank=15, score=0.1),), (_position("HELD"),)
-    )
+    domain = _CompletedDomain((_subject("HELD", rank=15, score=0.1),), (_position("HELD"),))
     analyzer = _Analyzer(strategy=0.1)
 
     # When
@@ -313,21 +495,192 @@ async def test_event_rejudge_targets_one_canonical_subject_with_cited_evidence()
         None,
         "source=sec quote=material filing",
     )
+    receipts = _EventReceipts()
 
     # When
     result = await _job(domain, analyzer).run_event(
         pack,
         now=event_at,
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
     )
 
     # Then
-    assert [outcome.ticker for outcome in result.outcomes] == ["AAA"]
+    assert result.completed == 2
     assert [task for task, _ in analyzer.prompts] == [
         AnalysisTask.STRATEGY,
         AnalysisTask.CRITIC,
     ]
     assert domain.signals[0].evidence == ("event:41:9:aggressive:span:0:15",)
     assert domain.signals[0].run_id.startswith("event:")
+    assert receipts.dispatched == [
+        EventAnalysisStage.STRATEGIST,
+        EventAnalysisStage.CRITIC,
+    ]
+
+
+@pytest.mark.anyio
+async def test_event_restart_reuses_completed_provider_stages() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _ControlledBudgetedAnalyzer()
+    receipts = _EventReceipts()
+    job = AnalysisJob(
+        store=_Store(domain),
+        analyzer=analyzer,
+        gates=GatesConfig(evidence_max_age_minutes=2_880),
+        profile=ProfileConfig(),
+        profile_name="aggressive",
+    )
+
+    first = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+    second = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert first.completed == 2
+    assert second.completed == 2
+    assert analyzer.calls == [AnalysisTask.STRATEGY, AnalysisTask.CRITIC]
+
+
+@pytest.mark.anyio
+async def test_critic_budget_refusal_preserves_completed_strategist() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _ControlledBudgetedAnalyzer("critic_budget")
+    receipts = _EventReceipts()
+    job = AnalysisJob(
+        store=_Store(domain),
+        analyzer=analyzer,
+        gates=GatesConfig(evidence_max_age_minutes=2_880),
+        profile=ProfileConfig(),
+        profile_name="aggressive",
+    )
+
+    first = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+    second = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert first.completed == 1
+    assert first.suppressed == 1
+    assert first.reason == "critic_budget_refused"
+    assert second.completed == 1
+    assert second.suppressed == 1
+    assert analyzer.calls == [AnalysisTask.STRATEGY]
+
+
+@pytest.mark.anyio
+async def test_pre_provider_cancellation_releases_and_retries() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _ControlledBudgetedAnalyzer("pre_cancel")
+    receipts = _EventReceipts()
+    job = AnalysisJob(
+        store=_Store(domain),
+        analyzer=analyzer,
+        gates=GatesConfig(evidence_max_age_minutes=2_880),
+        profile=ProfileConfig(),
+        profile_name="aggressive",
+    )
+
+    with pytest.raises(anyio.get_cancelled_exc_class()):
+        _ = await job.run_event(
+            _event_pack(),
+            now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+            receipts=receipts,
+            cooldown=timedelta(minutes=30),
+        )
+    analyzer.mode = "normal"
+    retried = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert receipts.released == [EventAnalysisStage.STRATEGIST]
+    assert retried.completed == 2
+    assert analyzer.calls == [AnalysisTask.STRATEGY, AnalysisTask.CRITIC]
+
+
+@pytest.mark.anyio
+async def test_in_call_cancellation_is_uncertain_and_never_rebilled() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _ControlledBudgetedAnalyzer("in_call_cancel")
+    receipts = _EventReceipts()
+    job = AnalysisJob(
+        store=_Store(domain),
+        analyzer=analyzer,
+        gates=GatesConfig(evidence_max_age_minutes=2_880),
+        profile=ProfileConfig(),
+        profile_name="aggressive",
+    )
+
+    with pytest.raises(anyio.get_cancelled_exc_class()):
+        _ = await job.run_event(
+            _event_pack(),
+            now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+            receipts=receipts,
+            cooldown=timedelta(minutes=30),
+        )
+    restarted = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert receipts.released == []
+    assert restarted.uncertain == 1
+    assert restarted.reason == "strategist_uncertain"
+    assert analyzer.calls == [AnalysisTask.STRATEGY]
+
+
+@pytest.mark.anyio
+async def test_critic_pre_boundary_cancellation_retries_critic_only() -> None:
+    domain = _Domain((_subject("AAA"),))
+    analyzer = _ControlledBudgetedAnalyzer("critic_pre_cancel")
+    receipts = _EventReceipts()
+    job = AnalysisJob(
+        store=_Store(domain),
+        analyzer=analyzer,
+        gates=GatesConfig(evidence_max_age_minutes=2_880),
+        profile=ProfileConfig(),
+        profile_name="aggressive",
+    )
+
+    with pytest.raises(anyio.get_cancelled_exc_class()):
+        _ = await job.run_event(
+            _event_pack(),
+            now=datetime(2026, 7, 17, 15, 5, tzinfo=UTC),
+            receipts=receipts,
+            cooldown=timedelta(minutes=30),
+        )
+    analyzer.mode = "normal"
+    restarted = await job.run_event(
+        _event_pack(),
+        now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
+        receipts=receipts,
+        cooldown=timedelta(minutes=30),
+    )
+
+    assert receipts.released == [EventAnalysisStage.CRITIC]
+    assert restarted.completed == 2
+    assert analyzer.calls == [AnalysisTask.STRATEGY, AnalysisTask.CRITIC]
 
 
 @pytest.mark.anyio
@@ -783,9 +1136,9 @@ async def test_a_model_that_omits_the_narrative_does_not_kill_the_analysis() -> 
     domain = _Domain((_subject("AAA", 1),))
 
     # When
-    outcomes = (await _job(domain, _Analyzer(strategy=0.9)).run(
-        as_of=_AS_OF, session=_SESSION
-    )).outcomes
+    outcomes = (
+        await _job(domain, _Analyzer(strategy=0.9)).run(as_of=_AS_OF, session=_SESSION)
+    ).outcomes
 
     # Then
     assert len(outcomes) == 1
@@ -846,9 +1199,7 @@ async def test_the_scored_disclosure_votes_and_is_recorded_as_lineage() -> None:
     _ = await _job(domain, _Analyzer(strategy=0.9)).run(as_of=_AS_OF, session=_SESSION)
 
     # Then
-    assert domain.signals[0].src_disclosure_at == datetime.combine(
-        _AS_OF, time(), tzinfo=UTC
-    )
+    assert domain.signals[0].src_disclosure_at == datetime.combine(_AS_OF, time(), tzinfo=UTC)
 
 
 @pytest.mark.anyio
@@ -860,9 +1211,7 @@ async def test_the_disclosure_vote_actually_moves_the_conviction() -> None:
 
     # When
     _ = await _job(without, _Analyzer(strategy=0.9)).run(as_of=_AS_OF, session=_SESSION)
-    _ = await _job(with_vote, _Analyzer(strategy=0.9)).run(
-        as_of=_AS_OF, session=_SESSION
-    )
+    _ = await _job(with_vote, _Analyzer(strategy=0.9)).run(as_of=_AS_OF, session=_SESSION)
 
     # Then
     assert without.signals[0].conviction == pytest.approx(Decimal("0.900"))

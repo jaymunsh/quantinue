@@ -646,6 +646,7 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
   ticker TEXT NOT NULL,
   persona TEXT NOT NULL,
   status TEXT NOT NULL,
+  result_payload JSONB,
   order_id BIGINT REFERENCES tb_order(id),
   claimed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   completed_at TIMESTAMPTZ,
@@ -659,6 +660,9 @@ CREATE TABLE IF NOT EXISTS tb_event_processing_receipt (
   CONSTRAINT tb_event_processing_receipt_order_check
     CHECK ((status = 'ordered') = (order_id IS NOT NULL))
 );
+
+ALTER TABLE tb_event_processing_receipt
+  ADD COLUMN IF NOT EXISTS result_payload JSONB;
 
 ALTER TABLE tb_normalized_event
   DROP CONSTRAINT IF EXISTS tb_normalized_event_source_name_check;
@@ -719,6 +723,7 @@ BEGIN
       ('tb_event_processing_receipt','ticker','text',true,'none'),
       ('tb_event_processing_receipt','persona','text',true,'none'),
       ('tb_event_processing_receipt','status','text',true,'none'),
+      ('tb_event_processing_receipt','result_payload','jsonb',false,'none'),
       ('tb_event_processing_receipt','order_id','bigint',false,'none'),
       ('tb_event_processing_receipt','claimed_at','timestamp with time zone',true,'now'),
       ('tb_event_processing_receipt','completed_at','timestamp with time zone',false,'none')

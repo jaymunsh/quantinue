@@ -10,6 +10,7 @@ import anyio
 
 from quantinue.core.market_calendar import NEW_YORK
 from quantinue.events.adapters import NewsEventSourceAdapter, SecEventSourceAdapter
+from quantinue.events.analysis import EventAnalysisRun
 from quantinue.events.evidence import EvidenceDocumentError
 from quantinue.events.ingestion import (
     IncrementalEventSource,
@@ -25,7 +26,6 @@ from quantinue.llm.budget import LlmBudgetExceededError, LlmUsageBoundExceededEr
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from quantinue.events.analysis import EventAnalysisRun
     from quantinue.events.evidence import EvidencePack
     from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
     from quantinue.llm.provider import LlmAnalyzer
@@ -51,9 +51,7 @@ class EventIngestor(Protocol):
 class EventAnalyzer(Protocol):
     """Dispatch bounded evidence through configured investment personas."""
 
-    async def dispatch(
-        self, pack: EvidencePack, *, now: datetime
-    ) -> EventAnalysisRun:
+    async def dispatch(self, pack: EvidencePack, *, now: datetime) -> EventAnalysisRun:
         """Return durable outcomes for one event fan-out."""
         ...
 
@@ -68,6 +66,8 @@ class EvidencePreparationRun:
 
     prepared: int
     failed: int
+    analysis: EventAnalysisRun | None = None
+    reason: str = "analysis_not_configured"
 
 
 @dataclass
@@ -123,14 +123,25 @@ class EventIngestionExecutor:
             ):
                 failed += 1
         if self.analysis_dispatcher is not None:
+            analysis = EventAnalysisRun()
             for route in await self.routing_repository.accepted_with_evidence():
                 pack = await self.evidence_repository.prepare(
                     route,
                     self.analyzer,
                     summary_timeout_seconds=self.config.summary_timeout_seconds,
                 )
-                _ = await self.analysis_dispatcher.dispatch(pack, now=now)
-        return EvidencePreparationRun(prepared=prepared, failed=failed)
+                analysis += await self.analysis_dispatcher.dispatch(pack, now=now)
+            return EvidencePreparationRun(
+                prepared=prepared,
+                failed=failed,
+                analysis=analysis,
+                reason=analysis.reason,
+            )
+        return EvidencePreparationRun(
+            prepared=prepared,
+            failed=failed,
+            reason="rejudge_disabled",
+        )
 
     async def close(self) -> None:
         """Attempt every pool once and raise the first cleanup failure."""
@@ -162,6 +173,13 @@ class EventIngestionRuntime:
     _last_dispatch: dict[str, datetime] = field(default_factory=dict, init=False)
     last_evidence_run: EvidencePreparationRun | None = field(default=None, init=False)
 
+    @property
+    def last_analysis_run(self) -> EventAnalysisRun | None:
+        """Expose the most recent stage counters to the owning job runner."""
+        if self.last_evidence_run is None:
+            return None
+        return self.last_evidence_run.analysis
+
     async def tick(self, now: datetime) -> None:
         """Dispatch due sources, coalescing delayed ticks into one run."""
         as_of = now.astimezone(NEW_YORK).date()
@@ -173,9 +191,7 @@ class EventIngestionRuntime:
             await self.ingestor.ingest(source_name, as_of)
             dispatched = True
             self._last_dispatch[source_name] = now
-        self.last_evidence_run = (
-            await self.ingestor.prepare_evidence(now) if dispatched else None
-        )
+        self.last_evidence_run = await self.ingestor.prepare_evidence(now) if dispatched else None
 
     async def close(self) -> None:
         """Release resources owned by the executor."""
