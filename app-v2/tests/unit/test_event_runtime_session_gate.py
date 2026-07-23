@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime
 
 import anyio
 import pytest
+from anyio.abc import TaskStatus
 
 from quantinue.orchestration.job_runner import JobRunner
 from quantinue.orchestration.policy import JobsConfig
@@ -81,9 +82,14 @@ async def test_runner_cancellation_closes_event_runtime() -> None:
     )
 
     # When
+    async def run_runner(
+        *, task_status: TaskStatus[None] = anyio.TASK_STATUS_IGNORED
+    ) -> None:
+        task_status.started()
+        await runner.run_forever()
+
     async with anyio.create_task_group() as task_group:
-        _ = task_group.start_soon(runner.run_forever)
-        await anyio.lowlevel.checkpoint()
+        await task_group.start(run_runner)
         task_group.cancel_scope.cancel()
 
     # Then
