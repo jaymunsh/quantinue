@@ -29,6 +29,10 @@ def _position() -> OpenPosition:
 
 
 class _Domain:
+    def __init__(self) -> None:
+        self.sweeps: dict[datetime, str] = {}
+        self.sweep_attempts: dict[datetime, int] = {}
+
     async def open_positions(self) -> tuple[OpenPosition, ...]:
         return (_position(),)
 
@@ -37,10 +41,39 @@ class _Domain:
     ) -> dict[str, Decimal]:
         return {ticker: Decimal("100.00") for ticker in tickers}
 
+    async def reserve_watch_sweep(self, sweep_at: datetime, *, now: datetime) -> int | None:
+        _ = now
+        if self.sweeps.get(sweep_at) in {"running", "succeeded"}:
+            return None
+        self.sweeps[sweep_at] = "running"
+        attempt = self.sweep_attempts.get(sweep_at, 0) + 1
+        self.sweep_attempts[sweep_at] = attempt
+        return attempt
+
+    async def finish_watch_sweep(
+        self,
+        sweep_at: datetime,
+        *,
+        attempt: int,
+        succeeded: bool,
+        detail: str,
+        now: datetime,
+    ) -> None:
+        _ = (detail, now)
+        if self.sweep_attempts.get(sweep_at) != attempt:
+            message = "stale sweep owner"
+            raise RuntimeError(message)
+        self.sweeps[sweep_at] = "succeeded" if succeeded else "failed"
+
 
 class _ManyPositionsDomain(_Domain):
     async def open_positions(self) -> tuple[OpenPosition, ...]:
         return tuple(replace(_position(), ticker=f"TICK{index:02d}") for index in range(35))
+
+
+class _EmptyDomain(_Domain):
+    async def open_positions(self) -> tuple[OpenPosition, ...]:
+        return ()
 
 
 class _Quotes:
@@ -87,6 +120,25 @@ class _Rejudge:
     ) -> int:
         self.calls.append((now, prices))
         return 1
+
+
+class _PartialRejudge(_Rejudge):
+    async def run(
+        self, *, now: datetime, prices: dict[str, Decimal]
+    ) -> int:
+        self.calls.append((now, prices))
+        if len(self.calls) == 1:
+            message = "partial analysis failure"
+            raise RuntimeError(message)
+        return 0
+
+
+class _CancelledRejudge(_Rejudge):
+    async def run(
+        self, *, now: datetime, prices: dict[str, Decimal]
+    ) -> int:
+        self.calls.append((now, prices))
+        raise anyio.get_cancelled_exc_class()
 
 
 @pytest.mark.anyio
@@ -212,6 +264,116 @@ async def test_new_york_sweep_rejudges_a_small_move_only_once() -> None:
     assert first.rejudged == 1
     assert second.rejudged == 0
     assert len(rejudge.calls) == 1
+
+
+@pytest.mark.anyio
+async def test_missed_sweep_runs_latest_due_once_across_restart() -> None:
+    # Given
+    domain = _Domain()
+    rejudge = _Rejudge()
+    config = WatchConfig(enabled=True, rejudge=RejudgeConfig(enabled=True))
+    quotes = _Quotes()
+    quotes.latest_trades = lambda tickers: _latest_trade(tickers, "103.00")
+    now = datetime(2026, 7, 20, 16, 46, tzinfo=UTC)
+
+    # When
+    first = await WatchRunner(
+        config, domain=domain, quotes=quotes, exits=_NoExit(), rejudge=rejudge
+    ).tick(now)
+    second = await WatchRunner(
+        config, domain=domain, quotes=quotes, exits=_NoExit(), rejudge=rejudge
+    ).tick(now.replace(second=30))
+
+    # Then
+    assert (first.rejudged, second.rejudged) == (1, 0)
+    assert tuple(domain.sweeps) == (datetime(2026, 7, 20, 16, 45, tzinfo=UTC),)
+
+
+@pytest.mark.anyio
+async def test_partial_sweep_fails_then_retries_on_the_next_tick() -> None:
+    # Given
+    domain = _Domain()
+    rejudge = _PartialRejudge()
+    quotes = _Quotes()
+    quotes.latest_trades = lambda tickers: _latest_trade(tickers, "103.00")
+    runner = WatchRunner(
+        WatchConfig(enabled=True, rejudge=RejudgeConfig(enabled=True)),
+        domain=domain,
+        quotes=quotes,
+        exits=_NoExit(),
+        rejudge=rejudge,
+    )
+    now = datetime(2026, 7, 20, 14, 1, tzinfo=UTC)
+
+    # When / Then
+    with pytest.raises(RuntimeError, match="partial"):
+        await runner.tick(now)
+    assert tuple(domain.sweeps.values()) == ("failed",)
+    outcome = await runner.tick(now.replace(minute=2))
+    assert outcome.rejudged == 0
+    assert tuple(domain.sweeps.values()) == ("succeeded",)
+
+
+@pytest.mark.anyio
+async def test_zero_target_sweep_is_durably_succeeded() -> None:
+    # Given
+    domain = _EmptyDomain()
+    runner = WatchRunner(
+        WatchConfig(enabled=True, rejudge=RejudgeConfig(enabled=True)),
+        domain=domain,
+        quotes=_Quotes(),
+        exits=_NoExit(),
+        rejudge=_Rejudge(),
+    )
+
+    # When
+    outcome = await runner.tick(datetime(2026, 7, 20, 14, 1, tzinfo=UTC))
+
+    # Then
+    assert outcome.rejudged == 0
+    assert tuple(domain.sweeps.values()) == ("succeeded",)
+
+
+@pytest.mark.anyio
+async def test_cancelled_sweep_is_marked_failed_for_restart() -> None:
+    # Given
+    domain = _Domain()
+    quotes = _Quotes()
+    quotes.latest_trades = lambda tickers: _latest_trade(tickers, "103.00")
+    runner = WatchRunner(
+        WatchConfig(enabled=True, rejudge=RejudgeConfig(enabled=True)),
+        domain=domain,
+        quotes=quotes,
+        exits=_NoExit(),
+        rejudge=_CancelledRejudge(),
+    )
+
+    # When / Then
+    with pytest.raises(anyio.get_cancelled_exc_class()):
+        await runner.tick(datetime(2026, 7, 20, 14, 1, tzinfo=UTC))
+    assert tuple(domain.sweeps.values()) == ("failed",)
+
+
+@pytest.mark.anyio
+async def test_sweep_uses_new_york_wall_time_after_dst_ends() -> None:
+    # Given
+    domain = _Domain()
+    quotes = _Quotes()
+    quotes.latest_trades = lambda tickers: _latest_trade(tickers, "103.00")
+    runner = WatchRunner(
+        WatchConfig(enabled=True, rejudge=RejudgeConfig(enabled=True)),
+        domain=domain,
+        quotes=quotes,
+        exits=_NoExit(),
+        rejudge=_Rejudge(),
+    )
+
+    # When
+    outcome = await runner.tick(datetime(2026, 11, 2, 15, 1, tzinfo=UTC))
+
+    # Then
+    assert outcome.rejudged == 1
+    assert tuple(domain.sweeps) == (datetime(2026, 11, 2, 15, 0, tzinfo=UTC),)
 
 
 @pytest.mark.anyio

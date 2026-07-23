@@ -31,6 +31,7 @@ TABLES = {
     "tb_benchmark_price",
     "tb_daily_bar",
     "tb_job_run",
+    "tb_watch_sweep",
     "tb_disclosure_raw",
     "tb_news_raw",
     "tb_order_plan",
@@ -62,6 +63,7 @@ PK = {
     "tb_benchmark_price": ("price_date", "ticker"),
     "tb_daily_bar": ("trade_date", "ticker"),
     "tb_job_run": ("job_name", "slot_date"),
+    "tb_watch_sweep": ("sweep_at",),
     "tb_disclosure_raw": ("filing_no",),
     # 기사 하나가 여러 종목을 언급하므로 기사 id만으로는 행을 못 가른다.
     "tb_news_raw": ("article_id", "ticker"),
@@ -251,6 +253,11 @@ CHECKS = {
         ("status",): ("'running'", "'succeeded'", "'failed'"),
         # 상태와 종료시각이 어긋난 행을 만들 수 없게 묶는다 — running인데
         # 끝난 시각이 있거나, 끝났는데 없는 행은 주기 판정을 거짓으로 만든다.
+        ("status", "finished_at"): ("'running'", "finished_at is null"),
+        ("attempts",): ("attempts >",),
+    },
+    "tb_watch_sweep": {
+        ("status",): ("'running'", "'succeeded'", "'failed'"),
         ("status", "finished_at"): ("'running'", "finished_at is null"),
         ("attempts",): ("attempts >",),
     },

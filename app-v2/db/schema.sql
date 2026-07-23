@@ -286,6 +286,17 @@ CREATE TABLE IF NOT EXISTS tb_job_run (
   CHECK ((status = 'running') = (finished_at IS NULL))
 );
 
+CREATE TABLE IF NOT EXISTS tb_watch_sweep (
+  sweep_at TIMESTAMPTZ PRIMARY KEY,
+  status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed')),
+  attempts INT NOT NULL DEFAULT 1 CHECK (attempts > 0),
+  started_at TIMESTAMPTZ NOT NULL,
+  finished_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL,
+  detail TEXT,
+  CHECK ((status = 'running') = (finished_at IS NULL))
+);
+
 -- 공시 원시 원장. tb_disclosure(채점 결과)와 따로 두는 이유는 FK다 — 그쪽은
 -- (trade_date, ticker) → tb_daily_pick을 걸어 그날 분석 대상이 아닌 종목에는
 -- 행을 넣을 수 없는데, 일괄 수집이 노리는 것이 정확히 그 바깥이다(스크리너에서

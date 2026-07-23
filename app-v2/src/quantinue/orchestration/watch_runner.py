@@ -36,6 +36,30 @@ class WatchDomain(Protocol):
         """Return the last closed-session price before the intraday tick."""
         ...
 
+    async def reserve_watch_sweep(self, sweep_at: datetime, *, now: datetime) -> int | None:
+        """Claim a due sweep unless it is already running or succeeded."""
+        ...
+
+    async def finish_watch_sweep(
+        self,
+        sweep_at: datetime,
+        *,
+        attempt: int,
+        succeeded: bool,
+        detail: str,
+        now: datetime,
+    ) -> None:
+        """Persist the result of a claimed sweep."""
+        ...
+
+
+@dataclass(frozen=True, slots=True)
+class WatchSweepClaim:
+    """A canonical sweep reservation fenced by its attempt generation."""
+
+    sweep_at: datetime
+    attempt: int
+
 
 class LatestTradeSource(Protocol):
     """Batch latest-trade capability consumed by the watch runner."""
@@ -115,7 +139,6 @@ class WatchRunner:
         self._stream = stream
         self._last_rejudged_at: dict[str, datetime] = {}
         self._last_stream_at: dict[str, datetime] = {}
-        self._completed_sweeps: set[tuple[date, str]] = set()
         self._evaluation_lock = anyio.Lock()
         self._logger: structlog.stdlib.BoundLogger = structlog.get_logger("watch")
         self._runtime = WatchRuntimeState(
@@ -159,9 +182,7 @@ class WatchRunner:
                 (*candidates, *(position.ticker for position in positions))
             )
         )
-        if not tickers:
-            return WatchOutcome("ready")
-        trades = await self._quotes.latest_trades(tickers)
+        trades = await self._quotes.latest_trades(tickers) if tickers else ()
         prices = {trade.ticker: trade.price for trade in trades}
         async with self._evaluation_lock:
             return await self._evaluate(now, tickers=tickers, prices=prices)
@@ -240,41 +261,114 @@ class WatchRunner:
         policy = self._config.rejudge
         if not policy.enabled or self._rejudge is None or self._domain is None:
             return 0
+        local = now.astimezone(NEW_YORK)
+        sweep_claim = await self._reserve_due_sweep(now, local, policy.sweep_times_ny)
+        sweep_due = sweep_claim is not None
         active = tuple(dict.fromkeys(tickers))
         if not active:
+            await self._finish_sweep(sweep_claim, now, succeeded=True, detail="targets=0")
             return 0
         references = await self._domain.reference_closes(
-            active, before=now.astimezone(NEW_YORK).date()
-        )
-        local = now.astimezone(NEW_YORK)
-        sweep_time = local.strftime("%H:%M")
-        sweep_key = (local.date(), sweep_time)
-        sweep_due = (
-            sweep_time in policy.sweep_times_ny
-            and sweep_key not in self._completed_sweeps
+            active, before=local.date()
         )
         cooldown = timedelta(minutes=policy.cooldown_minutes)
+        triggered = self._triggered_prices(
+            active,
+            prices,
+            references,
+            now=now,
+            sweep_due=sweep_due,
+            cooldown=cooldown,
+            move_trigger_pct=Decimal(str(policy.move_trigger_pct)),
+        )
+        if not triggered:
+            await self._finish_sweep(sweep_claim, now, succeeded=True, detail="targets=0")
+            return 0
+        try:
+            closed = await self._rejudge.run(
+                now=sweep_claim.sweep_at if sweep_claim is not None else now,
+                prices=triggered,
+            )
+        except (RuntimeError, TimeoutError):
+            if sweep_due:
+                with anyio.CancelScope(shield=True):
+                    await self._finish_sweep(
+                        sweep_claim, now, succeeded=False, detail=f"targets={len(triggered)}"
+                    )
+            raise
+        except anyio.get_cancelled_exc_class():
+            if sweep_due:
+                with anyio.CancelScope(shield=True):
+                    await self._finish_sweep(
+                        sweep_claim, now, succeeded=False, detail=f"targets={len(triggered)}"
+                    )
+            raise
+        self._last_rejudged_at.update(dict.fromkeys(triggered, now))
+        await self._finish_sweep(
+            sweep_claim,
+            now,
+            succeeded=True,
+            detail=f"targets={len(triggered)} closed={closed}",
+        )
+        return closed
+
+    def _triggered_prices(  # noqa: PLR0913 - each value is one trigger input
+        self,
+        active: tuple[str, ...],
+        prices: Mapping[str, Decimal],
+        references: Mapping[str, Decimal],
+        *,
+        now: datetime,
+        sweep_due: bool,
+        cooldown: timedelta,
+        move_trigger_pct: Decimal,
+    ) -> dict[str, Decimal]:
         triggered: dict[str, Decimal] = {}
         for ticker in active:
             price = prices.get(ticker)
+            if sweep_due and price is not None:
+                triggered[ticker] = price
+                continue
             reference = references.get(ticker)
             if price is None or reference is None or reference <= 0:
                 continue
-            moved = abs(price - reference) / reference >= Decimal(
-                str(policy.move_trigger_pct)
-            )
-            if not moved and not sweep_due:
+            if abs(price - reference) / reference < move_trigger_pct:
                 continue
             previous = self._last_rejudged_at.get(ticker)
             if previous is None or now - previous >= cooldown:
                 triggered[ticker] = price
-        if not triggered:
-            return 0
-        closed = await self._rejudge.run(now=now, prices=triggered)
-        self._last_rejudged_at.update(dict.fromkeys(triggered, now))
-        if sweep_due:
-            self._completed_sweeps.add(sweep_key)
-        return closed
+        return triggered
+
+    async def _reserve_due_sweep(
+        self, now: datetime, local: datetime, configured: tuple[str, ...]
+    ) -> WatchSweepClaim | None:
+        due = tuple(value for value in configured if value <= local.strftime("%H:%M"))
+        if not due or self._domain is None:
+            return None
+        hour, minute = (int(part) for part in due[-1].split(":"))
+        sweep_at = local.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        canonical = sweep_at.astimezone(UTC)
+        attempt = await self._domain.reserve_watch_sweep(canonical, now=now)
+        if attempt is not None:
+            return WatchSweepClaim(canonical, attempt)
+        return None
+
+    async def _finish_sweep(
+        self,
+        claim: WatchSweepClaim | None,
+        now: datetime,
+        *,
+        succeeded: bool,
+        detail: str,
+    ) -> None:
+        if claim is not None and self._domain is not None:
+            await self._domain.finish_watch_sweep(
+                claim.sweep_at,
+                attempt=claim.attempt,
+                succeeded=succeeded,
+                detail=detail,
+                now=now,
+            )
 
     async def run_forever(self) -> None:
         """Tick forever while isolating failures from the application lifespan."""

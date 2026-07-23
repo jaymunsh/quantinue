@@ -50,6 +50,10 @@ class IntradayBuyExecutor(Protocol):
         ...
 
 
+class IntradayPartialFailureError(RuntimeError):
+    """Raised when any persona leaves ticker work incomplete."""
+
+
 @dataclass(frozen=True, slots=True)
 class IntradayRejudgeEngine:
     """Run both investment personas, then execute approved sell reversals."""
@@ -62,8 +66,12 @@ class IntradayRejudgeEngine:
     async def run(self, *, now: datetime, prices: Mapping[str, Decimal]) -> int:
         """Refresh triggered tickers and close approved reversals in one tick."""
         mutable_prices = dict(prices)
+        skipped = 0
         for job in self.jobs:
-            _ = await job.run_intraday(now=now, prices=mutable_prices)
+            skipped += (await job.run_intraday(now=now, prices=mutable_prices)).skipped
+        if skipped:
+            message = f"intraday rejudgement incomplete: skipped={skipped}"
+            raise IntradayPartialFailureError(message)
         as_of = now.astimezone(NEW_YORK).date()
         profiles = await self.domain.approved_sell_profiles(
             as_of, tuple(mutable_prices)

@@ -6,7 +6,7 @@ from textwrap import dedent
 from typing import Final
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import ColumnElement, MetaData, Table, and_, func, literal, select, text
+from sqlalchemy import ColumnElement, MetaData, Table, and_, func, literal, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
@@ -95,7 +95,14 @@ _TABLES = (
     "tb_order",
     "tb_fill",
     "tb_llm_usage",
+    "tb_watch_sweep",
 )
+
+_WATCH_SWEEP_STALE_AFTER: Final = timedelta(minutes=30)
+
+
+class WatchSweepStateError(RuntimeError):
+    """Raised when a sweep transition loses ownership of its ledger row."""
 
 
 class _IdentifierRow(BaseModel):
@@ -2122,6 +2129,85 @@ class PostgresDomainRepository:
         )
         async with self._engine.begin() as connection:
             return Decimal(str(await connection.scalar(statement)))
+
+    async def reserve_watch_sweep(self, sweep_at: datetime, *, now: datetime) -> int | None:
+        """Atomically claim a new or failed scheduled sweep."""
+        table = self._table("tb_watch_sweep")
+        statement = (
+            insert(table)
+            .values(
+                sweep_at=sweep_at,
+                status="running",
+                attempts=1,
+                started_at=now,
+                updated_at=now,
+            )
+            .on_conflict_do_update(
+                index_elements=[table.c.sweep_at],
+                set_={
+                    "status": "running",
+                    "attempts": table.c.attempts + 1,
+                    "started_at": now,
+                    "finished_at": None,
+                    "updated_at": now,
+                    "detail": None,
+                },
+                where=or_(
+                    table.c.status == "failed",
+                    and_(
+                        table.c.status == "running",
+                        table.c.updated_at <= now - _WATCH_SWEEP_STALE_AFTER,
+                    ),
+                ),
+            )
+            .returning(table.c.attempts)
+        )
+        async with self._engine.begin() as connection:
+            return await connection.scalar(statement)
+
+    async def finish_watch_sweep(
+        self,
+        sweep_at: datetime,
+        *,
+        attempt: int,
+        succeeded: bool,
+        detail: str,
+        now: datetime,
+    ) -> None:
+        """Persist a running sweep's terminal result."""
+        table = self._table("tb_watch_sweep")
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                table.update()
+                .where(
+                    table.c.sweep_at == sweep_at,
+                    table.c.status == "running",
+                    table.c.attempts == attempt,
+                )
+                .values(
+                    status="succeeded" if succeeded else "failed",
+                    finished_at=now,
+                    updated_at=now,
+                    detail=detail,
+                )
+            )
+            if result.rowcount != 1:
+                message = f"watch sweep terminal transition lost: {sweep_at.isoformat()}"
+                raise WatchSweepStateError(message)
+
+    async def completed_intraday_tickers(
+        self, cycle_ts: datetime, inv_type: str
+    ) -> frozenset[str]:
+        """Return persona signals already durable for one intraday cycle."""
+        table = self._table("tb_strategist_signals")
+        async with self._engine.begin() as connection:
+            rows = await connection.scalars(
+                select(table.c.ticker).where(
+                    table.c.cycle_ts == cycle_ts,
+                    table.c.inv_type == inv_type,
+                )
+            )
+            return frozenset(rows)
 
     @property
     def engine(self) -> AsyncEngine:

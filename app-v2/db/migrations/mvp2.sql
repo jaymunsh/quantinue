@@ -8,6 +8,17 @@
 
 BEGIN;
 
+CREATE TABLE IF NOT EXISTS tb_watch_sweep (
+  sweep_at TIMESTAMPTZ PRIMARY KEY,
+  status TEXT NOT NULL CHECK (status IN ('running','succeeded','failed')),
+  attempts INT NOT NULL DEFAULT 1 CHECK (attempts > 0),
+  started_at TIMESTAMPTZ NOT NULL,
+  finished_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ NOT NULL,
+  detail TEXT,
+  CHECK ((status = 'running') = (finished_at IS NULL))
+);
+
 -- 1. reason TEXT -> JSONB (4 tables). Legacy prose is preserved under "legacy".
 DO $$
 DECLARE

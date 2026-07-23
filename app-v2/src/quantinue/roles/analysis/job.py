@@ -109,6 +109,12 @@ class AnalysisJob:
             for ticker in prices
             if await domain.ensure_holding_in_scope(as_of, ticker)
         ]
+        completed_reader = getattr(domain, "completed_intraday_tickers", None)
+        completed = (
+            frozenset()
+            if completed_reader is None
+            else await completed_reader(now, self.profile_name)
+        )
         subjects = await domain.analysis_subjects(as_of, session)
         current = tuple(
             replace(
@@ -118,7 +124,7 @@ class AnalysisJob:
                 low=prices[subject.ticker],
             )
             for subject in subjects
-            if subject.ticker in scoped
+            if subject.ticker in scoped and subject.ticker not in completed
         )
         return await self._run_subjects(
             domain, current, as_of=as_of, session=session, cycle_ts=now
