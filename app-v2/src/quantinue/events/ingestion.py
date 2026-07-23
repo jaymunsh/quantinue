@@ -175,6 +175,9 @@ class PostgresEventIngestionRepository:
                         {"document_id": document_id, "content_hash": content_hash},
                     )
                     raw_version_id = integer_value(result.mappings().one())
+                event_key = (
+                    f"{source_name}:{document.provider_id}:{document.ticker}:{content_hash}"
+                )
                 result = await connection.execute(
                     text(
                         """
@@ -190,9 +193,11 @@ class PostgresEventIngestionRepository:
                     ),
                     {
                         "raw_version_id": raw_version_id,
-                        "event_key": f"{source_name}:{document.provider_id}:{document.ticker}",
+                        "event_key": event_key,
                         "source_name": source_name,
-                        "source_sequence": f"{document.source_sequence}:{document.ticker}",
+                        "source_sequence": (
+                            f"{document.source_sequence}:{document.ticker}:{content_hash}"
+                        ),
                         "event_type": document.event_type,
                         "occurred_at": document.published_at,
                         "ticker": document.ticker,
@@ -208,7 +213,7 @@ class PostgresEventIngestionRepository:
                             WHERE event_key = :key
                             """
                         ),
-                        {"key": f"{source_name}:{document.provider_id}:{document.ticker}"},
+                        {"key": event_key},
                     )
                     event_id = integer_value(result.mappings().one())
                 _ = await connection.execute(

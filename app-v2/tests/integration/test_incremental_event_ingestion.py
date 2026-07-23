@@ -137,6 +137,45 @@ async def test_restart_and_overlap_persist_late_content_once(
 
 
 @pytest.mark.anyio
+async def test_corrected_document_creates_a_new_event_with_its_own_raw_lineage(
+    repository: PostgresEventIngestionRepository,
+    event_database_url: str,
+) -> None:
+    # Given
+    original = FakePagedSource(
+        {None: EventPage((_document("filing-1", 1, "original"),), None, "c1")}
+    )
+    correction = FakePagedSource(
+        {None: EventPage((_document("filing-1", 2, "corrected"),), None, "c2")}
+    )
+    _ = await ingest_incrementally("sec", original, repository, timedelta(minutes=60))
+
+    # When
+    _ = await ingest_incrementally("sec", correction, repository, timedelta(minutes=60))
+
+    # Then
+    engine = create_async_engine(event_database_url)
+    async with engine.connect() as connection:
+        row = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT count(*) AS events,
+                           count(DISTINCT event.raw_version_id) AS versions
+                    FROM tb_normalized_event AS event
+                    JOIN tb_event_raw_version AS version USING (raw_version_id)
+                    JOIN tb_event_raw_document AS document USING (document_id)
+                    WHERE document.source_name = 'sec'
+                      AND document.source_document_id = 'filing-1'
+                    """
+                )
+            )
+        ).one()
+    await engine.dispose()
+    assert tuple(row) == (2, 2)
+
+
+@pytest.mark.anyio
 async def test_repeated_pagination_token_fails_without_extra_commit(
     repository: PostgresEventIngestionRepository,
 ) -> None:
