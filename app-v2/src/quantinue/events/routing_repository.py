@@ -115,6 +115,15 @@ class PostgresEventRoutingRepository:
 
     async def accepted_without_evidence(self) -> tuple[AcceptedRoute, ...]:
         """Return accepted immutable versions whose evidence is not durable yet."""
+        return await self._accepted_by_evidence(has_evidence=False)
+
+    async def accepted_with_evidence(self) -> tuple[AcceptedRoute, ...]:
+        """Return accepted immutable versions whose evidence is durable."""
+        return await self._accepted_by_evidence(has_evidence=True)
+
+    async def _accepted_by_evidence(
+        self, *, has_evidence: bool
+    ) -> tuple[AcceptedRoute, ...]:
         async with self._engine.connect() as connection:
             rows = (
                 await connection.execute(
@@ -122,22 +131,29 @@ class PostgresEventRoutingRepository:
                         """
                         SELECT event.event_id, event.raw_version_id,
                                version.content_hash, event.source_name,
-                               event.source_sequence,
-                               receipt.ticker,
+                               event.source_sequence, receipt.ticker,
                                replace(receipt.persona, 'routing:accepted:', '')
                                  AS event_type
                         FROM tb_normalized_event AS event
                         JOIN tb_event_raw_version AS version USING (raw_version_id)
                         JOIN tb_event_processing_receipt AS receipt USING (event_id)
                         WHERE receipt.persona LIKE 'routing:accepted:%'
-                          AND NOT EXISTS (
-                            SELECT 1 FROM tb_event_evidence_pack AS evidence
-                            WHERE evidence.event_id = event.event_id
-                              AND evidence.raw_version_id = event.raw_version_id
+                          AND (
+                            (:has_evidence AND EXISTS (
+                              SELECT 1 FROM tb_event_evidence_pack AS evidence
+                              WHERE evidence.event_id = event.event_id
+                                AND evidence.raw_version_id = event.raw_version_id
+                            ))
+                            OR (NOT :has_evidence AND NOT EXISTS (
+                              SELECT 1 FROM tb_event_evidence_pack AS evidence
+                              WHERE evidence.event_id = event.event_id
+                                AND evidence.raw_version_id = event.raw_version_id
+                            ))
                           )
                         ORDER BY event.occurred_at, event.event_id
                         """
-                    )
+                    ),
+                    {"has_evidence": has_evidence},
                 )
             ).mappings()
         parsed = tuple(

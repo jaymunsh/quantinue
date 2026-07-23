@@ -25,6 +25,8 @@ from quantinue.llm.budget import LlmBudgetExceededError, LlmUsageBoundExceededEr
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
+    from quantinue.events.analysis import EventAnalysisRun
+    from quantinue.events.evidence import EvidencePack
     from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
     from quantinue.llm.provider import LlmAnalyzer
     from quantinue.orchestration.policy import EventIngestionConfig
@@ -37,12 +39,26 @@ class EventIngestor(Protocol):
         """Persist all currently available pages."""
         ...
 
-    async def prepare_evidence(self) -> EvidencePreparationRun | None:
+    async def prepare_evidence(self, now: datetime) -> EvidencePreparationRun | None:
         """Prepare the global accepted backlog once after all due sources."""
         ...
 
     async def close(self) -> None:
         """Release resources owned by the ingestion boundary."""
+        ...
+
+
+class EventAnalyzer(Protocol):
+    """Dispatch bounded evidence through configured investment personas."""
+
+    async def dispatch(
+        self, pack: EvidencePack, *, now: datetime
+    ) -> EventAnalysisRun:
+        """Return durable outcomes for one event fan-out."""
+        ...
+
+    async def close(self) -> None:
+        """Release resources owned by the analysis boundary."""
         ...
 
 
@@ -64,6 +80,7 @@ class EventIngestionExecutor:
     routing_repository: PostgresEventRoutingRepository
     evidence_repository: PostgresEventEvidenceRepository | None = None
     analyzer: LlmAnalyzer | None = None
+    analysis_dispatcher: EventAnalyzer | None = None
 
     async def ingest(self, source_name: str, as_of: date) -> None:
         """Ingest one source, then route every durable pending event."""
@@ -83,7 +100,7 @@ class EventIngestionExecutor:
         )
         _ = await route_pending_events(self.routing_repository, as_of)
 
-    async def prepare_evidence(self) -> EvidencePreparationRun | None:
+    async def prepare_evidence(self, now: datetime) -> EvidencePreparationRun | None:
         """Prepare each accepted route at most once in this tick."""
         if self.evidence_repository is None or self.analyzer is None:
             return None
@@ -105,6 +122,14 @@ class EventIngestionExecutor:
                 TimeoutError,
             ):
                 failed += 1
+        if self.analysis_dispatcher is not None:
+            for route in await self.routing_repository.accepted_with_evidence():
+                pack = await self.evidence_repository.prepare(
+                    route,
+                    self.analyzer,
+                    summary_timeout_seconds=self.config.summary_timeout_seconds,
+                )
+                _ = await self.analysis_dispatcher.dispatch(pack, now=now)
         return EvidencePreparationRun(prepared=prepared, failed=failed)
 
     async def close(self) -> None:
@@ -115,6 +140,7 @@ class EventIngestionExecutor:
                 self.repository,
                 self.routing_repository,
                 self.evidence_repository,
+                self.analysis_dispatcher,
             ):
                 if repository is None:
                     continue
@@ -147,7 +173,9 @@ class EventIngestionRuntime:
             await self.ingestor.ingest(source_name, as_of)
             dispatched = True
             self._last_dispatch[source_name] = now
-        self.last_evidence_run = await self.ingestor.prepare_evidence() if dispatched else None
+        self.last_evidence_run = (
+            await self.ingestor.prepare_evidence(now) if dispatched else None
+        )
 
     async def close(self) -> None:
         """Release resources owned by the executor."""

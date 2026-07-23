@@ -23,6 +23,10 @@ from quantinue.core.config import LlmMode
 from quantinue.core.market_calendar import NyseCalendar
 from quantinue.db.domain_records import DailyPickWrite
 from quantinue.events.adapters import NewsEventSourceAdapter, SecEventSourceAdapter
+from quantinue.events.analysis import EventAnalysisDispatcher
+from quantinue.events.analysis_repository import (
+    PostgresEventAnalysisReceiptRepository,
+)
 from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
 from quantinue.events.ingestion import PostgresEventIngestionRepository
 from quantinue.events.routing_repository import PostgresEventRoutingRepository
@@ -910,7 +914,9 @@ def build_job_runner(
         # 키가 없으면 None이고, 그때 러너는 알림을 아예 시도하지 않는다.
         notifier=notifier,
         ops_alerts=settings.ops_alerts,
-        event_runtime=_event_runtime(settings, config, selected),
+        event_runtime=_event_runtime(
+            settings, config, selected, store=store, calendar=calendar
+        ),
     )
 
 
@@ -918,6 +924,9 @@ def _event_runtime(
     settings: Settings,
     config: Mvp2Config,
     selected: JobSources,
+    *,
+    store: object,
+    calendar: NyseCalendar,
 ) -> EventIngestionRuntime:
     now = datetime.now(UTC)
     sec = selected.disclosures or SecDailyIndexSource()
@@ -936,6 +945,28 @@ def _event_runtime(
     repository = PostgresEventIngestionRepository(str(settings.database_url))
     routing_repository = PostgresEventRoutingRepository(str(settings.database_url))
     evidence_repository = PostgresEventEvidenceRepository(str(settings.database_url))
+    analysis_dispatcher = (
+        None
+        if selected.analyzer is None
+        else EventAnalysisDispatcher(
+            PostgresEventAnalysisReceiptRepository(str(settings.database_url)),
+            tuple(
+                AnalysisJob(
+                    store=store,
+                    analyzer=selected.analyzer,
+                    gates=config.gates,
+                    profile=config.profiles[profile_name],
+                    profile_name=profile_name,
+                    calendar=calendar,
+                    headlines_per_ticker=config.news.headlines_per_ticker,
+                )
+                for profile_name in sorted(config.profiles)
+            ),
+            cooldown=timedelta(
+                minutes=config.watch.rejudge.cooldown_minutes
+            ),
+        )
+    )
     return EventIngestionRuntime(
         config.event_ingestion,
         EventIngestionExecutor(
@@ -945,6 +976,7 @@ def _event_runtime(
             routing_repository,
             evidence_repository,
             selected.analyzer,
+            analysis_dispatcher,
         ),
     )
 

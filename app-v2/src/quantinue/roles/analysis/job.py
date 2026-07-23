@@ -48,6 +48,7 @@ if TYPE_CHECKING:
     from datetime import date
 
     from quantinue.db.domain_records import MacroSnapshot
+    from quantinue.events.evidence import EvidencePack
     from quantinue.llm.provider import LlmAnalyzer
     from quantinue.orchestration.policy import GatesConfig, ProfileConfig
     from quantinue.orchestration.work_lease import WorkLease
@@ -151,6 +152,52 @@ class AnalysisJob:
             cycle_ts=now,
             lease=lease,
         )
+
+    async def run_event(
+        self,
+        pack: EvidencePack,
+        *,
+        now: datetime,
+        lease: WorkLease | None = None,
+    ) -> AnalysisRun:
+        """Rejudge one canonical daily subject from one routed event."""
+        domain = getattr(self.store, "domain", self.store)
+        as_of = now.astimezone(UTC).date()
+        session = self.calendar.previous_trading_day(as_of)
+        subjects = await domain.analysis_subjects(as_of, session)
+        ticker = pack.document.ticker
+        subject = next((item for item in subjects if item.ticker == ticker), None)
+        if subject is None:
+            return AnalysisRun(())
+        holdings = await self._holdings(domain, as_of)
+        macro = await self._macro(domain, as_of)
+        indicators = await self._indicators(domain, as_of, session)
+        disclosure_scores = await domain.disclosure_scores(as_of)
+        outcome = await self._analyse(
+            domain,
+            subject,
+            holdings.get(ticker, HoldingContext()),
+            (pack.strategy_input,),
+            (),
+            macro,
+            indicators.get(ticker),
+            as_of=as_of,
+            cycle_ts=now,
+            disclosure_score=disclosure_scores.get(ticker),
+            lease=lease,
+            run_id_override=(
+                f"event:{pack.document.event_id}:{pack.document.raw_version_id}:"
+                f"{self.profile_name}"
+            ),
+            evidence_ids_override=tuple(
+                (
+                    f"event:{pack.document.event_id}:{pack.document.raw_version_id}:"
+                    f"{self.profile_name}:span:{span.start_offset}:{span.end_offset}"
+                )
+                for span in pack.spans
+            ),
+        )
+        return AnalysisRun(()) if outcome is None else AnalysisRun((outcome,))
 
     async def _run_subjects(  # noqa: C901, PLR0913 - lease fencing adds one branch
         self,
@@ -285,14 +332,17 @@ class AnalysisJob:
         cycle_ts: datetime,
         disclosure_score: float | None = None,
         lease: WorkLease | None = None,
+        run_id_override: str | None = None,
+        evidence_ids_override: tuple[str, ...] | None = None,
     ) -> AnalysisOutcome | None:
         """Run one ticker through evidence synthesis, the gates, and the critic."""
         midnight = datetime.combine(as_of, time(), tzinfo=UTC)
-        run_id = (
+        run_id = run_id_override or (
             analysis_run_id(as_of, self.profile_name)
             if cycle_ts == midnight
             else f"rejudge:{cycle_ts.isoformat()}:{self.profile_name}"
         )
+        evidence_ids = evidence_ids_override or (f"{run_id}:{subject.ticker}",)
         strategy_prompt = analysis_prompt(subject, holding, filings, headlines, indicators)
         if lease is not None:
             await lease.mark_dispatched(subject.ticker, self.profile_name)
@@ -341,7 +391,7 @@ class AnalysisJob:
                 None if holding.entry_price is None else float(holding.entry_price)
             ),
             business_days_held=holding.business_days_held,
-            evidence_ids=(f"{run_id}:{subject.ticker}",),
+            evidence_ids=evidence_ids,
         )
         conviction = StrategyOutput.vote_conviction(
             strategy_input, self.gates, evidence.score

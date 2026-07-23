@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from quantinue.db.domain_records import MacroSnapshot
+from quantinue.events.evidence import EvidencePack, EvidenceSpan, RawEvidenceDocument
 from quantinue.llm.provider import AnalysisMetadata, AnalysisResult, AnalysisTask
 from quantinue.orchestration.policy import GatesConfig, ProfileConfig
 from quantinue.roles.analysis.contracts import AnalysisSubject
@@ -287,6 +288,46 @@ async def test_intraday_retry_skips_already_durable_persona_ticker() -> None:
     # Then
     assert result.outcomes == ()
     assert analyzer.prompts == []
+
+
+@pytest.mark.anyio
+async def test_event_rejudge_targets_one_canonical_subject_with_cited_evidence() -> None:
+    # Given
+    domain = _Domain((_subject("AAA"), _subject("BBB")))
+    analyzer = _Analyzer(strategy=0.9)
+    event_at = datetime(2026, 7, 17, 15, 5, tzinfo=UTC)
+    document = RawEvidenceDocument(
+        event_id=41,
+        raw_version_id=9,
+        content_hash="a" * 64,
+        source_name="sec",
+        source_document_id="filing-41",
+        source_url="https://example.test/filing-41",
+        source_sequence="41",
+        ticker="AAA",
+        normalized_text="material filing",
+    )
+    pack = EvidencePack(
+        document,
+        (EvidenceSpan(0, 15, "material filing", "b" * 64),),
+        None,
+        "source=sec quote=material filing",
+    )
+
+    # When
+    result = await _job(domain, analyzer).run_event(
+        pack,
+        now=event_at,
+    )
+
+    # Then
+    assert [outcome.ticker for outcome in result.outcomes] == ["AAA"]
+    assert [task for task, _ in analyzer.prompts] == [
+        AnalysisTask.STRATEGY,
+        AnalysisTask.CRITIC,
+    ]
+    assert domain.signals[0].evidence == ("event:41:9:aggressive:span:0:15",)
+    assert domain.signals[0].run_id.startswith("event:")
 
 
 @pytest.mark.anyio

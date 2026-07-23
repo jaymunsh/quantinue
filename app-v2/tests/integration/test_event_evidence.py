@@ -14,6 +14,10 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from typing_extensions import override
 
 from quantinue.core.ontology import ModelProvider
+from quantinue.events.analysis_repository import (
+    EventAnalysisReceiptClaim,
+    PostgresEventAnalysisReceiptRepository,
+)
 from quantinue.events.evidence import (
     EvidenceDocumentError,
     EvidenceErrorCode,
@@ -232,6 +236,79 @@ async def _accepted_route(identity: str, raw_text: str, source_name: str = "news
         ticker=row.ticker,
         event_type=row.event_type,
     )
+
+
+@pytest.mark.anyio
+async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -> None:
+    # Given
+    await _reset_database()
+    route = await _accepted_route(
+        "receipt-01",
+        '{"headline":"Apple raises annual guidance","source":"Reuters"}',
+    )
+    evidence = PostgresEventEvidenceRepository(_DATABASE_URL)
+    pack = await evidence.prepare(route, _CountingAnalyzer())
+    repository = PostgresEventAnalysisReceiptRepository(_DATABASE_URL)
+    now = datetime(2026, 7, 24, 14, tzinfo=UTC)
+
+    # When
+    first = await repository.claim(pack, "aggressive", now, timedelta(minutes=30))
+    await repository.mark_charged(route.event_id, route.ticker, "aggressive")
+    engine = create_async_engine(_DATABASE_URL)
+    async with engine.connect() as connection:
+        charged = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT status, completed_at IS NOT NULL
+                    FROM tb_event_processing_receipt
+                    WHERE event_id=:event_id AND persona='analysis:aggressive'
+                    """
+                ),
+                {"event_id": route.event_id},
+            )
+        ).one()
+    await engine.dispose()
+    await repository.complete(route.event_id, route.ticker, "aggressive")
+    await repository.close()
+    restarted = PostgresEventAnalysisReceiptRepository(_DATABASE_URL)
+    duplicate = await restarted.claim(
+        pack, "aggressive", now + timedelta(minutes=1), timedelta(minutes=30)
+    )
+    second_route = await _accepted_route(
+        "receipt-02",
+        '{"headline":"Apple raises quarterly guidance","source":"Reuters"}',
+    )
+    second_pack = await evidence.prepare(second_route, _CountingAnalyzer())
+    cooldown = await restarted.claim(
+        second_pack,
+        "aggressive",
+        now + timedelta(minutes=2),
+        timedelta(minutes=30),
+    )
+
+    # Then
+    assert first is EventAnalysisReceiptClaim.CLAIMED
+    assert tuple(charged) == ("claimed", True)
+    assert duplicate is EventAnalysisReceiptClaim.DUPLICATE
+    assert cooldown is EventAnalysisReceiptClaim.COOLDOWN
+    engine = create_async_engine(_DATABASE_URL)
+    async with engine.connect() as connection:
+        rows = (
+            await connection.execute(
+                text(
+                    """
+                    SELECT status FROM tb_event_processing_receipt
+                    WHERE persona='analysis:aggressive'
+                    ORDER BY event_id
+                    """
+                )
+            )
+        ).scalars().all()
+    await engine.dispose()
+    assert rows == ["processed", "skipped"]
+    await restarted.close()
+    await evidence.close()
 
 
 @pytest.mark.anyio

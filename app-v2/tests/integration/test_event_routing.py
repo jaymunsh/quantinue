@@ -10,6 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
 from typing_extensions import override
 
+from quantinue.events.analysis import EventAnalysisRun
 from quantinue.events.evidence import EvidenceDocumentError, EvidenceErrorCode
 from quantinue.events.evidence_repository import PostgresEventEvidenceRepository
 from quantinue.events.ingestion import (
@@ -361,6 +362,19 @@ async def test_scheduler_runtime_prepares_evidence_after_accepted_routing(
             return EventPage((document,), None, "2026-07-24T14:00:00+00:00")
 
     analyzer = _NeverCalledAnalyzer()
+    dispatched: list[EvidencePack] = []
+
+    class AnalysisDispatcher:
+        async def dispatch(
+            self, pack: EvidencePack, *, now: datetime
+        ) -> EventAnalysisRun:
+            _ = now
+            dispatched.append(pack)
+            return EventAnalysisRun(completed=1)
+
+        async def close(self) -> None:
+            return
+
     config = EventIngestionConfig()
     runtime = EventIngestionRuntime(
         config,
@@ -371,6 +385,7 @@ async def test_scheduler_runtime_prepares_evidence_after_accepted_routing(
             PostgresEventRoutingRepository(routing_database_url),
             PostgresEventEvidenceRepository(routing_database_url),
             analyzer,
+            AnalysisDispatcher(),
         ),
     )
 
@@ -396,6 +411,7 @@ async def test_scheduler_runtime_prepares_evidence_after_accepted_routing(
     await runtime.close()
     assert tuple(counts) == (1, 1)
     assert analyzer.calls == 0
+    assert [pack.document.ticker for pack in dispatched] == ["AAPL"]
 
 
 @pytest.mark.anyio

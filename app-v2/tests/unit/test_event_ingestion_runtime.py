@@ -27,7 +27,8 @@ class Recorder:
     async def ingest(self, source_name: str, as_of: date) -> None:
         self.calls.append((source_name, as_of))
 
-    async def prepare_evidence(self) -> EvidencePreparationRun | None:
+    async def prepare_evidence(self, now: datetime) -> EvidencePreparationRun | None:
+        _ = now
         return None
 
     async def close(self) -> None:
@@ -139,7 +140,8 @@ async def test_sec_news_wire_share_one_poison_evidence_attempt() -> None:
         poison_attempts = 0
 
         @override
-        async def prepare_evidence(self) -> EvidencePreparationRun:
+        async def prepare_evidence(self, now: datetime) -> EvidencePreparationRun:
+            _ = now
             self.poison_attempts += 1
             return EvidencePreparationRun(prepared=0, failed=1)
 
