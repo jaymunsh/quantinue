@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, TypeVar, runtime_checkable
 from uuid import uuid4
 
 import anyio
@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from quantinue.llm.provider import ModelInput
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Awaitable, Callable, Mapping
 
     from quantinue.llm.provider import (
         AnalysisResult,
@@ -22,6 +22,8 @@ if TYPE_CHECKING:
         LlmAnalyzer,
     )
     from quantinue.llm.usage_limits import MaximumTokenUsage
+
+_CallResult = TypeVar("_CallResult")
 
 
 class LlmBudgetExceededError(RuntimeError):
@@ -133,10 +135,14 @@ class AtomicLlmBudgetReservations(Protocol):
         ...
 
 class PaidCallBoundary(Protocol):
-    """Durable callback invoked immediately before a provider call."""
+    """Own the durable transition and transport invocation as one operation."""
 
     async def dispatched(self) -> None:
         """Persist the point after which cancellation is billing-ambiguous."""
+        ...
+
+    async def invoke(self, call: Callable[[], Awaitable[_CallResult]]) -> _CallResult:
+        """Cross the durable boundary and enter transport without a checkpoint."""
         ...
 
 
@@ -205,6 +211,15 @@ class _BudgetDispatchBoundary:
         if self.external is not None:
             await self.external.dispatched()
         self.crossed = True
+
+    async def invoke(self, call: Callable[[], Awaitable[_CallResult]]) -> _CallResult:
+        """Enter the transport in the same cancellation-owned operation."""
+        with anyio.CancelScope(shield=True) as scope:
+            await self.dispatched()
+            scope.shield = False
+            return await call()
+        message = "provider invocation cancel scope exited without a result"
+        raise RuntimeError(message)
 
 
 class BudgetedAnalyzer:
@@ -354,9 +369,9 @@ class BudgetedAnalyzer:
         )
         try:
             if not isinstance(self._inner, BoundaryAwareAnalyzer):
-                with anyio.CancelScope(shield=True):
-                    await dispatch_boundary.dispatched()
-                result = await self._inner.analyze(task, prompt, profile=profile)
+                result = await dispatch_boundary.invoke(
+                    lambda: self._inner.analyze(task, prompt, profile=profile)
+                )
             else:
                 result = await self._inner.analyze_with_boundary(
                     task, prompt, profile=profile, boundary=dispatch_boundary

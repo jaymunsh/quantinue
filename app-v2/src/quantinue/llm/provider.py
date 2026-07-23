@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from enum import StrEnum, unique
 from hashlib import sha256
-from typing import TYPE_CHECKING, Protocol, assert_never
+from typing import TYPE_CHECKING, Protocol, TypeVar, assert_never
 
-import anyio
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic_ai import Agent, RunUsage, UsageLimits
 from pydantic_ai.exceptions import ModelAPIError
@@ -24,9 +23,13 @@ from quantinue.llm.usage_limits import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
+
     from pydantic_ai.messages import ModelMessage, ModelResponse
     from pydantic_ai.models import Model, ModelRequestParameters
     from pydantic_ai.settings import ModelSettings
+
+_CallResult = TypeVar("_CallResult")
 
 
 @unique
@@ -131,6 +134,10 @@ class ProviderCallBoundary(Protocol):
 
     async def dispatched(self) -> None:
         """Persist ownership immediately before transport initiation."""
+        ...
+
+    async def invoke(self, call: Callable[[], Awaitable[_CallResult]]) -> _CallResult:
+        """Persist ownership and enter the supplied transport as one operation."""
         ...
 
 
@@ -329,9 +336,11 @@ class _BoundaryModel(WrapperModel):
         model_settings: ModelSettings | None,
         model_request_parameters: ModelRequestParameters,
     ) -> ModelResponse:
-        with anyio.CancelScope(shield=True):
-            await self._boundary.dispatched()
-        return await self.wrapped.request(messages, model_settings, model_request_parameters)
+        return await self._boundary.invoke(
+            lambda: self.wrapped.request(
+                messages, model_settings, model_request_parameters
+            )
+        )
 
 
 def _usage(result: _UsageResult) -> TokenUsage | None:

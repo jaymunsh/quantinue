@@ -19,7 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, time
 from decimal import Decimal
-from typing import TYPE_CHECKING, Final, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Final, Protocol, TypeVar, runtime_checkable
 from uuid import uuid4
 
 import anyio
@@ -63,6 +63,7 @@ _REGIMES: Final = {
 }
 
 if TYPE_CHECKING:
+    from collections.abc import Awaitable, Callable
     from datetime import date, timedelta
 
     from quantinue.db.domain_records import MacroSnapshot
@@ -72,6 +73,8 @@ if TYPE_CHECKING:
     from quantinue.orchestration.work_lease import WorkLease
     from quantinue.roles.analysis.contracts import AnalysisSubject
     from quantinue.roles.screening import RankedCandidate
+
+_CallResult = TypeVar("_CallResult")
 
 
 @runtime_checkable
@@ -93,6 +96,17 @@ class _AtomicWorkLease(Protocol):
         *,
         dispatched_at: datetime,
     ) -> bool: ...
+
+
+@runtime_checkable
+class _ReservedLlmAnalyzer(LlmAnalyzer, Protocol):
+    async def analyze_reserved(
+        self,
+        task: AnalysisTask,
+        prompt: str,
+        *,
+        profile: str | None = None,
+    ) -> AnalysisResult: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,6 +172,15 @@ class _EventPaidBoundary(PaidCallBoundary, AtomicPaidCallBoundary):
         self.crossed = True
 
     @override
+    async def invoke(self, call: Callable[[], Awaitable[_CallResult]]) -> _CallResult:
+        with anyio.CancelScope(shield=True) as scope:
+            await self.dispatched()
+            scope.shield = False
+            return await call()
+        message = "event provider invocation exited without a result"
+        raise RuntimeError(message)
+
+    @override
     async def dispatch_with_budget(
         self,
         reservation: LlmBudgetReservation,
@@ -187,6 +210,15 @@ class _LeasePaidBoundary(PaidCallBoundary, AtomicPaidCallBoundary):
     @override
     async def dispatched(self) -> None:
         await self.lease.mark_dispatched(self.ticker, self.persona)
+
+    @override
+    async def invoke(self, call: Callable[[], Awaitable[_CallResult]]) -> _CallResult:
+        with anyio.CancelScope(shield=True) as scope:
+            await self.dispatched()
+            scope.shield = False
+            return await call()
+        message = "lease provider invocation exited without a result"
+        raise RuntimeError(message)
 
     @override
     async def dispatch_with_budget(
@@ -350,6 +382,26 @@ class _EventAnalyzer(LlmAnalyzer):
             self.completed += 1
             return result  # noqa: TRY300 - success must update counters before return
         except LlmBudgetExceededError:
+            if stage is EventAnalysisStage.CRITIC and not boundary.crossed:
+                released = False
+                with anyio.CancelScope(shield=True):
+                    released = await self.receipts.release_unbilled(
+                        self.pack.document.event_id,
+                        self.pack.document.ticker,
+                        self.persona,
+                        stage,
+                        owner_token,
+                    )
+                if released:
+                    self.suppressed += 1
+                raise _EventStageStoppedError(
+                    EventAnalysisRun(
+                        attempted=self.attempted,
+                        completed=self.completed,
+                        suppressed=self.suppressed,
+                        reason=f"{stage.value}_budget_refused",
+                    )
+                ) from None
             suppressed = False
             with anyio.CancelScope(shield=True):
                 suppressed = await self.receipts.suppress(
@@ -435,12 +487,18 @@ class _EventAnalyzer(LlmAnalyzer):
                 profile=profile,
                 boundary=boundary,
             )
-        with anyio.CancelScope(shield=True):
-            await boundary.dispatched()
-        reserved_analyze = getattr(self.inner, "analyze_reserved", None)
-        if reserved and reserved_analyze is not None:
-            return await reserved_analyze(task, prompt, profile=profile)
-        return await self.inner.analyze(task, prompt, profile=profile)
+        inner = self.inner
+        if reserved and isinstance(inner, _ReservedLlmAnalyzer):
+            return await boundary.invoke(
+                lambda: inner.analyze_reserved(
+                    task,
+                    prompt,
+                    profile=profile,
+                )
+            )
+        return await boundary.invoke(
+            lambda: inner.analyze(task, prompt, profile=profile)
+        )
 
     async def complete_unbilled_critic(self) -> None:
         """Persist a critic hard-gate result that required no provider call."""

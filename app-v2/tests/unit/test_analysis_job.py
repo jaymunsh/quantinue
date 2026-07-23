@@ -116,13 +116,15 @@ class _ControlledBudgetedAnalyzer(BudgetedAnalyzer):
             self.mode == "critic_pre_cancel" and task is AnalysisTask.CRITIC
         ):
             raise anyio.get_cancelled_exc_class()
-        await boundary.dispatched()
-        self.calls.append(task)
-        if self.mode == "hang":
-            await anyio.sleep_forever()
-        if self.mode == "in_call_cancel":
-            raise anyio.get_cancelled_exc_class()
-        return _analysis_result()
+        async def invoke_transport() -> AnalysisResult:
+            self.calls.append(task)
+            if self.mode == "hang":
+                await anyio.sleep_forever()
+            if self.mode == "in_call_cancel":
+                raise anyio.get_cancelled_exc_class()
+            return _analysis_result()
+
+        return await boundary.invoke(invoke_transport)
 
 
 def _analysis_result() -> AnalysisResult:
@@ -650,6 +652,7 @@ async def test_critic_budget_refusal_preserves_completed_strategist() -> None:
         receipts=receipts,
         cooldown=timedelta(minutes=30),
     )
+    analyzer.mode = "normal"
     second = await job.run_event(
         _event_pack(),
         now=datetime(2026, 7, 17, 15, 6, tzinfo=UTC),
@@ -660,10 +663,11 @@ async def test_critic_budget_refusal_preserves_completed_strategist() -> None:
     assert first.completed == 1
     assert first.suppressed == 1
     assert first.reason == "critic_budget_refused"
-    assert second.completed == 0
+    assert second.completed == 1
     assert second.reused == 1
-    assert second.suppressed == 1
-    assert analyzer.calls == [AnalysisTask.STRATEGY]
+    assert second.suppressed == 0
+    assert second.reason == "completed"
+    assert analyzer.calls == [AnalysisTask.STRATEGY, AnalysisTask.CRITIC]
 
 
 @pytest.mark.anyio

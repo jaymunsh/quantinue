@@ -118,6 +118,9 @@ class _TransportAnalyzer:
     ) -> AnalysisResult:
         payload = ModelInput(external_data=prompt).model_dump_json()
         self.calls.append((task, profile, payload))
+        return self._result(task)
+
+    def _result(self, task: AnalysisTask) -> AnalysisResult:
         return AnalysisResult(
             score=0.90,
             label="buy" if task is AnalysisTask.STRATEGY else "approved",
@@ -142,8 +145,9 @@ class _TransportAnalyzer:
         profile: str | None,
         boundary: PaidCallBoundary,
     ) -> AnalysisResult:
-        await boundary.dispatched()
-        return await self.analyze(task, prompt, profile=profile)
+        return await boundary.invoke(
+            lambda: self.analyze(task, prompt, profile=profile)
+        )
 
 
 class _AdversarialTransport(_TransportAnalyzer):
@@ -162,28 +166,38 @@ class _AdversarialTransport(_TransportAnalyzer):
     ) -> AnalysisResult:
         if self.mode == "pre_cancel":
             raise anyio.get_cancelled_exc_class()
-        await boundary.dispatched()
-        if self.mode == "in_call_cancel":
-            raise anyio.get_cancelled_exc_class()
-        if self.mode == "hang":
-            await anyio.sleep_forever()
-        if self.mode == "malformed":
-            raise ValueError
-        if self.mode == "steal_owner":
-            engine = create_async_engine(_DATABASE_URL)
-            async with engine.begin() as connection:
-                _ = await connection.execute(
-                    text(
-                        """
-                        UPDATE tb_event_processing_receipt
-                        SET owner_token='stolen-owner'
-                        WHERE persona LIKE 'analysis:%'
-                          AND status='claimed' AND completed_at IS NOT NULL
-                        """
-                    )
+
+        async def invoke_transport() -> AnalysisResult:
+            self.calls.append(
+                (
+                    task,
+                    profile,
+                    ModelInput(external_data=prompt).model_dump_json(),
                 )
-            await engine.dispose()
-        return await self.analyze(task, prompt, profile=profile)
+            )
+            if self.mode == "in_call_cancel":
+                raise anyio.get_cancelled_exc_class()
+            if self.mode == "hang":
+                await anyio.sleep_forever()
+            if self.mode == "malformed":
+                raise ValueError
+            if self.mode == "steal_owner":
+                engine = create_async_engine(_DATABASE_URL)
+                async with engine.begin() as connection:
+                    _ = await connection.execute(
+                        text(
+                            """
+                            UPDATE tb_event_processing_receipt
+                            SET owner_token='stolen-owner'
+                            WHERE persona LIKE 'analysis:%'
+                              AND status='claimed' AND completed_at IS NOT NULL
+                            """
+                        )
+                    )
+                await engine.dispose()
+            return self._result(task)
+
+        return await boundary.invoke(invoke_transport)
 
 
 async def _seed_analysis_scope(database_url: str) -> None:
@@ -714,10 +728,14 @@ async def test_public_runner_critic_refusal_restarts_at_critic_only() -> None:
     assert runner.last_event_analysis_run.reason == "critic_budget_refused"
     restarted, restarted_store = await _adversarial_runner(analyzer, 7201, daily_limit=1)
     _ = await restarted.tick(now + timedelta(minutes=31))
-    assert [task for task, _, _ in analyzer.calls] == [AnalysisTask.STRATEGY]
+    assert [task for task, _, _ in analyzer.calls] == [
+        AnalysisTask.STRATEGY,
+        AnalysisTask.CRITIC,
+    ]
     assert restarted.last_event_analysis_run is not None
-    assert restarted.last_event_analysis_run.completed == 0
-    assert restarted.last_event_analysis_run.suppressed == 1
+    assert restarted.last_event_analysis_run.completed == 1
+    assert restarted.last_event_analysis_run.reused == 1
+    assert restarted.last_event_analysis_run.suppressed == 0
     await _close_adversarial_runner(runner, store)
     await _close_adversarial_runner(restarted, restarted_store)
 
@@ -773,6 +791,7 @@ async def test_public_runner_cancellation_respects_paid_boundary(
     with pytest.raises(anyio.get_cancelled_exc_class()):
         _ = await runner.tick(datetime(2026, 7, 24, 14, tzinfo=UTC))
     usage, _, cooldowns, signals, verdicts, orders = await _event_ledger_counts()
+    assert len(analyzer.calls) == paid_state[0]
     assert (usage, cooldowns) == paid_state
     assert (signals, verdicts, orders) == (0, 0, 0)
     await _close_adversarial_runner(runner, store)
