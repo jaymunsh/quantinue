@@ -407,7 +407,7 @@ kill -0 "$owner_pid" 2>/dev/null || {
   exit 1
 }
 recorded_start="$(cat "$lock_dir/start_identity")"
-actual_start="$(ps -o lstart= -p "$owner_pid" | xargs)"
+actual_start="$(LC_ALL=C ps -o lstart= -p "$owner_pid" | xargs)"
 test "$recorded_start" = "$actual_start" || {
   echo '중단: PID가 재사용됐거나 start identity가 다르다.' >&2
   exit 1

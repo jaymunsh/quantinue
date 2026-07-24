@@ -37,6 +37,7 @@ fail() {
 }
 
 start_owner() {
+  LC_ALL=ko_KR.UTF-8 \
   PATH="$BIN_DIR:$PATH" \
   QUANTINUE_OBSERVATION_LOCK_DIR="$LOCK_DIR" \
   QUANTINUE_OBS_LOG="$TEST_DIR/observation.log" \
@@ -50,6 +51,10 @@ start_owner() {
 start_owner
 [[ -d "$LOCK_DIR" ]] || fail "first owner did not create lock"
 [[ "$(cut -f1 "$CALLS")" == "1" ]] || fail "owner did not opt into workers"
+[[ "$(cut -f3 "$CALLS")" == "openai" ]] || fail "owner did not default to openai"
+expected_start_identity="$(LC_ALL=C ps -o lstart= -p "$FIRST_PID" | xargs)"
+[[ "$(<"$LOCK_DIR/start_identity")" == "$expected_start_identity" ]] ||
+  fail "owner start identity depends on the launch locale"
 
 set +e
 PATH="$BIN_DIR:$PATH" \

@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-printf '%s\t%s\t%s\n' \
+printf '%s\t%s\t%s\t%s\n' \
   "${QUANTINUE_BACKGROUND_WORKERS:-unset}" \
   "${QUANTINUE_OPS_ALERTS:-unset}" \
+  "${QUANTINUE_LLM_MODE:-unset}" \
   "$*" >> "${FAKE_UV_CALLS:?}"
 
 if [[ "${FAKE_UV_BLOCK:-0}" == "1" ]]; then
