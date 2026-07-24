@@ -322,12 +322,12 @@
       <span class="chip">테스트 <b>603 + 110</b> green</span>
     </div>
     <div class="note">
-      <b>현재 개발 경계:</b> 장중 사건 수집·정규화·증거 묶음·관련 종목 라우팅,
+      <b>현재 운영 경계:</b> 장중 사건 수집·정규화·증거 묶음·관련 종목 라우팅,
       전략가/critic의 persona별 at-most-once 호출과 변경 판단의 기존 청산·배분
       연결까지 로컬 구현을 마쳤다. fresh checkout에서 유닛/웹 756개,
-      PostgreSQL 통합 186개가 통과했다. 운영은
-      <code>rejudge=false</code>·<code>stream=false</code>이며 5445 migration과
-      8020 재기동은 이 코드 완료와 분리된 활성화 작업이다.
+      PostgreSQL 통합 186개가 통과했다. 5445 migration과 8020 OpenAI 재기동,
+      poll-only Gate A까지 완료했다. 운영은 <code>rejudge=false</code>·
+      <code>stream=false</code>이며 clean 슬롯 뒤 순서대로 활성화한다.
     </div>
   </header>
 
@@ -395,7 +395,8 @@
           8021을 web-only 개발 인스턴스로 분리했다. 1분 poll과 WatchRunner 원장을 붙이고,
           앱이 죽어 내부 텔레그램조차 못 보내는 구간은 Healthchecks.io가 맡는다. 8020 owner만
           owner-only reporter가 DB 5445·일일 잡·WatchRunner liveness를 검사하도록 구현했다.
-          HEAD는 watch만 켠 후보이며, 기존 8020의 재로딩·외부 수신은 별도 원장으로 확인한다.</td></tr>
+          7월 24일 현재 HEAD를 8020에 재기동했고 poll-only Gate A를 통과했다.
+          rejudge와 stream은 clean 슬롯과 Gate B 뒤에 순서대로 켠다.</td></tr>
       </tbody>
     </table></div>
 

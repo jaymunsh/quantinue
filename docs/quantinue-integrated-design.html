@@ -347,12 +347,13 @@
       <span class="chip">LLM <b>OpenAI</b> · 일 $3 상한</span>
     </div>
     <div class="note">
-      <b>2026-07-24 로컬 개발 상태:</b> 일일 체인과 별도로 SEC 30분·뉴스 15분·
+      <b>2026-07-24 로컬 운영 상태:</b> 일일 체인과 별도로 SEC 30분·뉴스 15분·
       와이어 10분 증분 수집, 관련 종목의 전략가/critic 재판단, 변경 판단의
       표적 모의 주문까지 구현·일회용 PostgreSQL에서 검증했다. 운영 기본값은
       <code>watch=true</code>, <code>rejudge=false</code>,
-      <code>stream=false</code>다. 실제 5445 migration·8020 재기동·정규장
-      안정성 검증은 별도 운영 활성화 단계다.
+      <code>stream=false</code>다. 5445 migration과 현재 HEAD의 8020 OpenAI
+      재기동, poll-only Gate A까지 완료했다. 다음은 clean OpenAI 슬롯,
+      rejudge Gate B, stream 순서다.
     </div>
   </header>
 

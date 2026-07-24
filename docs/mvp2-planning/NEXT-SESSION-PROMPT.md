@@ -1,5 +1,17 @@
 Quantinue MVP-2 개발 이어서 진행. 나는 문성혁, app-v2/에서 2차 개발 중이다.
 
+> ## 🔄 2026-07-24 09:03 KST — 로컬 운영 시작 (아래 과거 배너보다 우선)
+>
+> AWS 이전 전에는 이 PC가 운영 호스트다. 사건 원장 migration을 DB 5445에
+> 두 번 적용했고, 8020은 현재 HEAD를 `broker=mock`, `llm=openai`로 실행한다.
+> 단일 owner 잠금과 실제 프로세스 시작 시각이 일치하며 8021·5490은 비어 있다.
+>
+> 현재 활성 범위는 **watch=true / rejudge=false / stream=false**다.
+> poll-only Gate A는 통과했다. 다음 순서는 ① 오늘 KST 약 13:00의 오염 없는
+> 일일 OpenAI 슬롯(Todo 24) ② 사건 재판단 Gate B ③ stream·롤백이다.
+> 13시 전에는 운영 설정을 더 바꾸거나 수동 OpenAI 호출로 슬롯을 오염시키지
+> 않는다. 상세 상태는 `dev-handoff.md` 맨 위와 `open-items.md` 맨 위가 정본이다.
+
 > ## 🔄 2026-07-23 — 외부 heartbeat 추가 (아래 07-22 배너보다 우선)
 >
 > 운영 `.env`의 `QUANTINUE_HEARTBEAT_URL`은 Healthchecks.io 비밀 ping URL이다.
@@ -37,9 +49,9 @@ quantinue-integrated-design.html(설계 v6.3) · quantinue-engineering.html(부�
 
 ========== 상태 ==========
 
-8020은 보호 대상인 관측 인스턴스다. 이 문서 현행화에서는 실행 중 프로세스의
-LLM 모드나 새 watch 설정 재로딩을 단정하지 않는다. 커밋된 설정과 실제 프로세스
-상태는 분리해 확인한다. LLM 예산은 동시 예약과 최대 비용 선차감까지 배선됐다.
+8020은 이 PC의 단일 운영 인스턴스다. 현재 `/health`와 owner 잠금으로
+`broker=mock`, `llm=openai`, 현재 HEAD 재기동을 확인했다. LLM 예산은 동시
+예약과 최대 비용 선차감까지 배선됐다.
 
 화면 여섯: /login · /admin(관제실) · /admin/schedule(운영 기준+용어집) ·
 /admin/logs(작동 로그) · /admin/accounts(계좌 관리) · /me(내 계좌).
@@ -49,8 +61,8 @@ LLM 모드나 새 watch 설정 재로딩을 단정하지 않는다. 커밋된 �
 장중 재정렬 **M1~M7 완료**. 1분 방어, 사건·정기 재판단, 장중 매수·매도,
 관제실 장중 감시 카드와 보유 종목 웹소켓까지 코드에 있다. 무료 계정 실측은
 30종목 성공·31번째 한도 오류였으므로, 보유 종목만 스트리밍하고 오늘의 픽은
-1분 폴링하는 하이브리드다. 코드 구현과 운영 활성화는 별개다. HEAD 후보는
-watch만 켜고 rejudge/stream은 끄며, 8020 적용은 재기동 후 원장으로 확인한다.
+1분 폴링하는 하이브리드다. 코드 구현과 운영 활성화는 별개다. 현재 8020에는
+watch만 적용했고 rejudge/stream은 순차 실장 관문 전까지 끈다.
 
 기준선: 유닛/웹 **629 green** · 통합 **112 green** · ruff clean.
 HEAD는 main. **미푸시 커밋 있음** — push는 지시할 때만.
@@ -68,11 +80,12 @@ HEAD는 main. **미푸시 커밋 있음** — push는 지시할 때만.
 
 ========== 이번 세션에 할 것 ==========
 
-**1순위: openai 첫 슬롯 검증** (07-22 KST 13:00 이후면 결과가 있다)
-- 텔레그램 ✅ 왔나 · /admin의 LLM 지출 카드에 ~$0.05 찍혔나 ·
-  tb_llm_usage에 콜이 쌓였나 · 승인율이 로컬 때와 크게 다른가
-- 구조화 출력 실패가 있었다면 retries 동작을 로그로 확인(§3-3 마지막 항목)
-- 이상 없으면 open-items.md 3-3을 닫는다
+**1순위: Todo 24 clean OpenAI 슬롯 검증** (2026-07-24 KST 약 13:00)
+- 8020 단독 실행인지와 JOB 체인의 시작·종료 행 수를 맞춘다.
+- `tb_llm_usage`의 호출·토큰·현행 요율 비용을 `/admin` 카드와 맞춘다.
+- 구조화 출력 retry, Telegram 일일 안내, Healthchecks heartbeat를 함께 확인한다.
+- 개발·수동 OpenAI 호출이 섞였으면 닫지 말고 다음 거래 슬롯으로 넘긴다.
+- 모두 일치하면 `open-items.md` 3-3과 Todo 24를 닫고 rejudge Gate B로 간다.
 
 **남은 후속 개발 (장중 재정렬 본편 밖):**
 
@@ -93,7 +106,7 @@ TEST-DELISTED-01·TEST-SELLGAP은 체결 24건이 얽혀 있다 — 사용자에
 - 테스트만 믿지 말고 **실제로 돌려볼 것** — 실행에서만 잡힌 결함 통산 27건
   (27번째: 평가액 곡선이 -0.01%를 절벽으로 그림 — min/max 정규화).
   화면은 로그인 세션 curl로 받아 Chrome headless 렌더로 눈 확인.
-- ⚠️ 포트: 관측 8020(건드리지 말 것) · 코드 작업 8021(**LLM_MODE=mock**으로 —
+- ⚠️ 포트: 운영 8020(작업 owner) · 코드 작업 8021(**LLM_MODE=mock**으로 —
   openai로 띄우면 개발 반복이 비용 원장을 오염시킨다)
 - ⚠️ **템플릿(.html)을 고쳤으면 관측 인스턴스를 그날 안에 재기동할 것.**
   Jinja는 파일 변경 시 즉시 다시 읽지만 파이썬·CSS는 재기동해야 반영된다 —
