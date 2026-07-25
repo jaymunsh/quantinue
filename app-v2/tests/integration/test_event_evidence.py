@@ -295,6 +295,7 @@ async def test_event_analysis_receipt_survives_restart_and_enforces_cooldown() -
         EventAnalysisStage.STRATEGIST,
         {"result": {"score": 1}},
         owner_token,
+        now,
     )
     await repository.close()
     restarted = PostgresEventAnalysisReceiptRepository(_DATABASE_URL)

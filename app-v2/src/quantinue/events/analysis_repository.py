@@ -263,7 +263,7 @@ class PostgresEventAnalysisReceiptRepository:
                     text(
                         """
                         UPDATE tb_rejudgement_cooldown
-                        SET status='dispatched', claimed_at=GREATEST(claimed_at, now())
+                        SET status='dispatched'
                         WHERE ticker=:ticker AND persona=:persona
                           AND status='claimed' AND owner_token=:owner_token
                         """
@@ -327,8 +327,7 @@ class PostgresEventAnalysisReceiptRepository:
                     text(
                         """
                         UPDATE tb_rejudgement_cooldown
-                        SET status='dispatched',
-                            claimed_at=GREATEST(claimed_at, :dispatched_at)
+                        SET status='dispatched'
                         WHERE ticker=:ticker AND persona=:persona
                           AND status='claimed' AND owner_token=:owner_token
                         """
@@ -337,7 +336,6 @@ class PostgresEventAnalysisReceiptRepository:
                         "ticker": ticker,
                         "persona": persona,
                         "owner_token": owner_token,
-                        "dispatched_at": dispatched_at,
                     },
                 )
                 if cooldown.rowcount != 1:
@@ -353,6 +351,7 @@ class PostgresEventAnalysisReceiptRepository:
         stage: EventAnalysisStage,
         result_payload: dict[str, JsonValue],
         owner_token: str,
+        completed_at: datetime,
     ) -> bool:
         """Persist a stage result before the next stage may be claimed."""
         async with self._engine.begin() as connection:
@@ -362,7 +361,7 @@ class PostgresEventAnalysisReceiptRepository:
                     UPDATE tb_event_processing_receipt
                     SET status='processed',
                         result_payload=CAST(:result_payload AS JSONB),
-                        completed_at=GREATEST(claimed_at, now())
+                        completed_at=GREATEST(claimed_at, :completed_at)
                     WHERE event_id=:event_id AND ticker=:ticker AND persona=:persona
                       AND status='claimed' AND owner_token=:owner_token
                     """
@@ -371,6 +370,7 @@ class PostgresEventAnalysisReceiptRepository:
                     **self._key(event_id, ticker, persona, stage),
                     "result_payload": json.dumps(result_payload, separators=(",", ":")),
                     "owner_token": owner_token,
+                    "completed_at": completed_at,
                 },
             )
             if result.rowcount != 1:
@@ -380,12 +380,18 @@ class PostgresEventAnalysisReceiptRepository:
                     text(
                         """
                         UPDATE tb_rejudgement_cooldown
-                        SET status='completed', completed_at=GREATEST(claimed_at, now())
+                        SET status='completed',
+                            completed_at=GREATEST(claimed_at, :completed_at)
                         WHERE ticker=:ticker AND persona=:persona
                           AND status='dispatched' AND owner_token=:owner_token
                         """
                     ),
-                    {"ticker": ticker, "persona": persona, "owner_token": owner_token},
+                    {
+                        "ticker": ticker,
+                        "persona": persona,
+                        "owner_token": owner_token,
+                        "completed_at": completed_at,
+                    },
                 )
                 if cooldown.rowcount != 1:
                     message = "strategist result/cooldown ownership diverged"

@@ -118,6 +118,7 @@ class EventAnalysisReceiptRepository(Protocol):
         stage: EventAnalysisStage,
         result_payload: dict[str, JsonValue],
         owner_token: str,
+        completed_at: datetime,
     ) -> bool:
         """Persist the provider result durably."""
         ...

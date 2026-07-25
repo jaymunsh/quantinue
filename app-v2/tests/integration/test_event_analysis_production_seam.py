@@ -489,6 +489,7 @@ async def test_owner_transitions_acknowledge_exact_generation() -> None:
         EventAnalysisStage.STRATEGIST,
         {"result": {"score": 0}},
         "owner-a",
+        now + timedelta(seconds=2),
     )
     assert await receipts.complete(
         route.event_id,
@@ -497,6 +498,7 @@ async def test_owner_transitions_acknowledge_exact_generation() -> None:
         EventAnalysisStage.STRATEGIST,
         {"result": {"score": 1}},
         "owner-b",
+        now + timedelta(seconds=2),
     )
     await receipts.close()
     await evidence.close()

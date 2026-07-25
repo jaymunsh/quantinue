@@ -345,8 +345,9 @@ class _EventReceipts:
         stage: EventAnalysisStage,
         result_payload: dict[str, object],
         owner_token: str,
+        completed_at: datetime,
     ) -> bool:
-        _ = event_id, ticker, persona
+        _ = event_id, ticker, persona, completed_at
         assert self.owners[stage] == owner_token
         self.states[stage] = EventAnalysisReceiptClaim.COMPLETED
         self.results[stage] = result_payload

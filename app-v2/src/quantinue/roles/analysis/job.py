@@ -375,6 +375,7 @@ class _EventAnalyzer(LlmAnalyzer):
                     stage,
                     _EventProviderPayload(result=result).model_dump(mode="json"),
                     owner_token,
+                    self.now,
                 )
             if not completed:
                 raise _EventStageStoppedError(  # noqa: TRY301
@@ -529,6 +530,7 @@ class _EventAnalyzer(LlmAnalyzer):
                     stage,
                     {"gate_result": True},
                     owner_token,
+                    self.now,
                 )
             if not completed:
                 return
