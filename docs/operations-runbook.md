@@ -214,6 +214,34 @@ tail -40 app-v2/observation.log | grep -A 3 UndefinedError
 주기 판정이 요일이 아니라 "마지막 성공으로부터 경과일"이라 그렇다. 뉴욕 날짜
 기준이라 창이 넓다(KST 대략 13시 ~ 다음날 13시).
 
+### 4-5-1. allocation에 `cent value` 오류가 난다
+
+2026-07-24에는 세 자리 종가가 만든 반 센트 계좌 평가액이 주문 금액 계약에
+거부돼 allocation만 반복 실패했다. 수정된 코드는 계좌 시가평가를
+`ROUND_HALF_UP` 센트로 확정한다. 같은 오류가 다시 보이면 재시도만 방치하지
+말고 다음 세 가지를 확인한다.
+
+```bash
+# allocation 최종 상태
+docker exec app-v2-db-1 psql -U quantinue -d quantinue -c \
+  "SELECT status, attempts, detail FROM tb_job_run
+   WHERE slot_date=(CURRENT_TIMESTAMP AT TIME ZONE 'America/New_York')::date
+     AND job_name='allocation';"
+
+# 활성 계좌에 비센트 평가액이 남았는지
+docker exec app-v2-db-1 psql -U quantinue -d quantinue -c \
+  "SELECT count(*) AS non_cent FROM tb_account
+   WHERE status='active' AND equity <> round(equity, 2);"
+
+# 같은 주문 키가 둘 이상인지
+docker exec app-v2-db-1 psql -U quantinue -d quantinue -c \
+  "SELECT idempotency_key, count(*) FROM tb_order
+   GROUP BY idempotency_key HAVING count(*) > 1;"
+```
+
+`non_cent=0`, 중복 주문 키 0건이어야 한다. 실패 슬롯이 수정 뒤 성공해도
+실패 알림·재기동이 섞인 날은 clean 운영 검증 슬롯으로 세지 않는다.
+
 ### 4-6. 장중 감시·실시간 스트림을 켤 때
 
 현재 HEAD의 정본 설정은 **`watch=true`, `rejudge=false`, `stream=false`**다.
@@ -483,12 +511,21 @@ uv run ruff check src tests scripts      # 파이프(| tail) 걸지 말 것 — 
 
 ```bash
 docker rm -f qn-itest 2>/dev/null
-docker run -d --name qn-itest -e POSTGRES_USER=quantinue -e POSTGRES_PASSWORD=quantinue \
-  -e POSTGRES_DB=quantinue -p 127.0.0.1:5490:5432 postgres:16
+docker run -d --name qn-itest -e POSTGRES_PASSWORD=test-only \
+  -e POSTGRES_DB=contracts -p 127.0.0.1:5490:5432 postgres:16
 # ⚠️ 준비될 때까지 기다린다. 바로 스키마를 부으면 일부만 들어가고
 # 테스트가 error 몇 건으로 끝난다 — 실제로 그렇게 6건이 났다.
-until docker exec qn-itest pg_isready -U quantinue -q; do sleep 1; done
-docker exec -i qn-itest psql -q -U quantinue -d quantinue < db/schema.sql
+until docker exec qn-itest pg_isready -U postgres -d contracts -q; do sleep 1; done
+# 사건 통합군은 postgres/test-only/contracts를 직접 쓰고, 기존 통합군은
+# QUANTINUE_TEST_DATABASE_URL의 quantinue/quantinue/quantinue를 쓴다.
+docker exec qn-itest psql -X -v ON_ERROR_STOP=1 -U postgres -d contracts \
+  -c "CREATE ROLE quantinue LOGIN PASSWORD 'quantinue';"
+docker exec qn-itest psql -X -v ON_ERROR_STOP=1 -U postgres -d contracts \
+  -c "CREATE DATABASE quantinue OWNER quantinue;"
+docker exec -i qn-itest psql -q -v ON_ERROR_STOP=1 \
+  -U postgres -d contracts < db/schema.sql
+docker exec -i qn-itest psql -q -v ON_ERROR_STOP=1 \
+  -U quantinue -d quantinue < db/schema.sql
 QUANTINUE_TEST_DATABASE_URL="postgresql+asyncpg://quantinue:quantinue@127.0.0.1:5490/quantinue" \
   uv run pytest tests/integration -q -p no:unraisableexception
 docker rm -f qn-itest

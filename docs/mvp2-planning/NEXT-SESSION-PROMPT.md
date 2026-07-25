@@ -1,5 +1,20 @@
 Quantinue MVP-2 개발 이어서 진행. 나는 문성혁, app-v2/에서 2차 개발 중이다.
 
+> ## 🔄 2026-07-24 14:27 KST — allocation 복구 완료 (아래 배너보다 우선)
+>
+> 오늘 슬롯은 13:00:08 KST에 시작했다. allocation이 반 센트 계좌 평가액
+> 때문에 33회 실패했으나, `revalue_accounts()`의 센트 반올림 수정 뒤
+> 34번째 시도에서 `3 bought, 180 skipped`로 성공했다. 최종 DB는 13/13,
+> 활성 계좌 비센트 평가액 0건, 중복 주문 키 0건이다. 관련 통합 테스트와
+> 유닛 729개, Ruff가 통과했다.
+>
+> 실패·코드 수정·14:27 재기동이 섞였으므로 오늘 슬롯은 Todo 24 clean
+> OpenAI Gate로 세지 않는다. 현재 8020은 사용자의 Terminal 탭에서
+> `broker=mock`, `llm=openai`로 실행 중이며
+> **watch=true / rejudge=false / stream=false**다. 다음 순서는
+> ① 오늘 밤 정규장 poll-only 관측 ② 다음 거래 슬롯 clean 대조
+> ③ rejudge Gate B ④ stream이다. Terminal 탭을 닫으면 8020도 종료된다.
+>
 > ## 🔄 2026-07-24 09:03 KST — 로컬 운영 시작 (아래 과거 배너보다 우선)
 >
 > AWS 이전 전에는 이 PC가 운영 호스트다. 사건 원장 migration을 DB 5445에
