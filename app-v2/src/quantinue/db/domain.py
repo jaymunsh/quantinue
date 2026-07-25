@@ -1,7 +1,7 @@
 """PostgreSQL repository for canonical trading and delayed-review rows."""
 
 from datetime import UTC, date, datetime, time, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from textwrap import dedent
 from typing import Final
 
@@ -1587,7 +1587,9 @@ class PostgresDomainRepository:
                 ) + Decimal(holding.quantity) * mark
             for row in rows:
                 account_id = int(row.id)
-                equity = Decimal(str(row.cash)) + market_value.get(account_id, Decimal(0))
+                equity = (
+                    Decimal(str(row.cash)) + market_value.get(account_id, Decimal(0))
+                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                 _ = await connection.execute(
                     accounts.update()
                     .where(accounts.c.id == account_id)

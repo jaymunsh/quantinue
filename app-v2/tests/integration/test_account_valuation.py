@@ -134,6 +134,40 @@ async def test_equity_follows_the_market_instead_of_staying_frozen() -> None:
 
 
 @pytest.mark.anyio
+async def test_revaluation_rounds_half_cents_before_allocation_uses_equity() -> None:
+    assert DATABASE_URL is not None
+    account_id, ticker = await _seed_holding(DATABASE_URL, "cent")
+    store = PostgresRunStore(DATABASE_URL)
+    await store.initialize()
+    await store.domain.save_daily_bars(
+        (
+            DailyBarWrite(
+                trade_date=_DAY,
+                ticker=ticker,
+                open=Decimal("120.0005"),
+                high=Decimal("120.0005"),
+                low=Decimal("120.0005"),
+                close=Decimal("120.0005"),
+                volume=1000,
+                source="test",
+            ),
+        )
+    )
+
+    updated = await store.domain.revalue_accounts(_DAY)
+
+    engine = create_async_engine(DATABASE_URL)
+    async with engine.begin() as connection:
+        equity = await connection.scalar(
+            text("SELECT equity FROM tb_account WHERE id = :aid"), {"aid": account_id}
+        )
+    await engine.dispose()
+    assert updated[account_id] == Decimal("100200.01")
+    assert Decimal(str(equity)) == Decimal("100200.01")
+    await store.close()
+
+
+@pytest.mark.anyio
 async def test_a_holding_without_a_bar_keeps_its_cost_basis() -> None:
     """시세를 못 받은 종목을 0으로 평가하면 계좌가 하루아침에 파산한 것처럼 보인다."""
     # Given: 봉을 적재하지 않는다
