@@ -231,6 +231,7 @@ def _mount_ops_log(
             },
         )
 
+
 async def _account_roster(reads: object | None) -> AccountRosterView:
     """Read every account, or report none when the store has no ledger.
 

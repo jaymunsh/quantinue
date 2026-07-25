@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from datetime import UTC, date, datetime, time
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 import pytest
 from sqlalchemy import text
@@ -19,6 +20,9 @@ from quantinue.orchestration.policy import (
     ProfileConfig,
 )
 from quantinue.roles.allocation.job import AllocationJob
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
 
 DATABASE_URL = os.getenv("QUANTINUE_TEST_DATABASE_URL")
 
@@ -35,6 +39,28 @@ _IDEM_DAY = date(2026, 7, 23)
 _HELD_DAY = date(2026, 7, 24)
 _INTRADAY_DAY = date(2026, 7, 27)
 _EVENT_DAY = date(2026, 7, 28)
+
+
+@pytest.fixture(autouse=True)
+async def _isolate_allocation_rows() -> AsyncIterator[None]:
+    assert DATABASE_URL is not None
+    engine = create_async_engine(DATABASE_URL)
+    async with engine.begin() as connection:
+        _ = await connection.execute(
+            text(
+                """
+                TRUNCATE
+                  tb_order_plan, tb_fill, tb_order, tb_critic_verdict,
+                  tb_strategist_signals, tb_account_equity_daily, tb_account,
+                  tb_daily_bar, tb_daily_pick, tb_universe
+                RESTART IDENTITY CASCADE
+                """
+            )
+        )
+    try:
+        yield
+    finally:
+        await engine.dispose()
 
 
 def _midnight(day: date) -> datetime:

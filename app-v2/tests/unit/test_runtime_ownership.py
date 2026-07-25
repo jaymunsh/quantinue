@@ -13,7 +13,7 @@ from quantinue import main
 from quantinue.core.config import Settings
 from quantinue.db.memory import InMemoryRunStore
 from quantinue.orchestration.policy import Mvp2Config, load_mvp2_config
-from quantinue.runtime_status import RuntimeSnapshot
+from quantinue.runtime_status import RuntimeSnapshot, RuntimeView
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -127,3 +127,35 @@ def test_true_starts_and_cancels_every_configured_worker(
     assert jobs.cancelled.wait(timeout=1)
     assert watch.cancelled.wait(timeout=1)
     assert heartbeat.cancelled.wait(timeout=1)
+
+
+def test_owner_page_does_not_attach_watch_when_policy_is_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jobs = _Runner()
+    watch = _Runner()
+
+    def disabled_config(path: Path) -> Mvp2Config:
+        config = load_mvp2_config(path)
+        return config.model_copy(
+            update={
+                "watch": config.watch.model_copy(update={"enabled": False}),
+            }
+        )
+
+    monkeypatch.setattr(main, "load_mvp2_config", disabled_config)
+    monkeypatch.setattr(main, "build_budgeted_analyzer", Mock(return_value=None))
+    monkeypatch.setattr(main, "build_job_runner", Mock(return_value=jobs))
+    monkeypatch.setattr(main, "build_watch_runner", Mock(return_value=watch))
+
+    app = main.create_app(IsolatedSettings(background_workers=True), store=InMemoryRunStore())
+    with TestClient(app) as client:
+        page_response = client.get("/admin/schedule")
+        status_response = client.get("/api/runtime/status")
+
+    assert page_response.status_code == 200
+    assert 'data-runtime-watch="off"' in page_response.text
+    assert status_response.status_code == 200
+    status = RuntimeView.model_validate(status_response.json())
+    assert status.watch_status == "off"
+    assert status.snapshot.watch_attached is False
