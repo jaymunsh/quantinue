@@ -152,12 +152,30 @@
         </h2>
         <p>등록 순서 = 실행 순서. 실패하면 처음 끊긴 잡을 지목합니다.</p>
       </div>
+      {# 슬롯은 운영 일수만큼 늘어난다 — 전부 칩으로 세우면 한 달만 지나도
+         제목보다 날짜 목록이 커진다. 최근 며칠은 한 번에 눌러 가고, 그보다
+         옛날은 달력에서 고른다. 보고 있는 날이 최근 목록 밖이면 그 칩을
+         함께 세워 "지금 어디를 보고 있나"가 사라지지 않게 한다. #}
+      {% set recent = day.slots[:5] %}
       <nav class="slot-nav" aria-label="잡 슬롯 선택">
-        {% for slot in day.slots %}
+        {% for slot in recent %}
         <a href="/admin?slot={{ slot }}"
            class="slot-link{% if slot == day.chain.slot_date %} slot-current{% endif %}"
            {% if slot == day.chain.slot_date %}aria-current="page"{% endif %}>{{ slot }}</a>
         {% endfor %}
+        {% if day.chain.slot_date and day.chain.slot_date not in recent %}
+        <a href="/admin?slot={{ day.chain.slot_date }}" class="slot-link slot-current" aria-current="page">{{ day.chain.slot_date }}</a>
+        {% endif %}
+        {% if day.slots | length > recent | length %}
+        <form class="slot-find" method="get" action="/admin">
+          <label class="visually-hidden" for="slot-pick">다른 날짜의 슬롯 열기</label>
+          <input type="date" id="slot-pick" name="slot"
+                 value="{{ day.chain.slot_date }}"
+                 min="{{ day.slots[-1] }}" max="{{ day.slots[0] }}">
+          <button type="submit">열기</button>
+        </form>
+        <span class="slot-count">기록 {{ day.slots | length }}일</span>
+        {% endif %}
       </nav>
     </div>
     <ol class="job-chain-list">

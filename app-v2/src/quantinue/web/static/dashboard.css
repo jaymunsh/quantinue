@@ -493,9 +493,17 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
 .judgement-verdict { margin-left: auto; font-size: 12px; }
 .judgement-summary { margin: 6px 0 0; font-size: 13px; overflow-wrap: anywhere; }
 .judgement-objection { margin: 4px 0 0; color: var(--sub); font-size: 13px; overflow-wrap: anywhere; }
-.slot-nav { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.slot-nav { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; justify-content: flex-end; margin: 8px 0; }
 .slot-link { padding: 2px 8px; border: 1px solid var(--line); border-radius: 999px; font-size: 12px; font-variant-numeric: tabular-nums; text-decoration: none; color: var(--sub); }
 .slot-current { color: var(--ink); border-color: currentColor; font-weight: 700; }
+/* 옛 슬롯은 달력에서 고른다 — 칩을 무한정 늘리는 대신. 날짜 입력은 티커용
+   전역 대문자 규칙(input { text-transform: uppercase })에서 빼야 한다. */
+.slot-find { display: flex; align-items: center; gap: 4px; margin: 0; }
+.slot-find input { min-height: 28px; padding: 3px 8px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted); font: 500 12px var(--font-mono); font-variant-numeric: tabular-nums; text-transform: none; }
+.slot-find input:hover { border-color: var(--accent); }
+.slot-find button { min-height: 28px; padding: 3px 11px; color: var(--fg); background: var(--surface); border: 1px solid var(--border-strong); border-radius: 999px; font: 600 12px var(--font-ui); }
+.slot-find button:hover { color: var(--accent-ink); background: var(--accent-soft); border-color: var(--accent); }
+.slot-count { color: var(--muted); font: 500 11px var(--font-mono); font-variant-numeric: tabular-nums; }
 .judgement-bull { margin: 4px 0 0; font-size: 13px; color: var(--ok, #2f7d5b); overflow-wrap: anywhere; }
 .judgement-risk { margin: 2px 0 0; font-size: 13px; color: var(--danger, #b4232a); overflow-wrap: anywhere; }
 

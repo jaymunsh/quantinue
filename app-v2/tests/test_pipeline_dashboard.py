@@ -58,8 +58,11 @@ class _StubReads:
         return self._slot_date
 
     async def recent_job_slots(self, *, limit: int) -> tuple[date, ...]:
+        # 최신이 먼저다 — 실제 read가 `ORDER BY slot_date DESC`라서,
+        # 스텁이 반대로 주면 "최근 N개"를 다루는 화면 코드가 테스트에서만
+        # 통과하고 운영에서 뒤집힌다.
         assert limit > 0
-        return (*self._older_slots, self._slot_date) if self._slot_date else ()
+        return (self._slot_date, *self._older_slots) if self._slot_date else ()
 
     async def job_runs(self, slot_date: date) -> tuple[JobRunRecord, ...]:
         return self._jobs if slot_date == self._slot_date else ()
@@ -520,3 +523,37 @@ def test_every_job_status_renders(status: str) -> None:
     # Then
     assert response.status_code == 200
     assert status in response.text
+
+
+def test_the_slot_bar_keeps_recent_days_and_sends_the_rest_to_a_date_picker() -> None:
+    """슬롯은 운영 일수만큼 늘어난다 — 전부 칩으로 세우면 제목보다 날짜가 커진다."""
+    # Given — 최근 5개보다 많은 기록
+    older = tuple(_DAY - timedelta(days=offset) for offset in range(1, 8))
+    reads = _StubReads(jobs=(_job("universe"),), older_slots=older)
+
+    # When
+    with _client(reads) as client:
+        body = client.get("/").text
+
+    # Then — 칩은 최근 5개까지, 나머지는 달력에서 고른다.
+    assert f'href="/admin?slot={_DAY}"' in body
+    assert f'href="/admin?slot={_DAY - timedelta(days=4)}"' in body
+    assert f'href="/admin?slot={_DAY - timedelta(days=5)}"' not in body
+    assert 'type="date"' in body
+    assert "기록 8일" in body
+
+
+def test_an_old_slot_being_viewed_still_shows_where_you_are() -> None:
+    """보고 있는 날이 최근 목록 밖이면 그 칩을 함께 세운다 — 안 그러면 위치가 사라진다."""
+    # Given — 8일치 기록에서 가장 오래된 슬롯을 연다
+    older = tuple(_DAY - timedelta(days=offset) for offset in range(1, 8))
+    oldest = older[-1]
+    reads = _StubReads(jobs=(_job("universe"),), older_slots=older)
+
+    # When — 슬롯은 관제실 주소로 연다. `/`는 역할별 갈림길이라 303으로
+    # 넘기면서 쿼리를 버린다.
+    with _client(reads) as client:
+        body = client.get(f"/admin?slot={oldest}").text
+
+    # Then
+    assert f'<a href="/admin?slot={oldest}" class="slot-link slot-current"' in body
