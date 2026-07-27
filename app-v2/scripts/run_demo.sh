@@ -48,6 +48,29 @@ require_free_demo_port() {
   fi
 }
 
+drop_test_accounts() {
+  # 회귀 검증을 하며 만든 계좌(TEST-*)는 운영 원장에 남아 있지만 시연의
+  # 소재가 아니다 — 화면이 "계좌 11개"라고 세면 청중은 그게 다 운용 중인
+  # 계좌인 줄 안다. **일회용 데모 DB에서만** 지운다. 운영 5445는 읽기
+  # 전용이라 손대지 않으며, 그쪽 원장에는 이 계좌들이 회귀 증거로 남는다.
+  #
+  # 지우는 순서는 외래키 역순이다. 청산 주문이 원주문을 가리키므로
+  # (closes_order_id) 주문은 두 번에 나눠 지운다.
+  echo "검증용 계좌(TEST-*) 정리 중 — 데모 DB에서만…"
+  docker exec -i "${DEMO_DB_CONTAINER}" psql -q -v ON_ERROR_STOP=1 \
+    -U quantinue -d quantinue >/dev/null <<'SQL'
+CREATE TEMP VIEW demo_test_accounts AS
+  SELECT id FROM tb_account WHERE broker_account_id LIKE 'TEST-%';
+DELETE FROM tb_fill WHERE order_id IN (
+  SELECT id FROM tb_order WHERE account_id IN (SELECT id FROM demo_test_accounts));
+DELETE FROM tb_order WHERE closes_order_id IN (
+  SELECT id FROM tb_order WHERE account_id IN (SELECT id FROM demo_test_accounts));
+DELETE FROM tb_order WHERE account_id IN (SELECT id FROM demo_test_accounts);
+DELETE FROM tb_account_equity_daily WHERE account_id IN (SELECT id FROM demo_test_accounts);
+DELETE FROM tb_account WHERE id IN (SELECT id FROM demo_test_accounts);
+SQL
+}
+
 start_db() {
   docker rm -f "${DEMO_DB_CONTAINER}" >/dev/null 2>&1 || true
   docker run -d --name "${DEMO_DB_CONTAINER}" \
@@ -67,6 +90,7 @@ start_db() {
       --no-owner --no-privileges \
       | docker exec -i "${DEMO_DB_CONTAINER}" psql -q -U quantinue -d quantinue \
       >/dev/null
+    drop_test_accounts
   fi
   # 스키마는 멱등이라 빈 DB든 복사본 위든 부족한 조각만 채운다.
   docker exec -i "${DEMO_DB_CONTAINER}" psql -q -v ON_ERROR_STOP=1 \
