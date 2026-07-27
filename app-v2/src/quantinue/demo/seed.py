@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
@@ -90,6 +91,20 @@ class DemoSeedSpec:
     # 있으면 사건 재판단이 subject_missing으로 조용히 죽는다(실측).
     # 비우면 trade_date 하루만 깐다.
     bar_dates: tuple[date, ...] = ()
+    # 각본 주인공. 이어받기 모드에서는 운영 이력의 오늘 픽 수십 종목이 같은
+    # 계좌에 함께 배분돼, 지갑이 문턱(최소 현금)에 닿으면 뒤로 밀린 각본
+    # 티커가 안 사진다. 주인공에게만 높은 픽 점수를 줘 먼저 집행되게 한다.
+    featured: frozenset[str] = frozenset()
+
+    @property
+    def opening_cycle_ts(self) -> datetime:
+        """Return the timestamp the starting positions were judged at.
+
+        시작 보유는 장이 열리기 전부터 들고 있던 것이다. 재판단이 도는 시각
+        (``cycle_ts``)과 겹치면 그 종목은 "오늘 이미 판단했다"로 분류돼
+        재판단에서 빠진다.
+        """
+        return self.cycle_ts - timedelta(minutes=1)
 
 
 @dataclass(frozen=True, slots=True)
@@ -159,12 +174,17 @@ async def _seed_scope(
                 bucket="trend_leader",
                 rank=rank,
                 sector=listing.sector,
-                # 0.90이 아닌 이유: 픽 점수는 conviction 평균에 투표한다.
-                # 0.90이면 미등록 티커(모델 0.60)까지 mean 0.75로 공격형
-                # 매수 문턱(0.65)을 넘어 각본 밖 매수가 나간다. 0.50이면
-                # hold·매수·매도 세 구간이 전부 산술적으로 성립한다
+                # 배경 티커가 0.90이 아닌 이유: 픽 점수는 conviction 평균에
+                # 투표한다. 0.90이면 미등록 티커(모델 0.60)까지 mean 0.75로
+                # 공격형 매수 문턱(0.65)을 넘어 각본 밖 매수가 나간다.
+                # 0.50이면 hold·매수·매도 세 구간이 전부 산술적으로 성립한다
                 # (scenario_analyzer._strategy_output 주석 참조).
-                score=Decimal("0.50"),
+                #
+                # 주인공만 0.95를 받는다. 이어받기 모드에서 운영 픽의
+                # conviction이 0.87~0.89대라, 각본 매수(0.50 → mean 0.675)가
+                # 그 뒤로 밀려 지갑이 빌 때까지 차례가 오지 않았다. 0.95면
+                # mean 0.90으로 맨 앞에 선다 — 배경 티커의 산술은 그대로다.
+                score=Decimal("0.95") if listing.ticker in spec.featured else Decimal("0.50"),
             )
             for rank, listing in enumerate(listings, start=1)
         )
@@ -233,7 +253,13 @@ async def _seed_holdings(
                 run_id=_RUN_ID,
                 trade_date=spec.trade_date,
                 ticker=held.listing.ticker,
-                cycle_ts=spec.cycle_ts,
+                # 재판단 시각보다 **앞선** 시각에 앉힌다. 장중 재판단은
+                # 같은 cycle_ts의 판단을 "이미 끝난 것"으로 보고 건너뛰므로
+                # (completed_intraday_tickers), 시드가 그 시각을 쓰면 보유
+                # 종목의 재판단이 통째로 막힌다 — 실측: 악재 반전 매도(S4)의
+                # 공격형 판단이 이 이유로 영영 안 나왔다. 서사로도 이쪽이
+                # 맞다: 시작 보유는 "이미 들고 있던 것"이지 지금 산 것이 아니다.
+                cycle_ts=spec.opening_cycle_ts,
                 side="buy",
                 conviction=Decimal("0.800"),
                 summary="시작 보유 포지션",

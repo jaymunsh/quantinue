@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
 # 각본 버전. 가격열·사건·기대 결과를 바꾸면 올린다 — 리허설 2회 동일 재현
 # 비교는 같은 버전 안에서만 의미가 있다.
-SCENARIO_VERSION = "demo-scenario-v2"
+SCENARIO_VERSION = "demo-scenario-v3"
 
 # 데모 티커는 실존 종목과 겹치지 않는 **가상 회사**다. 두 가지를 동시에
 # 피해야 한다: 실존 종목을 쓰면 각본 기사가 그 회사에 대한 진술로 오인되고,
@@ -117,7 +117,12 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             trade_date,
         ),
         broker_account_id=DEMO_ACCOUNT_ID,
-        opening_cash=Decimal("100000.00"),
+        # 이어받기 모드에서는 운영 이력의 오늘 픽(RTX·AAPL 등)이 이 계좌에도
+        # 배분된다. 10만이면 그 매수만으로 현금이 최소 유지선(평가액의 30%)
+        # 아래로 내려가, 정작 각본 주인공(NVEX 호재 매수)이 min_cash로 막혔다.
+        # 정책을 느슨하게 하는 대신 계좌를 키운다 — 문턱은 그대로 두고 각본이
+        # 그 문턱 안에서 돌게 한다.
+        opening_cash=Decimal("300000.00"),
         inv_type="aggressive",
         held=(
             HeldPosition(
@@ -150,6 +155,9 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             ),
         ),
         users=(),  # 로그인은 seed CLI가 환경변수 비밀번호로 채운다.
+        # 주인공은 픽 점수를 높게 받아 배분 줄의 맨 앞에 선다 — 이어받은
+        # 운영 픽 수십 종목에 밀려 지갑이 빌 때까지 차례가 안 오는 것을 막는다.
+        featured=frozenset({DEFENSE_TICKER, GOOD_TICKER, BAD_TICKER}),
     )
     return DemoScenario(
         trade_date=trade_date,
