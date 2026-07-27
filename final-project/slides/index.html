@@ -154,6 +154,13 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 .quiet{font-size:26px;color:var(--muted);margin-top:18px;line-height:1.5}
 
 /* 표지 */
+.cover .qmark{width:92px;height:92px;border-radius:20px;display:block;margin-bottom:26px;
+               box-shadow:0 10px 30px rgba(11,77,219,.22)}
+/* 마무리 화면 오른쪽 아래. 발표가 끝나고 질문받는 동안 계속 떠 있는 화면이라
+   상표가 조용히 남는 자리다. 본문을 가리지 않게 옅게 깐다. */
+.finale{position:relative}
+.finale::after{content:"";position:absolute;right:0;bottom:104px;width:132px;height:132px;
+               border-radius:29px;opacity:.13;background:no-repeat center/contain url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iUXVhbnRpbnVlIFEgYmx1ZSBhcHAgaWNvbiI+CiAgPGRlZnM+CiAgICA8bWFzayBpZD0icS1jdXQiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9IndoaXRlIi8+PHBhdGggZD0iTTUwMSA2NDQgNTQ1IDYzMiA3MTEgNzk4IDY2NSA3OThaIiBmaWxsPSJibGFjayIvPjwvbWFzaz4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCIgcng9IjE4NCIgZmlsbD0iIzBCNEREQiIvPgogIDxnIGZpbGw9IiNGRkZERjUiIG1hc2s9InVybCgjcS1jdXQpIj4KICAgIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ2NiAxMDRDMjY3IDEwNCAxMDYgMjY1IDEwNiA0NjRzMTYxIDM2MCAzNjAgMzYwYzQ4IDAgOTQtOSAxMzYtMjZsLTEyMS0xMjEtMTUgMWMtMTE4IDAtMjE0LTk2LTIxNC0yMTRzOTYtMjE0IDIxNC0yMTQgMjE0IDk2IDIxNCAyMTRjMCA2My0yNyAxMTktNzAgMTU4bDEwNCAxMDRjNjktNjYgMTEyLTE1OSAxMTItMjYyIDAtMTk5LTE2MS0zNjAtMzYwLTM2MFoiLz4KICAgIDxwYXRoIGQ9Im00NzUgNjAzIDExMS0zMSAyODIgMjgySDY2NloiLz4KICA8L2c+Cjwvc3ZnPgo=")}
 .cover{justify-content:center}
 .cover .mark{font-family:var(--mono);font-size:20px;letter-spacing:.34em;color:var(--muted)}
 .cover h1{font-size:118px;letter-spacing:-.045em;margin-top:14px}
@@ -194,6 +201,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 1 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide cover on" data-notes="저희 팀 분담표가 곧 <b>에이전트 분담표</b>입니다. 다섯 명이 역할별 AI 에이전트를 하나씩 맡았고, PM 김지현 님이 전체를 리딩했습니다. Strategist를 맡았던 이은미 님은 1차 이후 취업으로 빠지셔서, 2차는 제가 이어받아 마무리했습니다.">
+  <img class="qmark" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iUXVhbnRpbnVlIFEgYmx1ZSBhcHAgaWNvbiI+CiAgPGRlZnM+CiAgICA8bWFzayBpZD0icS1jdXQiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9IndoaXRlIi8+PHBhdGggZD0iTTUwMSA2NDQgNTQ1IDYzMiA3MTEgNzk4IDY2NSA3OThaIiBmaWxsPSJibGFjayIvPjwvbWFzaz4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCIgcng9IjE4NCIgZmlsbD0iIzBCNEREQiIvPgogIDxnIGZpbGw9IiNGRkZERjUiIG1hc2s9InVybCgjcS1jdXQpIj4KICAgIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ2NiAxMDRDMjY3IDEwNCAxMDYgMjY1IDEwNiA0NjRzMTYxIDM2MCAzNjAgMzYwYzQ4IDAgOTQtOSAxMzYtMjZsLTEyMS0xMjEtMTUgMWMtMTE4IDAtMjE0LTk2LTIxNC0yMTRzOTYtMjE0IDIxNC0yMTQgMjE0IDk2IDIxNCAyMTRjMCA2My0yNyAxMTktNzAgMTU4bDEwNCAxMDRjNjktNjYgMTEyLTE1OSAxMTItMjYyIDAtMTk5LTE2MS0zNjAtMzYwLTM2MFoiLz4KICAgIDxwYXRoIGQ9Im00NzUgNjAzIDExMS0zMSAyODIgMjgySDY2NloiLz4KICA8L2c+Cjwvc3ZnPgo=" alt="Quantinue">
   <div class="mark">FINANCIAL AUTOMATION</div>
   <h1>Quantinue</h1>
   <div class="sub">실물 시장 데이터와 AI 판단으로 굴러가는 모의 자동매매 시스템</div>
@@ -230,7 +238,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 3 ─────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="구조는 세 층입니다. 위는 1차에서 만든 하루 한 번 도는 판단 체인이고, 2차에서 그 아래 두 층을 얹었습니다. 가운데는 <b>1분마다 도는 방어층</b>인데 여기서는 AI를 한 번도 부르지 않습니다. 손절선을 넘었는지만 기계적으로 보고 넘었으면 바로 정리합니다. 아래는 <b>사건이 생겼을 때만 도는 재판단층</b>입니다. 가격이 5% 넘게 움직이거나 뉴스·공시가 뜨면 그때만 AI를 다시 부릅니다."<br><br>⚠️ <b>"공시·뉴스를 보고 판단한다"를 전면에 세우지 말 것.</b> 수집·정규화는 돌지만(뉴스 10,728·공시 8,973) 채점 결과가 판단에 닿은 사례는 얕다 — src_disclosure_at 6/342 · src_news_at 0/342. 물으면 "수집·정규화까지는 돌고, 채점을 판단에 물리는 구간은 아직 얕다"로 답한다. <b>모은 것과 판단에 쓴 것은 다르다.</b><br><br>💡 더 파고들면: 장중 SEC 소스가 failed_count 266 · last_success null이다. SEC가 미발행 인덱스에 404가 아니라 403을 주는데 정책 차단과 구분이 안 돼 <b>일부러 실패로 남기는 설계</b>다. rejudge=false라 아무 판단에도 안 물린다. 켜기 전 수정 항목으로 기록됨 — docs/mvp2-planning/open-items.md §3-4.>
+<section class="slide" data-notes="구조는 세 층입니다. 위는 1차에서 만든 하루 한 번 도는 판단 체인이고, 2차에서 그 아래 두 층을 얹었습니다. 가운데는 <b>1분마다 도는 방어층</b>인데 여기서는 AI를 한 번도 부르지 않습니다. 손절선을 넘었는지만 기계적으로 보고 넘었으면 바로 정리합니다. 아래는 <b>사건이 생겼을 때만 도는 재판단층</b>입니다. 가격이 5% 넘게 움직이거나 뉴스·공시가 뜨면 그때만 AI를 다시 부릅니다.<br><br>⚠️ <b>&quot;공시·뉴스를 보고 판단한다&quot;를 전면에 세우지 말 것.</b> 수집·정규화는 돌지만(뉴스 10,728·공시 8,973) 채점 결과가 판단에 닿은 사례는 얕다 — src_disclosure_at 6/342 · src_news_at 0/342. 물으면 &quot;수집·정규화까지는 돌고, 채점을 판단에 물리는 구간은 아직 얕다&quot;로 답한다. <b>모은 것과 판단에 쓴 것은 다르다.</b><br><br>💡 더 파고들면: 장중 SEC 소스가 failed_count 266 · last_success null이다. SEC가 미발행 인덱스에 404가 아니라 403을 주는데 정책 차단과 구분이 안 돼 <b>일부러 실패로 남기는 설계</b>다. rejudge=false라 아무 판단에도 안 물린다. 켜기 전 수정 항목으로 기록됨 — docs/mvp2-planning/open-items.md §3-4.">
   <div class="eyebrow"><span class="no">03</span><i class="sep"></i><span class="kr">해법 · 발표 전체의 지도</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">멀티 에이전트 위에<br><b>AI를 안 쓰는 방어층</b>을 얹었다</h1>
   <div class="body">
@@ -398,7 +406,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 9 ─────────────────────────────────────────────────────────────────── -->
-<section class="slide finale" data-notes="남은 일은 새 기능을 만드는 게 아니라, 켜도 되는지 확인하는 증거를 쌓는 것입니다. 저희 시스템의 가치는 얼마를 벌었다가 아니라, AI의 판단이 검토를 거쳐 체결되고 그 전 과정이 기록으로 남는다는 데 있습니다. 감사합니다.">
+<section class="slide finale" data-corner-mark="1" data-notes="남은 일은 새 기능을 만드는 게 아니라, 켜도 되는지 확인하는 증거를 쌓는 것입니다. 저희 시스템의 가치는 얼마를 벌었다가 아니라, AI의 판단이 검토를 거쳐 체결되고 그 전 과정이 기록으로 남는다는 데 있습니다. 감사합니다.">
   <div class="eyebrow"><span class="no">09</span><i class="sep"></i><span class="kr">남은 길</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm" style="margin-top:26px">남은 것은 개발이 아니라 <b>운영 증거</b></h1>
   <div class="verdict" style="width:1000px;margin-top:30px">
