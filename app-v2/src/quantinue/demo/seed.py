@@ -1,0 +1,282 @@
+"""Deterministic demo ledger seed for the filming runtime."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import TYPE_CHECKING
+
+from quantinue.broker.mock import MockBroker
+from quantinue.broker.provider import OrderPlan
+from quantinue.core.ontology import FillSide
+from quantinue.core.order_identity import derive_client_order_id
+from quantinue.db.contracts import (
+    AppOrderExposureReservationOutcome,
+    DailyOrderReservation,
+)
+from quantinue.db.domain_records import (
+    AccountWrite,
+    CompletedFillWrite,
+    CriticVerdictWrite,
+    DailyBarWrite,
+    DailyPickWrite,
+    StrategistSignalWrite,
+)
+from quantinue.db.postgres import PostgresRunStore
+from quantinue.db.users import UserWrite
+from quantinue.demo.scripted_market import DemoScenarioError
+from quantinue.roles.role_01_universe_screener.contracts import (
+    UniverseMember,
+    UniverseScreenerOutput,
+)
+
+if TYPE_CHECKING:
+    from datetime import date, datetime
+
+_RUN_ID = "demo-seed"
+
+
+@dataclass(frozen=True, slots=True)
+class DemoListing:
+    """One tradable demo ticker: universe row + daily-pick scope."""
+
+    ticker: str
+    company: str
+    sector: str
+
+
+@dataclass(frozen=True, slots=True)
+class HeldPosition:
+    """One seeded bracket holding: S2 방어와 S4 반전 매도의 출발 상태."""
+
+    listing: DemoListing
+    quantity: int
+    entry: Decimal
+    stop: Decimal
+    take: Decimal
+
+
+@dataclass(frozen=True, slots=True)
+class DemoUser:
+    """One login to create; the password hash is computed by the launcher."""
+
+    login_id: str
+    display_name: str
+    role: str
+    password_hash: str
+    owns_account: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class DemoSeedSpec:
+    """Everything the S1 opening state needs, declared in one place."""
+
+    trade_date: date
+    cycle_ts: datetime
+    broker_account_id: str
+    opening_cash: Decimal
+    inv_type: str
+    held: tuple[HeldPosition, ...]
+    candidates: tuple[DemoListing, ...]
+    users: tuple[DemoUser, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class DemoSeedReport:
+    """Observable outcome used by the launcher and the rehearsal check."""
+
+    account_id: int
+    signal_ids: tuple[int, ...]
+    seeded_positions: int
+
+
+async def seed_demo_ledger(database_url: str, spec: DemoSeedSpec) -> DemoSeedReport:
+    """Seed the demo ledger through the same contracts production writes use.
+
+    일일 잡 전체를 돌려 상태를 만드는 대신, 잡들이 쓰는 것과 같은
+    repository·MockBroker 계약으로 최소 원장을 직접 쓴다(demo-video-plan.md
+    §4-4). 모든 쓰기가 멱등이라 reset 없이 두 번 불러도 원장이 불어나지
+    않는다 — 그것이 리허설 동일성 검증의 전제다.
+    """
+    store = PostgresRunStore(database_url)
+    await store.initialize()
+    domain = store.domain
+    try:
+        listings = tuple(held.listing for held in spec.held) + spec.candidates
+        await _seed_scope(domain, spec, listings)
+        account_id = await _seed_account_and_users(domain, spec)
+        signal_ids = await _seed_holdings(store, domain, spec, account_id)
+        # 시가평가 → 당일 시작 equity 스냅샷 순서다. 스냅샷이 손익 계산의
+        # 분모가 되므로 평가 없이 찍으면 S1 화면의 곡선이 거짓말을 한다.
+        _ = await domain.revalue_accounts(spec.trade_date)
+        _ = await domain.snapshot_daily_equity(spec.trade_date)
+        return DemoSeedReport(
+            account_id=account_id,
+            signal_ids=signal_ids,
+            seeded_positions=len(spec.held),
+        )
+    finally:
+        await store.close()
+
+
+async def _seed_scope(
+    domain: object, spec: DemoSeedSpec, listings: tuple[DemoListing, ...]
+) -> None:
+    """Write universe, daily picks, and reference bars for every demo ticker."""
+    await domain.save_universe(
+        UniverseScreenerOutput(
+            run_id=_RUN_ID,
+            generated_at=spec.cycle_ts,
+            members=tuple(
+                UniverseMember(
+                    as_of_date=spec.trade_date,
+                    ticker=listing.ticker,
+                    company_name=listing.company,
+                    market_cap=1_000_000_000,
+                    evidence_ids=(_RUN_ID,),
+                )
+                for listing in listings
+            ),
+        )
+    )
+    await domain.save_daily_picks(
+        tuple(
+            DailyPickWrite(
+                trade_date=spec.trade_date,
+                ticker=listing.ticker,
+                universe_as_of=spec.trade_date,
+                bucket="trend_leader",
+                rank=rank,
+                sector=listing.sector,
+                score=Decimal("0.90"),
+            )
+            for rank, listing in enumerate(listings, start=1)
+        )
+    )
+    entry_by_ticker = {held.listing.ticker: held.entry for held in spec.held}
+    await domain.save_daily_bars(
+        tuple(
+            DailyBarWrite(
+                trade_date=spec.trade_date,
+                ticker=listing.ticker,
+                open=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
+                high=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
+                low=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
+                close=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
+                volume=1_000_000,
+                source=_RUN_ID,
+            )
+            for listing in listings
+        )
+    )
+
+
+async def _seed_account_and_users(domain: object, spec: DemoSeedSpec) -> int:
+    """Create the filming account and its logins; both writes are idempotent."""
+    account_id = await domain.save_account(
+        AccountWrite(
+            broker_account_id=spec.broker_account_id,
+            cash=spec.opening_cash,
+            equity=spec.opening_cash,
+            buying_power=spec.opening_cash,
+            inv_type=spec.inv_type,
+        )
+    )
+    for user in spec.users:
+        user_id = await domain.save_user(
+            UserWrite(
+                login_id=user.login_id,
+                display_name=user.display_name,
+                role=user.role,
+                password_hash=user.password_hash,
+            )
+        )
+        if user.owns_account:
+            _ = await domain.set_account_owner(spec.broker_account_id, user_id)
+    return account_id
+
+
+async def _seed_holdings(
+    store: PostgresRunStore,
+    domain: object,
+    spec: DemoSeedSpec,
+    account_id: int,
+) -> tuple[int, ...]:
+    """Book each held position with the allocation job's exact write order.
+
+    예약 → 브로커 → 체결 순서를 그대로 쓴다 — 브로커가 체결한 뒤 원장
+    자리가 없는 상태를 만들지 않는 순서이고, idempotency key가 같으므로
+    재실행은 중복 주문 대신 no-op이 된다.
+    """
+    signal_ids: list[int] = []
+    broker = MockBroker()
+    for held in spec.held:
+        signal_id = await domain.save_signal(
+            StrategistSignalWrite(
+                run_id=_RUN_ID,
+                trade_date=spec.trade_date,
+                ticker=held.listing.ticker,
+                cycle_ts=spec.cycle_ts,
+                side="buy",
+                conviction=Decimal("0.800"),
+                summary="각본: 촬영 시작 보유 포지션",
+                decision_close=held.entry,
+                evidence=(_RUN_ID,),
+                inv_type=spec.inv_type,
+            )
+        )
+        signal_ids.append(signal_id)
+        _ = await domain.save_verdict(
+            CriticVerdictWrite(
+                signal_id=signal_id,
+                ticker=held.listing.ticker,
+                decision="pass",
+                category="demo_seed",
+                objection="각본 시드 승인",
+                confidence=Decimal("0.800"),
+                decided_layer="gate",
+            )
+        )
+        client_order_id = derive_client_order_id(
+            account_id=account_id, signal_id=signal_id
+        )
+        reserved = await store.reserve_daily_new_order(
+            DailyOrderReservation(
+                account_id=account_id,
+                trade_date=spec.trade_date,
+                signal_id=signal_id,
+                idempotency_key=client_order_id,
+                ticker=held.listing.ticker,
+                quantity=held.quantity,
+                entry_price=held.entry,
+                stop_price=held.stop,
+                take_profit_price=held.take,
+                cap=len(spec.held),
+                max_app_order_exposure_usd=spec.opening_cash,
+            )
+        )
+        if reserved.outcome is AppOrderExposureReservationOutcome.REJECTED:
+            msg = f"seed reservation rejected for {held.listing.ticker}"
+            raise DemoScenarioError(msg)
+        result = await broker.submit(
+            OrderPlan(
+                ticker=held.listing.ticker,
+                client_order_id=client_order_id,
+                quantity=held.quantity,
+                entry_price=float(held.entry),
+                stop_loss=float(held.stop),
+                take_profit=float(held.take),
+            )
+        )
+        _ = await domain.record_completed_fill(
+            CompletedFillWrite(
+                idempotency_key=client_order_id,
+                broker_order_id=result.order_id,
+                broker_fill_id=f"{result.order_id}-fill",
+                quantity=result.quantity,
+                price=Decimal(str(result.filled_avg_price)),
+                filled_at=spec.cycle_ts,
+                side=FillSide.BUY,
+            )
+        )
+    return tuple(signal_ids)
