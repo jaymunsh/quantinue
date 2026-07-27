@@ -33,8 +33,8 @@
 | `footage/s6-live-ops-take1.mp4` | 48s | 같은 밤 1차 테이크(관제실만). 예비 |
 | `footage/s6-ops-preopen.mp4` | 48s | 개장 전 예비 테이크. 본테이크가 생겨 쓸 일 없다 |
 | `footage/mvp1-showcase.png` | — | 1차 MVP 화면(슬라이드 2용, 8011에서 캡처) |
-| `slides/index.html` | 13장 | 발표용 덱. `←/→` 이동 · `F` 전체화면 · `N` 발표자 노트 |
-| `slides/quantinue-final.pdf` | 13쪽 | 프로젝터 백업 |
+| `slides/index.html` | 본편 13장 + 백업 2장 | 발표용 덱. `←/→` 이동 · `F` 전체화면 · **`P` 발표자 창** · `N` 노트(리허설용) |
+| `slides/quantinue-final.pdf` | 15쪽 | 프로젝터 백업 |
 
 전부 1920×1080 · 30fps. `footage/`는 gitignore 대상이라 **저장소에 없다** —
 백업은 직접 복사해야 한다(§7 참조).
