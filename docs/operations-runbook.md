@@ -178,6 +178,64 @@ DB는 굳이 안 꺼도 된다(유휴 시 CPU 0%·메모리 200MB). 끄려면
 3. 오늘 이미 보냈나 — 일일 안내는 하루 한 번이다. 관제실 잡 체인에
    `daily_summary`가 `succeeded`면 이미 갔다.
 
+### 4-2-1. 인터넷·와이파이를 껐다 켠 뒤 정상 복구됐는지 확인
+
+인터넷이 끊겨도 앱과 로컬 DB는 살아 있을 수 있다. **먼저 확인하고, 정상인
+프로세스를 습관적으로 재기동하지 않는다.** 특히 잡이 실행 중일 때 8020을 끄면
+슬롯이 `running`으로 굳을 수 있다.
+
+아래 점검은 모두 읽기 전용이다. 저장소 루트에서 실행한다.
+
+```bash
+# 1. 앱과 실행 모드
+curl -sS --connect-timeout 2 --max-time 5 \
+  http://127.0.0.1:8020/health
+# 기대: status=ok, broker_mode=mock, llm_mode=openai
+
+# 2. DB 컨테이너와 포트
+docker ps --filter name=app-v2-db-1 \
+  --format '{{.Names}}\t{{.Status}}\t{{.Ports}}'
+# 기대: Up ... (healthy), 127.0.0.1:5445->5432/tcp
+
+# 3. 8020 프로세스와 DB 5445 연결
+lsof -nP -iTCP:8020 -sTCP:LISTEN
+lsof -nP -iTCP:5445 | grep ESTABLISHED
+
+# 4. 외부 서비스 도달성 — 키를 명령행이나 로그에 출력하지 않는다
+curl -sS -o /dev/null -w 'OpenAI HTTP %{http_code}\n' \
+  --connect-timeout 5 --max-time 10 https://api.openai.com/v1/models
+curl -sS -o /dev/null -w 'Telegram HTTP %{http_code}\n' \
+  --connect-timeout 5 --max-time 10 https://api.telegram.org/
+curl -sS -o /dev/null -w 'Alpaca HTTP %{http_code}\n' \
+  --connect-timeout 5 --max-time 10 https://api.alpaca.markets/v2/clock
+
+# 5. 최근 heartbeat 전송 실패
+tail -n 100 app-v2/observation.log | grep 'heartbeat\.'
+```
+
+외부 도달성 점검은 일부러 인증 정보를 보내지 않는다. 따라서 **OpenAI·Alpaca의
+`401`은 연결 성공**, Telegram의 `200` 또는 `3xx`도 연결 성공이다. DNS 오류,
+`ConnectError`, timeout, HTTP `000`이면 아직 네트워크가 복구되지 않은 것이다.
+
+heartbeat는 **5분마다** 보내며 성공은 로그에 남기지 않고 실패만
+`heartbeat.send.failed`로 남긴다. 인터넷 복구 뒤 다음 5분 주기가 지난 후 새 실패가
+없고 Healthchecks.io의 최근 Events가 `OK`, Current Status가 `Up`이면 자동 복구된
+것이다. 외부 화면이 최종 판정 정본이다. ping URL, bot token, chat ID는 확인
+과정에서도 출력하거나 복사하지 않는다.
+
+판정은 다음과 같이 한다.
+
+| 결과 | 판단 | 조치 |
+|---|---|---|
+| `/health` 정상, DB healthy, 외부 응답, 새 heartbeat 실패 없음 | 정상 자동 복구 | 재기동하지 않고 유지 |
+| 앱·DB 정상, 외부 요청만 실패 | 인터넷/DNS 미복구 | 네트워크를 먼저 복구하고 5분 뒤 재확인 |
+| 외부 요청 정상, `heartbeat.send.failed`가 계속 증가 | heartbeat 수신처 또는 앱 내부 상태 문제 | Healthchecks Events와 관제실 감시 상태 확인 |
+| 8020 응답 없음 | 앱 중단 | 관제실 잡이 실행 중이 아니었는지 확인한 뒤 §1-2로 기동 |
+| DB가 없거나 unhealthy | DB 중단/장애 | §1-1로 DB부터 복구한 뒤 앱 상태 재확인 |
+
+주말·미국 휴장일에는 일일 잡과 텔레그램 요약이 오지 않는 것이 정상이다. 이때는
+알림 유무 대신 `/health`, DB, 외부 도달성, heartbeat로 판단한다.
+
 ### 4-3. 한 화면만 500이 난다 (다른 화면은 멀쩡)
 
 **템플릿과 파이썬 코드의 버전이 어긋난 것이다.** 원인은 둘의 반영 시점이
