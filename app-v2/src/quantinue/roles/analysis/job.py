@@ -23,6 +23,7 @@ from typing import TYPE_CHECKING, Final, Protocol, TypeVar, runtime_checkable
 from uuid import uuid4
 
 import anyio
+import structlog
 from pydantic import BaseModel, ConfigDict
 from typing_extensions import override
 
@@ -54,6 +55,18 @@ from quantinue.roles.analysis.contracts import (
 from quantinue.roles.exits.contracts import business_days_held
 from quantinue.roles.role_07_strategist.contracts import StrategyInput, StrategyOutput
 from quantinue.roles.role_08_critic.contracts import CriticInput, CriticVerdict
+
+_LOGGER = structlog.get_logger(__name__)
+
+
+def _disclosure_cycle_ts(as_of: date) -> datetime:
+    """Return the slot timestamp the disclosure scoring job writes under.
+
+    채점은 슬롯당 한 번, 그 날짜의 자정(UTC)으로 앉는다 — 판단이 계보로
+    가리키려면 같은 시각을 적어야 한다. 이 규약은 읽는 쪽
+    (``domain.disclosure_scores``)과 짝이라, 한쪽만 바뀌면 FK가 끊긴다.
+    """
+    return datetime.combine(as_of, time(), tzinfo=UTC)
 
 # 원장의 국면 문자열 → 크리틱 계약의 Literal. 모르는 값은 중립으로 떨어뜨린다:
 # 못 읽은 국면을 위험회피로 읽으면 파싱 실패가 매수 금지가 된다.
@@ -755,12 +768,22 @@ class AnalysisJob:
                     with anyio.CancelScope(shield=True):
                         await lease.release_item(subject.ticker, self.profile_name)
                 raise
-            except Exception:  # noqa: BLE001 - 종목 하나의 실패를 격리하는 자리다
+            except Exception as failure:  # noqa: BLE001 - 종목 하나의 실패를 격리하는 자리다
                 if lease is not None and claimed:
                     await lease.release_item(subject.ticker, self.profile_name)
                 # 종목 하나가 그날 판단 전체를 지우지 않게 한다. 실측: 구조화
                 # 출력을 한 번 놓친 종목 때문에 그 성향 22종목이 통째로 날아갔다.
                 # 이미 원장에 앉은 판단은 유효하고, 못 본 종목은 다음 슬롯이 본다.
+                #
+                # 삼키되 **남긴다**. 로그가 없으면 격리가 은폐가 된다 — 실측:
+                # 데모에서 종목 둘이 조용히 실패하는 바람에 왜 실패했는지
+                # 알아내는 데 원장 대조가 필요했다.
+                _LOGGER.warning(
+                    "analysis.subject.failed",
+                    ticker=subject.ticker,
+                    profile=self.profile_name,
+                    error=repr(failure),
+                )
                 failures += 1
                 continue
             if outcome is not None:
@@ -956,7 +979,14 @@ class AnalysisJob:
                 # 한 번만 산다. 판단은 그 행을 계보로 가리키기만 하면 된다.
                 # 채점이 없으면 계보도 없다. 부모 행이 없는데 시각을 적으면
                 # FK가 막고, 막지 않더라도 판단이 없는 근거를 가리키게 된다.
-                src_disclosure_at=None if disclosure_score is None else cycle_ts,
+                # 가리키는 시각은 **채점 행의 시각**(그 슬롯 자정)이지 판단
+                # 시각이 아니다. 일일 경로는 둘이 같아 오래 안 걸렸지만, 장중
+                # 재판단은 지금 시각으로 판단하므로 없는 행을 가리켰다 —
+                # FK 위반으로 종목이 실패하고, 그 실패가 tick을 통째로 멈춰
+                # 재판단 매수·매도가 나가지 않았다(2026-07-27 데모 실측).
+                src_disclosure_at=(
+                    None if disclosure_score is None else _disclosure_cycle_ts(as_of)
+                ),
                 model_provider=evidence.metadata.provider
                 if isinstance(evidence.metadata.provider, str)
                 else evidence.metadata.provider.value,

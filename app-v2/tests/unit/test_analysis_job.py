@@ -1350,3 +1350,31 @@ async def test_an_unscored_disclosure_abstains_instead_of_voting_neutral() -> No
 
     # Then
     assert domain.signals[0].src_disclosure_at is None
+
+
+@pytest.mark.anyio
+async def test_the_intraday_lineage_points_at_the_scored_row_not_the_tick() -> None:
+    """계보는 **읽은 행**의 시각을 가리켜야 한다 — 판단한 시각이 아니라.
+
+    공시 채점은 슬롯당 한 번, 자정 cycle_ts로 앉는다(domain.disclosure_scores).
+    장중 재판단은 지금 시각으로 판단하므로 그 시각을 계보로 적으면 없는 행을
+    가리킨다 — 실측: 데모에서 FK 위반으로 종목이 조용히 실패했고, 그 실패가
+    tick 전체를 중단시켜 재판단 매수·매도가 나가지 않았다.
+    """
+    # Given — 채점이 있는 보유 종목을 장중에 재판단한다
+    domain = _Domain(
+        (_subject("HELD", rank=15, score=0.1),),
+        (_position("HELD"),),
+        disclosure_scores={"HELD": 0.30},
+    )
+    now = datetime(2026, 7, 17, 15, 5, tzinfo=UTC)
+
+    # When
+    _ = await _job(domain, _Analyzer(strategy=0.1)).run_intraday(
+        now=now, prices={"HELD": Decimal("94.00")}
+    )
+
+    # Then — 판단은 지금 시각에 앉되, 계보는 자정 채점 행을 가리킨다.
+    saved = domain.signals[0]
+    assert saved.cycle_ts == now
+    assert saved.src_disclosure_at == datetime.combine(now.date(), time(), tzinfo=UTC)
