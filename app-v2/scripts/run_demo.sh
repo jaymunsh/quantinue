@@ -58,6 +58,17 @@ start_db() {
   until docker exec "${DEMO_DB_CONTAINER}" pg_isready -U quantinue -d quantinue -q; do
     sleep 1
   done
+  if [[ "${DEMO_WITH_HISTORY:-0}" == "1" ]]; then
+    # 운영 원장(5445)을 **읽기 전용 dump**로 복사해 이어받는다 — 몇 주치
+    # 수집·판단·계좌 곡선이 그대로 데모의 출발 상태가 된다. 운영 쪽에는
+    # pg_dump(SELECT)만 나가고 어떤 쓰기도 하지 않는다(금지선).
+    echo "운영 원장 스냅샷 복사 중 (5445 → 5490, 읽기 전용 dump)…"
+    docker exec app-v2-db-1 pg_dump -U quantinue -d quantinue \
+      --no-owner --no-privileges \
+      | docker exec -i "${DEMO_DB_CONTAINER}" psql -q -U quantinue -d quantinue \
+      >/dev/null
+  fi
+  # 스키마는 멱등이라 빈 DB든 복사본 위든 부족한 조각만 채운다.
   docker exec -i "${DEMO_DB_CONTAINER}" psql -q -v ON_ERROR_STOP=1 \
     -U quantinue -d quantinue <db/schema.sql
 }

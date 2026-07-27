@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import TYPE_CHECKING
 
 import yaml
@@ -14,6 +17,7 @@ from quantinue.core.config import (
     LlmMode,
     Settings,
 )
+from quantinue.db.postgres import PostgresRunStore
 from quantinue.demo.market import DemoMarketData
 from quantinue.demo.scenario import STANCES, build_scenario
 from quantinue.demo.scenario_analyzer import ScenarioAnalyzer
@@ -36,6 +40,8 @@ if TYPE_CHECKING:
     from quantinue.market_data.sec_ownership import InsiderTransaction
 
 _DEMO_DB_MARKER = ":5490/"
+# 이어받은 보유의 평탄 시세 길이 — 각본(_FILM_MINUTES)과 같은 촬영 여유.
+_INHERITED_PATH_LENGTH = 240
 
 
 class _NoInsiders:
@@ -91,6 +97,51 @@ def _demo_config() -> Mvp2Config:
     return Mvp2Config.model_validate(mvp2)
 
 
+async def _inherited_position_prices(
+    database_url: str, *, known: frozenset[str]
+) -> dict[str, Decimal]:
+    """Give inherited holdings a quiet flat price so the watch loop can run.
+
+    운영 원장을 복사해 이어받는 모드(--with-history)에서는 각본에 없는 실보유
+    종목이 감시 대상에 들어온다. 각본 시세는 미등록 티커에 즉시 실패하므로,
+    이어받은 보유에는 "마지막 종가에 멈춘" 평탄한 시세를 준다 — 방어선을
+    새로 발동시키지도, 5% 트리거를 건드리지도 않는 값이다. 종가가 이미
+    손절선 아래면 손절선 위로 살짝 올려 잡는다: 이어받은 화면에서 각본에
+    없는 청산이 터지면 촬영 장면이 회차마다 달라진다.
+    """
+    store = PostgresRunStore(database_url)
+    await store.initialize()
+    try:
+        domain = store.domain
+        positions = await domain.open_positions()
+        # 보유만으로는 부족하다 — 운영이 오늘 이미 돌았으면 오늘 날짜의 실제
+        # 후보(픽)까지 복사돼 와서 감시 대상에 들어온다(실측: AAPL로 tick이
+        # 죽었다). 감시가 물어볼 전체 집합에 값을 준다.
+        today = datetime.now(UTC).date()
+        watched = await domain.watch_tickers(today)
+        inherited = tuple(({p.ticker for p in positions} | set(watched)) - known)
+        if not inherited:
+            return {}
+        closes = await domain.reference_closes(
+            inherited, before=today + timedelta(days=1)
+        )
+        stops = {
+            p.ticker: p.stop_price for p in positions if p.stop_price is not None
+        }
+        prices: dict[str, Decimal] = {}
+        for ticker in inherited:
+            price = closes.get(ticker, Decimal("100.00"))
+            stop = stops.get(ticker)
+            if stop is not None and price <= stop:
+                price = stop * Decimal("1.02")
+            # 실봉 종가는 소수 셋째 자리가 흔하다(212.855 실측). 주문·체결
+            # 경로는 센트 단위 계약이라 그대로 흘리면 pydantic이 거부한다.
+            prices[ticker] = price.quantize(Decimal("0.01"))
+        return prices
+    finally:
+        await store.close()
+
+
 def create_demo_app() -> FastAPI:
     """Assemble the filming app from scripted parts; run via uvicorn --factory.
 
@@ -104,6 +155,19 @@ def create_demo_app() -> FastAPI:
     market = DemoMarketData(
         listings=scenario.listings, featured=scenario.featured
     )
+    # uvicorn --factory는 이 함수를 **돌고 있는 이벤트 루프 안에서** 부른다
+    # (실측 — asyncio.run이 RuntimeError로 죽었다). 그래서 별도 스레드의
+    # 새 루프에서 한 번 읽는다. 부팅 시 1회뿐이라 스레드 비용은 무시된다.
+    price_paths = dict(scenario.price_paths)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        inherited = executor.submit(
+            asyncio.run,
+            _inherited_position_prices(
+                str(settings.database_url), known=frozenset(price_paths)
+            ),
+        ).result()
+    for ticker, price in inherited.items():
+        price_paths[ticker] = (price,) * _INHERITED_PATH_LENGTH
     return create_app(
         settings,
         config=_demo_config(),
@@ -124,7 +188,7 @@ def create_demo_app() -> FastAPI:
             ownership=_NoInsiders(),
         ),
         watch_quotes=ScriptedTradeSource(
-            paths=scenario.price_paths,
+            paths=price_paths,
             clock=SteppingClock(
                 start=scenario.session_start + timedelta(minutes=30),
                 step=timedelta(minutes=1),
