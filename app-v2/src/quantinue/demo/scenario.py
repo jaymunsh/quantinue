@@ -8,11 +8,12 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from quantinue.core.market_calendar import NyseCalendar
+from quantinue.demo.background import background_articles, background_filings
 from quantinue.demo.scripted_events import ScriptedHeadline, scenario_articles
 from quantinue.demo.seed import DemoListing, DemoSeedSpec, HeldPosition
 
 if TYPE_CHECKING:
-    from quantinue.db.domain_records import RawNewsWrite
+    from quantinue.db.domain_records import RawDisclosureWrite, RawNewsWrite
     from quantinue.demo.scenario_analyzer import Stance
 
 # 각본 버전. 가격열·사건·기대 결과를 바꾸면 올린다 — 리허설 2회 동일 재현
@@ -48,6 +49,8 @@ class DemoScenario:
     seed: DemoSeedSpec
     price_paths: dict[str, tuple[Decimal, ...]]
     articles: tuple[RawNewsWrite, ...]
+    wire_articles: tuple[RawNewsWrite, ...]
+    filings: tuple[RawDisclosureWrite, ...]
 
 
 def _flat(price: str, count: int) -> tuple[Decimal, ...]:
@@ -148,4 +151,8 @@ def build_scenario(today: date | None = None) -> DemoScenario:
                 at=cycle_ts + timedelta(hours=2),
             ),
         ),
+        # 배경 수집물 — 전부 오늘의 분석 범위 밖이라 라우팅이 막는다.
+        # 수집량은 늘리되 LLM 호출은 한 건도 만들지 않는다(demo/background.py).
+        wire_articles=background_articles(published_from=session_start),
+        filings=background_filings(trade_date=previous_session),
     )

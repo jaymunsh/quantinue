@@ -16,7 +16,10 @@ from quantinue.core.config import (
 )
 from quantinue.demo.scenario import STANCES, build_scenario
 from quantinue.demo.scenario_analyzer import ScenarioAnalyzer
-from quantinue.demo.scripted_events import ScriptedNewsProvider
+from quantinue.demo.scripted_events import (
+    ScriptedFilingProvider,
+    ScriptedNewsProvider,
+)
 from quantinue.demo.scripted_market import (
     DemoScenarioError,
     ScriptedTradeSource,
@@ -27,26 +30,11 @@ from quantinue.orchestration.job_factory import JobSources
 from quantinue.orchestration.policy import Mvp2Config
 
 if TYPE_CHECKING:
-    from datetime import date
-
     from fastapi import FastAPI
 
-    from quantinue.db.domain_records import RawDisclosureWrite
     from quantinue.market_data.sec_ownership import InsiderTransaction
 
 _DEMO_DB_MARKER = ":5490/"
-
-
-class _NoFilings:
-    """Silent SEC stand-in: the demo day has no scripted disclosures.
-
-    None을 넘기면 기본값이 **실 EDGAR**라(JobSources 계약) 데모가 몰래
-    네트워크로 나간다. 빈 구현을 명시해 그 기본값을 끊는다.
-    """
-
-    async def filings(self, trade_date: date) -> tuple[RawDisclosureWrite, ...]:
-        _ = trade_date
-        return ()
 
 
 class _NoInsiders:
@@ -117,9 +105,12 @@ def create_demo_app() -> FastAPI:
         config=_demo_config(),
         llm_inner=ScenarioAnalyzer(stances=STANCES),
         job_sources=JobSources(
-            disclosures=_NoFilings(),
+            # 각본 기사 2건 + 배경 수집물. 배경은 전부 분석 범위 밖이라
+            # 라우팅에서 걸러지고 LLM은 한 번도 부르지 않는다 — 화면에는
+            # "많이 모았고 관련된 것만 판단했다"가 남는다(demo/background.py).
+            disclosures=ScriptedFilingProvider(filings=scenario.filings),
             news=ScriptedNewsProvider(articles=scenario.articles),
-            wire_news=ScriptedNewsProvider(articles=()),
+            wire_news=ScriptedNewsProvider(articles=scenario.wire_articles),
             ownership=_NoInsiders(),
         ),
         watch_quotes=ScriptedTradeSource(

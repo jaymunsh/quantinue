@@ -10,6 +10,8 @@ from quantinue.db.domain_records import RawNewsWrite
 if TYPE_CHECKING:
     from datetime import date, datetime
 
+    from quantinue.db.domain_records import RawDisclosureWrite
+
 # 각본 기사임이 URL만 봐도 드러나게 예약된 무효 도메인을 쓴다 — 실존 매체
 # URL을 흉내 내면 촬영본이 실제 보도로 오인될 수 있다(demo-video-plan.md §1).
 _DEMO_URL = "https://demo.invalid/scripted-article"
@@ -46,6 +48,18 @@ def scenario_articles(
         )
         for article_id, item in ((1, good), (2, bad))
     )
+
+
+class ScriptedFilingProvider:
+    """`DisclosureBatchProvider` that replays a fixed filing list."""
+
+    def __init__(self, *, filings: tuple[RawDisclosureWrite, ...]) -> None:
+        """Bind the immutable scripted filing list."""
+        self._filings = filings
+
+    async def filings(self, trade_date: date) -> tuple[RawDisclosureWrite, ...]:
+        """Return scripted filings for the requested SEC business date."""
+        return tuple(row for row in self._filings if row.trade_date == trade_date)
 
 
 class ScriptedNewsProvider:
