@@ -154,6 +154,19 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 .quiet{font-size:26px;color:var(--muted);margin-top:18px;line-height:1.5}
 
 /* 표지 */
+.videobox{position:relative}
+.videobox video{width:100%;max-height:520px;display:block;background:#0a0e14;border-radius:14px;
+                border:1px solid var(--rule);box-shadow:0 14px 40px rgba(10,20,32,.16)}
+.videobox.missing video{display:none}
+.videofall{display:none;border:2px dashed var(--rule);border-radius:14px;padding:30px;text-align:center}
+.videobox.missing .videofall{display:block}
+.videofall b{display:block;font-size:28px;color:var(--ink);margin-bottom:10px}
+.videofall span{font-size:20px;line-height:1.55;color:var(--ink2)}
+.videofall code{font-family:var(--mono);font-size:17px;color:var(--muted)}
+/* 구성표는 영상이 있을 땐 접어 둔다 — 같은 내용을 두 번 보여줄 이유가 없다. */
+.cuesheet{margin-top:18px;display:none}
+.videobox.missing .cuesheet{display:table}
+.hud.backup{color:var(--ai)}
 .cover .qmark{width:92px;height:92px;border-radius:20px;display:block;margin-bottom:26px;
                box-shadow:0 10px 30px rgba(11,77,219,.22)}
 /* 마무리 화면 오른쪽 아래. 발표가 끝나고 질문받는 동안 계속 떠 있는 화면이라
@@ -289,13 +302,27 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <h1 class="sm">아래 두 층이 실제로 도는 것</h1>
   <div class="lead">운영과 완전히 분리된 데모에서 각본대로 재현했습니다. 화면에 모의 표시가 계속 떠 있습니다.</div>
   <div class="body">
-    <table>
-      <tr><th style="width:170px">구간</th><th>내용</th><th style="width:430px">자막</th></tr>
-      <tr><td class="num">0:00</td><td><strong>관제실 첫 화면</strong> — 잡·판단·방어선이 한 화면에</td><td>데모 환경 · 모의 AI · 모의 체결</td></tr>
-      <tr><td class="num">0:20</td><td><strong>급락 → 1분 감시 → 손절 체결</strong></td><td class="k-det"><strong>이 경로는 AI를 부르지 않습니다</strong></td></tr>
-      <tr><td class="num">1:10</td><td><strong>호재 → 재판단 → 매수</strong> / 악재 → 반전 매도</td><td class="k-ai"><strong>여기서만 AI가 다시 판단합니다</strong></td></tr>
-      <tr><td class="num">2:20</td><td><strong>운영 서버 실제 기록</strong></td><td>실제 운영 기록 (읽기 전용)</td></tr>
-    </table>
+    <!-- 영상은 저장소 밖(footage/)에 있다. 파일이 있으면 여기서 바로 틀고,
+         없으면 아래 구성표가 대신 뜬다 — 발표장 노트북이 바뀌어도 화면이
+         비지 않게. -->
+    <div class="videobox" data-no-advance>
+      <video id="demoVideo" preload="metadata" controls playsinline
+             controlslist="nodownload" poster="assets/demo-poster.jpg"
+             src="../footage/summary-3min.mp4"></video>
+      <div class="videofall">
+        <b>▶ 데모 영상 2:55</b>
+        <span>파일을 못 찾았습니다 — <code>final-project/footage/summary-3min.mp4</code><br>
+        플레이어로 따로 틀고, 이 장은 아래 구성표로 말합니다.</span>
+      </div>
+      <table class="cuesheet">
+        <tr><th style="width:150px">구간</th><th>내용</th><th style="width:400px">자막</th></tr>
+        <tr><td class="num">0:00</td><td><strong>관제실 첫 화면</strong> — 잡·판단·방어선이 한 화면에</td><td>데모 환경 · 모의 AI · 모의 체결</td></tr>
+        <tr><td class="num">0:15</td><td><strong>손절선이 살 때 이미 적혀 있다</strong> — VRDN $139.50</td><td class="k-det"><strong>살 때 이미 정해집니다</strong></td></tr>
+        <tr><td class="num">0:55</td><td><strong>방어선 발동이 1건 → 2건</strong>으로 자란다</td><td class="k-det"><strong>이 경로는 AI를 부르지 않습니다</strong></td></tr>
+        <tr><td class="num">1:45</td><td><strong>호재 → 재판단 → 매수</strong> / 악재 → 반전 매도</td><td class="k-ai"><strong>여기서만 AI가 다시 판단합니다</strong></td></tr>
+        <tr><td class="num">2:35</td><td><strong>운영 서버 실제 기록</strong></td><td>실제 운영 기록 (읽기 전용)</td></tr>
+      </table>
+    </div>
   </div>
   <div class="ledger"><span class="tag">각본 체결</span><span>VRDN 손절 $139.50</span><span class="dot">·</span><span>HLXM 판단 반전 $80.00</span><span class="dot">·</span><span>NVEX 매수 1,090주 $55.00</span><span class="dot">·</span><span>주문 34 = 체결 34 · 중복 0</span></div>
 </section>
@@ -422,7 +449,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 백업 1 ─────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="질문이 나올 때만 띄운다. 범위·설계 질문은 이 장, 숫자·검증 질문은 다음 장.">
+<section class="slide backup" data-notes="질문이 나올 때만 띄운다. 범위·설계 질문은 이 장, 숫자·검증 질문은 다음 장.">
   <div class="eyebrow"><span class="no">백업 1</span><i class="sep"></i><span class="kr">범위와 설계</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm" style="font-size:46px;margin-top:22px">자주 나올 질문 — 범위·설계</h1>
   <div class="body" style="padding-top:12px">
@@ -441,7 +468,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 백업 2 ─────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="숫자로 파고드는 질문들. 전부 원장으로 재현 가능하다.">
+<section class="slide backup" data-notes="숫자로 파고드는 질문들. 전부 원장으로 재현 가능하다.">
   <div class="eyebrow"><span class="no">백업 2</span><i class="sep"></i><span class="kr">숫자와 검증</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm" style="font-size:46px;margin-top:22px">자주 나올 질문 — 숫자·검증</h1>
   <div class="body" style="padding-top:12px">
@@ -484,24 +511,60 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       notes.classList.contains('on') ? 'flex-start' : 'center';
   }
 
+  // 백업은 질문이 나올 때만 띄우는 장이라 본편 분량에 섞으면 안 된다.
+  // "11장 중 3번째"가 청중이 체감하는 진행이고, 백업은 그 밖이다.
+  const main = slides.filter((s) => !s.classList.contains('backup'));
+  const pad = (n) => String(n).padStart(2, '0');
+
   function show(n) {
     i = Math.max(0, Math.min(slides.length - 1, n));
     slides.forEach((s, k) => s.classList.toggle('on', k === i));
-    hud.textContent = String(i + 1).padStart(2, '0') + ' / ' + String(slides.length).padStart(2, '0');
-    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    const backup = slides[i].classList.contains('backup');
+    hud.textContent = backup
+      ? '백업 ' + (i - main.length + 1) + ' / ' + (slides.length - main.length)
+      : pad(i + 1) + ' / ' + pad(main.length);
+    // 백업에서는 막대를 꽉 채운다 — 본편은 이미 끝났다는 뜻이다.
+    bar.style.width = (backup ? 100 : (i + 1) / main.length * 100) + '%';
+    hud.classList.toggle('backup', backup);
     notes.innerHTML = slides[i].dataset.notes || '<i>노트 없음</i>';
   }
 
+  /**
+   * 키 판정은 `e.key`가 아니라 `e.code`로 한다.
+   *
+   * macOS에서 한글 입력 상태로 F를 누르면 `e.key`가 'ㄹ'로 온다. 그래서
+   * 방향키는 멀쩡한데 F·N만 안 먹는 일이 실제로 있었다 — 발표자가 한영
+   * 전환을 신경 쓰게 만들면 안 된다. `e.code`는 자판에 찍힌 물리 키라
+   * 입력기와 무관하다.
+   *
+   * 영상 위에서는 스페이스를 넘기지 않는다. 재생·일시정지가 먼저다.
+   */
+  const onVideo = (t) => t instanceof Element && t.closest('video');
   addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { show(i + 1); e.preventDefault(); }
-    else if (e.key === 'ArrowLeft' || e.key === 'PageUp') { show(i - 1); e.preventDefault(); }
-    else if (e.key === 'Home') show(0);
-    else if (e.key === 'End') show(slides.length - 1);
-    else if (e.key === 'n' || e.key === 'N') { notes.classList.toggle('on'); fit(); }
-    else if (e.key === 'f' || e.key === 'F') document.documentElement.requestFullscreen?.();
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const c = e.code;
+    if (c === 'ArrowRight' || c === 'PageDown' || (c === 'Space' && !onVideo(e.target))) {
+      show(i + 1); e.preventDefault();
+    } else if (c === 'ArrowLeft' || c === 'PageUp') { show(i - 1); e.preventDefault(); }
+    else if (c === 'Home') { show(0); e.preventDefault(); }
+    else if (c === 'End') { show(slides.length - 1); e.preventDefault(); }
+    else if (c === 'KeyN') { notes.classList.toggle('on'); fit(); e.preventDefault(); }
+    else if (c === 'KeyF') { toggleFullscreen(); e.preventDefault(); }
   });
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else document.documentElement.requestFullscreen?.();
+  }
+
   addEventListener('resize', fit);
-  addEventListener('click', (e) => { if (!notes.contains(e.target)) show(i + (e.clientX < innerWidth / 3 ? -1 : 1)); });
+  addEventListener('fullscreenchange', fit);
+  // 영상·컨트롤 위 클릭은 넘기지 않는다. 재생하려다 슬라이드가 넘어가면
+  // 다시 찾아 들어와야 한다.
+  addEventListener('click', (e) => {
+    if (notes.contains(e.target) || onVideo(e.target) || e.target.closest?.('[data-no-advance]')) return;
+    show(i + (e.clientX < innerWidth / 3 ? -1 : 1));
+  });
 
   /**
    * 아직 안 넣은 캡처 자리를 채운다.
@@ -523,6 +586,22 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
     };
     img.src = fig.dataset.shot;
     img.alt = fig.dataset.todoTitle;
+  }
+
+  /**
+   * 영상은 저장소에 없다(`footage/`는 gitignore). 그래서 "있으면 튼다"로
+   * 만든다 — 파일이 없거나 코덱이 안 맞으면 구성표로 조용히 내려앉는다.
+   * 발표 도중 검은 네모가 뜨는 것보다 낫다.
+   */
+  const vbox = document.querySelector('.videobox');
+  const vid = document.getElementById('demoVideo');
+  if (vbox && vid) {
+    vid.addEventListener('error', () => vbox.classList.add('missing'));
+    if (!vid.canPlayType('video/mp4')) vbox.classList.add('missing');
+    // 슬라이드를 넘기면 소리가 따라다니지 않게 세운다.
+    const stopIfHidden = () => { if (!vid.closest('.slide').classList.contains('on')) vid.pause(); };
+    new MutationObserver(stopIfHidden)
+      .observe(vid.closest('.slide'), { attributes: true, attributeFilter: ['class'] });
   }
 
   fit(); show(0);
