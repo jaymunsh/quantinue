@@ -1,138 +1,127 @@
-# 촬영 직전 인계 — 2026-07-27 저녁 기준
+# 촬영 후 인계 — 2026-07-27 밤 기준
 
-> 이 문서는 **다음 세션이 촬영부터 이어받기 위한 상태 스냅샷**이다.
+> 이 문서는 **다음 세션이 이어받기 위한 상태 스냅샷**이다.
 > 발표 구성·원고는 `presentation-plan.md`·`slides-content.md`가 정본이고,
 > 여기는 "지금 무엇이 준비됐고 다음에 무엇을 하는가"만 적는다.
 
 ## 0. 한 줄 요약
 
-**데모 하네스는 촬영 가능 상태다.** 각본 4장면이 이어받기 모드에서 전부
-실측 확인됐고, 남은 것은 촬영 → 편집 → 슬라이드 → 리허설이다.
+**촬영·편집·슬라이드가 끝났다.** 남은 것은 S6 본테이크(정규장)와 리허설이다.
 
-## 1. 지금 떠 있는 것
+## 1. 산출물
 
-| 대상 | 상태 | 접속 |
-|---|---|---|
-| 운영 8020 | 재기동 완료(2026-07-27 저녁), 오늘 잡 14/14 성공 | `admin` / `quantinue-admin` |
-| 운영 DB 5445 | 정상. **읽기 전용 금지선** | `docker exec app-v2-db-1 psql -U quantinue -d quantinue` |
-| 데모 8022 | 이어받기 모드로 리셋됨, 각본 완주 확인 | `admin`/`quantinue-admin`, `demo`/`qn-demo-user` |
-| 데모 DB 5490 | 일회용. 계좌 7개(사용자 6 + 각본 1) | `docker exec qn-demo-db psql -U quantinue -d quantinue` |
+| 파일 | 길이 | 내용 |
+|---|---:|---|
+| `footage/roughcut-demo.mp4` | 3:06 | 자막·배지 얹은 러프컷 |
+| `footage/summary-3min-pending-s6.mp4` | 2:02 | 요약본. S6 붙이면 ~2:50 |
+| `footage/s1a-control-room.mp4` | 29s | 관제실 첫 화면·일일 리포트·잡 체인 |
+| `footage/s2-vrdn-stoploss.mp4` | 25s | 방어선 VRDN 손절 $139.50 |
+| `footage/s3-nvex-buy.mp4` | 16s | 배분 NVEX 1,090주 @ $55.00 |
+| `footage/s4-hlxm-reversal.mp4` | 16s | 방어선 HLXM 판단 반전 @ $80.00 |
+| `footage/s1b-judgements.mp4` | 49s | 판단과 반박 — 근거·리스크·크리틱 반박 |
+| `footage/s1c-accounts.mp4` | 32s | 계좌 관리 · 운영 기준 |
+| `footage/s5-verify.mp4` | 19s | 주문 34 = 체결 34 · 중복 0/0 |
+| `footage/s6-ops-preopen.mp4` | 48s | **예비** 운영 테이크(개장 전 — 장중 감시가 비어 있다) |
+| `footage/mvp1-showcase.png` | — | 1차 MVP 화면(슬라이드 2용, 8011에서 캡처) |
+| `slides/index.html` | 12장 | 발표용 덱. `←/→` 이동 · `F` 전체화면 · `N` 발표자 노트 |
+| `slides/quantinue-final.pdf` | 12쪽 | 프로젝터 백업 |
 
-⚠️ **데모 admin 비밀번호는 운영 값(`quantinue-admin`)이다.** 이어받기가 운영
-계정을 통째로 복사하므로 `QUANTINUE_DEMO_ADMIN_PASSWORD`는 admin에 안 먹는다
-(demo 유저에는 먹는다). 운영 시 정리하기로 하고 넘어간 항목.
+전부 1920×1080 · 30fps. `footage/`는 gitignore 대상이라 **저장소에 없다** —
+백업은 직접 복사해야 한다(§7 참조).
 
-## 2. 촬영 명령
+## 2. 촬영을 다시 하려면
+
+하네스는 `final-project/shoot/`에 있다. **`shoot/README.md`가 정본이다.**
 
 ```bash
-cd app-v2
-# 촬영 시작 직전에 리셋한다 — 각본이 시간축을 탄다
-DEMO_WITH_HISTORY=1 QUANTINUE_DEMO_USER_PASSWORD='qn-demo-user' \
-  ./scripts/run_demo.sh reset
-./scripts/demo_preflight.sh          # dup_orders=0 dup_fills=0 확인
-./scripts/run_demo.sh stop           # 촬영 종료
+cd final-project/shoot
+node shoot-demo.mjs      # 마스터 (사건이 원장에 뜰 때까지 기다렸다 잡는다)
+node cut.mjs             # 장면 분리 → ../footage/
+node shoot-ops.mjs       # S6 운영 (정규장에만 의미 있음)
+node build_rough.mjs && node build_summary.mjs
 ```
 
-**각본 타이밍** (리셋 시점 기준):
-- 즉시: 시드 보유(VRDN 100주 @150, HLXM 200주 @80) + 배경 원장
-- ~1분: 사건 재판단 → **NVEX 호재 매수**(S3), **HLXM 악재 반전 매도**(S4)
-- ~5분: **VRDN 손절 $139.50**(S2, 5번째 tick)
+리셋(`run_demo.sh reset`)은 **"아직 사건이 안 난 상태"부터 담고 싶을 때만**
+필요하다. 각본 결과는 원장에 남으므로 사건이 끝난 뒤에 찍어도 같은 화면이 나온다.
 
-## 3. 촬영 모드 실측값 (2026-07-27 저녁)
+### 촬영 방식이 바뀌었다 (중요)
 
-```
-일일 리포트: 판단 50건 중 39건 통과, 배분 3건 매수·338건 보류,
-             방어선 2건 발동
-잡 14개 전부 성공 · 계좌 6개 · LLM 지출 $0.19
-주문 34 = 체결 34 (중복 0)
-```
+화면 캡처(`ffmpeg -f avfoundation`)는 **버렸다.** macOS 전체화면 창은 자기
+Space로 들어가는데 화면 캡처는 "그 디스플레이에 지금 보이는 Space"를 찍는다.
+그래서 촬영용 창이 자기 Space로 빠진 사이 캡처가 원래 데스크톱을 담았고,
+개인 메신저와 브라우저 탭이 찍힌 테이크가 나왔다(폐기함).
 
-각본 4장면 체결 기록:
+지금은 **headless Chrome 렌더러에서 페이지를 직접 뜬다.** 창 겹침·Space·화면
+잠금과 무관하고, 페이지 바깥은 원리적으로 프레임에 들어올 수 없다. 화면을
+점유하지 않으므로 촬영 중에도 컴퓨터를 그대로 쓸 수 있다.
 
-| 장면 | 종목 | 결과 |
+## 3. 각본이 화면 어디에 뜨는가 (실측)
+
+| 장면 | 종목 | 뜨는 곳 |
 |---|---|---|
-| 시드 | VRDN · HLXM | bracket 매수 |
-| S3 호재 | NVEX | bracket 매수 $55.00 |
-| S4 악재 반전 | HLXM | close 매도 $80.00 (`thesis_soft`) |
-| S2 방어선 | VRDN | close 매도 $139.50 (손절) |
+| S3 호재 매수 | NVEX | `#allocation` 집행된 매수 |
+| S4 악재 반전 | HLXM | `#protection` 판단 반전 |
+| S2 방어선 | VRDN | `#protection` 손절 |
 
-## 4. 이번 세션에서 고친 것 (커밋 10개)
+**각본 티커는 `#judgements`(판단과 반박)에 뜨지 않는다.** 그 패널은
+`cycle_ts = 자정`인 일일 슬롯만 그린다 — 배분 잡과 같은 필터로
+"관제실 숫자 = 잡 원장 숫자"를 보장하려고 일부러 박아둔 불변식이다
+(`control_room_reads.judgements()` docstring). 버그가 아니므로 건드리지 않았다.
 
-**본제품 결함 — 운영 rejudge를 켜면 터질 자리였다**
-- `95e0ce5` 판단이 공시 계보에 **판단 시각**을 적어 FK 위반 → 종목이 조용히
-  실패 → 그 실패가 tick 전체를 멈춰 재판단 매수·매도가 통째로 안 나갔다.
-  계보는 채점 행의 시각(그 슬롯 자정)을 가리켜야 한다. 실패 로그도 추가.
+그래서 "판단에 근거가 남는다"는 주장은 **이어받은 실제 운영 판단** 카드로
+보여준다(S1b, 반박 붙은 카드 50건). 각본 사건은 원장에 남은 결과로 보여준다.
 
-**데모 하네스**
-- `c3263ba` 이어받은 운영 픽이 현금을 먼저 써서 각본 주인공이 최소 현금
-  문턱에 걸림(픽 점수로 우선순위) + 시드 "시작 보유" 판단이 재판단과 같은
-  시각에 앉아 그 종목 재판단이 막힘(1분 앞으로)
-- `26ebba4` 검증용 계좌(TEST-*) 4개를 데모 화면에서 제외
-- `230f2d8` 매수인데 "판단을 보류한다"고 적히던 문구 모순 해소
+## 4. 발표 전에 정리해야 할 것 (전부 화면·원고 문제. 코드 아님)
 
-**화면 (운영에도 반영됨)**
-- `317a01a` 관제실을 일일 리포트로 열고, 보류 수백 건은 접기 (34,760px →
-  12,900px)
-- `cad0275` 숫자에 단위 ($·주·%·건·개), 확신도 퍼센트화
-- `b2eb821` 섹션 앵커를 현재 화면 아래로, 상태 라벨 한글화
-- `c595792` 슬롯 바 최근 5일 + 날짜 선택기
+1. **계좌 이름 `DEMO-`** — 운영 계좌가 `DEMO-AGGRESSIVE-01` 형태라, S6에서
+   "지금부터 실제 운영입니다"라고 말할 때 화면은 온통 DEMO다. 구분은 좌하단이
+   한다 — 운영 `LLM openai` / 데모 `LLM mock`. 내레이션에서 짚어야 한다.
+   (백업 슬라이드에 답변 추가함)
+2. **시계 불일치** — 각본 매도는 실제 벽시계로, 매수는 고정 시계(14:00 UTC)로
+   찍힌다. 나란히 놓으면 "매도가 매수보다 먼저"로 읽혀서 S5에서 시각 컬럼을 뺐다.
+3. **잡 13종 vs 14개** — 운영 기준 화면은 "잡 13종", 관제실·로그인은 "14".
+4. **계좌 9 vs 10** — 등록 10(운용 6 + 검증용 4), 관제실은 활성 9를 센다
+   (`DEMO-CONSERVATIVE-09` 일시정지). 백업 슬라이드에 반영함.
 
-**테스트**
-- `041c764` 통합군이 포트 충돌로 **아예 안 돌고 있었다**(5490을 데모가 점유).
-  runbook 절차로 복구 → 통합 190 green. 그 사이 깨져 있던 기대값 1건 수정.
+## 5. 원장 재조회 결과 (2026-07-27, 운영 5445)
 
-## 5. 검증 기준선
+슬라이드 7 숫자를 전부 대조했다 — **한 건 빼고 전부 일치**.
+
+```
+후보 222 · 판단 342(매수 266/보류 49/매도 27) · 검토 323(통과 222/반려 57/보류 44)
+반려율 57/323 = 17.6% ≈ 18% · 공격형 175 / 안전형 167
+뉴스 10,728 + 공시 8,973 · 주문 62 = 체결 62
+```
+
+**고친 것**: `주문 62 = 체결 62`에 구분을 붙였다 →
+**운용 27 · 회귀 검증용(TEST-*) 35**. 구분 없이 "62건 체결"이라고 하면
+백업 슬라이드의 "검증용 4계좌" 답변과 어긋난다.
+
+## 6. 검증 기준선 (이번 세션에서 재실행 안 함 — 07-27 저녁 값 그대로)
 
 | 항목 | 값 | 비고 |
 |---|---:|---|
 | 유닛·웹 | **799** | `pytest tests/unit tests/test_*.py` |
-| 통합 | **190** | 아래 절차 필요 (데모와 포트 충돌) |
+| 통합 | **190** | 데모를 내리고 돌려야 한다(포트 5490 충돌) |
 | Ruff | clean | `ruff check src tests` |
 
-통합 테스트는 **데모를 내리고** 돌려야 한다:
+통합 테스트 절차는 이전 인계문과 동일하다(`git log`로 확인 가능).
 
-```bash
-./scripts/run_demo.sh stop && docker rm -f qn-demo-db
-docker run -d --name qn-itest -e POSTGRES_PASSWORD=test-only \
-  -e POSTGRES_DB=contracts -p 127.0.0.1:5490:5432 postgres:16
-until docker exec qn-itest pg_isready -U postgres -d contracts -q; do sleep 1; done
-docker exec -i qn-itest psql -X -q -U postgres -d contracts \
-  -c "CREATE ROLE quantinue LOGIN PASSWORD 'quantinue';" \
-  -c "CREATE DATABASE quantinue OWNER quantinue;"
-docker exec -i qn-itest psql -q -U postgres -d contracts < db/schema.sql
-docker exec -i qn-itest psql -q -U quantinue -d quantinue < db/schema.sql
-QUANTINUE_TEST_DATABASE_URL="postgresql+asyncpg://quantinue:quantinue@127.0.0.1:5490/quantinue" \
-  .venv/bin/python -m pytest tests/integration -q -p no:unraisableexception
-docker rm -f qn-itest
-```
+## 7. 다음에 할 일
 
-## 6. 다음에 할 일 (순서대로)
-
-1. **본 촬영** — S1~S5 장면별 원본을 `final-project/footage/`에 저장
-   (기존 테이크는 구버전 티커라 폐기됨)
-2. **ffmpeg 러프컷** — 자막 포함. DEMO/LIVE 배지 색 구분
-3. **발표용 3분 요약본** — 구성은 `presentation-plan.md` §4-2
-4. **S6 운영 실증거** — 밤 22:30 KST 이후(정규장 개장) 8020 라이브 녹화.
-   읽기 전용
-5. **슬라이드 9장** — 원고는 `slides-content.md`에 완성돼 있음, 실제 슬라이드
-   파일은 미제작
-6. **리허설 1회** — 시간 실측 후 §2 배분 조정
-
-## 7. 알려진 이슈 (촬영에 영향 없음)
-
-- **SEC EDGAR 403**: 운영 로그에 `form.20260727.idx` 403이 반복된다.
-  재기동 이전부터 있던 현상이고(819건), 오늘 공시 잡은 07-24 데이터로
-  `succeeded`라 원장에는 영향 없다. 원인 미조사.
-- **시간축**: 데모 판단이 `14:00 UTC`로 찍힌다. 미국 장중을 재현하는 고정
-  시계 때문이며 버그가 아니다. 영상에서 "미국 장중 하루를 재생했다"로 말한다.
-- **데모 admin 비밀번호**: §1 참조.
-- **`TEST-*` 계좌**: 데모에서는 뺐지만 운영 원장의 주문 62건 중 35건이 그
-  계좌 것이다. 발표에서는 "운용 6계좌 + 검증용 4계좌"로 구분해 말한다
-  (`presentation-plan.md` §5-1에 반영됨).
+1. **S6 본테이크** — 정규장(22:30 KST~)에 `node shoot-ops.mjs`.
+   개장 전 예비 테이크는 장중 감시 패널이 비어 있어("자정 이후 장중 판단 기록이
+   없습니다") 실증거로 약하다.
+2. **S6 붙여 재빌드** — `build_rough.mjs` → `build_summary.mjs`.
+   요약본이 `summary-3min.mp4`로 나온다.
+3. **리허설** — 아직 한 번도 안 했다. 실측 후 `presentation-plan.md` §2 배분 조정.
+4. **영상 백업 2곳** — `footage/`는 gitignore라 저장소에 없다.
+5. **발표 당일 숫자 재조회** — §5 쿼리 그대로.
 
 ## 8. 금지선
 
-- 운영 **8020·5445는 읽기(SELECT/GET)만**. 재기동은 runbook 절차를 따르되
-  잡이 `running`이 아닐 때만.
-- **push는 지시 전 금지.** 현재 미푸시 커밋 다수.
-- `app/`(1차 산출물) 불가침.
+- 운영 **8020·5445는 읽기(SELECT/GET)만**. `shoot-ops.mjs`도 GET과 로그인
+  POST만 보내고 클릭·폼 제출은 하지 않는다.
+- **push는 지시 전 금지.**
+- `app/`(1차 산출물) 불가침. 단 8011에 떠 있는 것을 **읽어서** 캡처하는 것은
+  했다(`footage/mvp1-showcase.png`).
