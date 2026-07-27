@@ -434,7 +434,9 @@ def test_the_page_separates_the_two_investment_profiles() -> None:
     with _client(reads) as client:
         body = client.get("/").text
 
-    # Then
+    # Then — 제목은 사람 말로 부르되 원장 키를 지우지 않고 병기한다.
+    assert "공격형" in body
+    assert "안전형" in body
     assert "aggressive" in body
     assert "conservative" in body
     assert "거래량이 평균의 절반" in body

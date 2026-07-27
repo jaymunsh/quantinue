@@ -68,6 +68,13 @@ _STATUS_LABELS: Final[dict[str, str]] = {
     "failed": "실패",
     "running": "진행 중",
 }
+# 성향은 계좌 화면·유저 화면에서 이미 "공격형/안전형"으로 부른다. 판단
+# 패널만 원장 키(aggressive)를 그대로 제목에 걸고 있어 같은 것이 화면마다
+# 다른 이름으로 보였다.
+_INV_TYPE_LABELS: Final[dict[str, str]] = {
+    "aggressive": "공격형",
+    "conservative": "안전형",
+}
 # 매수가 막힌 이유. 원장에는 기계 코드로 남기고(집계·비교의 축) 화면에서만
 # 사람 말로 바꾼다 — "왜 안 샀나"는 비개발자가 가장 먼저 묻는 질문이다.
 # 키는 role 9의 SkipReason 리터럴과 같은 집합이어야 한다 — 여기 없는 코드는
@@ -270,6 +277,11 @@ class ProfileJudgementsView(BaseModel):
     approved: int = Field(default=0, ge=0)
     unjudged: int = Field(default=0, ge=0)
     judgements: tuple[JudgementView, ...] = ()
+
+    @property
+    def inv_type_label(self) -> str:
+        """Return the Korean profile name shown as the block heading."""
+        return _INV_TYPE_LABELS.get(self.inv_type, self.inv_type)
 
 
 class WatchActivityView(BaseModel):

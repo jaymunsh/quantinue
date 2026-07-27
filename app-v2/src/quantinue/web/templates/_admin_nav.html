@@ -5,15 +5,29 @@
    "지금 어디에 있고 어디로 갈 수 있나"를 답하는 자리라, 화면마다 답이
    다르면 그 답을 믿을 수 없게 된다.
 
-   호출부는 `{% with current = '...' %}`로 현재 화면을 알려준다. #}
+   섹션 앵커는 **현재 화면 링크 바로 아래**에 접힌다. 목록 맨 끝에 따로
+   두면 "계좌 관리 밑에 있는 저 항목들은 계좌 관리의 하위인가"로 읽혔다 —
+   실제로는 지금 보고 있는 화면 안의 위치다. 붙여 두면 소속이 자명해진다.
+
+   호출부는 `{% with current = '...', sections = [(앵커, 이름), …] %}`로
+   현재 화면과 그 화면의 섹션을 알려준다. sections를 안 넘기면 안 그린다. #}
+{% set screens = [
+  ('/admin', '관제실', 'control'),
+  ('/admin/schedule', '운영 기준', 'schedule'),
+  ('/admin/logs', '작동 로그', 'logs'),
+  ('/admin/accounts', '계좌 관리', 'accounts'),
+] %}
 <nav class="nav-group" aria-label="화면">
   <p class="nav-label">화면</p>
-  <a class="nav-link{% if current == 'control' %} nav-link--current{% endif %}"
-     href="/admin"{% if current == 'control' %} aria-current="page"{% endif %}>관제실</a>
-  <a class="nav-link{% if current == 'schedule' %} nav-link--current{% endif %}"
-     href="/admin/schedule"{% if current == 'schedule' %} aria-current="page"{% endif %}>운영 기준</a>
-  <a class="nav-link{% if current == 'logs' %} nav-link--current{% endif %}"
-     href="/admin/logs"{% if current == 'logs' %} aria-current="page"{% endif %}>작동 로그</a>
-  <a class="nav-link{% if current == 'accounts' %} nav-link--current{% endif %}"
-     href="/admin/accounts"{% if current == 'accounts' %} aria-current="page"{% endif %}>계좌 관리</a>
+  {% for href, label, key in screens %}
+  <a class="nav-link{% if current == key %} nav-link--current{% endif %}"
+     href="{{ href }}"{% if current == key %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% if current == key and sections %}
+  <div class="nav-sections">
+    {% for anchor, text in sections %}
+    <a class="nav-link nav-link--section" href="{{ anchor }}">{{ text }}</a>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endfor %}
 </nav>

@@ -12,19 +12,17 @@
 {% endblock %}
 
 {% block nav %}
-{% with current = 'control' %}{% include "_admin_nav.html" %}{% endwith %}
-{# 아래는 이 페이지 안의 섹션이다. 화면 이동과 같은 무게로 두면 "어디로 갈
-   수 있나"와 "여기 뭐가 있나"가 구별되지 않는다. #}
-<nav class="nav-group nav-group--sections" aria-label="이 페이지">
-  <p class="nav-label">이 페이지</p>
-  <a class="nav-link nav-link--section" href="#report">일일 리포트</a>
-  <a class="nav-link nav-link--section" href="#chain">잡 체인</a>
-  <a class="nav-link nav-link--section" href="#watch">장중 감시</a>
-  <a class="nav-link nav-link--section" href="#allocation">배분</a>
-  <a class="nav-link nav-link--section" href="#judgements">판단과 반박</a>
-  <a class="nav-link nav-link--section" href="#accounts">계좌 곡선</a>
-  <a class="nav-link nav-link--section" href="#ledger">계좌 총람</a>
-</nav>
+{# 섹션은 화면 이동과 같은 무게로 두지 않는다 — "어디로 갈 수 있나"와
+   "여기 뭐가 있나"는 다른 질문이다. 내비가 관제실 링크 아래에 접어 준다. #}
+{% with current = 'control', sections = [
+  ('#report', '일일 리포트'),
+  ('#chain', '잡 체인'),
+  ('#watch', '장중 감시'),
+  ('#allocation', '배분'),
+  ('#judgements', '판단과 반박'),
+  ('#accounts', '계좌 곡선'),
+  ('#ledger', '계좌 총람'),
+] %}{% include "_admin_nav.html" %}{% endwith %}
 {% endblock %}
 
 {% block sidebar_footer %}
@@ -312,7 +310,7 @@
     {% for profile in day.profiles %}
     <article class="profile-block">
       <h3>
-        {{ profile.inv_type }}
+        {{ profile.inv_type_label }} <code class="profile-code">{{ profile.inv_type }}</code>
         <span class="badge badge--info">{{ profile.approved }}/{{ profile.total }} 승인</span>
         {% if profile.unjudged %}<span class="badge badge--warning">평결 없음 {{ profile.unjudged }}</span>{% endif %}
       </h3>
@@ -416,8 +414,11 @@
       <thead><tr><th scope="col">계좌</th><th scope="col">성향</th><th scope="col">상태</th><th scope="col">현금</th><th scope="col">평가액</th><th scope="col">보유</th><th scope="col">주문</th><th scope="col">체결</th></tr></thead>
       <tbody>{% for account in roster.accounts %}<tr>
         <td data-label="계좌" class="asset-cell"><strong>{{ account.broker_account_id }}</strong></td>
-        <td data-label="성향">{% if account.inv_type %}{{ account.inv_type }}{% else %}<span class="ledger-empty">미지정</span>{% endif %}</td>
-        <td data-label="상태">{{ account.status }}</td>
+        {# 원장 값(aggressive/active)을 그대로 두면 한국어 화면에 영문 열이
+           둘 선다. 화면은 사람 말로, 대조가 필요한 원장 키는 잡 이름처럼
+           다른 자리에서 읽는다. #}
+        <td data-label="성향">{% if account.inv_type == 'aggressive' %}공격형{% elif account.inv_type == 'conservative' %}안전형{% else %}<span class="ledger-empty">미지정</span>{% endif %}</td>
+        <td data-label="상태">{% if account.status == 'active' %}운용중{% elif account.status == 'paused' %}일시정지{% elif account.status == 'closed' %}종료{% else %}{{ account.status }}{% endif %}</td>
         <td data-label="현금" class="mono">${{ '{:,.2f}'.format(account.cash) }}</td>
         <td data-label="평가액" class="mono">${{ '{:,.2f}'.format(account.equity) }}</td>
         <td data-label="보유" class="mono">{{ account.open_position_count }}</td>
