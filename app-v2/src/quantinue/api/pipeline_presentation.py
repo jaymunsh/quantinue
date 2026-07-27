@@ -105,12 +105,15 @@ class JobRunView(BaseModel):
 
     @property
     def display_name(self) -> str:
-        """Return the human label, falling back to the ledger key.
+        """Return the ledger key with its meaning appended.
 
-        모르는 잡이 생겨도 화면이 비지 않게 원래 이름으로 떨어뜨린다 —
-        번역이 없다는 사실보다 잡이 안 보이는 것이 나쁘다.
+        이름을 **번역하지 않고 덧붙이는** 이유: 잡 이름은 로그·원장·문서에서
+        그대로 쓰이는 공용 키라 화면에서만 다른 말로 부르면 대조가 끊긴다.
+        그렇다고 영문 식별자만 두면 비개발자는 무슨 단계인지 모른다. 둘 다
+        보여주면 개발자는 키로, 청중은 뜻으로 읽는다.
         """
-        return _JOB_LABELS.get(self.job_name, self.job_name)
+        hint = _JOB_LABELS.get(self.job_name)
+        return self.job_name if hint is None else f"{self.job_name} · {hint}"
 
     @property
     def status_label(self) -> str:
