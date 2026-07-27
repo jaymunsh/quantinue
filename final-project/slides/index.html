@@ -242,9 +242,40 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   </div>
 </section>
 
+<!-- 개요 ───────────────────────────────────────────────────────────────── -->
+<section class="slide" data-notes="한 문장으로 말씀드리면, <b>매일 미국 주식 2천 종목을 훑어 AI가 살지 말지 판단하고, 그 판단을 다른 AI가 반박해서 통과한 것만 체결하는 시스템</b>입니다.<br><br>먼저 분명히 해둘 게 하나 있습니다. <b>시세도 뉴스도 공시도 AI 판단도 전부 실물</b>입니다. 모의인 건 <b>브로커 주문 한 군데뿐</b>입니다. 돈이 실제로 오가지 않을 뿐, 나머지는 진짜 시장을 보고 진짜로 판단합니다.<br><br>그리고 이건 만들어만 둔 게 아니라 <b>지금도 서버에서 돌고 있습니다.</b> 매일 잡 14종이 자동으로 돌고, 1분마다 손절선을 지키는 감시가 켜져 있습니다.">
+  <div class="eyebrow"><span class="no">01</span><i class="sep"></i><span class="kr">프로젝트 개요</span><span class="right">QUANTINUE</span></div>
+  <h1 class="sm">AI가 판단하고, 규칙이 지키고,<br><b>전부 기록에 남는다</b></h1>
+  <div class="lead">매일 미국 주식 2,000종목을 훑어 후보를 고르고, AI 두 성향이 판단하고,
+    비평가 AI가 반박하고, 통과한 것만 체결합니다.</div>
+  <div class="body">
+    <div class="grid g3">
+      <div class="card">
+        <span class="n">무엇을 하나</span>
+        <h3>하루 한 번, 그리고 장중에</h3>
+        <p>후보 선별 → 판단 → 반박 → 배분 → 체결.<br>
+           2차에서 <strong>장중에 반응하는 층</strong>을 얹었습니다.</p>
+      </div>
+      <div class="card det">
+        <span class="n">무엇이 실물인가</span>
+        <h3>주문만 빼고 전부 실물</h3>
+        <p>시세 · 뉴스 · 공시 · AI 판단은 <strong>전부 실제</strong>입니다.<br>
+           <strong>브로커 주문 한 군데만 모의</strong>입니다.</p>
+      </div>
+      <div class="card ai">
+        <span class="n">지금 상태</span>
+        <h3>만들어 둔 게 아니라 돌고 있다</h3>
+        <p>운영 서버에서 <strong>매일 잡 14종이 자동</strong>으로 돌고,<br>
+           <strong>1분 방어가 켜져</strong> 있습니다.</p>
+      </div>
+    </div>
+  </div>
+  <div class="ledger"><span class="tag">규모</span><span>계좌 9개</span><span class="dot">·</span><span>판단 342건</span><span class="dot">·</span><span>체결 62건</span><span class="dot">·</span><span>AI 비용 4일 $0.53</span></div>
+</section>
+
 <!-- 팀 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="저희 팀 분담표가 곧 <b>에이전트 분담표</b>입니다. 다섯 명이 역할별 AI 에이전트를 하나씩 맡아, 사람이 맡은 역할을 그대로 코드의 역할로 옮겼습니다. PM 김지현 님이 전체를 리딩했고, Strategist를 맡았던 이은미 님은 1차 이후 취업으로 빠지셔서 <b>2차는 제가 전체를 인수받아 마무리</b>했습니다.">
-  <div class="eyebrow"><span class="no">01</span><i class="sep"></i><span class="kr">팀</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">02</span><i class="sep"></i><span class="kr">팀</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">사람의 분담표가 곧 <b>에이전트 분담표</b></h1>
   <div class="lead">역할을 나눈 방식이 그대로 시스템의 구조가 됐습니다.</div>
   <div class="body">
@@ -262,7 +293,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 2 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="1차 MVP에서 종목을 고르고, 근거를 모으고, AI가 판단하고, 비평가가 반박하고, 모의 주문까지 내는 11단계를 만들었습니다. 실제로 돌려봤더니 한계가 하나 보였습니다 — <b>하루에 한 번만 판단한다는 것</b>입니다. 아침에 산 종목이 오후에 급락해도 다음 날 아침까지 아무도 손대지 않습니다. 2차는 이 한 가지 문제를 푸는 프로젝트였습니다.">
-  <div class="eyebrow"><span class="no">02</span><i class="sep"></i><span class="kr">MVP1에서 배운 것</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">03</span><i class="sep"></i><span class="kr">MVP1에서 배운 것</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">1차에서 파이프라인을<br>만들어 돌려봤다</h1>
   <div class="lead">11단계 · 후보 50 → 20 → 판단 · 로컬 LLM(Qwen)</div>
   <div class="body">
@@ -283,7 +314,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 3 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="구조는 세 층입니다. 위는 1차에서 만든 하루 한 번 도는 판단 체인이고, 2차에서 그 아래 두 층을 얹었습니다. 가운데는 <b>1분마다 도는 방어층</b>인데 여기서는 AI를 한 번도 부르지 않습니다. 손절선을 넘었는지만 기계적으로 보고 넘었으면 바로 정리합니다. 아래는 <b>사건이 생겼을 때만 도는 재판단층</b>입니다. 가격이 5% 넘게 움직이거나 뉴스·공시가 뜨면 그때만 AI를 다시 부릅니다.<br><br>⚠️ <b>&quot;공시·뉴스를 보고 판단한다&quot;를 전면에 세우지 말 것.</b> 수집·정규화는 돌지만(뉴스 10,728·공시 8,973) 채점 결과가 판단에 닿은 사례는 얕다 — src_disclosure_at 6/342 · src_news_at 0/342. 물으면 &quot;수집·정규화까지는 돌고, 채점을 판단에 물리는 구간은 아직 얕다&quot;로 답한다. <b>모은 것과 판단에 쓴 것은 다르다.</b><br><br>💡 더 파고들면: 장중 SEC 소스가 failed_count 266 · last_success null이다. SEC가 미발행 인덱스에 404가 아니라 403을 주는데 정책 차단과 구분이 안 돼 <b>일부러 실패로 남기는 설계</b>다. rejudge=false라 아무 판단에도 안 물린다. 켜기 전 수정 항목으로 기록됨 — docs/mvp2-planning/open-items.md §3-4.">
-  <div class="eyebrow"><span class="no">03</span><i class="sep"></i><span class="kr">해법 · 발표 전체의 지도</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">04</span><i class="sep"></i><span class="kr">해법 · 발표 전체의 지도</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">멀티 에이전트 위에<br><b>AI를 안 쓰는 방어층</b>을 얹었다</h1>
   <div class="body">
     <div class="stack">
@@ -309,7 +340,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 4 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="AI를 잘 쓴다는 게 뭔지 저희 나름의 답이 이 네 가지입니다. 첫째, <b>안 쓸 곳을 먼저 정했습니다.</b> 손절은 판단이 아니라 규칙이라 AI에게 물어볼 필요가 없습니다. 아무 일 없는 1분에는 AI를 한 번도 부르지 않습니다. 둘째, 쓴 곳은 비용을 묶었습니다. 하루 상한이 있고, 급하게 팔아야 할 때 쓸 몫은 미리 20% 떼어 둡니다. 실제로 4일 동안 0.53달러 썼습니다. 셋째, <b>AI 검증조차 아낍니다.</b> 비평가에게 보내기 전에 기계 규칙이 먼저 거르는데, 8할이 거기서 끝납니다. 넷째, 판단을 되짚을 수 있게 남겼습니다. 근거는 처음부터 전부 남겼고, <b>7월 21일에</b> 모델·프롬프트 버전·입력 지문까지 남기도록 넣었습니다. 그 뒤로 나온 판단은 전부 재현할 수 있습니다.<br><br>⚠️ '모든 판단'이라고 말하지 말 것 — 실측은 prompt_version 234/342. 07-20 이전 <b>102건</b>은 재현성 기록 이전 구간(로컬 Qwen·mock 섞임). policy_version은 342건 전부 비어 있으니 먼저 언급 금지 — 물으면 '컬럼만 잡아두고 배선은 안 했다'고 그냥 인정한다.<br><br>💥 <b>'234가 아니라 240 아니냐'고 물으면 되받아치는 자리다.</b> 07-21 이후 판단 240 = LLM 234(누락 0) + 규칙 6. 그 6건은 model_provider조차 없는 <b>규칙 기반 자동 청산이라 애초에 프롬프트가 없다</b>(실측: 6건 전부 sell). 즉 <b>'손절은 AI에게 안 묻는다'는 ①번의 원장 증거</b>다.">
-  <div class="eyebrow"><span class="no">04</span><i class="sep"></i><span class="kr">AI 엔지니어링</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">05</span><i class="sep"></i><span class="kr">AI 엔지니어링</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">AI를 쓸 곳과 안 쓸 곳을 구분했다</h1>
   <div class="verdict"><i class="v-det" style="background:var(--det);width:84%"></i><i style="background:var(--ai);width:16%"></i></div>
   <div class="verdict-cap">
@@ -329,7 +360,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 5 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="[영상 직전] 지금 보실 것은 방금 그림의 아래 두 층입니다. 시장이 촬영 시간에 맞춰 급락해주지 않기 때문에, 운영 환경과 완전히 분리된 데모에서 각본대로 재현했습니다. 화면에 <b>모의 체결·모의 AI 표시</b>가 계속 떠 있습니다.<br><br>[영상 직후] 마지막 30초는 각본이 아니라 저희가 실제로 돌리고 있는 서버의 기록입니다.">
-  <div class="eyebrow"><span class="no">05</span><i class="sep"></i><span class="kr">데모 영상</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">데모 영상</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">아래 두 층이 실제로 도는 것</h1>
   <div class="lead">운영과 완전히 분리된 데모에서 각본대로 재현했습니다. 화면에 모의 표시가 계속 떠 있습니다.</div>
   <div class="body">
@@ -360,7 +391,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 6a ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="알림은 앱이 보냅니다. 그런데 앱이 통째로 죽으면요? 알리는 주체가 같이 죽습니다. 그래서 시스템 <b>바깥에</b> 감시자를 하나 더 뒀습니다. 5분마다 신호를 보내다가 끊기면 외부 서비스가 알려줍니다.">
-  <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">운영 이야기</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">운영 이야기</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">감시자는 누가 감시하나</h1>
   <div class="body">
     <div class="grid g3">
@@ -388,7 +419,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 6b ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="실제 주문은 못 한 게 아니라, 검증이 끝난 뒤에 켜는 마지막 스위치로 설계한 겁니다.<br><br>클라우드는 이야기가 조금 다릅니다. 처음엔 로컬로 도는 시스템이라 <b>필요 없다</b>고 판단했습니다. 그런데 전제가 틀렸더군요. 실제로 돌려보니 <b>노트북을 들고 이동하는 일이 잦았고</b>, 그러면 전원과 네트워크가 끊깁니다. 더 나쁜 건 <b>그 공백이 감지도 안 된다</b>는 겁니다 — 알림을 보내는 주체가 앱인데 앱이 같이 죽으니까요. 그래서 <b>이전이 정당하다고 다시 판단했습니다.</b> 다만 착수 시점은 보류했고, 보류하는 동안엔 텔레그램 알림으로 사각지대를 좁혔습니다.<br><br>한다면 어떻게 할지는 오른쪽에 있습니다. 인스턴스는 t4g.small급이면 충분하고, 비밀키는 서버에 파일로 두지 않고 파라미터 스토어에서 읽어 주입합니다. 관리 화면은 인터넷에 열지 않고 SSH 터널로만 봅니다. 그리고 원장은 반드시 가져갑니다 — 계좌와 체결 기록이 이 시스템의 연속성이니까요.">
-  <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">안 한 것 · 판단이 뒤집힌 것</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">안 한 것 · 판단이 뒤집힌 것</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">못 한 게 아니라 안 한 것<span style="color:var(--muted)">,</span><br>그리고 <em>다시 판단한 것</em></h1>
   <div class="body">
     <div class="split" style="grid-template-columns:1fr 1.25fr">
@@ -413,7 +444,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 7a ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="실제로 돌린 기록입니다. 시가총액 상위 2천 종목에서 시작해 최종 62건이 체결됐고, 주문과 체결 수가 같습니다 — 재시작이 섞여도 같은 주문을 두 번 내지 않았다는 뜻입니다. 그중 27건이 운용 계좌, 35건이 회귀 검증용 계좌입니다. 비평가는 판단의 18%를 실제로 반려했습니다.<br><br><b>주의</b> — 판단이 후보보다 많은 건 성향 2종이 각각 판단하기 때문입니다.">
-  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">판단이 좁혀지는 자리</h1>
   <div class="body">
     <div class="funnel">
@@ -435,7 +466,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 7b ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="하나 분명히 말씀드리면, <b>코드가 있는 것과 지금 켜져 있는 것은 다릅니다.</b> 1분 방어는 운영에서 돌고 있고, 유료 AI 재판단과 웹소켓은 검증 절차를 통과한 뒤에 켭니다. 방금 영상의 재판단은 데모에서만 켠 것입니다.">
-  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">지금 상태</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">지금 상태</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">구현 완료 <span style="color:var(--muted)">≠</span> 지금 켜져 있음</h1>
   <div class="body">
     <table>
@@ -451,7 +482,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 8 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="세 가지를 배웠습니다. AI는 넣으면 되는 기능이 아니라 통제해야 하는 대상이라는 것, 판단은 재현할 수 있어야 신뢰가 생긴다는 것, 그리고 제품뿐 아니라 <b>만드는 과정에도</b> AI 협업을 설계해야 한다는 것입니다.">
-  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">배운 점</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">09</span><i class="sep"></i><span class="kr">배운 점</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">만들고 돌려보며 배운 것</h1>
   <div class="body">
     <div class="grid g3">
@@ -465,7 +496,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 <!-- 9 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide finale" data-corner-mark="1" data-notes="남은 일은 새 기능을 만드는 게 아니라, 켜도 되는지 확인하는 증거를 쌓는 것입니다. 저희 시스템의 가치는 얼마를 벌었다가 아니라, AI의 판단이 검토를 거쳐 체결되고 그 전 과정이 기록으로 남는다는 데 있습니다. 감사합니다.">
-  <div class="eyebrow"><span class="no">09</span><i class="sep"></i><span class="kr">남은 길</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">10</span><i class="sep"></i><span class="kr">남은 길</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm" style="margin-top:26px">남은 것은 개발이 아니라 <b>운영 증거</b></h1>
   <div class="verdict" style="width:1000px;margin-top:30px">
     <i style="background:var(--det);width:25%"></i><i style="background:#9AA9B8;width:25%"></i><i style="background:#C2CCD8;width:25%"></i><i style="background:var(--rule);width:25%"></i>
