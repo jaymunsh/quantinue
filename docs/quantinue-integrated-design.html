@@ -343,7 +343,7 @@
       <span class="chip">JOB <b>14종</b> 등록</span>
       <span class="chip">투자 성향 <b>2종</b> (aggressive · conservative)</span>
       <span class="chip">체결 <b>MockBroker</b> 시뮬</span>
-      <span class="chip">테스트 <b>756 + 186</b> green</span>
+      <span class="chip">테스트 <b>799 + 190</b> green</span>
       <span class="chip">LLM <b>OpenAI</b> · 일 $3 상한</span>
     </div>
     <div class="note">
@@ -354,6 +354,11 @@
       <code>stream=false</code>다. 5445 migration과 현재 HEAD의 8020 OpenAI
       재기동, poll-only Gate A까지 완료했다. 다음은 clean OpenAI 슬롯,
       rejudge Gate B, stream 순서다.
+      <div style="margin-top:10px"><b>2026-07-27 대조:</b> 이 설계 서술은 그대로 유효하다 —
+      그 뒤 앱 코드 변경은 없었고, 원장만 <b>07-19 ~ 07-27 · 7슬롯일</b>로 자랐다
+      (판단 342 · 검토 323 · 체결 62 · openai 4일 $0.53). 이 문서에서 07-27 값으로
+      갱신한 곳은 <b>테스트 수(위 칩·§검증 표)와 계보 컬럼 채움률(§데이터 모델)뿐</b>이고,
+      나머지 실측값은 <b>기록 시점 그대로 보존</b>한다.</div>
     </div>
   </header>
 
@@ -930,6 +935,30 @@ erDiagram
   tb_strategist_signals ||--o| tb_review : "signal_id"
     </div>
     <p class="mermaid-note">계보의 척추만 그렸다. 원시 원장(tb_*_raw)·운영 로그는 의도적으로 FK 밖에 있다.</p>
+
+    <div class="note">
+      <b>계보 컬럼의 실제 채움률 (2026-07-27 · 운영 5445 실측).</b> 아래 스키마 표는 "이 컬럼이
+      있다"는 <b>정의</b>지 "채워진다"는 <b>주장</b>이 아니다. 감사 가능성을 말할 때 둘을 섞으면
+      질문 하나에 무너지므로, 판단 원장(<code>tb_strategist_signals</code> 342건) 기준 실측을
+      여기 붙여 둔다.
+      <div class="twrap" style="margin-top:10px"><table>
+        <thead><tr><th>컬럼</th><th>채움</th><th>읽는 법</th></tr></thead>
+        <tbody>
+        <tr><td class="mono">model_name · prompt_version · input_hash</td><td class="mono"><b>234 / 342</b></td>
+          <td>기록 배선이 들어간 <b>07-21 이후 구간(240건)에서는 LLM이 판단한 234건 전부</b>에 남는다 — 이 구간의 누락은 <b>0건</b>이다. 남는 6건은 <code>model_provider</code>조차 비어 있는 <b>규칙 기반 자동 청산</b>(손절·익절 매도)이라 애초에 프롬프트가 없다. 07-20 이전 102건은 계보 배선 자체가 없던 구간이다.</td></tr>
+        <tr><td class="mono">policy_version</td><td class="mono"><b>0 / 342</b></td>
+          <td><b>컬럼만 있고 아무도 안 채운다.</b> 정책(config) 버전을 판단 행에 박는 배선이 아직 없다. 재현 검증은 프롬프트·입력 해시까지만 가능하고, "그때 어떤 정책값이었나"는 config 이력으로 따로 봐야 한다.</td></tr>
+        <tr><td class="mono">계보 FK — 픽 (<code>trade_date·ticker</code>)</td><td class="mono"><b>342 / 342</b></td>
+          <td>NOT NULL·FK로 DB가 강제한다. "어느 후보를 보고 내렸나"는 예외 없이 조인으로 답한다.</td></tr>
+        <tr><td class="mono">계보 FK — 국면 (<code>src_macro_at</code>)</td><td class="mono"><b>234 / 342</b></td>
+          <td>위 재현 메타데이터와 같은 구간·같은 배선이다.</td></tr>
+        <tr><td class="mono">계보 FK — 공시·뉴스 (<code>src_disclosure_at</code>·<code>src_news_at</code>)</td><td class="mono"><b>6 / 342 · 0 / 342</b></td>
+          <td><b>NULL은 결손이 아니라 "그 종목·그 슬롯에 채점된 공시·뉴스가 없었다"는 뜻</b>이다(nullable FK). 실제로 <code>tb_disclosure_signal</code> 8행 · <code>tb_news_signal</code> 5행뿐이라, 채점 채널이 판단에 닿은 사례가 아직 거의 없다. <b>구조는 뚫려 있고 실적이 얕은 자리</b>로 말해야 정확하다.</td></tr>
+        </tbody>
+      </table></div>
+      즉 정확한 한 문장은 <b>"픽 근거는 전건, 재현 메타데이터는 LLM 판단 전건"</b>이다.
+      <code>policy_version</code>과 <b>공시·뉴스 계보</b>는 <b>미배선·미적재로 남은 항목</b>으로 말한다.
+    </div>
 
     <h3>테이블 한눈에</h3>
     <div class="r-key">
@@ -2066,8 +2095,8 @@ erDiagram
     <div class="twrap"><table>
       <thead><tr><th>무엇을</th><th>어떻게</th><th>기대</th></tr></thead>
       <tbody>
-        <tr><td>유닛 + 웹</td><td class="mono">cd app-v2 && uv run pytest tests/unit tests/test_pipeline_dashboard.py tests/test_my_account.py -q</td><td class="mono">572 green</td></tr>
-        <tr><td>통합 (실 Postgres)</td><td class="mono">uv run pytest tests/integration -q -p no:unraisableexception</td><td class="mono">107 green · 새 컨테이너에서 돌릴 것 (멱등 가드가 옛 행을 지킨다)</td></tr>
+        <tr><td>유닛 + 웹</td><td class="mono">cd app-v2 && uv run pytest tests/unit tests/test_*.py -q</td><td class="mono">799 green (2026-07-27)</td></tr>
+        <tr><td>통합 (실 Postgres)</td><td class="mono">uv run pytest tests/integration -q -p no:unraisableexception</td><td class="mono">190 green (2026-07-27) · 새 컨테이너에서 돌릴 것 (멱등 가드가 옛 행을 지킨다)</td></tr>
         <tr><td>오늘 슬롯 확인</td><td class="mono">GET http://127.0.0.1:8020/admin?slot=YYYY-MM-DD</td><td>JOB 12(+1)종 상태 + 매수/보류 + 계좌 곡선 (로그인 필요)</td></tr>
       </tbody>
     </table></div>
@@ -2077,7 +2106,7 @@ erDiagram
     </div>
     <div class="note">
       개발을 이어받는 사람은 <a href="quantinue-engineering.html"><b>기술 부록</b></a>을 함께 읽을 것 —
-      프로젝트 연대기(10일·268커밋), 결함 통산 26건의 전체 기록, 코드 구조 맵, 28테이블 전체 ERD,
+      프로젝트 연대기(10일·281커밋), 결함 통산 27건의 전체 기록, 코드 구조 맵, 28테이블 전체 ERD,
       운영 함정 목록이 거기 있다.
     </div>
   </section>

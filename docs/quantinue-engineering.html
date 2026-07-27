@@ -319,15 +319,20 @@
       <span class="chip">기간 <b>10일</b> (07-12 ~ 07-21)</span>
       <span class="chip">커밋 <b>281</b></span>
       <span class="chip">결함 통산 <b>27건</b> + 1차 T13건</span>
-      <span class="chip">테스트 <b>603 + 110</b> green</span>
+      <span class="chip">테스트 <b>799 + 190</b> green</span>
     </div>
     <div class="note">
       <b>현재 운영 경계:</b> 장중 사건 수집·정규화·증거 묶음·관련 종목 라우팅,
       전략가/critic의 persona별 at-most-once 호출과 변경 판단의 기존 청산·배분
       연결까지 로컬 구현을 마쳤다. fresh checkout에서 유닛/웹 756개,
-      PostgreSQL 통합 186개가 통과했다. 5445 migration과 8020 OpenAI 재기동,
+      PostgreSQL 통합 186개가 통과했다(07-24 관측). 5445 migration과 8020 OpenAI 재기동,
       poll-only Gate A까지 완료했다. 운영은 <code>rejudge=false</code>·
       <code>stream=false</code>이며 clean 슬롯 뒤 순서대로 활성화한다.
+      <div style="margin-top:10px"><b>2026-07-27 재실행:</b> 유닛/웹 <b>799</b> ·
+      통합 <b>190</b>. 07-24 이후 앱 코드 변경은 없고 테스트만 늘었다 —
+      위 칩은 이 07-27 값이다. <b>본문의 756/186은 07-24 관측이라 그대로 둔다.</b>
+      이 문서의 <b>결함 이력표는 전부 당시 관측값</b>이고, 최신 숫자로 덮으면
+      "그때 무엇을 봤는가"라는 기록의 값이 사라지므로 갱신 대상이 아니다.</div>
     </div>
   </header>
 
@@ -736,7 +741,7 @@ erDiagram
       <tbody>
         <tr><td>앱 (관제실 8020)</td><td class="mono">cd app-v2 && uv run uvicorn quantinue.main:app --port 8020</td></tr>
         <tr><td>dev DB (5445)</td><td class="mono">docker compose up -d db</td></tr>
-        <tr><td>유닛 + 웹</td><td class="mono">uv run pytest tests/unit tests/test_pipeline_dashboard.py tests/test_my_account.py -q</td></tr>
+        <tr><td>유닛 + 웹</td><td class="mono">uv run pytest tests/unit tests/test_*.py -q</td></tr>
         <tr><td>린트</td><td class="mono">uv run ruff check src tests scripts</td></tr>
         <tr><td>통합 (새 컨테이너 5490)</td><td class="mono">docker run -d --name t … -p 127.0.0.1:5490:5432 postgres:17-alpine<br>docker exec -i t psql -q -U quantinue -d quantinue &lt; db/schema.sql<br>QUANTINUE_TEST_DATABASE_URL=… uv run pytest tests/integration -q -p no:unraisableexception</td></tr>
       </tbody>

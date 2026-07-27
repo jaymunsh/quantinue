@@ -315,7 +315,9 @@ node build_rough.mjs && node build_summary.mjs
 | 페르소나별 판단 | 공격형 175 / 보수형 167 | "같은 후보를 두 성향의 AI가 따로 판단 — 프롬프트가 아니라 페르소나를 설계했다" |
 | critic 판정 경로 | 게이트 271 (**84%**) / LLM 52 | "AI 검증조차 아낀다 — 8할은 결정론 게이트에서 끝나고 LLM은 애매한 것만" |
 | critic 거부율 | 57/323 ≈ **18%** (게이트 반려 5 + LLM 반려 52) | "비평가가 장식이 아니라 실제로 판단 다섯 중 하나 가까이를 걸러낸다". 주의: LLM까지 간 52건은 **전부 반려** — "LLM이 나머지의 20%를 거부"라는 서술은 실측과 다르므로 쓰지 않는다 |
-| 판단 재현성 기록 | OpenAI 구간 234건 전부에 모델·프롬프트 버전·입력 해시, 근거는 342건 전부 | "모든 AI 판단은 왜 나왔는지 언제든 감사 가능 — 환각 질문의 정면 답변" |
+| 판단 재현성 기록 | OpenAI 구간 234건 전부에 모델·프롬프트 버전·입력 해시, 근거는 342건 전부 | "모든 AI 판단은 왜 나왔는지 언제든 감사 가능 — 환각 질문의 정면 답변". **정확한 문장은 "근거는 전건, 재현 메타데이터는 openai 구간 전건"이다.** ⚠️ `policy_version`은 **342건 전부 비어 있다**(컬럼만 존재·미배선). "계보를 전부 남긴다"로 뭉뚱그리면 스키마를 열어보는 질문 하나에 무너진다 — 물으면 "정책 버전은 컬럼만 잡아두고 배선은 안 했다"고 그냥 인정한다 |
+| ↳ "234가 아니라 240 아니냐" 반례 | 07-21 이후 판단 240 = **LLM 234 (누락 0) + 규칙 6** | 07-21 이후 구간의 차이 6건은 `model_provider`조차 비어 있는 **규칙 기반 자동 청산(손절·익절)**이라 프롬프트가 없다. **되받아치는 자리다** — "손절은 AI에게 안 묻는다"는 슬라이드 4 ①번의 원장 증거가 된다 |
+| 공시·뉴스 계보 ⚠️ | `src_disclosure_at` 6/342 · `src_news_at` **0/342** | ⚠️ **"공시·뉴스를 보고 판단한다"를 전면에 세우지 않는다.** FK 구조는 뚫려 있지만 `tb_disclosure_signal` 8행 · `tb_news_signal` 5행뿐이라 판단에 닿은 사례가 거의 없다. 수집 원문 10,728+8,973과 헷갈리면 안 된다 — **모은 것과 판단에 쓴 것은 다르다.** 물으면 "수집·정규화까지는 돌고, 채점 결과를 판단에 물리는 구간은 아직 얕다"로 답한다 |
 | 사용 모델 | gpt-5.4-mini 단일 | 요율 미선언 모델은 기동 거부 |
 | 손절선 사전 기록 | 매수 시 `tb_order.stop_price`에 기록 · `/me` 자동 청산 열에 표시 | "손절선은 사후 변명이 아니라 **살 때 적어둔 약속**이다." 데모 실측: VRDN 매입 $150.00 → 손절선 $139.50 기록 → **정확히 $139.50에 청산**. 영상의 축(§4-0) |
 | 주문 대 체결 | 62 = 62 | "재시작·재실행에도 중복 주문 0 — 멱등성 설계의 원장 증거" |
@@ -324,6 +326,7 @@ node build_rough.mjs && node build_summary.mjs
 | LLM 호출 (4일) | 312콜 (전략 168 / critic 144) | 호출마다 원장 기록 |
 | 수집 원문 | 뉴스 10,728 + 공시 8,973건 | "실물 데이터 규모 — 전부 LLM에 넣지 않고 결정론 필터 후 판단" |
 | 운영 계좌 | **사용자 6계좌** ($5k~$150k, 6거래일 시가평가) + 검증용 4계좌 | 다중 계정 운영. 원장의 10계좌를 그대로 세지 않는다 — 4개는 상장폐지·매도갭 회귀를 확인하려고 만든 계좌다 (데모 화면에서는 제외해 시연에 안 나온다) |
+| ↳ 성향별 내역 ⚠️ | 운용: 공격형 활성 3 · 안전형 활성 2 · **일시정지 1** | ⚠️ **성향은 이름이 아니라 `inv_type`으로 센다.** 일시정지된 `DEMO-CONSERVATIVE-09`는 이름과 달리 `inv_type`이 **공격형**이다. 원장을 성향으로만 그룹하면 검증용 `TEST-CONSERVATIVE-01`까지 안전형에 섞여 "안전형 3개"가 나온다 — **"안전형 몇 개냐"는 질문에는 "운용 기준 2개"로 답한다** |
 | SPY 벤치마크 | 278행 수집, `/me`에서 계좌와 비교 | 수익률 "주장"이 아니라 비교 "화면" |
 | 장중 재판단 스윕 / 정규화 사건 | **0 / 0** | `rejudge=false`와 정합 — "켜지 않은 기능은 원장에도 0" (정직 슬라이드 증거) |
 
@@ -352,12 +355,21 @@ SELECT o.order_type, f.side, count(*) FROM tb_fill f JOIN tb_order o ON o.id=f.o
 SELECT called_at::date, count(*), round(sum(est_cost_usd),4) FROM tb_llm_usage GROUP BY 1 ORDER BY 1;
 SELECT inv_type, count(*) FROM tb_strategist_signals GROUP BY 1;
 SELECT decided_layer, count(*) FROM tb_critic_verdict GROUP BY 1;
-SELECT count(*) total, count(prompt_version) has_prov FROM tb_strategist_signals;
+SELECT count(*) total, count(prompt_version) has_prov,
+       count(policy_version) has_policy, count(input_hash) has_hash FROM tb_strategist_signals;
 SELECT count(*) FROM tb_review;
+SELECT inv_type, status, count(*) FROM tb_account
+ WHERE broker_account_id NOT LIKE 'TEST%' GROUP BY 1,2 ORDER BY 1,2;
 SELECT (SELECT count(*) FROM tb_news_raw) news, (SELECT count(*) FROM tb_disclosure_raw) disc,
        (SELECT count(*) FROM tb_watch_sweep) sweeps, (SELECT count(*) FROM tb_normalized_event) events;
 SQL
 ```
+
+**이 쿼리 하나로 `docs/` HTML 갱신까지 같이 끝난다.** 계좌 쿼리에
+`NOT LIKE 'TEST%'`가 붙은 이유는 위 성향별 내역 행의 ⚠️ 때문이고,
+`has_policy`를 뽑는 이유는 재현성 행의 ⚠️ 때문이다 — 둘 다 "그냥 GROUP BY 하면
+틀린 답이 나오는" 자리라 쿼리 자체에 가드를 박아뒀다. 갱신 규칙은
+`final-project/last-document-update/README.md`가 정본이다.
 
 ## 6. 범위 결정의 근거 — "왜 안 했는가" 답변 정본
 

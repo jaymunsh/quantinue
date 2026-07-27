@@ -211,7 +211,12 @@ flowchart LR
       <span class="t">tb_order_plan · allocation</span>
       <div class="h">4. 사이징 — 안전형 계좌 3개에 각각 계획이 선다</div>
       <div class="d">진입 184.59 · 손절 156.90(−15%) · 익절 221.51(+20%)의 브래킷으로,
-      계좌 크기에 따라 54주 · 54주 · 2주. 손절·익절 비율은 코드가 아니라 <code>pipeline.yaml</code>이 정한다(⑦).</div>
+      계좌 크기에 따라 54주 · 54주 · 2주. 손절·익절 비율은 코드가 아니라 <code>pipeline.yaml</code>이 정한다(⑦).
+      <span class="quote" style="display:block"><span class="who">계좌를 셀 때 주의 (2026-07-27 확인)</span>여기 3개는
+      <code>DEMO-CONSERVATIVE-01</code> · <code>DEMO-CONSERVATIVE-02</code> · <code>TEST-CONSERVATIVE-01</code>이다.
+      셋째는 <b>회귀 검증용</b> 계좌라 배분이 성향으로만 고르면 같이 잡힌다 — <b>운용 안전형은 2개</b>다.
+      반대로 <code>DEMO-CONSERVATIVE-09</code>는 이름과 달리 <code>inv_type</code>이 <b>공격형</b>이고
+      현재 <code>paused</code>다. 성향별로 셀 때는 이름이 아니라 <code>inv_type</code>을 봐야 한다.</span></div>
     </div></div>
     <div class="step"><div class="rail"><div class="dot"></div></div><div class="body">
       <span class="t">tb_order → tb_fill · MockBroker</span>
@@ -335,7 +340,16 @@ flowchart LR
   poll-only 정규장 Gate A도 통과했다. 최신 사건 스키마의 5445 적용,
   <code>rejudge=true</code> 기능일·다음 거래일 안정성, 마지막 stream 연결은
   운영 활성화 단계로 분리했다.</p>
+  <p><b>2026-07-27 재조회 — 그 뒤로 원장이 어디까지 왔나.</b> 이 페이지를 고치려고 적는 숫자가
+  아니라, 07-21 하루가 전체 어디쯤이었는지 가늠하라고 적는다. 잡 원장은
+  <b>07-19 ~ 07-27 · 7슬롯일</b>, 판단 <b>342건</b>(매수 266 · 보류 49 · 매도 27),
+  크리틱 검토 <b>323건</b>(통과 222 · 반려 57 · 보류 44), 후보 <b>222건</b>,
+  주문 <b>62건 = 체결 62건</b>(운용 27 · 회귀 검증용 35)이다. 크리틱은 <b>271건(83.9%)을
+  결정론 게이트에서</b> 끝내고 <b>52건만 LLM</b>으로 보냈다. openai 전환 뒤 유료 콜은
+  4일간 <b>312콜 · $0.53</b>(일 상한 $3)로, 이 페이지가 "비어 있는 것이 정상"이라고 적은
+  <code>tb_llm_usage</code>는 07-22부터 실제로 쌓이기 시작했다.</p>
   <div class="note">이 페이지의 숫자와 타임라인은 07-21 실측 하루를 보존한다.
+  <b>바로 위 문단만 예외로 07-27 재조회 값이고, 나머지 본문은 고치지 않았다.</b>
   살아있는 최신 상태는 관제실(<code>/admin</code>)과
   <code>dev-handoff.md</code>를 볼 것.</div>
 </section>
@@ -355,7 +369,7 @@ flowchart LR
   문서에서 본 하루와 화면의 오늘이 같은 모양이면, 이해는 끝난 것이다.</p>
 </section>
 
-<div class="foot">Quantinue · 하루의 해부 v1.0 · 실측 스냅샷: 슬롯 <span class="nowrap">2026-07-21</span> (관측 DB 5445) · 작성 <span class="nowrap">2026-07-21</span></div>
+<div class="foot">Quantinue · 하루의 해부 v1.1 · 실측 스냅샷: 슬롯 <span class="nowrap">2026-07-21</span> (관측 DB 5445) · 작성 <span class="nowrap">2026-07-21</span> · 최종 대조 <span class="nowrap">2026-07-27</span> (⑨ 재조회 문단·④ 계좌 주석만 추가)</div>
 
 </div>
 
