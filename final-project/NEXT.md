@@ -24,8 +24,38 @@
 | `slides/index.html` + `.pdf` | **13화면**. 원고와 일치. 슬라이드 2에 1차 MVP 실제 화면, 백업은 범위·설계 / 숫자·검증 두 장 |
 | `shoot/` | 촬영·편집 하네스. 명령 몇 줄로 재현 |
 
-**테스트 기준선: 유닛·웹 803 · Ruff clean**(07-28 실행). 통합 190은
-포트 5490을 데모가 잡고 있어 아직 못 돌렸다 — 촬영 리셋 때 묶어서 한다.
+**테스트 기준선(07-28 02:20 전부 실행): 유닛·웹 803 · 통합 190 · Ruff clean.**
+셋 다 통과다. 덱 8화면의 `803 / 190`은 실측과 맞다.
+
+<details><summary>통합 190을 다시 돌리려면 (함정 두 개)</summary>
+
+1. **5490 포트를 데모와 통합 테스트가 함께 쓴다.** `run_demo.sh`의 데모 DB와
+   사건 파이프라인 테스트가 하드코딩한 주소
+   (`test_event_evidence.py:53` = `postgres:test-only@127.0.0.1:5490/contracts`)가
+   같은 포트다. **공존할 수 없다** — 데모를 내리고 `contracts` DB를 대신
+   띄워야 한다. 이 절차는 어느 문서에도 없어서 여기 적어 둔다:
+
+   ```bash
+   docker stop qn-demo-db
+   docker run --rm -d --name qn-contracts-5490 \
+     -e POSTGRES_PASSWORD=test-only -e POSTGRES_DB=contracts \
+     -p 127.0.0.1:5490:5432 \
+     -v "$PWD/db/schema.sql:/docker-entrypoint-initdb.d/001.sql:ro" \
+     postgres:16-alpine
+   ./scripts/test_postgres_integration.sh -q -p no:unraisableexception
+   # 끝나면
+   docker stop qn-contracts-5490 && docker start qn-demo-db
+   ```
+
+2. **`-p no:unraisableexception`이 없으면 9건이 실패로 뜬다.** 테스트가 틀린
+   게 아니다 — pytest 9가 GC 중에 나온 asyncpg 미정리 커넥션
+   `ResourceWarning`을 그때 돌던 테스트의 실패로 올린다. 그래서 격리해서
+   돌리면 같은 테스트가 통과하고, 전체로 돌리면 계정 관련 9건에 몰려서 뜬다.
+   **제품 결함이 아니라 테스트 정리(cleanup) 위생 문제**이고, 끄고 돌리면
+   190건 전부 통과한다. 발표 전에 고칠 일은 아니지만, 질문이 오면 이대로
+   답하면 된다.
+
+</details>
 
 **영상은 구버전이다.** `footage/`의 러프컷(3:06)과 요약본(2:02)은
 §4-2 샷 리스트가 나오기 **전에** 찍은 것이라, 아래 1번에서 다시 찍는다.
