@@ -222,7 +222,10 @@ async def test_approved_buys_become_filled_orders_and_cash_moves() -> None:
         account=account_id,
     )
     assert plans == [("ALH1", "planned"), ("ALH2", "planned")]
-    assert "2 bought" in detail
+    # 잡 원장의 detail은 관제실이 그대로 보여주는 문장이라 한국어다
+    # (9a914f1). 영문 기대값이 남아 있었지만 통합군이 포트 충돌로 안 돌아
+    # 여태 안 걸렸다.
+    assert "2건 매수" in detail
 
 
 @pytest.mark.anyio
