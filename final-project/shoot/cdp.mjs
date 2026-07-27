@@ -80,6 +80,37 @@ export async function attach() {
   return page;
 }
 
+/**
+ * 쿠키를 공유하지 않는 새 페이지를 연다.
+ *
+ * 탭을 하나 더 여는 것으로는 안 된다 — 관제실(`admin`)과 `/me`(`demo`)는
+ * **같은 오리진**이라 탭끼리 쿠키를 공유한다. 한쪽에 로그인하면 다른 쪽이
+ * 그 계정으로 바뀌어, 한 테이크 안에서 두 계정을 오갈 수 없다. 브라우저
+ * 컨텍스트를 따로 만들면 쿠키 항아리가 갈라져 두 세션이 동시에 산다.
+ *
+ * headless라 "탭 전환"은 필요 없다. 캡처가 페이지 타깃에 직접 붙으므로
+ * 어느 페이지를 찍을지는 캡처 대상을 바꾸는 것으로 끝난다.
+ */
+export async function openIsolatedPage(browser, url = 'about:blank') {
+  const { browserContextId } = await browser.send('Target.createBrowserContext', {
+    disposeOnDetach: false,
+  });
+  const { targetId } = await browser.send('Target.createTarget', { url, browserContextId });
+  const { sessionId } = await browser.send('Target.attachToTarget', {
+    targetId, flatten: true,
+  });
+  const page = {
+    browser,
+    sessionId,
+    targetId,
+    browserContextId,
+    send: (m, p) => browser.send(m, p, sessionId),
+  };
+  await page.send('Page.enable');
+  await page.send('Runtime.enable');
+  return page;
+}
+
 export async function evaluate(page, expr, { awaitPromise = true } = {}) {
   const r = await page.send('Runtime.evaluate', {
     expression: expr, returnByValue: true, awaitPromise,

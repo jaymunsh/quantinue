@@ -37,7 +37,13 @@ export function burn(src, dest, { badge, subs = [], fadeIn = 0, fadeOut = 0 }) {
     const out = `v${idx}`;
     // 자막 띠는 화면 아래, 배지는 위 — PNG 자체가 1920 폭 전체를 쓰므로
     // y만 지정하면 된다.
-    const y = ov.png.startsWith('badge') ? 0 : 'H-h';
+    //
+    // `up`은 자막을 화면 중단으로 올린다. 증거가 페이지 **맨 아래 행**에
+    // 있는 장면(`/me` 보유 종목의 VRDN)에서는 기본 위치가 그 행을 정확히
+    // 덮는다 — 자막이 가리키는 숫자를 자막이 가리는 꼴이라, 그 장면만
+    // 올려서 피한다. 페이지가 이미 바닥까지 스크롤돼 더 못 올라가므로
+    // 화면 쪽을 움직이는 것 말고는 방법이 없다.
+    const y = ov.png.startsWith('badge') ? 0 : (ov.up ? `H-h-${ov.up}` : 'H-h');
     filters.push(
       `[${last}][${idx}:v]overlay=0:${y}:enable='between(t,${ov.from},${ov.to})'[${out}]`,
     );

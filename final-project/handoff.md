@@ -6,23 +6,30 @@
 
 ## 0. 한 줄 요약
 
-**촬영·편집·슬라이드가 끝났고, S6 본테이크도 장중에 잡았다.**
-남은 것은 §4-2 샷 리스트대로의 데모 재촬영, 알림 배포, 리허설이다.
+**영상·슬라이드가 전부 끝났다.** 요약본 `summary-3min.mp4` 2:55가 정본이고,
+§4-1의 5막·§4-2의 샷 A~J를 전부 담고 있다.
+남은 것은 **알림 배포(05:00~13:00 KST)**, **리허설**, **본인 캡처 2장**이다.
 
 ## 1. 산출물
 
+**07-28 새벽에 §4-2 샷 리스트로 전부 다시 찍었다.** 옛 파일명(`s1a`·`s2`·
+`s3`·`s4`·`s1b`·`s1c`)은 더 없다 — 샷 기호(A~H)가 곧 파일명이다.
+
 | 파일 | 길이 | 내용 |
 |---|---:|---|
-| `footage/roughcut-demo.mp4` | 3:06 | 자막·배지 얹은 러프컷 |
-| `footage/summary-3min-pending-s6.mp4` | 2:02 | 요약본. S6 붙이면 ~2:50 |
-| `footage/s1a-control-room.mp4` | 29s | 관제실 첫 화면·일일 리포트·잡 체인 |
-| `footage/s2-vrdn-stoploss.mp4` | 25s | 방어선 VRDN 손절 $139.50 |
-| `footage/s3-nvex-buy.mp4` | 16s | 배분 NVEX 1,090주 @ $55.00 |
-| `footage/s4-hlxm-reversal.mp4` | 16s | 방어선 HLXM 판단 반전 @ $80.00 |
-| `footage/s1b-judgements.mp4` | 49s | 판단과 반박 — 근거·리스크·크리틱 반박 |
-| `footage/s1c-accounts.mp4` | 32s | 계좌 관리 · 운영 기준 |
-| `footage/s5-verify.mp4` | 19s | 주문 34 = 체결 34 · 중복 0/0 |
-| `footage/s6-live-ops.mp4` | 1:48 | **본테이크(장중 07-28 01:03~01:05).** 관제실 + 운영 기준 · 폴링 01:02→01:04 갱신 |
+| `footage/summary-3min.mp4` | **2:55** | **발표용 요약본. 이걸 튼다.** |
+| `footage/roughcut-demo.mp4` | 3:49 | 전체 러프컷(자막·배지 포함) |
+| `footage/a-control-room.mp4` | 15s | 샷A 관제실 최상단 · LLM mock 배지 |
+| `footage/b-me-stoploss-preset.mp4` | 28s | **샷B `/me` VRDN 100주 · 자동 청산 손절 $139.50 (영상의 축)** |
+| `footage/c-protection-before.mp4` | 14s | 샷C 방어선 1건 — VRDN 아직 없음(대조군) |
+| `footage/d-protection-grows.mp4` | 39s | **샷D 배지가 1건 → 2건으로 자라는 순간(다시 못 찍음)** |
+| `footage/e-me-after-exit.mp4` | 32s | 샷E VRDN 사라짐 + "모델 판단 없이 손절 조건으로 체결" |
+| `footage/f-nvex-buy.mp4` | 15s | 샷F 배분 NVEX 1,090주 @ $55.00 |
+| `footage/g-hlxm-reversal.mp4` | 14s | 샷G 방어선 HLXM 판단 반전 @ $80.00 |
+| `footage/h-judgements.mp4` | 33s | 샷H 판단과 반박 — 근거·리스크·크리틱 반박 |
+| `footage/s5-verify.mp4` | 19s | 주문 34 = 체결 34 · 중복 0/0 (07-28 재실행) |
+| `footage/s6-live-ops-tail.mp4` | 20s | **샷J 편집본 — 요약본에 들어가는 건 이것** |
+| `footage/s6-live-ops.mp4` | 1:48 | 샷J 본테이크(장중 07-28 01:03~01:05) · 폴링 01:02→01:04 갱신 |
 | `footage/s6-live-ops-take1.mp4` | 48s | 같은 밤 1차 테이크(관제실만). 예비 |
 | `footage/s6-ops-preopen.mp4` | 48s | 개장 전 예비 테이크. 본테이크가 생겨 쓸 일 없다 |
 | `footage/mvp1-showcase.png` | — | 1차 MVP 화면(슬라이드 2용, 8011에서 캡처) |

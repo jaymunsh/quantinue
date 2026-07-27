@@ -1,11 +1,14 @@
 // 발표용 요약본. 러프컷의 구운 클립(자막·배지 포함)을 잘라 이어붙인다.
 //
-// presentation-plan §4-2의 3:00 구성을 따르되, 실제 장면 길이에 맞춰
-// 배분을 조정했다. S1c(계좌·운영 기준)는 요약본에서 뺀다 — 발표 슬라이드
-// §7이 같은 내용을 숫자로 다루므로 영상에서 두 번 말할 필요가 없다.
+// presentation-plan §4-1의 5막 3:00 구성을 따르되, 실제 장면 길이에 맞춰
+// 배분을 조정했다.
 //
-// S6(운영 라이브)는 정규장 개장 이후에만 찍을 수 있어, 있으면 붙이고
-// 없으면 그 자리를 비운 채 나머지를 확정한다.
+// **막 1(사전 약속)과 막 2(그 약속이 지켜지는 사건)를 자르지 않는다.**
+// 이 영상이 증명하는 한 문장이 그 둘에 걸려 있어서, 여기를 줄이면 나머지를
+// 아무리 붙여도 영상의 값이 없다(§4-0). 시간이 넘치면 막 3·4를 줄인다.
+//
+// S6(운영 라이브)는 정규장에만 찍을 수 있어, 있으면 붙이고 없으면 그 자리를
+// 비운 채 나머지를 확정한다.
 import { execFileSync } from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -20,12 +23,15 @@ const dur = (f) => parseFloat(execFileSync('ffprobe',
 
 // [클립, 앞에서 자를 초, 쓸 길이(초) | null = 끝까지]
 const SEQ = [
-  ['s1a-control-room.mp4', 0, 20],
-  ['s2-vrdn-stoploss.mp4', 0, null],
-  ['s3-nvex-buy.mp4', 0, null],
-  ['s4-hlxm-reversal.mp4', 0, null],
-  ['s1b-judgements.mp4', 0, 30],
-  ['s5-verify.mp4', 0, 15],
+  ['a-control-room.mp4', 0, 14],            // 막0 무대
+  ['b-me-stoploss-preset.mp4', 0, null],    // 막1 사전 약속 — 자르지 않는다
+  ['c-protection-before.mp4', 0, 8],        // 막2 대조군
+  ['d-protection-grows.mp4', 0, null],      // 막2 심장 — 자르지 않는다
+  ['e-me-after-exit.mp4', 0, 15],           // 막2 결말
+  ['f-nvex-buy.mp4', 0, 12],                // 막3
+  ['g-hlxm-reversal.mp4', 0, 12],
+  ['h-judgements.mp4', 0, 17],              // 막4
+  ['s5-verify.mp4', 0, 10],
 ];
 
 const parts = [];
@@ -46,7 +52,7 @@ for (const [file, from, want] of SEQ) {
 }
 
 // S6이 준비돼 있으면 마지막에 붙인다.
-const s6 = join(CUT, 's6-live-ops.mp4');
+const s6 = join(CUT, 's6-live-ops-tail.mp4');
 if (existsSync(s6)) { parts.push(s6); console.log(`  ${'s6-live-ops.mp4'.padEnd(26)} ${dur(s6).toFixed(1)}s (LIVE)`); }
 else console.log('  s6-live-ops.mp4            — 아직 없음(정규장 개장 후 촬영)');
 

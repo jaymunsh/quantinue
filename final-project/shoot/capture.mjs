@@ -19,6 +19,11 @@ import { sleep } from './cdp.mjs';
 export function startCapture(page, dir, { fps = 25, quality = 84 } = {}) {
   rmSync(dir, { recursive: true, force: true });
   mkdirSync(dir, { recursive: true });
+  // page에 함수를 줄 수 있다. 한 테이크 안에서 계정이 다른 두 페이지를
+  // 오가야 하는데(관제실 admin ↔ /me demo), 녹화를 끊으면 그 사이 각본
+  // 시간축이 지나가버린다. 매 프레임 "지금 찍을 페이지"를 물어보면
+  // 녹화는 끊기지 않고 화면만 갈린다.
+  const targetOf = typeof page === 'function' ? page : () => page;
 
   const frames = [];
   let running = true;
@@ -33,7 +38,7 @@ export function startCapture(page, dir, { fps = 25, quality = 84 } = {}) {
       if (wait > 0) await sleep(wait);
       if (!running) break;
       try {
-        const { data } = await page.send('Page.captureScreenshot', { format: 'jpeg', quality });
+        const { data } = await targetOf().send('Page.captureScreenshot', { format: 'jpeg', quality });
         const name = `f${String(frames.length).padStart(6, '0')}.jpg`;
         writeFileSync(join(dir, name), Buffer.from(data, 'base64'));
         frames.push({ name, at: Date.now() - t0 });
