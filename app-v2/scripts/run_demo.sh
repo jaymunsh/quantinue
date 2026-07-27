@@ -68,6 +68,11 @@ DELETE FROM tb_order WHERE closes_order_id IN (
 DELETE FROM tb_order WHERE account_id IN (SELECT id FROM demo_test_accounts);
 DELETE FROM tb_account_equity_daily WHERE account_id IN (SELECT id FROM demo_test_accounts);
 DELETE FROM tb_account WHERE id IN (SELECT id FROM demo_test_accounts);
+-- 이름과 성향이 어긋난 계좌를 이름 쪽으로 맞춘다. 개설 폼을 검증하며
+-- 만든 계좌라 운영 원장에는 그대로 두지만, 화면에 "DEMO-CONSERVATIVE-09 ·
+-- 공격형"이 뜨면 시연 중 눈에 띄는 순간 설명할 거리가 없다.
+UPDATE tb_account SET inv_type='conservative'
+ WHERE broker_account_id LIKE '%CONSERVATIVE%' AND inv_type='aggressive';
 SQL
 }
 

@@ -139,7 +139,13 @@ def _strategy_output(stance: Stance | None) -> StrategyModelOutput:
             return StrategyModelOutput(
                 score=0.60,
                 label="hold",
-                reason="새 근거가 없어 판단을 보류한다",
+                # 문구가 방향을 단정하지 않는다. 이어받기 모드에서는 배경
+                # 종목의 픽 점수가 운영 원장 값(높음)이라, 이 0.60과 평균을
+                # 내면 매수 문턱을 넘을 수 있다 — 그때 "보류한다"고 적힌
+                # 판단이 매수로 체결돼 화면이 자기 말을 뒤집었다(실측).
+                # 점수를 낮추면 이번엔 bearishness가 매도 문턱을 넘어 각본
+                # 밖 매도가 나간다. 그래서 숫자가 아니라 문장을 고친다.
+                reason="새 사건이 없어 기존 지표만으로 판단한다",
                 bull_case="",
                 key_risk="",
             )
