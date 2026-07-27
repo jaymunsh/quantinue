@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
-from quantinue.api.pipeline_presentation import equity_sparkline
+from quantinue.api.pipeline_presentation import equity_sparkline, exit_reason_label
 
 if TYPE_CHECKING:
     from quantinue.db.control_room_reads import AccountEquityPoint
@@ -87,6 +87,9 @@ class TimelineEntryView(BaseModel):
     # 기계적 청산인가 모델 판단인가. 판단 없는 체결도 사실이므로 숨기지 않고
     # "규칙이 팔았다"로 읽히게 한다.
     is_mechanical: bool
+    # 기계 청산이 어느 규칙이었는지("손절"·"익절"…). 원장 요약 "stop exit"를
+    # 화면에 그대로 내보냈더니 한국어 화면에 영문 코드 한 줄이 떴다.
+    mechanical_label: str | None
     inv_type: str | None
     conviction: str | None
     summary: str | None
@@ -145,7 +148,20 @@ def _holding_view(record: AccountHoldingRecord) -> HoldingView:
     )
 
 
+def _mechanical_reason(summary: str | None) -> str | None:
+    """Return the Korean rule name if this summary is an exits-job marker.
+
+    청산 잡은 판단 문장 대신 "<reason> exit"를 요약으로 남긴다(exits/job.py).
+    그건 모델 판단이 아니라 규칙 발동의 표식이므로, 유저 화면에서는 판단
+    문장처럼 그리지 않고 기계 청산으로 분류해 규칙 이름만 보여준다.
+    """
+    if summary is None or not summary.endswith(" exit"):
+        return None
+    return exit_reason_label(summary.removesuffix(" exit"))
+
+
 def _timeline_view(record: TradeTimelineRecord) -> TimelineEntryView:
+    mechanical_label = _mechanical_reason(record.summary)
     return TimelineEntryView(
         fill_id=record.fill_id,
         ticker=record.ticker,
@@ -153,7 +169,8 @@ def _timeline_view(record: TradeTimelineRecord) -> TimelineEntryView:
         quantity=record.quantity,
         price=record.price,
         filled_at=record.filled_at,
-        is_mechanical=record.summary is None,
+        is_mechanical=record.summary is None or mechanical_label is not None,
+        mechanical_label=mechanical_label,
         inv_type=record.inv_type,
         conviction=None if record.conviction is None else str(record.conviction),
         summary=record.summary,

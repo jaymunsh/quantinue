@@ -819,9 +819,37 @@ th { color: var(--sub); background: var(--bg); font-size: 13px; }
   font-variant-numeric: tabular-nums;
 }
 .chart__axis b { color: var(--fg); font-weight: 600; }
+/* 곡선의 방향을 색으로도 말한다 — ±% 숫자(총자산 카드)가 항상 함께 있다. */
+.chart--up { color: var(--success); }
+.chart--down { color: var(--danger); }
 @media (max-width: 520px) {
   .chart__axis { flex-direction: column; gap: 4px; }
 }
+
+/* ═══ 보유 종목 보강 ══════════════════════════════════════════ */
+.weight-cell { display: flex; align-items: center; gap: 8px; min-width: 110px; }
+.weight-cell__bar { flex: 1 1 auto; height: 6px; overflow: hidden; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); }
+.weight-cell__bar i { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--accent); }
+.weight-cell__pct { flex: none; font-size: 12px; font-variant-numeric: tabular-nums; }
+.pnl-pct { display: block; margin-top: 2px; color: var(--muted); font: 500 10.5px var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ═══ 거래 내역 타임라인 ══════════════════════════════════════
+   매수/매도가 색 축이다. ledger-list(감사 로그용)와 갈라선 이유는 이 목록의
+   주인공이 코드가 아니라 판단 서사이기 때문 — 문장이 읽히는 크기여야 한다. */
+.trade-list { display: grid; gap: 10px; margin: 8px 0 0; padding: 0; list-style: none; }
+.trade { min-width: 0; padding: 12px 14px; border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: var(--r-control); background: var(--surface); }
+.trade--buy { border-left-color: var(--success); }
+.trade--sell { border-left-color: var(--danger); }
+.trade__head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.trade__name { font-size: 14px; }
+.trade__price { margin-left: auto; font-weight: 700; font-variant-numeric: tabular-nums; }
+.trade__meta { margin: 4px 0 0; color: var(--muted); font: 500 11px var(--font-mono); font-variant-numeric: tabular-nums; }
+.trade__summary { margin: 8px 0 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.trade__bull { margin: 4px 0 0; color: var(--success); font-size: 12.5px; overflow-wrap: anywhere; }
+.trade__risk { margin: 2px 0 0; color: var(--danger); font-size: 12.5px; overflow-wrap: anywhere; }
+.trade__objection { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; overflow-wrap: anywhere; }
+.trade__mechanical { margin: 8px 0 0; padding: 8px 11px; color: var(--muted); background: var(--bg); border: 1px dashed var(--border); border-radius: var(--r-control); font-size: 12.5px; line-height: 1.6; }
+.trade__mechanical b { color: var(--fg); }
 
 /* ═══ 작동 로그 ═══════════════════════════════════════════════
    날짜 하나가 하루다. 접힌 상태에서도 그날의 판정(성공 수·재시도·안내)이
@@ -937,6 +965,65 @@ select:focus-visible { outline: 2px solid var(--focus-input); outline-offset: 1p
 .glossary__code { color: var(--muted); font: 500 11px var(--font-mono); font-weight: 500; }
 .glossary dd { margin: 6px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.7; }
 .glossary dd b { color: var(--fg); font-weight: 600; }
+
+/* ═══ 일일 리포트 ═════════════════════════════════════════════
+   관제실의 첫 화면은 숫자 카드 여섯 개가 아니라 문장 하나다 — "오늘 무슨
+   일이 있었나"를 먼저 말하고, 그 문장의 근거 숫자를 아래 한 줄로 편다.
+   숫자 출처는 전부 기존 view(원장)이고 여기서 새로 세지 않는다. */
+.report-lead { max-width: 72ch; margin: 0 0 16px; color: var(--fg); font-size: 15px; line-height: 1.8; }
+.report-lead b { color: var(--accent-ink); font-weight: 700; font-variant-numeric: tabular-nums; }
+.report-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1px; overflow: hidden; border: 1px solid var(--border); border-radius: var(--r-control); background: var(--border); }
+.report-cell { display: grid; gap: 3px; align-content: start; padding: 13px 15px; background: var(--bg); }
+.report-cell > span { color: var(--muted); font-size: 11.5px; font-weight: 700; }
+.report-cell strong { font: 500 1.3rem/1.15 var(--font-mono); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.report-cell strong i { color: var(--muted); font-size: .75em; font-style: normal; }
+.report-cell small { color: var(--muted); font: 500 11px var(--font-mono); }
+.report-cell--primary { background: var(--accent-soft); }
+.report-cell--primary > span, .report-cell--primary strong { color: var(--accent-ink); }
+
+/* ═══ 보류 사유 막대 ══════════════════════════════════════════
+   사유는 목록이 아니라 순위다(빈도순 = 문턱 조정의 입력). 막대 길이가
+   비율을 말하므로 숫자를 읽기 전에 "무엇이 주범인가"가 보인다.
+   라벨은 한글, 원장 코드는 작게 병기 — 잡 이름과 같은 문법이다. */
+.reason-bars { display: grid; gap: 13px; margin: 4px 0 0; padding: 0; list-style: none; }
+.reason-bar__head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.reason-bar__head strong { font-size: 13px; }
+.reason-bar__head code { color: var(--muted); font: 500 10.5px var(--font-mono); }
+.reason-bar__count { margin-left: auto; color: var(--fg); font: 600 12px var(--font-mono); font-variant-numeric: tabular-nums; }
+.reason-bar__track { height: 6px; margin-top: 6px; overflow: hidden; border: 1px solid var(--border); border-radius: 999px; background: var(--bg); }
+.reason-bar__track span { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: var(--warning); }
+
+/* 보류 내역은 수백 행이 될 수 있다(이어받기 데모 실측 503행). 접힌 채로
+   두고, 펼쳐도 스크롤 상자를 넘지 않게 가둔다 — 페이지 길이는 데이터
+   양이 아니라 화면 설계가 정한다. */
+.skipped-plans { margin-top: 14px; }
+.skipped-plans > summary { min-height: 36px; display: inline-flex; align-items: center; padding: 6px 12px; border: 1px solid var(--border-strong); border-radius: var(--r-control); background: var(--bg); }
+.skipped-plans[open] > summary { border-color: var(--accent); color: var(--accent-ink); }
+.skipped-plans .table-wrap { max-height: 420px; margin-top: 10px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--r-control); }
+
+/* ═══ 계좌 곡선 카드 ══════════════════════════════════════════
+   /me의 계좌 차트(.chart)와 같은 문법 — 면적 + 선. 방향은 색으로도
+   말하지만 ±% 숫자가 항상 함께 있다(색맹 대비). */
+.equity-card__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.equity-card__head h3 { margin: 0; overflow-wrap: anywhere; }
+.equity-card__delta { color: var(--muted); font: 600 12px var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.equity-chart { display: block; width: 100%; height: 56px; color: var(--accent); }
+.equity-chart__area { fill: currentColor; opacity: .1; }
+.equity-chart__line { fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.equity-card--up .equity-chart { color: var(--success); }
+.equity-card--up .equity-card__delta { color: var(--success); }
+.equity-card--down .equity-chart { color: var(--danger); }
+.equity-card--down .equity-card__delta { color: var(--danger); }
+.equity-card__span { margin: 6px 0 0; color: var(--muted); font: 500 10.5px var(--font-mono); font-variant-numeric: tabular-nums; }
+.equity-card__span--empty { font-family: var(--font-ui); }
+
+/* 잡 카드 14장이 첫 두 화면을 다 먹지 않게, 넓은 화면에서는 두 열로 접는다.
+   번호 배지가 순서를 들고 있어 읽는 차례는 흐트러지지 않는다. */
+@media (min-width: 1100px) {
+  .job-chain-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.job-chain-item { padding: 10px 12px; }
+.job-chain-item .job-detail { font-size: 12px; }
 
 /* ═══ 쪽 이동 ═════════════════════════════════════════════════
    하루가 한 줄이라 기록이 쌓이면 한 화면에 안 들어간다. 방향을 날짜로

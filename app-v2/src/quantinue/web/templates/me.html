@@ -84,7 +84,7 @@
   {# 점이 둘 미만이면 좌표가 빈 문자열이다 — 선분이 성립하지 않는 것을
      한 점짜리 그래프로 그리면 "평평했다"로 읽힌다. #}
   {% if view.curve_points %}
-  <figure class="chart">
+  <figure class="chart {% if view.return_pct is not none and view.return_pct.startswith('-') %}chart--down{% elif view.return_pct is not none %}chart--up{% endif %}">
     <figcaption>
       <span>계좌 평가액 추이</span>
       <span class="chart__span">{{ view.curve | length }}일 기록</span>
@@ -117,18 +117,29 @@
   <div class="table-wrap portfolio-table-wrap" role="region" aria-label="보유 종목 표" tabindex="0">
     <table class="portfolio-table">
       <caption>이 계좌가 지금 들고 있는 종목</caption>
-      <thead><tr><th scope="col">종목</th><th scope="col">수량</th><th scope="col">매입가</th><th scope="col">종가</th><th scope="col">평가액</th><th scope="col">평가손익</th><th scope="col">자동 청산</th></tr></thead>
+      <thead><tr><th scope="col">종목</th><th scope="col">수량</th><th scope="col">매입가</th><th scope="col">종가</th><th scope="col">평가액</th><th scope="col">비중</th><th scope="col">평가손익</th><th scope="col">자동 청산</th></tr></thead>
       <tbody>{% for holding in view.holdings %}<tr>
         <td data-label="종목" class="asset-cell"><strong>{{ holding.ticker }}</strong>{% if holding.mark_as_of %}<small>{{ holding.mark_as_of }} 종가</small>{% endif %}</td>
         <td data-label="수량" class="mono">{{ holding.quantity }}주</td>
         <td data-label="매입가" class="mono">${{ '{:,.2f}'.format(holding.entry_price) }}</td>
         {# 봉이 없는 보유(거래정지·상장폐지)는 값을 지어내지 않고 없다고 적는다. #}
         {% if holding.mark_price is none %}
-        <td data-label="종가" colspan="4" class="ledger-empty">종가 없음 — 이 종목은 최근 일봉이 없습니다</td>
+        <td data-label="종가" colspan="5" class="ledger-empty">종가 없음 — 이 종목은 최근 일봉이 없습니다</td>
         {% else %}
         <td data-label="종가" class="mono">${{ '{:,.2f}'.format(holding.mark_price) }}</td>
         <td data-label="평가액" class="mono">${{ '{:,.2f}'.format(holding.market_value) }}</td>
-        <td data-label="평가손익" class="{% if holding.unrealized_pnl > 0 %}value-positive{% elif holding.unrealized_pnl < 0 %}value-negative{% else %}mono{% endif %}">${{ '{:,.2f}'.format(holding.unrealized_pnl) }}</td>
+        {# 비중 막대: 이 종목이 총자산에서 차지하는 몫. 표의 숫자만으로는
+           "얼마나 몰려 있나"가 안 보인다 — 분모는 원장의 계좌 평가액이다. #}
+        <td data-label="비중">
+          {% if view.equity > 0 %}
+          {% set weight = holding.market_value / view.equity * 100 %}
+          <div class="weight-cell"><span class="weight-cell__bar"><i style="width: {{ [weight, 100] | min | round(1) }}%"></i></span><span class="mono weight-cell__pct">{{ weight | round(1) }}%</span></div>
+          {% else %}—{% endif %}
+        </td>
+        <td data-label="평가손익" class="{% if holding.unrealized_pnl > 0 %}value-positive{% elif holding.unrealized_pnl < 0 %}value-negative{% else %}mono{% endif %}">
+          ${{ '{:,.2f}'.format(holding.unrealized_pnl) }}
+          <small class="pnl-pct">{{ ((holding.mark_price - holding.entry_price) / holding.entry_price * 100) | round(2) }}%</small>
+        </td>
         {# 브래킷은 이미 걸려 있는 조건이다. 안 보여주면 유저는 자기 종목이
            언제 팔릴지 모른 채 들고 있게 된다. #}
         <td data-label="자동 청산" class="mono">{% if holding.stop_price %}손절 ${{ '{:,.2f}'.format(holding.stop_price) }}{% endif %}{% if holding.take_profit_price %}<br>익절 ${{ '{:,.2f}'.format(holding.take_profit_price) }}{% endif %}{% if not holding.stop_price and not holding.take_profit_price %}<span class="ledger-empty">없음</span>{% endif %}</td>
@@ -147,21 +158,24 @@
     </div>
   </div>
   {% if view.timeline %}
-  <ol class="ledger-list">{% for trade in view.timeline %}
-    <li>
-      <div>
-        <strong>{{ trade.ticker }} {{ trade.quantity }}주 {% if trade.side == 'buy' %}매수{% else %}매도{% endif %}</strong>
-        <span>${{ '{:,.2f}'.format(trade.price) }}</span>
+  <ol class="trade-list">{% for trade in view.timeline %}
+    {# 매수/매도를 색 축으로 가른다 — 목록을 훑기만 해도 산 날과 판 날이
+       구분돼야 한다. 색만으로 말하지 않게 배지 글자가 항상 함께 있다. #}
+    <li class="trade trade--{{ trade.side }}">
+      <div class="trade__head">
+        <span class="badge {% if trade.side == 'buy' %}badge--success{% else %}badge--danger{% endif %}">{% if trade.side == 'buy' %}매수{% else %}매도{% endif %}</span>
+        <strong class="trade__name">{{ trade.ticker }} {{ trade.quantity }}주</strong>
+        <span class="trade__price mono">${{ '{:,.2f}'.format(trade.price) }}</span>
       </div>
-      <p><time datetime="{{ trade.filled_at.isoformat() }}">{{ trade.filled_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>{% if trade.conviction %} · 확신도 {{ trade.conviction }}{% endif %}</p>
+      <p class="trade__meta"><time datetime="{{ trade.filled_at.isoformat() }}">{{ trade.filled_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>{% if trade.conviction and not trade.is_mechanical %} · 확신도 {{ trade.conviction }}{% endif %}</p>
       {# 판단 없는 체결도 사실이다. 빈 자리를 그럴듯한 문장으로 채우지 않는다. #}
       {% if trade.is_mechanical %}
-      <p class="ledger-empty">규칙에 따른 청산입니다 — 모델 판단 없이 손절·익절·기간 조건으로 체결됐습니다.</p>
+      <p class="trade__mechanical">{% if trade.mechanical_label %}<b>{{ trade.mechanical_label }} 조건 도달</b> — {% endif %}규칙에 따른 청산입니다. 모델 판단 없이 손절·익절·기간 조건으로 체결됐습니다.</p>
       {% else %}
-      <p>{{ trade.summary }}</p>
-      {% if trade.bull_case %}<p>근거: {{ trade.bull_case }}</p>{% endif %}
-      {% if trade.key_risk %}<p>리스크: {{ trade.key_risk }}</p>{% endif %}
-      {% if trade.objection %}<p>반박: {{ trade.objection }}</p>{% endif %}
+      <p class="trade__summary">{{ trade.summary }}</p>
+      {% if trade.bull_case %}<p class="trade__bull">근거: {{ trade.bull_case }}</p>{% endif %}
+      {% if trade.key_risk %}<p class="trade__risk">리스크: {{ trade.key_risk }}</p>{% endif %}
+      {% if trade.objection %}<p class="trade__objection">반박: {{ trade.objection }}</p>{% endif %}
       {% endif %}
     </li>
   {% endfor %}</ol>

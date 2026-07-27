@@ -57,7 +57,9 @@ _JOB_LABELS: Final[dict[str, str]] = {
     "analysis:conservative": "판단 · 안전형",
     "exits": "보유 종목 청산 점검",
     "allocation": "매수 배분",
-    "benchmark": "지수(SPY) 수집",
+    # 원장의 실제 잡 이름은 benchmark_spy다 — "benchmark"로 적어 두는 바람에
+    # 이 잡만 화면에서 한글 뜻 없이 영문 키로 떴다.
+    "benchmark_spy": "지수(SPY) 수집",
     "review": "T+5 회고",
     "daily_summary": "일일 요약 알림",
 }
@@ -68,17 +70,28 @@ _STATUS_LABELS: Final[dict[str, str]] = {
 }
 # 매수가 막힌 이유. 원장에는 기계 코드로 남기고(집계·비교의 축) 화면에서만
 # 사람 말로 바꾼다 — "왜 안 샀나"는 비개발자가 가장 먼저 묻는 질문이다.
+# 키는 role 9의 SkipReason 리터럴과 같은 집합이어야 한다 — 여기 없는 코드는
+# 화면에 영문 원문이 그대로 뜬다(실제로 min_cash가 그렇게 노출됐다).
 _SKIP_LABELS: Final[dict[str, str]] = {
-    "daily_order_cap": "하루 주문 한도 도달",
+    "critic_rejected": "비평가 반려",
+    "event_window": "사건 처리 중 보류",
     "existing_position": "이미 보유 중",
+    "open_order": "미체결 주문 있음",
+    "insufficient_equity": "계좌 평가액 부족",
+    "daily_order_cap": "하루 주문 한도 도달",
+    "risk_limit": "위험 점수 한도 초과",
+    "premarket_gap": "개장 전 갭 과대",
+    "late_entry": "추격 매수 구간",
+    "max_positions": "보유 종목 수 한도",
+    "min_cash": "최소 현금 유지선",
+    # 아래는 과거 원장에 남아 있을 수 있는 구 코드다. 지우면 지난 슬롯을
+    # 열었을 때 다시 영문이 노출된다.
     "not_tradable": "거래 불가 종목",
     "tradability_unavailable": "거래 가능 여부 확인 실패",
-    "max_positions": "보유 종목 수 한도",
     "max_weight": "종목당 비중 한도",
     "min_cash_ratio": "최소 현금 비율 유지",
     "daily_loss_limit": "당일 손실 한도",
     "insufficient_cash": "현금 부족",
-    "late_entry": "추격 매수 구간",
     "risk_off": "위험 회피 국면",
 }
 
@@ -192,6 +205,20 @@ class AllocationView(BaseModel):
     reasons: tuple[SkipReasonView, ...] = ()
     plans: tuple[OrderPlanView, ...] = ()
 
+    # 화면은 산 것과 못 산 것을 다른 무게로 다룬다 — 매수는 몇 건이라 전부
+    # 보여주고, 보류는 수백 건이라 접는다(이어받기 데모에서 503건이 그대로
+    # 그려져 페이지가 3만 픽셀이 됐다). 필터를 템플릿이 아니라 여기 두는
+    # 이유는 그 구분을 테스트로 고정하기 위해서다.
+    @property
+    def bought_plans(self) -> tuple[OrderPlanView, ...]:
+        """Return only the plans that became orders."""
+        return tuple(plan for plan in self.plans if plan.decision == _PLANNED)
+
+    @property
+    def skipped_plans(self) -> tuple[OrderPlanView, ...]:
+        """Return only the plans a gate blocked."""
+        return tuple(plan for plan in self.plans if plan.decision == _SKIPPED)
+
 
 class EquityPointView(BaseModel):
     """One account's equity on one day."""
@@ -292,6 +319,11 @@ _EXIT_LABELS = {
     "thesis_break": "명제 붕괴",
     "thesis_soft": "판단 반전",
 }
+
+
+def exit_reason_label(reason: str) -> str | None:
+    """Return the Korean rule name for one exit reason code, if known."""
+    return _EXIT_LABELS.get(reason)
 
 
 def exit_event_views(records: tuple[ExitEventRecord, ...]) -> tuple[ExitEventView, ...]:
@@ -421,14 +453,10 @@ def sparkline_points(curve: AccountCurveView, *, width: int = 160, height: int =
     기하를 템플릿이 아니라 여기서 계산하는 이유는 테스트다 — 평평한 곡선의
     0으로 나누기나 점 하나짜리 계좌를 Jinja 안에서 고정할 방법이 없다.
     """
-    return equity_sparkline(
-        [point.equity for point in curve.points], width=width, height=height
-    )
+    return equity_sparkline([point.equity for point in curve.points], width=width, height=height)
 
 
-def equity_sparkline(
-    values: list[Decimal], *, width: int = 160, height: int = 32
-) -> str:
+def equity_sparkline(values: list[Decimal], *, width: int = 160, height: int = 32) -> str:
     """Return SVG polyline coordinates for a series of equity values.
 
     관제실 곡선과 유저 계좌 곡선이 **같은 기하**를 쓴다. 복사하면 한쪽만

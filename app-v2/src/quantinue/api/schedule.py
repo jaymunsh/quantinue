@@ -34,6 +34,7 @@ if TYPE_CHECKING:
 JOB_SUMMARIES: dict[str, str] = {
     "universe": "거래 가능 종목 목록을 새로 뜬다 (시총 상위 2,000 + 보유 전부)",
     "daily_bars": "일봉을 채운다. 빠진 구간은 자동으로 소급 수집한다",
+    "benchmark_spy": "SPY 종가를 벤치마크로 쌓는다 (/me 수익률 비교의 분모)",
     "disclosures": "SEC 공시를 전 시장 하루치 받는다",
     "news": "헤드라인을 전 시장에서 받는다 (투표권 없음, 판단의 맥락)",
     "news_wire": "보도자료 RSS(GNW·PRN)를 받는다",

@@ -168,3 +168,17 @@ def test_a_mechanical_exit_is_marked_as_one() -> None:
     # Then
     assert entry.is_mechanical is True
     assert entry.summary is None
+
+
+def test_an_exits_job_marker_reads_as_a_rule_not_a_judgement() -> None:
+    """청산 잡은 요약에 "stop exit" 표식을 남긴다(exits/job.py) — 유저 화면은
+    그 영문 코드를 판단 문장처럼 그리지 않고 규칙 이름으로 분류한다."""
+    # Given
+    trades = (_trade("NVDA", side="sell", summary="stop exit"),)
+
+    # When
+    entry = my_account_view(_ACCOUNT, (), (), trades).timeline[0]
+
+    # Then
+    assert entry.is_mechanical is True
+    assert entry.mechanical_label == "손절"

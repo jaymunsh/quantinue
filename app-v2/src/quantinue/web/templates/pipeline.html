@@ -17,6 +17,7 @@
    수 있나"와 "여기 뭐가 있나"가 구별되지 않는다. #}
 <nav class="nav-group nav-group--sections" aria-label="이 페이지">
   <p class="nav-label">이 페이지</p>
+  <a class="nav-link nav-link--section" href="#report">일일 리포트</a>
   <a class="nav-link nav-link--section" href="#chain">잡 체인</a>
   <a class="nav-link nav-link--section" href="#watch">장중 감시</a>
   <a class="nav-link nav-link--section" href="#allocation">배분</a>
@@ -38,40 +39,71 @@
 {% endblock %}
 
 {% block main %}
-{# ── 요약 넷 ────────────────────────────────────────────────────
+{# ── 일일 리포트 ────────────────────────────────────────────────
    숫자는 전부 잡 원장에서 온다. 지어낸 지표를 얹지 않는 이유는 결함
    15·16이다 — 화면이 원장보다 많이 세거나 없는 분모를 만들면, 그 화면은
-   시연에서 질문 하나에 무너진다. #}
-<div class="metric-grid">
-  <article class="metric metric--primary">
-    <div class="metric__top"><span>실행한 잡</span><span class="badge badge--info">SLOT</span></div>
-    <strong class="metric__value">{{ day.chain.jobs | length }}</strong>
-    <span class="metric__delta">성공 {{ day.chain.succeeded }} · 실패 {{ day.chain.failed }} · 진행 {{ day.chain.running }}</span>
-  </article>
-  <article class="metric">
-    <div class="metric__top"><span>신규 매수</span></div>
-    <strong class="metric__value">{{ day.allocation.bought }}</strong>
-    <span class="metric__delta">보류 {{ day.allocation.skipped }}</span>
-  </article>
-  <article class="metric">
-    <div class="metric__top"><span>승인된 판단</span></div>
-    <strong class="metric__value">{{ day.profiles | sum(attribute='approved') }}</strong>
-    <span class="metric__delta">분석 {{ day.profiles | sum(attribute='total') }}건 중</span>
-  </article>
-  <article class="metric">
-    <div class="metric__top"><span>계좌</span></div>
-    <strong class="metric__value">{{ day.curves | length }}</strong>
-    <span class="metric__delta">시가평가 기록 보유</span>
-  </article>
-  {% if day.llm %}
-  {# 지출 원장이 있는 스토어에서만 그린다 — 없는데 $0을 그리면 거짓 안심이다. #}
-  <article class="metric">
-    <div class="metric__top"><span>LLM 지출</span></div>
-    <strong class="metric__value">${{ '%.2f' | format(day.llm.spent_usd) }}</strong>
-    <span class="metric__delta">일 상한 ${{ '%.2f' | format(day.llm.limit_usd) }}</span>
-  </article>
+   시연에서 질문 하나에 무너진다. 숫자 카드를 흩뿌리는 대신 하루를 한
+   문장으로 먼저 말하고, 그 문장의 근거 숫자를 아래 한 줄로 편다. #}
+{% set analysed = day.profiles | sum(attribute='total') %}
+{% set approved = day.profiles | sum(attribute='approved') %}
+<section class="panel report-panel" id="report" aria-labelledby="report-title">
+  <div class="panel__head">
+    <div>
+      <h2 id="report-title">일일 리포트</h2>
+      <p>이 슬롯 하루가 원장에 남긴 것의 요약입니다.</p>
+    </div>
+    {% if day.chain.failed %}<span class="badge badge--danger">잡 실패 {{ day.chain.failed }}</span>
+    {% elif day.chain.running %}<span class="badge badge--warning">진행 중 {{ day.chain.running }}</span>
+    {% elif day.chain.jobs %}<span class="badge badge--success">체인 이상 없음</span>{% endif %}
+  </div>
+  {% if day.chain.slot_date %}
+  <p class="report-lead">
+    {% if analysed %}판단 <b>{{ analysed }}건</b> 중 <b>{{ approved }}건</b>이 비평가를 통과했고,
+    {% else %}이 슬롯에는 분석 판단 기록이 없고,
+    {% endif %}
+    배분은 <b>{{ day.allocation.bought }}건</b>을 사고 <b>{{ day.allocation.skipped }}건</b>을 보류했습니다.
+    {% if day.exits %}방어선은 <b>{{ day.exits | length }}건</b> 발동해 매도 체결까지 끝났습니다.
+    {% else %}방어선 발동은 없었습니다.{% endif %}
+  </p>
+  <div class="report-strip">
+    <div class="report-cell report-cell--primary">
+      <span>실행한 잡</span>
+      <strong>{{ day.chain.jobs | length }}</strong>
+      <small>성공 {{ day.chain.succeeded }} · 실패 {{ day.chain.failed }} · 진행 {{ day.chain.running }}</small>
+    </div>
+    <div class="report-cell">
+      <span>판단 → 승인</span>
+      <strong>{{ analysed }} <i>→</i> {{ approved }}</strong>
+      <small>성향 {{ day.profiles | length }}종 분석</small>
+    </div>
+    <div class="report-cell">
+      <span>신규 매수</span>
+      <strong>{{ day.allocation.bought }}</strong>
+      <small>보류 {{ day.allocation.skipped }}</small>
+    </div>
+    <div class="report-cell">
+      <span>방어선 발동</span>
+      <strong>{{ day.exits | length }}</strong>
+      <small>{% if day.exits %}{{ day.exits[0].reason_label }}{% if day.exits | length > 1 %} 외 {{ day.exits | length - 1 }}건{% endif %}{% else %}매도 체결 없음{% endif %}</small>
+    </div>
+    <div class="report-cell">
+      <span>계좌</span>
+      <strong>{{ day.curves | length }}</strong>
+      <small>시가평가 기록 보유</small>
+    </div>
+    {% if day.llm %}
+    {# 지출 원장이 있는 스토어에서만 그린다 — 없는데 $0을 그리면 거짓 안심이다. #}
+    <div class="report-cell">
+      <span>LLM 지출</span>
+      <strong>${{ '%.2f' | format(day.llm.spent_usd) }}</strong>
+      <small>일 상한 ${{ '%.2f' | format(day.llm.limit_usd) }}</small>
+    </div>
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="empty-state">잡 원장에 기록이 없어 요약할 하루가 없습니다.</p>
   {% endif %}
-</div>
+</section>
 
 <section class="panel" id="watch" aria-labelledby="watch-title">
   <div class="panel__head">
@@ -186,28 +218,55 @@
         </div>
       </div>
       {% if day.allocation.plans %}
-      <div class="table-wrap" role="region" aria-label="계좌별 배분 판단" tabindex="0">
+      {# 산 것 몇 건이 이 표의 본론이다. 보류 수백 건을 같은 표에 다 그렸더니
+         (이어받기 데모에서 503행) 페이지가 3만 픽셀이 됐다 — 보류는 접고,
+         "왜 못 샀나"는 오른쪽 사유 요약이 답한다. #}
+      {% if day.allocation.bought_plans %}
+      <div class="table-wrap" role="region" aria-label="집행된 매수" tabindex="0">
         <table>
-          <caption>계좌별 배분 판단</caption>
+          <caption>집행된 매수</caption>
           <thead>
-            <tr><th scope="col">종목</th><th scope="col">계좌</th><th scope="col">판단</th><th scope="col">수량</th><th scope="col">진입가</th><th scope="col">보류 사유</th></tr>
+            <tr><th scope="col">종목</th><th scope="col">계좌</th><th scope="col">판단</th><th scope="col">수량</th><th scope="col">진입가</th></tr>
           </thead>
           <tbody>
-            {% for plan in day.allocation.plans %}
+            {% for plan in day.allocation.bought_plans %}
             <tr>
               <td data-label="종목"><strong>{{ plan.ticker }}</strong></td>
               <td data-label="계좌" class="mono">{% if plan.account_id is not none %}#{{ plan.account_id }}{% else %}—{% endif %}</td>
-              <td data-label="판단">
-                <span class="badge {% if plan.decision == 'planned' %}badge--success{% else %}badge--warning{% endif %}">{{ plan.decision }}</span>
-              </td>
+              <td data-label="판단"><span class="badge badge--success">매수</span></td>
               <td data-label="수량" class="mono money-value">{{ plan.quantity }}</td>
               <td data-label="진입가" class="mono money-value">{% if plan.entry_price is not none %}{{ plan.entry_price }}{% else %}—{% endif %}</td>
-              <td data-label="보류 사유" class="muted">{{ plan.skipped_reason_label or "—" }}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% else %}
+      <p class="ledger-empty">이 슬롯에 집행된 매수가 없습니다. 아래 보류 내역이 그 이유를 말합니다.</p>
+      {% endif %}
+      {% if day.allocation.skipped_plans %}
+      <details class="skipped-plans">
+        <summary>보류 {{ day.allocation.skipped }}건 전체 보기</summary>
+        <div class="table-wrap" role="region" aria-label="보류된 배분 판단" tabindex="0">
+          <table>
+            <caption>보류된 배분 판단</caption>
+            <thead>
+              <tr><th scope="col">종목</th><th scope="col">계좌</th><th scope="col">진입가</th><th scope="col">보류 사유</th></tr>
+            </thead>
+            <tbody>
+              {% for plan in day.allocation.skipped_plans %}
+              <tr>
+                <td data-label="종목"><strong>{{ plan.ticker }}</strong></td>
+                <td data-label="계좌" class="mono">{% if plan.account_id is not none %}#{{ plan.account_id }}{% else %}—{% endif %}</td>
+                <td data-label="진입가" class="mono money-value">{% if plan.entry_price is not none %}{{ plan.entry_price }}{% else %}—{% endif %}</td>
+                <td data-label="보류 사유" class="muted">{{ plan.skipped_reason_label or "—" }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      {% endif %}
       {% else %}
       <p class="empty-state">이 슬롯에는 배분 판단 기록이 없습니다.</p>
       {% endif %}
@@ -217,16 +276,22 @@
       <div class="panel__head">
         <div>
           <h2 id="skip-title">보류 사유</h2>
-          <p>무엇이 매수를 막았나</p>
+          <p>무엇이 매수를 막았나 — 빈도순</p>
         </div>
       </div>
       {% if day.allocation.reasons %}
-      <ul class="status-list">
+      {# 사유는 목록이 아니라 순위다(문턱 조정의 입력). 막대 길이가 "지금
+         무엇이 지갑을 막고 있나"를 훑어만 봐도 말하게 한다. #}
+      <ul class="reason-bars">
         {% for item in day.allocation.reasons %}
-        <li class="status-item">
-          <span class="status-dot status-dot--warning"></span>
-          <div><strong>{{ item.reason_label }}</strong></div>
-          <time>{{ item.count }}건</time>
+        {% set share = (item.count * 100 / day.allocation.skipped) %}
+        <li class="reason-bar">
+          <div class="reason-bar__head">
+            <strong>{{ item.reason_label }}</strong>
+            <code>{{ item.reason }}</code>
+            <span class="reason-bar__count">{{ item.count }}건</span>
+          </div>
+          <div class="reason-bar__track"><span style="width: {{ share | round(1) }}%"></span></div>
         </li>
         {% endfor %}
       </ul>
@@ -284,19 +349,29 @@
     {% if day.curves %}
     <div class="equity-grid">
       {% for curve in day.curves %}
-      <article class="equity-card">
-        <h3>{{ curve.label }}</h3>
+      {# 방향은 색으로도 말하지만 숫자(±%)가 항상 함께 있다 — 색만으로
+         뜻을 전하면 못 읽는 사람이 생긴다. #}
+      <article class="equity-card {% if curve.change_pct < 0 %}equity-card--down{% elif curve.change_pct > 0 %}equity-card--up{% endif %}">
+        <header class="equity-card__head">
+          <h3>{{ curve.label }}</h3>
+          <span class="equity-card__delta">{% if curve.change_pct > 0 %}+{% endif %}{{ curve.change_pct }}%</span>
+        </header>
         {% set plotted = sparkline(curve) %}
         {% if plotted %}
-        <svg class="sparkline" viewBox="0 0 160 32" width="160" height="32" role="img"
+        {# 면적을 함께 칠하면 두 점짜리 기록도 미완성이 아니라 추이로 읽힌다
+           — /me의 계좌 차트와 같은 문법(.chart__area)이다. #}
+        <svg class="equity-chart" viewBox="0 0 160 32" preserveAspectRatio="none" role="img"
              aria-label="계좌 {{ curve.account_id }} 자본 추이 {{ curve.change_pct }}%">
-          <polyline points="{{ plotted }}" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <polygon class="equity-chart__area" points="0,32 {{ plotted }} 160,32"/>
+          <polyline class="equity-chart__line" points="{{ plotted }}" vector-effect="non-scaling-stroke"/>
         </svg>
+        <p class="equity-card__span">{{ curve.points[0].trade_date }} ~ {{ curve.points[-1].trade_date }} · {{ curve.points | length }}일</p>
+        {% else %}
+        <p class="equity-card__span equity-card__span--empty">곡선은 기록이 이틀 이상 쌓이면 그려집니다</p>
         {% endif %}
         <dl class="equity-facts">
           <dt>시작</dt><dd class="money-value">{{ curve.opening_equity }}</dd>
           <dt>현재</dt><dd class="money-value">{{ curve.latest_equity }}</dd>
-          <dt>변화</dt><dd class="money-value">{{ curve.change_pct }}%</dd>
         </dl>
       </article>
       {% endfor %}
