@@ -18,6 +18,9 @@ from quantinue.roles.analysis.job import AnalysisJob
 from quantinue.roles.exits.job import ExitJob
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from datetime import datetime
+
     from quantinue.core.config import Settings
     from quantinue.llm.provider import LlmAnalyzer
     from quantinue.orchestration.policy import Mvp2Config
@@ -33,15 +36,20 @@ class _WatchStore(Protocol):
     def domain(self) -> _WatchDomain: ...
 
 
-def build_watch_runner(
+def build_watch_runner(  # noqa: PLR0913 - 각 인자는 독립된 조립 협력자다
     settings: Settings,
     config: Mvp2Config,
     *,
     store: object,
     quotes: LatestTradeSource | None = None,
     analyzer: LlmAnalyzer | None = None,
+    clock: Callable[[], datetime] | None = None,
 ) -> WatchRunner | None:
-    """Bind shared exit, analysis, allocation, polling, and live-stream paths."""
+    """Bind shared exit, analysis, allocation, polling, and live-stream paths.
+
+    ``clock``은 데모 진입점 전용 이음새다(기본 None = 실제 벽시계). 각본
+    시세와 짝을 이뤄 정규장 게이트를 촬영 시각과 무관하게 통과시킨다.
+    """
     if not isinstance(store, _WatchStore):
         return None
     domain = store.domain
@@ -108,4 +116,5 @@ def build_watch_runner(
         notifier=build_failure_notifier(settings),
         rejudge=rejudge,
         stream=stream,
+        clock=clock,
     )

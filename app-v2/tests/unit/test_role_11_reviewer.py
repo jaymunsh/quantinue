@@ -153,8 +153,14 @@ def test_a_question_beyond_the_calendar_horizon_fails_loudly() -> None:
     """
     calendar = UsEquityTradingCalendar()
 
+    # 고정 날짜(2027-07-19)를 묻던 원판은 시한폭탄이었다 — xcals의 기본
+    # 지평이 "오늘+1년"이라 실제 시간이 흐르면 그 날짜가 지평 안으로 들어와
+    # 테스트가 무너진다(2026-07-27 실제로 그랬다). 달력 자신의 마지막
+    # 세션을 물어 그 너머를 조회하면 지평이 어디로 움직여도 성립한다.
+    horizon_end = calendar.exchange._calendar.last_session.date()
+
     with pytest.raises(CalendarHorizonError):
-        _ = calendar.offset(date(2027, 7, 19), trading_days=5)
+        _ = calendar.offset(horizon_end, trading_days=5)
 
 
 def test_a_half_day_session_closes_early_not_at_four() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from dataclasses import replace
 from datetime import UTC, date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
@@ -57,7 +58,11 @@ if TYPE_CHECKING:
 
     from quantinue.db.contracts import RunStore
     from quantinue.db.users import UserAccount
-    from quantinue.orchestration.watch_runner import WatchRunner
+    from quantinue.llm.provider import LlmAnalyzer
+    from quantinue.orchestration.watch_runner import (
+        LatestTradeSource,
+        WatchRunner,
+    )
 
 # 타임라인에 몇 건을 보여줄지. 판단 문턱이 아니라 표시용 창이라 config가
 # 아니라 여기 산다 — 어떤 매매 결정에도 들어가지 않는다.
@@ -280,13 +285,30 @@ async def _my_account(reads: object | None, account: UserAccount) -> MyAccountVi
     return my_account_view(account, holdings, curve, timeline, macro, benchmark=benchmark)
 
 
-def create_app(  # noqa: C901 - application composition root owns conditional adapters
-    settings: Settings | None = None, *, store: RunStore | None = None
+def create_app(  # noqa: C901, PLR0913 - application composition root owns conditional adapters
+    settings: Settings | None = None,
+    *,
+    store: RunStore | None = None,
+    config: Mvp2Config | None = None,
+    llm_inner: LlmAnalyzer | None = None,
+    job_sources: JobSources | None = None,
+    watch_quotes: LatestTradeSource | None = None,
+    watch_clock: Callable[[], datetime] | None = None,
 ) -> FastAPI:
-    """Create one application with adapters fixed for its lifetime."""
+    """Create one application with adapters fixed for its lifetime.
+
+    키워드 주입 인자는 전부 기본 None이고, None이면 운영 조립이 그대로다.
+    테스트 stub과 데모 진입점(quantinue.demo)이 부품을 꽂는 유일한
+    이음새다 — 운영 코드는 demo 패키지를 import하지 않고, 데모 쪽이 이
+    매개변수로 들어온다(demo-video-plan.md §5 금지선).
+    """
     selected_settings = settings or Settings()
     configure_logging(debug=selected_settings.debug)
-    mvp2_config = load_mvp2_config(PACKAGE_DIR.parent.parent / "config" / "pipeline.yaml")
+    mvp2_config = (
+        config
+        if config is not None
+        else load_mvp2_config(PACKAGE_DIR.parent.parent / "config" / "pipeline.yaml")
+    )
     selected_store = store if store is not None else build_run_store(selected_settings)
     templates = Jinja2Templates(directory=PACKAGE_DIR / "web" / "templates")
     # 공통 셸(base.html)이 인라인하는 값이라 화면마다 컨텍스트로 나르지 않는다.
@@ -319,22 +341,28 @@ def create_app(  # noqa: C901 - application composition root owns conditional ad
             selected_settings,
             mvp2_config,
             ledger=getattr(selected_store, "domain", None),
+            inner=llm_inner,
+        )
+        # 주입된 sources에도 예산 경계를 통과한 analyzer를 다시 꽂는다 —
+        # 호출자가 원 분석기를 직접 넣으면 그 경로만 원장 밖에서 돈다.
+        selected_sources = (
+            JobSources(market_data=market_data, macro=market_data, analyzer=analyzer)
+            if job_sources is None
+            else replace(job_sources, analyzer=analyzer)
         )
         job_runner = build_job_runner(
             selected_settings,
             mvp2_config,
             store=selected_store,
-            sources=JobSources(
-                market_data=market_data,
-                macro=market_data,
-                analyzer=analyzer,
-            ),
+            sources=selected_sources,
         )
         watch_runner = build_watch_runner(
             selected_settings,
             mvp2_config,
             store=selected_store,
+            quotes=watch_quotes,
             analyzer=analyzer,
+            clock=watch_clock,
         )
 
     attached_job_runner = job_runner if mvp2_config.jobs.enabled else None
