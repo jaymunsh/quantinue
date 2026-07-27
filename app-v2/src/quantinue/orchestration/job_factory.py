@@ -1036,6 +1036,39 @@ def build_daily_summary_job(
         lines = [
             f"{headline} {as_of} 슬롯 · 잡 {succeeded}/{len(runs)} 성공 · 신규 매수 {bought}건"
         ]
+
+        # 지킨 것과 쓴 것 — 사람이 매일 확인하고 싶은 두 가지다. 없으면
+        # 관제실을 열어봐야만 알 수 있고, 그러면 알림이 알림 구실을 못 한다.
+        #
+        # getattr로 무는 이유: 이 잡의 domain은 타입 없는 덕 타이핑이라 원장이
+        # 이 둘을 못 답할 수도 있다. 부가 정보 하나 때문에 발송이 통째로 끊기면
+        # "안 오는 것이 신호"라는 이 알림의 규약이 거짓말이 된다.
+        #
+        # 다만 **조용히 삼키지는 않는다.** 못 읽었으면 그 자리에 ``?``를 적어
+        # 보낸다 — 읽기가 깨진 날과 발동이 0건인 날은 다른 사건이고, 알림이
+        # 그 둘을 같은 모양으로 보내면 사람이 구별할 방법이 없다.
+        async def _extra(
+            reader_name: str, label: str, render: Callable[[object], str]
+        ) -> str | None:
+            reader = getattr(domain, reader_name, None)
+            if reader is None:
+                return None
+            try:
+                return render(await reader(as_of))
+            except Exception as error:  # noqa: BLE001 - 발송이 부가 정보에 걸리면 안 된다
+                return f"{label} ? ({type(error).__name__})"
+
+        extras = [
+            item
+            for item in (
+                await _extra("exit_events", "방어선", lambda v: f"방어선 {len(v)}건"),  # type: ignore[arg-type]
+                await _extra("llm_spend_on", "AI 지출", lambda v: f"AI 지출 ${v:,.2f}"),  # type: ignore[str-format]
+            )
+            if item is not None
+        ]
+        if extras:
+            lines.append(" · ".join(extras))
+
         if broken:
             lines.append(f"실패: {', '.join(broken)}")
         await notify("\n".join(lines))

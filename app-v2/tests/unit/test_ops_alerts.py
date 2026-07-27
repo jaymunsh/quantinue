@@ -9,11 +9,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
 from quantinue.orchestration.job_runner import JobDefinition, JobRunner
 from quantinue.orchestration.policy import JobsConfig
+from quantinue.roles.exits.alerts import format_exit_alert
 
 # 2026-07-21 15:00 UTC = 뉴욕 11:00 (거래일 한복판)
 _NOW = datetime(2026, 7, 21, 15, 0, tzinfo=UTC)
@@ -135,3 +138,58 @@ async def test_a_recently_started_job_is_not_stuck() -> None:
     await _runner(_Ledger(rows=[young]), notify).tick(_NOW)
 
     assert [m for m in notify.messages if "굳" in m] == []
+
+
+# ── 방어선 알림 문구 ─────────────────────────────────────────────────────────
+
+
+def test_the_defence_alert_writes_money_with_two_decimals() -> None:
+    """돈은 두 자리로 적는다 — ``$139.5``는 값이 잘린 것처럼 읽힌다.
+
+    Decimal을 그대로 f-string에 넣으면 소수 자릿수가 값마다 달라져서, 같은
+    알림 안에서 ``$139.5``와 ``$80.00``이 섞인다. 사람이 매일 받는 알림에서
+    그 흔들림은 "이 시스템은 돈을 대충 센다"로 읽힌다.
+    """
+
+    # Given — 자릿수가 서로 다른 두 청산
+    decisions = (
+        SimpleNamespace(
+            position=SimpleNamespace(ticker="VRDN", quantity=100),
+            reason=SimpleNamespace(value="stop"),
+            reference_price=Decimal("139.5"),
+        ),
+        SimpleNamespace(
+            position=SimpleNamespace(ticker="HLXM", quantity=200),
+            reason=SimpleNamespace(value="thesis_soft"),
+            reference_price=Decimal(80),
+        ),
+    )
+
+    # When
+    message = format_exit_alert(_SLOT, decisions)  # type: ignore[arg-type]
+
+    # Then
+    assert "$139.50" in message
+    assert "$80.00" in message
+    assert "$139.5\n" not in message
+
+
+def test_the_defence_alert_names_the_ticker_and_reason() -> None:
+    """무엇을 왜 팔았는지가 한 줄에 있어야 알림만 보고 판단할 수 있다."""
+
+    # Given
+    decisions = (
+        SimpleNamespace(
+            position=SimpleNamespace(ticker="VRDN", quantity=100),
+            reason=SimpleNamespace(value="stop"),
+            reference_price=Decimal("139.50"),
+        ),
+    )
+
+    # When
+    message = format_exit_alert(_SLOT, decisions)  # type: ignore[arg-type]
+
+    # Then
+    assert "방어선 발동 1건" in message
+    assert "VRDN" in message
+    assert "손절" in message

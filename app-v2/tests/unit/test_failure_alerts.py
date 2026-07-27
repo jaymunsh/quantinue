@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from types import SimpleNamespace
 from typing import Self
 
@@ -244,3 +245,80 @@ async def test_the_daily_note_does_not_count_itself() -> None:
     # Then
     assert "1/1" in sent[0]
     assert "✅" in sent[0]
+
+
+class _RichSummaryReads(_SummaryReads):
+    """방어선·지출까지 답하는 원장 — 운영 도메인이 실제로 가진 모양이다."""
+
+    def __init__(
+        self,
+        runs: tuple[tuple[str, str], ...],
+        planned: int,
+        *,
+        exits: int,
+        spend: str,
+    ) -> None:
+        super().__init__(runs, planned)
+        self._exits = exits
+        self._spend = spend
+
+    async def exit_events(self, trade_date: date) -> tuple[object, ...]:
+        assert trade_date == _DAY
+        return tuple(SimpleNamespace() for _ in range(self._exits))
+
+    async def llm_spend_on(self, day: date) -> Decimal:
+        assert day == _DAY
+        return Decimal(self._spend)
+
+
+@pytest.mark.anyio
+async def test_the_daily_note_says_what_it_defended_and_what_it_spent() -> None:
+    """하루 한 통이 하루를 요약하려면 **지킨 것과 쓴 것**이 있어야 한다.
+
+    잡이 몇 개 돌았는지는 시스템의 관심사고, 사람이 매일 확인하고 싶은 것은
+    "오늘 뭘 팔았나"와 "얼마 나갔나"다. 그 둘이 빠지면 관제실을 열어봐야만
+    알 수 있고, 그러면 알림이 알림 구실을 못 한다.
+    """
+    # Given
+    sent: list[str] = []
+
+    async def notify(message: str) -> None:
+        sent.append(message)
+
+    reads = _RichSummaryReads(
+        (("universe", "succeeded"), ("exits", "succeeded")), 3, exits=2, spend="0.19"
+    )
+    job = build_daily_summary_job(domain=reads, notify=notify)
+
+    # When
+    await job.run(_DAY)
+
+    # Then
+    assert "방어선 2건" in sent[0]
+    assert "$0.19" in sent[0]
+
+
+@pytest.mark.anyio
+async def test_the_daily_note_still_sends_when_the_ledger_cannot_answer() -> None:
+    """읽을 수 없는 항목 때문에 하루 한 통이 통째로 끊기면 안 된다.
+
+    이 알림의 존재 이유는 "안 오는 것이 신호"라는 규약이다. 부가 정보를
+    못 읽었다고 발송이 실패하면 그 규약이 거짓말이 된다 — 조용한 날과
+    고장난 날이 구별되지 않는다.
+    """
+    # Given — job_runs·order_plans만 아는 최소 원장
+    sent: list[str] = []
+
+    async def notify(message: str) -> None:
+        sent.append(message)
+
+    reads = _SummaryReads((("universe", "succeeded"),), 1)
+    job = build_daily_summary_job(domain=reads, notify=notify)
+
+    # When
+    await job.run(_DAY)
+
+    # Then
+    assert sent
+    assert "1/1" in sent[0]
+    assert "방어선" not in sent[0]
