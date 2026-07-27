@@ -6,7 +6,8 @@
 
 ## 0. 한 줄 요약
 
-**촬영·편집·슬라이드가 끝났다.** 남은 것은 S6 본테이크(정규장)와 리허설이다.
+**촬영·편집·슬라이드가 끝났고, S6 본테이크도 장중에 잡았다.**
+남은 것은 §4-2 샷 리스트대로의 데모 재촬영, 알림 배포, 리허설이다.
 
 ## 1. 산출물
 
@@ -21,10 +22,12 @@
 | `footage/s1b-judgements.mp4` | 49s | 판단과 반박 — 근거·리스크·크리틱 반박 |
 | `footage/s1c-accounts.mp4` | 32s | 계좌 관리 · 운영 기준 |
 | `footage/s5-verify.mp4` | 19s | 주문 34 = 체결 34 · 중복 0/0 |
-| `footage/s6-ops-preopen.mp4` | 48s | **예비** 운영 테이크(개장 전 — 장중 감시가 비어 있다) |
+| `footage/s6-live-ops.mp4` | 1:48 | **본테이크(장중 07-28 01:03~01:05).** 관제실 + 운영 기준 · 폴링 01:02→01:04 갱신 |
+| `footage/s6-live-ops-take1.mp4` | 48s | 같은 밤 1차 테이크(관제실만). 예비 |
+| `footage/s6-ops-preopen.mp4` | 48s | 개장 전 예비 테이크. 본테이크가 생겨 쓸 일 없다 |
 | `footage/mvp1-showcase.png` | — | 1차 MVP 화면(슬라이드 2용, 8011에서 캡처) |
-| `slides/index.html` | 12장 | 발표용 덱. `←/→` 이동 · `F` 전체화면 · `N` 발표자 노트 |
-| `slides/quantinue-final.pdf` | 12쪽 | 프로젝터 백업 |
+| `slides/index.html` | 13장 | 발표용 덱. `←/→` 이동 · `F` 전체화면 · `N` 발표자 노트 |
+| `slides/quantinue-final.pdf` | 13쪽 | 프로젝터 백업 |
 
 전부 1920×1080 · 30fps. `footage/`는 gitignore 대상이라 **저장소에 없다** —
 백업은 직접 복사해야 한다(§7 참조).
