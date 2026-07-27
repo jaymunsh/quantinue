@@ -33,6 +33,11 @@ demo_env() {
     QUANTINUE_DATA_MODE=fixture \
     QUANTINUE_BACKGROUND_WORKERS=1 \
     QUANTINUE_OPS_ALERTS=0 \
+    `# 세션 키를 고정하는 이유: 비우면 기동마다 무작위로 생겨 reset 때마다
+     # 로그인이 풀린다. 촬영은 reset을 반복하는 작업이라 그때마다 재로그인이
+     # 장면 시간을 잡아먹는다. 이 값은 일회용 데모 런타임 전용이고 운영
+     # .env와 무관하다.` \
+    QUANTINUE_SESSION_SECRET="demo-only-not-a-secret-0000000000" \
     "$@"
 }
 
