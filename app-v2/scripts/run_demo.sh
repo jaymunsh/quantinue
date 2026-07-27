@@ -84,6 +84,14 @@ stop_app() {
     kill "$(cat "${PID_FILE}")" >/dev/null 2>&1 || true
     rm -f "${PID_FILE}"
   fi
+  # uv run 래퍼를 죽여도 uvicorn 자식이 살아남을 수 있다(실측). 데모 전용
+  # 포트의 리스너를 직접 정리한다 — 8022는 이 스크립트만 쓰는 포트다.
+  local leftover
+  leftover="$(lsof -tiTCP:"${DEMO_APP_PORT}" -sTCP:LISTEN 2>/dev/null || true)"
+  if [[ -n "${leftover}" ]]; then
+    kill ${leftover} >/dev/null 2>&1 || true
+    sleep 1
+  fi
 }
 
 case "${1:-}" in

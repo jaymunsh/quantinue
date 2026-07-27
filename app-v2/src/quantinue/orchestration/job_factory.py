@@ -783,6 +783,7 @@ def build_job_runner(
     *,
     store: object,
     sources: JobSources | None = None,
+    clock: Callable[[], datetime] | None = None,
 ) -> JobRunner | None:
     """Assemble the background job runner for this application, if it can run.
 
@@ -918,6 +919,7 @@ def build_job_runner(
         event_runtime=_event_runtime(
             settings, config, selected, store=store, calendar=calendar
         ),
+        clock=clock,
     )
 
 

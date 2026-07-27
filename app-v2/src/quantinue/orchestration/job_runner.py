@@ -106,12 +106,16 @@ class JobRunner:
         *,
         ops_alerts: bool = False,
         event_runtime: EventRuntime | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         """Bind collaborators; each job owns its own side effects."""
         self._config = config
         self._ledger = ledger
         self._jobs = jobs
         self._calendar = calendar or NyseCalendar()
+        # 기본값은 같은 UTC 벽시계라 운영 동작이 변하지 않는다. 데모 런타임만
+        # 고정 시계를 꽂아 세션 게이트를 촬영 시각과 무관하게 통과시킨다.
+        self._clock: Callable[[], datetime] = clock or (lambda: datetime.now(UTC))
         # 알림이 없는 설치가 기본이다. None이면 아무 일도 안 일어난다.
         self._notifier = notifier
         # 운영 알림(기동·슬롯 굳음)은 **인스턴스 단위** opt-in이다. 코드 작업용
@@ -246,10 +250,10 @@ class JobRunner:
     async def run_forever(self) -> None:
         """Tick forever; a failing tick is logged and never kills the loop."""
         try:
-            await self.announce_boot(datetime.now(UTC))
+            await self.announce_boot(self._clock())
             while True:
                 try:
-                    for outcome in await self.tick(datetime.now(UTC)):
+                    for outcome in await self.tick(self._clock()):
                         if outcome.reason in {"ran", "failed"}:
                             await self._logger.ainfo(
                                 "jobs.tick", job=outcome.name, reason=outcome.reason

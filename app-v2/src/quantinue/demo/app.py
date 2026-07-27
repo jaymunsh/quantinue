@@ -130,8 +130,14 @@ def create_demo_app() -> FastAPI:
             ),
         ),
         # 러너 시계는 1초 걸음이다: 한 tick 안에서 여러 번 읽혀도 정규장
-        # 밖으로 걸어 나가지 않는다(6.5시간 = 23,400걸음).
+        # 밖으로 걸어 나가지 않는다(6.5시간 = 23,400걸음). 감시와 잡 루프가
+        # 시계 인스턴스를 공유하면 두 비동기 루프의 교차가 걸음 수를 비결정으로
+        # 만들므로 각자 하나씩 갖는다.
         watch_clock=SteppingClock(
+            start=scenario.session_start + timedelta(minutes=30),
+            step=timedelta(seconds=1),
+        ),
+        job_clock=SteppingClock(
             start=scenario.session_start + timedelta(minutes=30),
             step=timedelta(seconds=1),
         ),

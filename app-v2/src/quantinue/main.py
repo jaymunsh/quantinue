@@ -294,6 +294,7 @@ def create_app(  # noqa: C901, PLR0913 - application composition root owns condi
     job_sources: JobSources | None = None,
     watch_quotes: LatestTradeSource | None = None,
     watch_clock: Callable[[], datetime] | None = None,
+    job_clock: Callable[[], datetime] | None = None,
 ) -> FastAPI:
     """Create one application with adapters fixed for its lifetime.
 
@@ -355,6 +356,7 @@ def create_app(  # noqa: C901, PLR0913 - application composition root owns condi
             mvp2_config,
             store=selected_store,
             sources=selected_sources,
+            clock=job_clock,
         )
         watch_runner = build_watch_runner(
             selected_settings,

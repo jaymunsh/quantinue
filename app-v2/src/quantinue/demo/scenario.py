@@ -64,9 +64,17 @@ def build_scenario(today: date | None = None) -> DemoScenario:
     trade_date = calendar.previous_trading_day(anchor + timedelta(days=1))
     session_start = calendar.session_open(trade_date)
     cycle_ts = session_start + timedelta(minutes=30)
+    previous_session = calendar.previous_trading_day(trade_date)
     seed = DemoSeedSpec(
         trade_date=trade_date,
         cycle_ts=cycle_ts,
+        # 직전 두 세션 + 당일. 사건 재판단의 subject 조회와 크리틱 급등락
+        # 게이트(전일 종가)가 요구하는 최소 깊이다.
+        bar_dates=(
+            calendar.previous_trading_day(previous_session),
+            previous_session,
+            trade_date,
+        ),
         broker_account_id="DEMO-FILM-01",
         opening_cash=Decimal("100000.00"),
         inv_type="aggressive",
@@ -91,7 +99,14 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             ),
         ),
         candidates=(
-            DemoListing(ticker=GOOD_TICKER, company="Q Good News Demo", sector="Tech"),
+            DemoListing(
+                ticker=GOOD_TICKER,
+                company="Q Good News Demo",
+                sector="Tech",
+                # 각본 감시 가격(55.00 고정)과 봉 기준가를 맞춘다 — 어긋나면
+                # 매수 직후 방어선이 오발동한다(DemoListing.reference 주석).
+                reference=Decimal("55.00"),
+            ),
         ),
         users=(),  # 로그인은 seed CLI가 환경변수 비밀번호로 채운다.
     )
@@ -106,15 +121,21 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             GOOD_TICKER: _flat("55.00", _FILM_MINUTES),
             BAD_TICKER: _flat("80.00", _FILM_MINUTES),
         },
+        # 헤드라인은 라우팅의 결정론 키워드 필터(_HEADLINE_EVENT_TYPES)가
+        # 인식하는 영어 마커를 포함해야 한다 — 각본이 운영 규칙에 맞춘다
+        # (demo-video-plan.md §5). "guidance"가 두 기사 모두의 마커다.
         articles=scenario_articles(
             good=ScriptedHeadline(
                 ticker=GOOD_TICKER,
-                headline="Q Good News Demo, 대형 공급 계약 체결 발표 (각본)",
+                headline=(
+                    "[SCRIPTED] QGOD raises full-year guidance "
+                    "after landmark supply agreement"
+                ),
                 at=cycle_ts + timedelta(hours=1),
             ),
             bad=ScriptedHeadline(
                 ticker=BAD_TICKER,
-                headline="Q Bad News Demo, 연간 가이던스 철회 (각본)",
+                headline="[SCRIPTED] QBAD withdraws full-year guidance",
                 at=cycle_ts + timedelta(hours=2),
             ),
         ),

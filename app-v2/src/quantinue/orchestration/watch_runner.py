@@ -548,7 +548,10 @@ class WatchRunner:
 
     async def _poll_forever(self) -> None:
         while True:
-            attempted_at = datetime.now(UTC)
+            # 벽시계 리터럴이 아니라 주입된 시계를 쓴다(기본값 = 같은 UTC
+            # 벽시계라 운영 동작 불변). 데모 런타임은 여기로 고정 시계를
+            # 꽂아 촬영 시각과 무관하게 정규장 게이트를 통과한다.
+            attempted_at = self._clock()
             try:
                 outcome = await self.tick(attempted_at)
                 if outcome.reason == "ready":

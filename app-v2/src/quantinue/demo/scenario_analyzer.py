@@ -106,11 +106,20 @@ class ScenarioAnalyzer:
 
 
 def _strategy_output(stance: Stance | None) -> StrategyModelOutput:
-    """Map a stance to the scripted strategist judgement."""
+    """Map a stance to the scripted strategist judgement.
+
+    score가 곧 방향이다 — 전략 경로는 label이 아니라 model_score로
+    conviction(매수)과 bearishness(1-score, 매도)를 계산한다(role_07
+    contracts). 시드 픽 점수 0.50과 운영 문턱(공격 매수 0.65·매도 0.60,
+    안전 매수 0.75·매도 0.50) 기준으로:
+      bullish 0.85 → conviction 0.675 = 공격형 매수
+      bearish 0.10 → bearishness 0.90 = 양 성향 매도
+      미등록 0.60 → conviction 0.55·bearishness 0.40 = hold
+    """
     match stance:
         case "bullish":
             return StrategyModelOutput(
-                score=0.82,
+                score=0.85,
                 label="buy",
                 reason="각본: 호재 사건이 성장 서사를 확인",
                 bull_case="공급 계약 확대와 거래량 동반 돌파",
@@ -118,7 +127,7 @@ def _strategy_output(stance: Stance | None) -> StrategyModelOutput:
             )
         case "bearish":
             return StrategyModelOutput(
-                score=0.81,
+                score=0.10,
                 label="sell",
                 reason="각본: 악재 사건으로 보유 논거 붕괴",
                 bull_case="",
@@ -126,7 +135,7 @@ def _strategy_output(stance: Stance | None) -> StrategyModelOutput:
             )
         case None:
             return StrategyModelOutput(
-                score=0.50,
+                score=0.60,
                 label="hold",
                 reason="각본 밖 티커 — 판단을 닫는다",
                 bull_case="",

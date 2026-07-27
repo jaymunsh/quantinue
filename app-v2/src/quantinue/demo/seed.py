@@ -38,11 +38,17 @@ _RUN_ID = "demo-seed"
 
 @dataclass(frozen=True, slots=True)
 class DemoListing:
-    """One tradable demo ticker: universe row + daily-pick scope."""
+    """One tradable demo ticker: universe row + daily-pick scope.
+
+    ``reference``는 이 티커의 봉 가격(시가·종가)이다. 각본 감시 가격과
+    어긋나면 배분 매수 직후 방어선이 오발동한다(실측 — QGOD가 봉 100 대비
+    감시가 55로 잡혀 즉시 손절됐다). 각본 시세의 시작가와 맞춘다.
+    """
 
     ticker: str
     company: str
     sector: str
+    reference: Decimal = Decimal("100.00")
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,6 +85,11 @@ class DemoSeedSpec:
     held: tuple[HeldPosition, ...]
     candidates: tuple[DemoListing, ...]
     users: tuple[DemoUser, ...] = ()
+    # 봉을 깔 세션들. 분석 대상 조회(analysis_subjects)와 크리틱의 급등락
+    # 게이트는 **직전 세션 이하**의 봉과 그 전 종가를 요구한다 — 당일 봉만
+    # 있으면 사건 재판단이 subject_missing으로 조용히 죽는다(실측).
+    # 비우면 trade_date 하루만 깐다.
+    bar_dates: tuple[date, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,7 +159,12 @@ async def _seed_scope(
                 bucket="trend_leader",
                 rank=rank,
                 sector=listing.sector,
-                score=Decimal("0.90"),
+                # 0.90이 아닌 이유: 픽 점수는 conviction 평균에 투표한다.
+                # 0.90이면 미등록 티커(모델 0.60)까지 mean 0.75로 공격형
+                # 매수 문턱(0.65)을 넘어 각본 밖 매수가 나간다. 0.50이면
+                # hold·매수·매도 세 구간이 전부 산술적으로 성립한다
+                # (scenario_analyzer._strategy_output 주석 참조).
+                score=Decimal("0.50"),
             )
             for rank, listing in enumerate(listings, start=1)
         )
@@ -157,15 +173,16 @@ async def _seed_scope(
     await domain.save_daily_bars(
         tuple(
             DailyBarWrite(
-                trade_date=spec.trade_date,
+                trade_date=bar_date,
                 ticker=listing.ticker,
-                open=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
-                high=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
-                low=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
-                close=entry_by_ticker.get(listing.ticker, Decimal("100.00")),
+                open=entry_by_ticker.get(listing.ticker, listing.reference),
+                high=entry_by_ticker.get(listing.ticker, listing.reference),
+                low=entry_by_ticker.get(listing.ticker, listing.reference),
+                close=entry_by_ticker.get(listing.ticker, listing.reference),
                 volume=1_000_000,
                 source=_RUN_ID,
             )
+            for bar_date in (spec.bar_dates or (spec.trade_date,))
             for listing in listings
         )
     )
