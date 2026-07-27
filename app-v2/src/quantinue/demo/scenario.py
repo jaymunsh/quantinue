@@ -17,13 +17,22 @@ if TYPE_CHECKING:
 
 # 각본 버전. 가격열·사건·기대 결과를 바꾸면 올린다 — 리허설 2회 동일 재현
 # 비교는 같은 버전 안에서만 의미가 있다.
-SCENARIO_VERSION = "demo-scenario-v1"
+SCENARIO_VERSION = "demo-scenario-v2"
 
-# 데모 티커는 실존 종목과 겹치지 않는 가공 심볼이다 — 각본 시세·각본 기사가
-# 실제 회사에 대한 진술로 오인되면 안 된다(demo-video-plan.md §1).
-DEFENSE_TICKER = "QDEF"  # S2: 급락 → 브래킷 손절
-GOOD_TICKER = "QGOD"  # S3: 호재 사건 → 재판단 매수
-BAD_TICKER = "QBAD"  # S4: 악재 사건 → 판단 반전 매도
+# 데모 티커는 실존 종목과 겹치지 않는 **가상 회사**다. 두 가지를 동시에
+# 피해야 한다: 실존 종목을 쓰면 각본 기사가 그 회사에 대한 진술로 오인되고,
+# QGOD/QBAD처럼 용도를 이름에 박으면 화면이 각본임을 스스로 폭로해 시연의
+# 설득력을 깎는다. 정직성은 화면의 mock 배지와 내레이션이 담당한다
+# (demo-video-plan.md §1).
+DEFENSE_TICKER = "VRDN"  # S2: 급락 → 브래킷 손절
+GOOD_TICKER = "NVEX"  # S3: 호재 사건 → 재판단 매수
+BAD_TICKER = "HLXM"  # S4: 악재 사건 → 판단 반전 매도
+
+DEFENSE_COMPANY = "Veridian Dynamics"
+GOOD_COMPANY = "Novexa Robotics"
+BAD_COMPANY = "Helixim Materials"
+
+DEMO_ACCOUNT_ID = "QUANTINUE-DEMO-01"
 
 STANCES: dict[str, Stance] = {GOOD_TICKER: "bullish", BAD_TICKER: "bearish"}
 
@@ -75,13 +84,13 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             previous_session,
             trade_date,
         ),
-        broker_account_id="DEMO-FILM-01",
+        broker_account_id=DEMO_ACCOUNT_ID,
         opening_cash=Decimal("100000.00"),
         inv_type="aggressive",
         held=(
             HeldPosition(
                 listing=DemoListing(
-                    ticker=DEFENSE_TICKER, company="Q Defense Demo", sector="Tech"
+                    ticker=DEFENSE_TICKER, company=DEFENSE_COMPANY, sector="Tech"
                 ),
                 quantity=100,
                 entry=Decimal("150.00"),
@@ -90,7 +99,7 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             ),
             HeldPosition(
                 listing=DemoListing(
-                    ticker=BAD_TICKER, company="Q Bad News Demo", sector="Tech"
+                    ticker=BAD_TICKER, company=BAD_COMPANY, sector="Materials"
                 ),
                 quantity=200,
                 entry=Decimal("80.00"),
@@ -101,7 +110,7 @@ def build_scenario(today: date | None = None) -> DemoScenario:
         candidates=(
             DemoListing(
                 ticker=GOOD_TICKER,
-                company="Q Good News Demo",
+                company=GOOD_COMPANY,
                 sector="Tech",
                 # 각본 감시 가격(55.00 고정)과 봉 기준가를 맞춘다 — 어긋나면
                 # 매수 직후 방어선이 오발동한다(DemoListing.reference 주석).
@@ -128,14 +137,14 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             good=ScriptedHeadline(
                 ticker=GOOD_TICKER,
                 headline=(
-                    "[SCRIPTED] QGOD raises full-year guidance "
+                    f"{GOOD_COMPANY} raises full-year guidance "
                     "after landmark supply agreement"
                 ),
                 at=cycle_ts + timedelta(hours=1),
             ),
             bad=ScriptedHeadline(
                 ticker=BAD_TICKER,
-                headline="[SCRIPTED] QBAD withdraws full-year guidance",
+                headline=f"{BAD_COMPANY} withdraws full-year guidance on plant halt",
                 at=cycle_ts + timedelta(hours=2),
             ),
         ),

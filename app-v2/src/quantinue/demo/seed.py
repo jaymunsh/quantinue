@@ -41,7 +41,7 @@ class DemoListing:
     """One tradable demo ticker: universe row + daily-pick scope.
 
     ``reference``는 이 티커의 봉 가격(시가·종가)이다. 각본 감시 가격과
-    어긋나면 배분 매수 직후 방어선이 오발동한다(실측 — QGOD가 봉 100 대비
+    어긋나면 배분 매수 직후 방어선이 오발동한다(실측 — 후보 종목이 봉 100 대비
     감시가 55로 잡혀 즉시 손절됐다). 각본 시세의 시작가와 맞춘다.
     """
 
@@ -236,7 +236,7 @@ async def _seed_holdings(
                 cycle_ts=spec.cycle_ts,
                 side="buy",
                 conviction=Decimal("0.800"),
-                summary="각본: 촬영 시작 보유 포지션",
+                summary="시작 보유 포지션",
                 decision_close=held.entry,
                 evidence=(_RUN_ID,),
                 inv_type=spec.inv_type,
@@ -249,7 +249,7 @@ async def _seed_holdings(
                 ticker=held.listing.ticker,
                 decision="pass",
                 category="demo_seed",
-                objection="각본 시드 승인",
+                objection="시작 상태 승인",
                 confidence=Decimal("0.800"),
                 decided_layer="gate",
             )

@@ -95,11 +95,13 @@ class ScenarioAnalyzer:
                 return _sentiment_output(stance)
             case AnalysisTask.CRITIC:
                 return ModelOutput(
-                    score=0.82, label="approved", reason="각본: 하드 블로커 없음"
+                    score=0.82,
+                    label="approved",
+                    reason="반대 근거를 찾지 못했다 — 집행을 막을 이유 없음",
                 )
             case AnalysisTask.REVIEW:
                 return ModelOutput(
-                    score=0.70, label="consistent", reason="각본: 근거와 결과 일치"
+                    score=0.70, label="consistent", reason="결정 근거와 결과가 일치한다"
                 )
             case unreachable:
                 assert_never(unreachable)
@@ -121,23 +123,23 @@ def _strategy_output(stance: Stance | None) -> StrategyModelOutput:
             return StrategyModelOutput(
                 score=0.85,
                 label="buy",
-                reason="각본: 호재 사건이 성장 서사를 확인",
-                bull_case="공급 계약 확대와 거래량 동반 돌파",
-                key_risk="계약 이행 지연 시 모멘텀 소멸",
+                reason="장기 공급 계약으로 실적 가시성이 높아졌다",
+                bull_case="계약 물량 확대와 거래량 동반 돌파",
+                key_risk="계약 이행이 지연되면 모멘텀이 소멸한다",
             )
         case "bearish":
             return StrategyModelOutput(
                 score=0.10,
                 label="sell",
-                reason="각본: 악재 사건으로 보유 논거 붕괴",
+                reason="가이던스 철회로 보유 논거가 무너졌다",
                 bull_case="",
-                key_risk="가이던스 철회로 하방 변동성 확대",
+                key_risk="생산 차질이 길어지면 하방 변동성이 커진다",
             )
         case None:
             return StrategyModelOutput(
                 score=0.60,
                 label="hold",
-                reason="각본 밖 티커 — 판단을 닫는다",
+                reason="새 근거가 없어 판단을 보류한다",
                 bull_case="",
                 key_risk="",
             )
@@ -149,10 +151,16 @@ def _sentiment_output(stance: Stance | None) -> ModelOutput:
     """Map a stance to the scripted news/disclosure grade."""
     match stance:
         case "bullish":
-            return ModelOutput(score=0.80, label="positive", reason="각본: 호재 원문")
+            return ModelOutput(
+                score=0.80, label="positive", reason="원문이 실적 개선을 직접 언급한다"
+            )
         case "bearish":
-            return ModelOutput(score=0.20, label="negative", reason="각본: 악재 원문")
+            return ModelOutput(
+                score=0.20, label="negative", reason="원문이 가이던스 철회를 직접 언급한다"
+            )
         case None:
-            return ModelOutput(score=0.50, label="neutral", reason="각본 밖 원문")
+            return ModelOutput(
+                score=0.50, label="neutral", reason="판단을 바꿀 만한 내용이 없다"
+            )
         case unreachable:
             assert_never(unreachable)
