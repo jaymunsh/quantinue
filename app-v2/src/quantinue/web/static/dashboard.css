@@ -897,18 +897,24 @@ select:focus-visible { outline: 2px solid var(--focus-input); outline-offset: 1p
 /* ═══ 계좌 개설 폼 ════════════════════════════════════════════
    한 줄에 한 칸씩 늘어놓으면 여섯 칸이 긴 띠가 되어 무엇과 무엇이 한 벌인지
    안 보인다. "계좌 하나에 로그인 하나"라는 문장 그대로 두 묶음으로 나눈다. */
-.account-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; margin-top: 16px; }
-.field-group { margin: 0; padding: 16px 18px 6px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--bg); }
-.field-group legend { padding: 0 8px; margin-left: -4px; color: var(--fg); font-size: 12px; font-weight: 700; letter-spacing: .04em; }
-.field { display: grid; gap: 5px; margin: 0 0 14px; }
+.account-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 20px; }
+/* 두 묶음을 카드로 세운다. 테두리만 있던 원판은 패널 안에서 배경이 같아
+   묶음의 경계가 안 보였다 — 표면을 한 단 띄우고 제목에 표지를 붙인다. */
+.field-group { position: relative; margin: 0; padding: 22px 20px 8px; border: 1px solid var(--border); border-radius: var(--r-card); background: var(--surface); box-shadow: 0 1px 2px rgb(15 23 42 / .04); }
+.field-group::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; border-radius: var(--r-card) 0 0 var(--r-card); background: var(--accent); opacity: .55; }
+.field-group legend { padding: 3px 10px; margin-left: 2px; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; }
+.field { display: grid; gap: 6px; margin: 0 0 18px; }
 .field label { color: var(--fg); font-size: 12.5px; font-weight: 600; }
 .field input, .field select { width: 100%; }
-.field input { min-height: 38px; padding: 8px 12px; color: var(--fg); background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--r-control); font: 500 13px var(--font-ui); text-transform: none; }
+.field input { min-height: 42px; padding: 10px 13px; color: var(--fg); background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--r-control); font: 500 13.5px var(--font-ui); text-transform: none; transition: border-color .15s ease, box-shadow .15s ease; }
+.field input:hover, .field select:hover { border-color: var(--accent); }
 .field input:focus-visible { outline: 2px solid var(--focus-input); outline-offset: 1px; border-color: var(--accent); }
-.field select { min-height: 38px; }
+.field select { min-height: 42px; }
 .field small { color: var(--muted); font-size: 11.5px; line-height: 1.5; }
-.account-form__submit { display: flex; align-items: center; gap: 12px; grid-column: 1 / -1; padding-top: 2px; }
-.account-form__submit button { min-height: 42px; padding: 10px 22px; font-size: 13.5px; }
+/* 제출은 이 화면의 유일한 되돌릴 수 없는 동작이라 시선을 여기서 멈춘다. */
+.account-form__submit { display: flex; align-items: center; gap: 14px; grid-column: 1 / -1; padding: 16px 18px; margin-top: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-card); }
+.account-form__submit button { min-height: 46px; padding: 12px 28px; color: #fff; background: var(--accent); border: 1px solid var(--accent); border-radius: var(--r-control); font-size: 14px; font-weight: 700; letter-spacing: .01em; }
+.account-form__submit button:hover { filter: brightness(1.08); }
 .account-form__submit span { color: var(--muted); font-size: 12px; }
 @media (max-width: 860px) {
   .account-form__submit { flex-direction: column; align-items: stretch; }
