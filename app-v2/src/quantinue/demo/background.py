@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 _SOURCE = "demo:market-wire"
 
 # 배경 종목도 실존 티커와 겹치지 않는 가공 심볼이다(각본 종목과 같은 원칙).
-_BACKGROUND: tuple[tuple[str, str], ...] = (
+BACKGROUND_LISTINGS: tuple[tuple[str, str], ...] = (
     ("ALTQ", "Altiqua Systems"),
     ("BRYN", "Bryndel Foods"),
     ("CNTV", "Centriva Health"),
@@ -72,7 +72,7 @@ def background_articles(*, published_from: datetime, count: int = 42) -> tuple[R
     """
     rows: list[RawNewsWrite] = []
     for index in range(count):
-        ticker, company = _BACKGROUND[index % len(_BACKGROUND)]
+        ticker, company = BACKGROUND_LISTINGS[index % len(BACKGROUND_LISTINGS)]
         headline = _HEADLINES[index % len(_HEADLINES)].format(company=company)
         at = published_from + timedelta(minutes=7 * index)
         rows.append(
@@ -93,7 +93,7 @@ def background_filings(*, trade_date: date, count: int = 17) -> tuple[RawDisclos
     """Build routine filings so the disclosure job reports real volume."""
     rows: list[RawDisclosureWrite] = []
     for index in range(count):
-        ticker, company = _BACKGROUND[index % len(_BACKGROUND)]
+        ticker, company = BACKGROUND_LISTINGS[index % len(BACKGROUND_LISTINGS)]
         form_type, is_hard = _FORMS[index % len(_FORMS)]
         rows.append(
             RawDisclosureWrite(

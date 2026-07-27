@@ -8,7 +8,11 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 
 from quantinue.core.market_calendar import NyseCalendar
-from quantinue.demo.background import background_articles, background_filings
+from quantinue.demo.background import (
+    BACKGROUND_LISTINGS,
+    background_articles,
+    background_filings,
+)
 from quantinue.demo.scripted_events import ScriptedHeadline, scenario_articles
 from quantinue.demo.seed import DemoListing, DemoSeedSpec, HeldPosition
 
@@ -51,10 +55,35 @@ class DemoScenario:
     articles: tuple[RawNewsWrite, ...]
     wire_articles: tuple[RawNewsWrite, ...]
     filings: tuple[RawDisclosureWrite, ...]
+    listings: dict[str, tuple[str, Decimal]]
+    featured: frozenset[str]
 
 
 def _flat(price: str, count: int) -> tuple[Decimal, ...]:
     return (Decimal(price),) * count
+
+
+def _background_listings() -> dict[str, tuple[str, Decimal]]:
+    """Give the background tickers a stable price so nothing crashes.
+
+    유니버스에 있는 종목은 픽으로 올라올 수 있고, 픽이 되면 감시 루프가
+    시세를 묻는다. 각본에 값이 없으면 그 자리에서 죽으므로 전부 값을 준다.
+    가격은 티커 문자로 정해 회차마다 흔들리지 않는다.
+    """
+    return {
+        ticker: (company, Decimal(20 + (index * 7) % 130))
+        for index, (ticker, company) in enumerate(BACKGROUND_LISTINGS)
+    }
+
+
+def _all_listings() -> dict[str, tuple[str, Decimal]]:
+    """Scenario tickers first, then background — the demo's whole universe."""
+    return {
+        DEFENSE_TICKER: (DEFENSE_COMPANY, Decimal("150.00")),
+        GOOD_TICKER: (GOOD_COMPANY, Decimal("55.00")),
+        BAD_TICKER: (BAD_COMPANY, Decimal("80.00")),
+        **_background_listings(),
+    }
 
 
 def _defense_path() -> tuple[Decimal, ...]:
@@ -132,7 +161,15 @@ def build_scenario(today: date | None = None) -> DemoScenario:
             # 묶어 둔다 — S3·S4의 재판단은 가격이 아니라 기사가 일으킨다.
             GOOD_TICKER: _flat("55.00", _FILM_MINUTES),
             BAD_TICKER: _flat("80.00", _FILM_MINUTES),
+            # 배경 종목도 값을 준다. 유니버스에 있는 이상 픽으로 올라올 수
+            # 있고, 그때 각본에 가격이 없으면 감시 루프가 그 자리에서 죽는다.
+            **{
+                ticker: _flat(str(price), _FILM_MINUTES)
+                for ticker, (_, price) in _background_listings().items()
+            },
         },
+        listings=_all_listings(),
+        featured=frozenset({DEFENSE_TICKER, GOOD_TICKER, BAD_TICKER}),
         # 헤드라인은 라우팅의 결정론 키워드 필터(_HEADLINE_EVENT_TYPES)가
         # 인식하는 영어 마커를 포함해야 한다 — 각본이 운영 규칙에 맞춘다
         # (demo-video-plan.md §5). "guidance"가 두 기사 모두의 마커다.

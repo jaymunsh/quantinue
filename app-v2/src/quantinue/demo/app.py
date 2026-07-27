@@ -14,6 +14,7 @@ from quantinue.core.config import (
     LlmMode,
     Settings,
 )
+from quantinue.demo.market import DemoMarketData
 from quantinue.demo.scenario import STANCES, build_scenario
 from quantinue.demo.scenario_analyzer import ScenarioAnalyzer
 from quantinue.demo.scripted_events import (
@@ -100,11 +101,20 @@ def create_demo_app() -> FastAPI:
     settings = Settings(_env_file=None)
     _require_demo_settings(settings)
     scenario = build_scenario()
+    market = DemoMarketData(
+        listings=scenario.listings, featured=scenario.featured
+    )
     return create_app(
         settings,
         config=_demo_config(),
         llm_inner=ScenarioAnalyzer(stances=STANCES),
         job_sources=JobSources(
+            # 시세·유니버스·매크로를 물려야 universe·daily_bars·benchmark·
+            # macro 잡이 등록된다. 없으면 관제실이 잡 9개만 보여주는데 실제
+            # 시스템은 13개다 — 화면이 시스템을 축소해 보여주면 안 된다.
+            market_data=market,
+            bars=market,
+            macro=market,
             # 각본 기사 2건 + 배경 수집물. 배경은 전부 분석 범위 밖이라
             # 라우팅에서 걸러지고 LLM은 한 번도 부르지 않는다 — 화면에는
             # "많이 모았고 관련된 것만 판단했다"가 남는다(demo/background.py).
