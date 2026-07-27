@@ -133,8 +133,8 @@
       <li class="job-chain-item job-{{ job.status }}">
         <span class="status-dot{% if job.status == 'failed' %} status-dot--danger{% elif job.status == 'running' %} status-dot--warning{% endif %}"></span>
         <div>
-          <strong class="job-name">{{ job.job_name }}
-            <span class="badge {% if job.status == 'succeeded' %}badge--success{% elif job.status == 'failed' %}badge--danger{% else %}badge--warning{% endif %} job-status">{{ job.status }}</span>
+          <strong class="job-name">{{ job.display_name }}
+            <span class="badge {% if job.status == 'succeeded' %}badge--success{% elif job.status == 'failed' %}badge--danger{% else %}badge--warning{% endif %} job-status">{{ job.status_label }}</span>
           </strong>
           {% if job.attempts > 1 %}<span class="badge badge--warning">{{ job.attempts }}회 시도</span>{% endif %}
           {% if job.detail %}<small class="job-detail">{{ job.detail }}</small>{% endif %}
@@ -202,7 +202,7 @@
               </td>
               <td data-label="수량" class="mono money-value">{{ plan.quantity }}</td>
               <td data-label="진입가" class="mono money-value">{% if plan.entry_price is not none %}{{ plan.entry_price }}{% else %}—{% endif %}</td>
-              <td data-label="보류 사유" class="muted">{{ plan.skipped_reason or "—" }}</td>
+              <td data-label="보류 사유" class="muted">{{ plan.skipped_reason_label or "—" }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -225,7 +225,7 @@
         {% for item in day.allocation.reasons %}
         <li class="status-item">
           <span class="status-dot status-dot--warning"></span>
-          <div><strong>{{ item.reason }}</strong></div>
+          <div><strong>{{ item.reason_label }}</strong></div>
           <time>{{ item.count }}건</time>
         </li>
         {% endfor %}

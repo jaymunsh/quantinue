@@ -303,7 +303,7 @@ def build_disclosures_job(
         filings = await source.filings(session)
         await domain.save_raw_disclosures(filings)
         hard = sum(1 for filing in filings if filing.is_hard_event)
-        return f"{len(filings)} filings ({hard} hard) for {session.isoformat()}"
+        return f"{session.isoformat()} 공시 {len(filings)}건 수집 (중요 {hard}건)"
 
     return JobDefinition(name=name, run=run)
 
@@ -347,7 +347,7 @@ def build_news_job(
         articles = await source.articles(session, as_of)
         await domain.save_raw_news(articles)
         tickers = len({article.ticker for article in articles})
-        return f"{len(articles)} headlines on {tickers} tickers since {session.isoformat()}"
+        return f"{session.isoformat()} 이후 기사 {len(articles)}건 · 종목 {tickers}개"
 
     return JobDefinition(name=name, run=run)
 
@@ -512,7 +512,7 @@ def build_screening_job(
         snapshot = await domain.last_job_success("universe")
         if snapshot is None:
             # 유니버스 없이 고른 "상위 N"은 무엇의 상위인지 알 수 없다.
-            return "no universe snapshot"
+            return "수집된 종목 후보가 없어 건너뜀"
         session = calendar.previous_trading_day(as_of)
         candidates = await domain.rank_universe(
             session,
@@ -574,7 +574,7 @@ def build_insider_scoring_job(
     async def run(as_of: date) -> str:
         session = calendar.previous_trading_day(as_of)
         result = await job.run(as_of=as_of, session=session)
-        detail = f"{len(result.scores)} insider votes"
+        detail = f"내부자 거래 {len(result.scores)}건 채점"
         if result.abstained:
             # 기권 수를 적지 않으면 "2건 채점"이 "대상이 2건이었다"로 읽힌다.
             detail = f"{detail}, {result.abstained} abstained (no discretionary trade)"
@@ -613,13 +613,13 @@ def build_analysis_job(  # noqa: PLR0913 - 각 인자가 교체 가능한 협력
         sides = Counter(outcome.side for outcome in result.outcomes)
         approved = sum(1 for outcome in result.outcomes if outcome.approved)
         detail = (
-            f"{len(result.outcomes)} analysed ({profile_name}):"
-            f" buy {sides['buy']} / sell {sides['sell']} / hold {sides['hold']},"
-            f" {approved} approved"
+            f"{len(result.outcomes)}종목 판단 ·"
+            f" 매수 {sides['buy']} / 매도 {sides['sell']} / 보류 {sides['hold']}"
+            f" · 크리틱 승인 {approved}건"
         )
         if result.skipped:
             # 조용히 빠뜨리지 않는다 — 범위가 몇이었는지가 원장에 남아야 한다.
-            detail += f", {result.skipped} skipped after model errors"
+            detail += f" · 모델 오류로 {result.skipped}종목 건너뜀"
         return detail
 
     return JobDefinition(name=name, run=run)
@@ -660,7 +660,7 @@ def build_exit_job(  # noqa: PLR0913 - 알림이 늘며 협력자도 늘었다
         # 묻히면 안 되고, 0건인 날을 매일 알리면 진짜 발동이 소음에 묻힌다.
         if closed and notify is not None:
             await notify(format_exit_alert(as_of, closed))
-        return f"{len(closed)}/{len(held)} closed"
+        return f"보유 {len(held)}종목 중 {len(closed)}종목 청산"
 
     return JobDefinition(name=name, run=run)
 
@@ -1039,7 +1039,7 @@ def build_daily_summary_job(
         if broken:
             lines.append(f"실패: {', '.join(broken)}")
         await notify("\n".join(lines))
-        return f"summary sent: {succeeded}/{len(runs)} succeeded, {bought} bought"
+        return f"요약 발송 · 잡 {succeeded}/{len(runs)} 완료 · 매수 {bought}건"
 
     return JobDefinition(name=name, run=run)
 

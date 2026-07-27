@@ -15,7 +15,7 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from datetime import date, datetime  # noqa: TC003 - pydantic이 런타임에 해석한다
 from decimal import ROUND_HALF_UP, Decimal
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,6 +41,53 @@ _CENT = Decimal("0.01")
 _MIN_SPAN_RATIO = Decimal("0.02")
 
 
+# 잡 이름은 **원장 키**라 바꿀 수 없다(tb_job_run의 PK 일부 — 바꾸면 지난
+# 슬롯 이력이 끊긴다). 그래서 이름은 그대로 두고 화면에만 사람 말을 씌운다.
+# 읽는 사람이 개발자가 아니어도 "무엇을 하는 단계인지" 알 수 있어야 한다.
+_JOB_LABELS: Final[dict[str, str]] = {
+    "universe": "종목 후보 수집",
+    "daily_bars": "일별 시세 수집",
+    "disclosures": "공시 수집",
+    "news": "뉴스 수집",
+    "news_wire": "보도자료 수집",
+    "macro": "시장 국면 점검",
+    "screening": "후보 압축",
+    "insider_scoring": "내부자 거래 채점",
+    "analysis:aggressive": "판단 · 공격형",
+    "analysis:conservative": "판단 · 안전형",
+    "exits": "보유 종목 청산 점검",
+    "allocation": "매수 배분",
+    "benchmark": "지수(SPY) 수집",
+    "review": "T+5 회고",
+    "daily_summary": "일일 요약 알림",
+}
+_STATUS_LABELS: Final[dict[str, str]] = {
+    "succeeded": "완료",
+    "failed": "실패",
+    "running": "진행 중",
+}
+# 매수가 막힌 이유. 원장에는 기계 코드로 남기고(집계·비교의 축) 화면에서만
+# 사람 말로 바꾼다 — "왜 안 샀나"는 비개발자가 가장 먼저 묻는 질문이다.
+_SKIP_LABELS: Final[dict[str, str]] = {
+    "daily_order_cap": "하루 주문 한도 도달",
+    "existing_position": "이미 보유 중",
+    "not_tradable": "거래 불가 종목",
+    "tradability_unavailable": "거래 가능 여부 확인 실패",
+    "max_positions": "보유 종목 수 한도",
+    "max_weight": "종목당 비중 한도",
+    "min_cash_ratio": "최소 현금 비율 유지",
+    "daily_loss_limit": "당일 손실 한도",
+    "insufficient_cash": "현금 부족",
+    "late_entry": "추격 매수 구간",
+    "risk_off": "위험 회피 국면",
+}
+
+
+def skip_reason_label(reason: str) -> str:
+    """Return the human phrase for one allocation skip code."""
+    return _SKIP_LABELS.get(reason, reason)
+
+
 class JobRunView(BaseModel):
     """One job's slot as the control room shows it."""
 
@@ -55,6 +102,20 @@ class JobRunView(BaseModel):
     # 같은 슬롯의 시도 횟수. 재시도는 성공 뒤에 숨으므로 화면이 이 수를
     # 말하지 않으면 "한 번에 됐다"로 읽힌다.
     attempts: int = Field(default=1, ge=1)
+
+    @property
+    def display_name(self) -> str:
+        """Return the human label, falling back to the ledger key.
+
+        모르는 잡이 생겨도 화면이 비지 않게 원래 이름으로 떨어뜨린다 —
+        번역이 없다는 사실보다 잡이 안 보이는 것이 나쁘다.
+        """
+        return _JOB_LABELS.get(self.job_name, self.job_name)
+
+    @property
+    def status_label(self) -> str:
+        """Return the Korean status word shown on the badge."""
+        return _STATUS_LABELS.get(self.status, self.status)
 
 
 class LlmSpendView(BaseModel):
@@ -92,6 +153,11 @@ class SkipReasonView(BaseModel):
     reason: str
     count: int = Field(gt=0)
 
+    @property
+    def reason_label(self) -> str:
+        """Return the human phrase shown beside the count."""
+        return skip_reason_label(self.reason)
+
 
 class OrderPlanView(BaseModel):
     """One allocation decision, bought or blocked."""
@@ -104,6 +170,13 @@ class OrderPlanView(BaseModel):
     skipped_reason: str | None
     quantity: int = Field(ge=0)
     entry_price: Decimal | None
+
+    @property
+    def skipped_reason_label(self) -> str | None:
+        """Return the human phrase for this plan's skip code, if any."""
+        if self.skipped_reason is None:
+            return None
+        return skip_reason_label(self.skipped_reason)
 
 
 class AllocationView(BaseModel):

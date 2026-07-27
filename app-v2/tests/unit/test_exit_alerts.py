@@ -84,7 +84,7 @@ async def test_a_closed_position_is_announced_with_its_reason() -> None:
 
     detail = await job.run(_DAY)
 
-    assert detail == "2/2 closed"
+    assert detail == "보유 2종목 중 2종목 청산"
     assert len(notify.messages) == 1
     message = notify.messages[0]
     assert "NVDA 50주" in message
@@ -122,4 +122,4 @@ async def test_without_a_notifier_the_job_still_closes_positions() -> None:
         notify=None,
     )
 
-    assert await job.run(_DAY) == "1/2 closed"
+    assert await job.run(_DAY) == "보유 2종목 중 1종목 청산"

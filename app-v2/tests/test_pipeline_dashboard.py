@@ -152,9 +152,15 @@ def test_the_page_renders_the_chain_in_execution_order() -> None:
     with _client(reads) as client:
         body = client.get("/").text
 
-    # Then — CSS가 인라인이라 페이지 전체 검색은 클래스 이름에 걸린다
+    # Then — CSS가 인라인이라 페이지 전체 검색은 클래스 이름에 걸린다.
+    # 화면은 원장 키(universe/daily_bars/…)가 아니라 사람이 읽는 표시명을
+    # 그린다(_JOB_LABELS) — 비개발자 청중이 단계를 알아볼 수 있어야 한다.
     chain = _chain_list(body)
-    assert chain.index("universe") < chain.index("daily_bars") < chain.index("allocation")
+    assert (
+        chain.index("종목 후보 수집")
+        < chain.index("일별 시세 수집")
+        < chain.index("매수 배분")
+    )
 
 
 def test_llm_spend_appears_with_its_ceiling_when_the_ledger_answers() -> None:

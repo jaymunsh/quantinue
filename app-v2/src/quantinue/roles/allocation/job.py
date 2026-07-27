@@ -172,7 +172,7 @@ class AllocationJob:
             )
             bought += outcome[0]
             skipped += outcome[1]
-        return f"{bought} bought, {skipped} skipped"
+        return f"{bought}건 매수 · {skipped}건 보류"
 
     async def _held_by_account(self, domain: object) -> dict[int, frozenset[str]]:
         """Which tickers each account already owns — a re-approval is not a buy."""
