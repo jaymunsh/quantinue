@@ -300,16 +300,28 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 6b ────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="두 가지는 못 한 게 아니라 안 한 겁니다. 실제 주문은 검증이 끝난 뒤에 켜는 마지막 스위치로 설계했고, 클라우드는 로컬로 도는 시스템이라 필요가 없었습니다. 둘 다 검토 문서가 저장소에 남아 있습니다.">
-  <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">일부러 하지 않은 것</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">못 한 게 아니라 안 한 것</h1>
+<section class="slide" data-notes="실제 주문은 못 한 게 아니라, 검증이 끝난 뒤에 켜는 마지막 스위치로 설계한 겁니다.<br><br>클라우드는 이야기가 조금 다릅니다. 처음엔 로컬로 도는 시스템이라 <b>필요 없다</b>고 판단했습니다. 그런데 전제가 틀렸더군요. 실제로 돌려보니 <b>노트북을 들고 이동하는 일이 잦았고</b>, 그러면 전원과 네트워크가 끊깁니다. 더 나쁜 건 <b>그 공백이 감지도 안 된다</b>는 겁니다 — 알림을 보내는 주체가 앱인데 앱이 같이 죽으니까요. 그래서 <b>이전이 정당하다고 다시 판단했습니다.</b> 다만 착수 시점은 보류했고, 보류하는 동안엔 텔레그램 알림으로 사각지대를 좁혔습니다.<br><br>한다면 어떻게 할지는 오른쪽에 있습니다. 인스턴스는 t4g.small급이면 충분하고, 비밀키는 서버에 파일로 두지 않고 파라미터 스토어에서 읽어 주입합니다. 관리 화면은 인터넷에 열지 않고 SSH 터널로만 봅니다. 그리고 원장은 반드시 가져갑니다 — 계좌와 체결 기록이 이 시스템의 연속성이니까요.">
+  <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">안 한 것 · 판단이 뒤집힌 것</span><span class="right">QUANTINUE</span></div>
+  <h1 class="sm">못 한 게 아니라 안 한 것<span style="color:var(--muted)">,</span><br>그리고 <em>다시 판단한 것</em></h1>
   <div class="body">
-    <div class="grid g2">
-      <div class="card"><span class="n">하지 않음 · 01</span><h3>실제 주문</h3><p>시세 · 뉴스 · AI는 전부 실물이고 브로커 주문만 뺐다.<br>무인 검증이 끝난 뒤 켜는 <strong>마지막 스위치</strong>로 설계</p></div>
-      <div class="card"><span class="n">하지 않음 · 02</span><h3>클라우드 배포</h3><p>로컬 운영 전제라 필요가 없었다.<br>다만 "한다면" 검토는 끝 — <strong>Lightsail 최소안 + 착수 체크리스트</strong></p></div>
+    <div class="split" style="grid-template-columns:1fr 1.25fr">
+      <div>
+        <div class="card" style="margin-bottom:16px"><span class="n">안 한 것</span><h3>실제 주문</h3><p>시세 · 뉴스 · AI는 전부 실물이고 브로커 주문만 뺐다.<br>무인 검증이 끝난 뒤 켜는 <strong>마지막 스위치</strong></p></div>
+        <div class="card ai"><span class="n">뒤집은 것</span><h3>클라우드 이전</h3><p>처음엔 "로컬이라 필요 없다"였다.<br><strong>전제가 틀렸다</strong> — 운용자가 이동이 잦아 노트북이 움직이면 전원·네트워크가 끊기는데, <strong>알리는 주체가 앱이라 그 공백은 감지도 안 된다.</strong><br>→ <strong>이전이 정당하다로 재판정</strong>, 착수만 보류</p></div>
+      </div>
+      <div class="card" style="height:100%">
+        <span class="n">한다면 이렇게 — 착수 체크리스트</span>
+        <table style="font-size:21px;margin-top:6px">
+          <tr><td><strong>인스턴스</strong></td><td>EC2 t4g.small급이면 충분 <span class="muted">(앱 24MB · DB 201MB)</span> · 인프라 <strong>월 $20~40</strong></td></tr>
+          <tr><td><strong>비밀</strong></td><td>SSM Parameter Store에서 읽어 주입 — <strong>서버에 <code>.env</code>를 두지 않는다</strong></td></tr>
+          <tr><td><strong>접근</strong></td><td>8020을 <strong>열지 않는다</strong>. 화면은 SSH 터널로 — 공개하면 TLS·도메인이 딸려 온다</td></tr>
+          <tr><td><strong>데이터</strong></td><td><code>pg_dump</code>로 원장을 <strong>가져간다</strong> — 계좌·체결 기록이 연속성의 실체</td></tr>
+          <tr><td><strong>기동</strong></td><td><code>restart=always</code> — <strong>재부팅 자동 기동이 이 이전의 존재 이유</strong></td></tr>
+        </table>
+      </div>
     </div>
   </div>
-  <div class="ledger"><span class="tag">문서</span><span>둘 다 검토 기록이 저장소에 남아 있다</span></div>
+  <div class="ledger"><span class="tag">근거</span><span>docs/mvp2-planning/aws-migration-review.md</span><span class="dot">·</span><span>2026-07-21 재판정 · 착수 보류(사용자 결정)</span></div>
 </section>
 
 <!-- 7a ────────────────────────────────────────────────────────────────── -->
