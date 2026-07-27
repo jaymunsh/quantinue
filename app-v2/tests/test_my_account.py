@@ -182,3 +182,16 @@ def test_an_exits_job_marker_reads_as_a_rule_not_a_judgement() -> None:
     # Then
     assert entry.is_mechanical is True
     assert entry.mechanical_label == "손절"
+
+
+def test_conviction_carries_its_scale_to_the_screen() -> None:
+    """확신도가 0.82라고만 적히면 무엇에 대한 몇 할인지 알 수 없다."""
+    # Given
+    trades = (_trade("NVDA", side="buy", summary="추세 초입"),)
+
+    # When
+    entry = my_account_view(_ACCOUNT, (), (), trades).timeline[0]
+
+    # Then — 원장 값은 그대로 두고 표시용 퍼센트만 따로 든다.
+    assert entry.conviction_pct == "82.0"
+    assert entry.conviction == "0.82"

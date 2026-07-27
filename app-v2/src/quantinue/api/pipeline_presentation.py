@@ -75,6 +75,33 @@ _INV_TYPE_LABELS: Final[dict[str, str]] = {
     "aggressive": "공격형",
     "conservative": "안전형",
 }
+# 매매 방향과 크리틱 평결. 원장 값은 영문 코드이고 화면은 한국어다 —
+# 배분 표가 이미 "매수"로 부르는데 판단 패널만 "buy"로 부르면 같은 것이
+# 두 이름을 갖는다.
+_SIDE_LABELS: Final[dict[str, str]] = {
+    "buy": "매수",
+    "sell": "매도",
+    "hold": "보류",
+}
+_VERDICT_LABELS: Final[dict[str, str]] = {
+    "pass": "통과",
+    "reject": "반려",
+    "hold": "보류",
+}
+
+
+def conviction_percent(ratio: Decimal) -> str:
+    """Render a 0~1 conviction score as a percentage string.
+
+    확신도는 단위 없는 0~1 값이라 "확신 0.887"만 보면 척도를 알 수 없다.
+    무엇에 대한 몇 할인지가 화면에서 바로 읽히도록 퍼센트로 바꾸되,
+    원장 값(0.887)은 소수 한 자리까지 보존해 대조가 끊기지 않게 한다.
+    관제실과 유저 화면이 **같은 함수**를 쓴다 — 복사하면 한쪽만 고쳐지는
+    날이 오고, 그때 같은 판단이 두 화면에서 다른 확신도로 보인다.
+    """
+    return str((ratio * _PERCENT).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP))
+
+
 # 매수가 막힌 이유. 원장에는 기계 코드로 남기고(집계·비교의 축) 화면에서만
 # 사람 말로 바꾼다 — "왜 안 샀나"는 비개발자가 가장 먼저 묻는 질문이다.
 # 키는 role 9의 SkipReason 리터럴과 같은 집합이어야 한다 — 여기 없는 코드는
@@ -265,6 +292,23 @@ class JudgementView(BaseModel):
     verdict_confidence: Decimal | None
     objection: str | None
     approved: bool
+
+    @property
+    def side_label(self) -> str:
+        """Return the Korean word for this judgement's direction."""
+        return _SIDE_LABELS.get(self.side, self.side)
+
+    @property
+    def verdict_label(self) -> str | None:
+        """Return the Korean word for the critic's verdict, if it ruled."""
+        if self.verdict_decision is None:
+            return None
+        return _VERDICT_LABELS.get(self.verdict_decision, self.verdict_decision)
+
+    @property
+    def conviction_pct(self) -> str:
+        """Return the conviction score as a percentage the reader can scale."""
+        return conviction_percent(self.conviction)
 
 
 class ProfileJudgementsView(BaseModel):

@@ -167,7 +167,7 @@
         <strong class="trade__name">{{ trade.ticker }} {{ trade.quantity }}주</strong>
         <span class="trade__price mono">${{ '{:,.2f}'.format(trade.price) }}</span>
       </div>
-      <p class="trade__meta"><time datetime="{{ trade.filled_at.isoformat() }}">{{ trade.filled_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>{% if trade.conviction and not trade.is_mechanical %} · 확신도 {{ trade.conviction }}{% endif %}</p>
+      <p class="trade__meta"><time datetime="{{ trade.filled_at.isoformat() }}">{{ trade.filled_at.strftime('%Y-%m-%d %H:%M UTC') }}</time>{% if trade.conviction_pct and not trade.is_mechanical %} · 확신도 {{ trade.conviction_pct }}%{% endif %}</p>
       {# 판단 없는 체결도 사실이다. 빈 자리를 그럴듯한 문장으로 채우지 않는다. #}
       {% if trade.is_mechanical %}
       <p class="trade__mechanical">{% if trade.mechanical_label %}<b>{{ trade.mechanical_label }} 조건 도달</b> — {% endif %}규칙에 따른 청산입니다. 모델 판단 없이 손절·익절·기간 조건으로 체결됐습니다.</p>

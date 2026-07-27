@@ -329,3 +329,35 @@ def test_an_unjudged_signal_counts_as_neither_approved_nor_rejected() -> None:
     assert views[0].approved == 0
     assert views[0].unjudged == 1
     assert views[0].judgements[0].verdict_decision is None
+
+
+def test_a_judgement_speaks_the_language_of_the_screen() -> None:
+    """화면은 한국어인데 원장 코드(buy/pass)와 척도 없는 0.887이 그대로 떴다.
+
+    원장 값은 필드에 그대로 남기고 표시용 문자열만 따로 만든다 — 대조가
+    필요한 사람은 코드로, 청중은 문장으로 읽는다.
+    """
+    # Given
+    records = (_judgement("AAA", side="buy", conviction="0.887", verdict="pass"),)
+
+    # When
+    item = profile_judgement_views(records)[0].judgements[0]
+
+    # Then
+    assert item.side_label == "매수"
+    assert item.verdict_label == "통과"
+    assert item.conviction_pct == "88.7"
+    assert item.side == "buy"
+    assert item.verdict_decision == "pass"
+
+
+def test_an_unruled_judgement_has_no_verdict_word_to_show() -> None:
+    """평결이 없으면 라벨도 없다 — 빈 자리를 "보류"로 채우면 크리틱이 판정한 게 된다."""
+    # Given
+    records = (_judgement("AAA", verdict=None),)
+
+    # When
+    item = profile_judgement_views(records)[0].judgements[0]
+
+    # Then
+    assert item.verdict_label is None

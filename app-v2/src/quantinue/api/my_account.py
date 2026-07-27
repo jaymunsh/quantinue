@@ -23,7 +23,11 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
-from quantinue.api.pipeline_presentation import equity_sparkline, exit_reason_label
+from quantinue.api.pipeline_presentation import (
+    conviction_percent,
+    equity_sparkline,
+    exit_reason_label,
+)
 
 if TYPE_CHECKING:
     from quantinue.db.control_room_reads import AccountEquityPoint
@@ -92,6 +96,9 @@ class TimelineEntryView(BaseModel):
     mechanical_label: str | None
     inv_type: str | None
     conviction: str | None
+    # 화면에 쓰는 퍼센트 표기. 원장 값(0.790)은 conviction에 그대로 두고
+    # 척도가 보이는 문자열만 따로 든다 — API 응답의 값 의미는 안 바꾼다.
+    conviction_pct: str | None
     summary: str | None
     bull_case: str | None
     key_risk: str | None
@@ -173,6 +180,9 @@ def _timeline_view(record: TradeTimelineRecord) -> TimelineEntryView:
         mechanical_label=mechanical_label,
         inv_type=record.inv_type,
         conviction=None if record.conviction is None else str(record.conviction),
+        conviction_pct=(
+            None if record.conviction is None else conviction_percent(record.conviction)
+        ),
         summary=record.summary,
         bull_case=record.bull_case,
         key_risk=record.key_risk,

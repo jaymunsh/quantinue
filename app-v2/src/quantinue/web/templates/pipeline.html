@@ -64,29 +64,31 @@
     {% else %}방어선 발동은 없었습니다.{% endif %}
   </p>
   <div class="report-strip">
+    {# 숫자 옆의 단위는 작게 붙인다 — 큰 숫자의 가독성을 지키면서 "14"가
+       무엇의 14인지 말하게 한다. #}
     <div class="report-cell report-cell--primary">
       <span>실행한 잡</span>
-      <strong>{{ day.chain.jobs | length }}</strong>
+      <strong>{{ day.chain.jobs | length }}<u>개</u></strong>
       <small>성공 {{ day.chain.succeeded }} · 실패 {{ day.chain.failed }} · 진행 {{ day.chain.running }}</small>
     </div>
     <div class="report-cell">
       <span>판단 → 승인</span>
-      <strong>{{ analysed }} <i>→</i> {{ approved }}</strong>
+      <strong>{{ analysed }} <i>→</i> {{ approved }}<u>건</u></strong>
       <small>성향 {{ day.profiles | length }}종 분석</small>
     </div>
     <div class="report-cell">
       <span>신규 매수</span>
-      <strong>{{ day.allocation.bought }}</strong>
-      <small>보류 {{ day.allocation.skipped }}</small>
+      <strong>{{ day.allocation.bought }}<u>건</u></strong>
+      <small>보류 {{ day.allocation.skipped }}건</small>
     </div>
     <div class="report-cell">
       <span>방어선 발동</span>
-      <strong>{{ day.exits | length }}</strong>
+      <strong>{{ day.exits | length }}<u>건</u></strong>
       <small>{% if day.exits %}{{ day.exits[0].reason_label }}{% if day.exits | length > 1 %} 외 {{ day.exits | length - 1 }}건{% endif %}{% else %}매도 체결 없음{% endif %}</small>
     </div>
     <div class="report-cell">
       <span>계좌</span>
-      <strong>{{ day.curves | length }}</strong>
+      <strong>{{ day.curves | length }}<u>개</u></strong>
       <small>시가평가 기록 보유</small>
     </div>
     {% if day.llm %}
@@ -232,8 +234,8 @@
               <td data-label="종목"><strong>{{ plan.ticker }}</strong></td>
               <td data-label="계좌" class="mono">{% if plan.account_id is not none %}#{{ plan.account_id }}{% else %}—{% endif %}</td>
               <td data-label="판단"><span class="badge badge--success">매수</span></td>
-              <td data-label="수량" class="mono money-value">{{ plan.quantity }}</td>
-              <td data-label="진입가" class="mono money-value">{% if plan.entry_price is not none %}{{ plan.entry_price }}{% else %}—{% endif %}</td>
+              <td data-label="수량" class="mono money-value">{{ plan.quantity }}주</td>
+              <td data-label="진입가" class="mono money-value">{% if plan.entry_price is not none %}${{ '{:,.2f}'.format(plan.entry_price) }}{% else %}—{% endif %}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -256,7 +258,7 @@
               <tr>
                 <td data-label="종목"><strong>{{ plan.ticker }}</strong></td>
                 <td data-label="계좌" class="mono">{% if plan.account_id is not none %}#{{ plan.account_id }}{% else %}—{% endif %}</td>
-                <td data-label="진입가" class="mono money-value">{% if plan.entry_price is not none %}{{ plan.entry_price }}{% else %}—{% endif %}</td>
+                <td data-label="진입가" class="mono money-value">{% if plan.entry_price is not none %}${{ '{:,.2f}'.format(plan.entry_price) }}{% else %}—{% endif %}</td>
                 <td data-label="보류 사유" class="muted">{{ plan.skipped_reason_label or "—" }}</td>
               </tr>
               {% endfor %}
@@ -319,9 +321,9 @@
         <li class="judgement-item {% if item.approved %}judgement-approved{% endif %}">
           <div class="judgement-head">
             <span class="judgement-ticker">{{ item.ticker }}</span>
-            <span class="badge {% if item.side == 'buy' %}badge--success{% elif item.side == 'sell' %}badge--danger{% else %}badge--info{% endif %} judgement-side">{{ item.side }}</span>
-            <span class="judgement-conviction muted">확신 {{ item.conviction }}</span>
-            <span class="judgement-verdict">{{ item.verdict_decision or "평결 없음" }}</span>
+            <span class="badge {% if item.side == 'buy' %}badge--success{% elif item.side == 'sell' %}badge--danger{% else %}badge--info{% endif %} judgement-side">{{ item.side_label }}</span>
+            <span class="judgement-conviction muted">확신 {{ item.conviction_pct }}%</span>
+            <span class="judgement-verdict">{% if item.verdict_label %}크리틱 {{ item.verdict_label }}{% else %}평결 없음{% endif %}</span>
           </div>
           <p class="judgement-summary">{{ item.summary }}</p>
           {% if item.bull_case %}<p class="judgement-bull">근거: {{ item.bull_case }}</p>{% endif %}
@@ -368,8 +370,8 @@
         <p class="equity-card__span equity-card__span--empty">곡선은 기록이 이틀 이상 쌓이면 그려집니다</p>
         {% endif %}
         <dl class="equity-facts">
-          <dt>시작</dt><dd class="money-value">{{ curve.opening_equity }}</dd>
-          <dt>현재</dt><dd class="money-value">{{ curve.latest_equity }}</dd>
+          <dt>시작</dt><dd class="money-value">${{ '{:,.2f}'.format(curve.opening_equity) }}</dd>
+          <dt>현재</dt><dd class="money-value">${{ '{:,.2f}'.format(curve.latest_equity) }}</dd>
         </dl>
       </article>
       {% endfor %}
