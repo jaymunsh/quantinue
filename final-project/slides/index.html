@@ -726,7 +726,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   // 무대를 화면에 맞춰 통째로 축소한다 — 프로젝터 해상도에 상관없이
   // 조판이 그대로 나오게. 노트를 열면 그만큼 무대를 위로 밀어 올린다.
   function fit() {
-    const pad = 40;
+    // 전체화면에서는 여백 없이 꽉 채운다 — 상시 40px 패딩 때문에 프로젝터에서도
+    // 사방에 검은 테두리가 남았다. 창 모드에서만 숨 쉴 여백을 조금 준다.
+    const pad = document.fullscreenElement ? 0 : 24;
     const h = notes.classList.contains('on') ? innerHeight * 0.62 : innerHeight;
     const s = Math.min((innerWidth - pad) / 1600, (h - pad) / 900);
     stage.style.transform = `scale(${s})`;
