@@ -495,7 +495,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 4a 아키텍처 — 07-28 재설계 2차: 존 격자가 "AI스럽다"는 지적, 3단 흐름으로 ── -->
-<section class="slide" data-notes="구조는 세 칸이면 다 설명됩니다 — 들어오고, 판단하고, 남습니다.<br><br>왼쪽, 실물 데이터가 들어옵니다. 시세와 뉴스는 Alpaca, 공시는 SEC EDGAR, 거시지표는 FRED — 전부 실제 소스입니다.<br><br>가운데가 저희가 만든 전부입니다. <b>FastAPI 앱 한 프로세스</b> 안에서 관제실 화면, 매일 잡 14종을 돌리는 잡 러너, 장중 1분 방어, 그리고 모든 AI 호출이 지나는 예산 관문이 함께 돕니다. 두 번째 프로세스는 기동 자체가 거부됩니다 — owner 잠금이 막습니다.<br><br>오른쪽, 결과는 PostgreSQL 원장에 남습니다. 판단·주문·체결·AI 비용까지 테이블이 따로 있고, 주문만 모의 브로커입니다.<br><br>그리고 아래 — 알림은 앱이 보내지만, 앱이 통째로 죽으면 알림도 같이 죽습니다. 그래서 5분마다 생존 신호를 받는 Healthchecks를 시스템 바깥에 뒀습니다.">
+<section class="slide" data-notes="구조는 세 칸이면 다 설명됩니다 — 들어오고, 판단하고, 남습니다.<br><br>왼쪽, 실물 데이터가 들어옵니다. 시세와 뉴스는 Alpaca, 공시는 SEC EDGAR, 거시지표는 FRED — 전부 실제 소스입니다.<br><br>가운데가 저희가 만든 전부입니다. <b>FastAPI 앱 한 프로세스</b> 안에서 관제실 화면, 매일 잡 14종을 돌리는 잡 러너, 장중 1분 방어, 그리고 모든 AI 호출이 지나는 예산 관문이 함께 돕니다. 그리고 이 앱은 주문을 내는 시스템이라, 실수로 두 개를 켜면 같은 주문이 두 번 나갈 수 있습니다. 그래서 먼저 뜬 프로세스가 소유권을 잠그고, 두 번째는 뜨기 전에 거부됩니다.<br><br>오른쪽, 결과는 PostgreSQL 원장에 남습니다. 판단·주문·체결·AI 비용까지 테이블이 따로 있고, 주문만 모의 브로커입니다.<br><br>그리고 아래 — 알림은 앱이 보내지만, 앱이 통째로 죽으면 알림도 같이 죽습니다. 그래서 5분마다 생존 신호를 받는 Healthchecks를 시스템 바깥에 뒀습니다.">
   <div class="eyebrow"><span class="no">05-2</span><i class="sep"></i><span class="kr">시스템 아키텍처</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">데이터가 <b>들어와서, 판단되고, 남습니다</b></h1>
   <div class="body" style="padding:16px 0 0">
@@ -517,8 +517,8 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
         <p style="line-height:1.75">관제실 웹 화면<br>
         <strong>잡 러너</strong> — 매일 14종 · 60초 틱<br>
         <strong>장중 감시</strong> — 1분 방어 · <span style="color:var(--det);font-weight:700">AI 없음</span><br>
-        <strong>예산 관문</strong> — 모든 AI 호출 · <span style="color:var(--ai);font-weight:700">하루 최대 $3</span> <span class="muted">(실제 4일 $0.53)</span></p>
-        <span class="chip">두 번째 프로세스는 기동 거부 — owner 잠금</span>
+        <strong>예산 관문</strong> — 모든 AI 호출 · <span style="color:var(--ai);font-weight:700">하루 최대 $3</span> <span class="muted">(실제 하루 ~$0.13)</span></p>
+        <span class="chip">실수로 두 개를 켜면 주문도 두 번 — 두 번째는 뜨기 전에 거부됩니다</span>
       </div>
       <div class="aarr">→<small>기록</small></div>
       <div class="abox det">
@@ -572,7 +572,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <div class="fjoin">→</div>
       <div class="card ai" style="padding:14px 18px">
         <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">③ 전략가 <span style="font-size:13.5px;color:var(--ai)">AI</span></h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_07</span></div>
-        <p style="font-size:17px;line-height:1.5;margin-top:6px">성향 둘이 같은 근거를 각자 판단 — <strong>확신이 문턱을 못 넘으면 제안이 없습니다.</strong></p>
+        <p style="font-size:17px;line-height:1.5;margin-top:6px">공격형·안전형이 같은 근거를 놓고 각자 판단합니다 — <strong>확신이 문턱을 못 넘으면 제안하지 않습니다.</strong></p>
         <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">매수 확신 ≥ 0.65(공격) · 0.75(안전)</p>
       </div>
 
