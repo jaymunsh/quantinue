@@ -36,8 +36,11 @@ html,body{height:100%;background:#0A1420;overflow:hidden}
 body{font-family:var(--kr);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
      word-break:keep-all;overflow-wrap:break-word}
 
-#viewport{position:fixed;inset:0;display:grid;place-items:center}
-#stage{width:1600px;height:900px;position:relative;transform-origin:center center;
+#viewport{position:fixed;inset:0}
+/* 중앙 정렬은 grid/flex에 맡기지 않는다 — 창이 무대(1600x900)보다 작을 때
+   엔진마다 overflow 정렬이 달라 다른 PC에서 무대가 구석으로 밀린 일이 있었다.
+   left/top 50% + translate(-50%,-50%)는 어디서나 같은 답을 준다. */
+#stage{width:1600px;height:900px;position:absolute;left:50%;top:50%;transform-origin:center center;
        background:var(--paper);overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.55)}
 
 .slide{position:absolute;inset:0;padding:74px 92px 0;display:none;flex-direction:column}
@@ -257,7 +260,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 @media print{
   html,body{background:#fff;overflow:visible;height:auto}
   #viewport{position:static;display:block}
-  #stage{width:100%;height:auto;transform:none!important;box-shadow:none}
+  #stage{width:100%;height:auto;position:static;transform:none!important;box-shadow:none}
   .slide{display:flex!important;position:relative;inset:auto;width:1600px;height:900px;
          page-break-after:always;animation:none}
   #hud,#bar{display:none}
@@ -624,6 +627,49 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   </div>
 </section>
 
+<!-- 7c 성과 곡선 ─────────────────────────────────────────────────────────── -->
+<section class="slide" data-notes="결과 곡선입니다. 보라색이 운용 계좌 다섯을 합친 자산, 초록색이 같은 기간 SPY입니다. 7거래일 동안 운용 −0.34%, SPY −0.44% — 시장이 빠질 때 덜 빠졌지만, 이 차이로 무언가를 주장하기엔 기간이 너무 짧습니다. 그래서 저희는 수익률을 주장하지 않습니다. 다만 숨기지도 않습니다 — 이 곡선은 매일 원장에 쌓이고, 관제실에서 언제든 같은 그림을 볼 수 있습니다. 안전형이 플러스, 공격형이 마이너스로 성향 차이도 벌써 기록에 보입니다.">
+  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
+  <h1 class="sm">결과 곡선도 <b>매일 기록됩니다</b></h1>
+  <div class="lead">운용 7거래일 — 수익률을 주장하기엔 짧지만, 숨기지도 않습니다.</div>
+  <div class="body" style="padding:14px 0">
+    <div class="split" style="grid-template-columns:1.5fr 1fr;align-items:center">
+      <figure class="shot" style="margin:0">
+        <div style="display:flex;gap:22px;font-size:16px;color:var(--ink2);margin-bottom:6px">
+          <span><i style="display:inline-block;width:18px;height:3px;background:var(--ai);vertical-align:middle;margin-right:7px"></i>운용 계좌 합산 (5계좌 · $360,000 시작)</span>
+          <span><i style="display:inline-block;width:18px;height:3px;background:var(--det);vertical-align:middle;margin-right:7px"></i>SPY (같은 기간 · 100 기준)</span>
+        </div>
+        <svg viewBox="0 0 790 320" style="width:100%;display:block" role="img" aria-label="운용 계좌 합산과 SPY의 7거래일 지수 비교">
+        <style>.cg{stroke:#DDE4EC;stroke-width:1}.cx{font:15px "SFMono-Regular",Menlo,monospace;fill:#6B7C90}
+        .cy{font:15px "SFMono-Regular",Menlo,monospace;fill:#6B7C90}.cl{font:600 17px "Apple SD Gothic Neo",sans-serif}</style>
+        <line x1="70" y1="24" x2="750" y2="24" class="cg"/><text x="62" y="29" text-anchor="end" class="cy">101</text>
+        <line x1="70" y1="120" x2="750" y2="120" stroke="#B8C4D2" stroke-width="1" stroke-dasharray="5 4"/><text x="62" y="125" text-anchor="end" class="cy">100</text>
+        <line x1="70" y1="216" x2="750" y2="216" class="cg"/><text x="62" y="221" text-anchor="end" class="cy">99</text>
+        <text x="90" y="300" text-anchor="middle" class="cx">07-20</text><text x="197" y="300" text-anchor="middle" class="cx">07-21</text><text x="303" y="300" text-anchor="middle" class="cx">07-22</text><text x="410" y="300" text-anchor="middle" class="cx">07-23</text><text x="517" y="300" text-anchor="middle" class="cx">07-24</text><text x="623" y="300" text-anchor="middle" class="cx">07-27</text><text x="730" y="300" text-anchor="middle" class="cx">07-28</text>
+        <polyline points="90.0,120.0 196.7,42.3 303.3,50.9 410.0,172.9 516.7,162.0 623.3,162.7" fill="none" stroke="#17743F" stroke-width="2" stroke-linejoin="round"/>
+        <polyline points="90.0,120.0 196.7,123.6 303.3,148.5 410.0,237.0 516.7,218.5 623.3,154.6 730.0,152.6" fill="none" stroke="#5B3FB5" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="623.3" cy="162.7" r="4.5" fill="#17743F" stroke="#fff" stroke-width="2"/>
+        <circle cx="730.0" cy="152.6" r="4.5" fill="#5B3FB5" stroke="#fff" stroke-width="2"/>
+        <text x="633" y="185" class="cl" fill="#17743F">SPY −0.44%</text>
+        <text x="722" y="139" text-anchor="end" class="cl" fill="#5B3FB5">운용 합산 −0.34%</text>
+      </svg>
+        <figcaption>07-20을 100으로 지수화 · 거래일 간격 · SPY는 07-27 종가까지 적재</figcaption>
+      </figure>
+      <div>
+        <table style="font-size:21px">
+          <tr><th>구분</th><th style="text-align:right">7거래일 수익률</th></tr>
+          <tr><td>공격형 3계좌</td><td class="num" style="color:var(--alert)">−0.55 ~ −0.65%</td></tr>
+          <tr><td>안전형 2계좌</td><td class="num" style="color:var(--det)">+0.02 ~ +0.19%</td></tr>
+          <tr><td><strong>운용 합산</strong></td><td class="num">−0.34%</td></tr>
+          <tr><td>SPY (벤치마크)</td><td class="num">−0.44%</td></tr>
+        </table>
+        <div class="quiet" style="margin-top:14px;font-size:21px">이 차이로 실력을 주장하기엔 <strong>7거래일은 짧습니다.</strong> 저희가 보여드리는 것은 수익률이 아니라, <strong>이 곡선이 매일 원장에 남는다</strong>는 사실입니다.</div>
+      </div>
+    </div>
+  </div>
+  <div class="ledger"><span class="tag">원장</span><span>tb_account_equity_daily 07-20→07-28 · 운용 5계좌</span><span class="dot">·</span><span>tb_benchmark_price(SPY)</span><span class="dot">·</span><span>2026-07-28 13:30 조회</span></div>
+</section>
+
 <!-- 8 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="돌아보면 세 가지를 배웠고, 한 가지가 아쉽습니다.<br><br>AI는 넣으면 되는 기능이 아니라 통제해야 하는 대상이라는 것. 재현할 수 없는 판단은 믿을 수 없다는 것. 그리고 만드는 과정에도 AI 협업을 설계해야 한다는 것입니다.<br><br>아쉬운 것도 말씀드리면 — 공시와 뉴스를 모으는 것까지는 돌렸지만, 그 채점을 판단에 연결하는 구간은 얕게 끝났습니다. 다음 단계의 첫 항목으로 남겨 두었습니다.">
   <div class="eyebrow"><span class="no">09</span><i class="sep"></i><span class="kr">회고</span><span class="right">QUANTINUE</span></div>
@@ -715,7 +761,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
     // 사방에 검은 테두리가 남았다. 창 모드에서만 숨 쉴 여백을 조금 준다.
     const pad = document.fullscreenElement ? 0 : 24;
     const s = Math.min((innerWidth - pad) / 1600, (innerHeight - pad) / 900);
-    stage.style.transform = `scale(${s})`;
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
   }
 
   // 백업은 질문이 나올 때만 띄우는 장이라 본편 분량에 섞으면 안 된다.
