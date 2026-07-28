@@ -226,3 +226,26 @@ def test_risk_input_rejects_negative_daily_new_order_count() -> None:
             equity=10_000,
             daily_new_order_count=-1,
         )
+
+
+def test_order_plan_rounds_sub_cent_market_price_to_cents() -> None:
+    """2026-07-28 운영 실패 회귀 — 시세가 센트 미만 단위(579.865)로 오면
+    entry_price가 원장의 돈 계약(소수 2자리)에 걸려 배분 전체가 죽었다."""
+    request = RiskPortfolioInput(
+        run_id="run-1",
+        execution_at=NOW,
+        evidence=source_evidence(),
+        signal_id=4022,
+        account_id=1,
+        ticker="OKTA",
+        cycle_ts=NOW,
+        critic_approved=True,
+        current_price=579.865,
+        equity=100_000,
+    )
+
+    result = build_order_plan(request)
+
+    assert result.entry_price == 579.87
+    for money in (result.entry_price, result.stop_loss, result.take_profit):
+        assert round(money, 2) == money

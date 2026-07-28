@@ -196,7 +196,11 @@ def build_order_plan(  # noqa: PLR0913 - one seam per gate threshold
         ticker=request.ticker,
         decision="planned" if quantity > 0 else "skipped",
         quantity=quantity,
-        entry_price=request.current_price,
+        # 진입가도 센트로 반올림한다 — 시세가 센트 미만 단위(예: 579.865)로
+        # 오는 날이 실제로 있었고(2026-07-28), 주문 원장의 돈 계약은 소수
+        # 2자리만 받는다. 수량 계산은 위에서 원값으로 이미 끝났으므로
+        # 여기서 반올림해도 배분 결과는 달라지지 않는다.
+        entry_price=round(request.current_price, 2),
         stop_loss=round(request.current_price * (1 - stop_loss_ratio), 2),
         take_profit=round(request.current_price * (1 + take_profit_ratio), 2),
         skipped_reason=reason,
