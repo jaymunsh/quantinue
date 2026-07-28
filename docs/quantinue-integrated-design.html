@@ -282,10 +282,11 @@
       </div>
       <button class="theme-btn" id="themeBtn" type="button" aria-label="다크모드 전환">🌙</button>
     </div>
-    <span class="rail-ver">v6.3 · MVP-2</span>
+    <span class="rail-ver">v6.5 · MVP-2</span>
 
     <nav class="nav" aria-label="주요 섹션">
       <div class="nav-group">시작</div>
+      <a href="#start"><span class="nnum">●</span> 처음 읽는 분께</a>
       <a href="#overview"><span class="nnum">●</span> 무엇을 하는 시스템인가</a>
       <a href="#glossary"><span class="nnum">●</span> 용어 30초 사전</a>
 
@@ -296,6 +297,7 @@
         <a href="#j-decide"><span class="snum">7–10</span> 판단 JOB</a>
         <a href="#j-act"><span class="snum">11–13</span> 집행·안내 JOB</a>
       </div>
+      <a href="#intraday"><span class="nnum">●</span> 장중 층 — 방어와 재판단</a>
       <a href="#jobdetail"><span class="nnum">●</span> JOB별 상세</a>
       <a href="#judgment"><span class="nnum">●</span> 판단이 만들어지는 과정</a>
       <a href="#data"><span class="nnum">●</span> 데이터 모델·계보</a>
@@ -330,7 +332,7 @@
 
   <!-- ── 히어로 ── -->
   <header class="hero">
-    <div class="eyebrow">Quantinue MVP-2 · v6.4 · 2026-07-24</div>
+    <div class="eyebrow">Quantinue MVP-2 · v6.5 · 2026-07-28</div>
     <h1>매일 아침 스스로 도는<br><span class="hl">AI 모의 운용</span> 시스템</h1>
     <p class="lede">
       시세·공시·뉴스는 <b>실물 데이터</b>로 받고, 판단은 <b>LLM 두 성향</b>이 내리고,
@@ -361,6 +363,67 @@
       나머지 실측값은 <b>기록 시점 그대로 보존</b>한다.</div>
     </div>
   </header>
+
+  <!-- ═══════════════ 0. 처음 읽는 분께 ═══════════════ -->
+  <section id="start">
+    <div class="sec-eyebrow">Getting Oriented</div>
+    <h2>처음 읽는 분께 — 문서 세 개와 읽는 순서</h2>
+    <p class="sec-intro">
+      Quantinue 문서는 3부작이고, 이 문서는 그중 <b>둘째(설계 정본)</b>다.
+      배경지식 없이 처음 접한다면 아래 순서가 가장 빠르다.
+    </p>
+    <div class="twrap"><table>
+      <thead><tr><th>순서</th><th>문서</th><th>무엇을 주나</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">1</td><td><a href="quantinue-day-anatomy.html"><b>하루의 해부</b></a></td>
+          <td><b>여기서 시작할 것.</b> 실제로 돈 하루(2026-07-21)를 체결 하나의 계보로 따라간다 —
+          픽이 되고, LLM이 제안하고, 크리틱이 반박하고, 계좌에 계획이 서고, 체결되기까지.
+          설치·설정 없이 읽기만 하면 되고, 30분이면 시스템의 사고방식이 잡힌다.</td></tr>
+        <tr><td class="mono">2</td><td><b>이 문서</b> (설계 정본)</td>
+          <td>현재 시스템의 <b>계약</b> — JOB 12종+조건부 1이 각각 무엇을 먹고 내놓는지, 데이터 모델이
+          왜 이렇게 생겼는지, 확정 결정 D1~D8과 그 이유, 그리고 의도적으로 안 만든 것.</td></tr>
+        <tr><td class="mono">3</td><td><a href="quantinue-engineering.html"><b>기술 부록</b></a></td>
+          <td><b>과정과 내부</b> — 10일 연대기, 실행에서만 잡힌 결함 27건, 코드 구조 맵,
+          28테이블 ERD. 코드를 열기 전의 지도다.</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note">
+      <b>저장소와 문서의 위치.</b> 소스 전체는
+      <a href="https://github.com/jaymunsh/quantinue"><b>github.com/jaymunsh/quantinue</b></a>에 있고,
+      이 3부작 HTML은 GitHub Pages
+      (<a href="https://jaymunsh.github.io/quantinue/">jaymunsh.github.io/quantinue</a>)로도 서빙된다.
+      본문에서 참조하는 <code>.md</code> 문서·코드 파일은 GitHub로 연결해 뒀다 — HTML만
+      받았어도 링크는 열린다. 특히 <b>켜고·보고·끄는 운영 방법의 정본은
+      <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/operations-runbook.md"><code>docs/operations-runbook.md</code></a></b>이고,
+      이 3부작은 그걸 대신하지 않는다: 여기는 "왜 이렇게 생겼나", 거기는 "어떻게 돌리나"다.
+    </div>
+
+    <h3>직접 띄워 보기 — 키 없이 3분</h3>
+    <p>읽다가 화면이 궁금해지면 바로 띄울 수 있다. <b>기본값이 전부 오프라인</b>이라
+    외부 키·네트워크·과금 없이 뜬다 (Python은 <code>uv</code>가 관리한다):</p>
+    <div class="twrap"><table>
+      <thead><tr><th>무엇을</th><th>어떻게</th><th>결과</th></tr></thead>
+      <tbody>
+        <tr><td>로컬 실행</td><td class="mono">git clone https://github.com/jaymunsh/quantinue.git<br>cd quantinue/app-v2 && cp .env.example .env && uv sync<br>uv run uvicorn quantinue.main:app --reload</td>
+          <td><code>http://localhost:8000</code> — fixture 시세 · 메모리 저장소 · mock LLM · 모의 브로커</td></tr>
+        <tr><td>PostgreSQL까지</td><td class="mono">docker compose up --build --wait</td>
+          <td><code>http://127.0.0.1:8011</code> · DB <code>127.0.0.1:5445</code> (최초 볼륨 생성 시 <code>db/schema.sql</code> 자동 적용)</td></tr>
+      </tbody>
+    </table></div>
+    <p>행동 반경은 <code>.env</code>의 <b>모드 스위치 4개</b>가 정한다 — 전부 안전한 쪽이 기본값이다:</p>
+    <div class="twrap"><table>
+      <thead><tr><th>스위치</th><th>기본</th><th>선택지</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">QUANTINUE_DATA_MODE</td><td class="mono">fixture</td><td><code>fixture</code>(오프라인 고정 데이터) / <code>public</code>(키 없는 공개 소스). 실물 시세·뉴스 수집은 별도의 <code>QUANTINUE_ALPACA_API_KEY</code>가 필요하다</td></tr>
+        <tr><td class="mono">QUANTINUE_DATABASE_MODE</td><td class="mono">memory</td><td><code>memory</code> / <code>postgres</code></td></tr>
+        <tr><td class="mono">QUANTINUE_LLM_MODE</td><td class="mono">mock</td><td><code>mock</code>(결정론 고정값) / <code>local</code>(OpenAI 호환 <code>/v1</code> 서버) / <code>openai</code>(과금 — 요율 미선언 모델은 기동 거부)</td></tr>
+        <tr><td class="mono">QUANTINUE_BROKER_MODE</td><td class="mono">mock</td><td><code>mock</code> / <code>alpaca</code>(<b>페이퍼 전용</b> — live 엔드포인트는 설정 검증이 거부한다). 실제 주문 제출은 <code>QUANTINUE_TRADING_ENABLED=true</code>까지 <b>이중 잠금</b></td></tr>
+      </tbody>
+    </table></div>
+    <p class="mermaid-note">전체 변수 목록과 각 값의 의미는 <a href="https://github.com/jaymunsh/quantinue/blob/main/app-v2/.env.example"><code>app-v2/.env.example</code></a>의 주석이 정본이다.
+    운영 관측 인스턴스(백그라운드 잡·장중 감시)는 일반 <code>uvicorn</code>이 아니라
+    <code>./scripts/run_observation.sh</code>로만 시작한다 — 이 실행기만 잡 소유권을 켜고, 로컬 잠금이 중복 실행을 거부한다.</p>
+  </section>
 
   <!-- ═══════════════ 1. 무엇을 하는 시스템인가 ═══════════════ -->
   <section id="overview">
@@ -591,6 +654,63 @@ flowchart TB
       200요청</b>, 초과 시 429, 실시간 피드는 <code>feed=iex</code> 전용. 우리 최악 피크(최초 백필)는
       분당 ~75~88콜로 여유 2.3배라 레이트 리미터를 붙이지 않았다 — 안 터지는 것에 방어를 붙이면
       그게 유령이다. 단, 인트라데이 다회 사이클(로드맵 R3)을 켜면 이 여유가 사라지므로 그때 한도를 먼저 본다.
+    </div>
+  </section>
+
+  <!-- ═══════════════ 3a. 장중 층 ═══════════════ -->
+  <section id="intraday">
+    <div class="sec-eyebrow">Intraday Layer</div>
+    <h2>장중 층 — 1분 방어와 사건 재판단 <span class="b b-new">2차 신규</span></h2>
+    <p class="sec-intro">
+      위의 JOB 체인은 <b>하루 한 번</b> 돈다. 그 아래에 정규장 동안만 도는 층이 하나 더 있다 —
+      2차가 풀려던 문제("아침에 산 종목이 오후에 급락해도 다음 날까지 무방비")의 답이다.
+      담당은 <code>orchestration/watch_runner.py</code>의 WatchRunner이고, 일일 JobRunner와
+      독립적으로 정규장에만 붙는다. 하는 일은 성격이 다른 두 가지다.
+    </p>
+
+    <div class="mermaid">
+flowchart LR
+  T["⏱ 1분 틱<br/>(정규장 전용)"] --> P["🛡 방어선 점검<br/>보유 종목 손절·익절선<br/><b>LLM 0콜</b>"]
+  P -->|발동| X["즉시 모의 청산<br/>(exits와 같은 내구 경로)"]
+  S["📡 사건 증분 수집<br/>SEC 30분 · 뉴스 15분 · 와이어 10분"] --> N["결정론 정규화<br/>tb_normalized_event<br/>(append-only)"]
+  N --> R["관련 종목 라우팅"]
+  R -.->|"rejudge=true일 때만"| J["전략가·크리틱 재호출<br/>→ 변경 판단의 표적 주문<br/><b>여기서만 LLM</b>"]
+    </div>
+    <p class="mermaid-note">위 줄(방어선)은 판단하지 않는다 — 살 때 정한 선을 넘었는지만 본다.
+    아래 줄(재판단)만 LLM을 부르고, 그마저 스위치 뒤에 있다.</p>
+
+    <div class="twrap"><table>
+      <thead><tr><th>갈래</th><th>주기</th><th>하는 일</th><th>LLM</th><th>운영 상태</th></tr></thead>
+      <tbody>
+        <tr><td><b>방어선</b> (watch)</td><td class="mono">1분</td>
+          <td>보유 종목의 손절·익절 브래킷이 발동했는지 점검하고, 발동하면 <code>exits</code>와
+          같은 내구 경로로 <b>즉시 모의 청산</b>한다. 손절선은 이때 정하는 게 아니라
+          <b>매수 시점에 이미 <code>tb_order.stop_price</code>에 적혀 있다.</b></td>
+          <td class="mono"><b>0콜</b></td><td><span class="b b-teal">켜짐</span> <code>watch=true</code></td></tr>
+        <tr><td><b>사건 수집·정규화</b></td><td class="mono">SEC 30분<br>뉴스 15분<br>와이어 10분</td>
+          <td>증분 수집 → 결정론 규칙으로 <code>tb_normalized_event</code>에 정규화(append-only,
+          공급자 순서 UNIQUE) → 관련 종목 라우팅. 여기까지는 판단이 아니라 <b>기록</b>이다.</td>
+          <td class="mono">0콜</td><td><span class="b b-teal">켜짐</span></td></tr>
+        <tr><td><b>재판단</b> (rejudge)</td><td class="mono">사건 시 +<br>NY 10:00·12:45·15:15 스윕</td>
+          <td>±5% 급변(<code>move_trigger_pct</code>)이나 라우팅된 사건이 있으면 그 종목만
+          전략가·크리틱을 재호출하고, 판단이 바뀌면 표적 주문을 낸다. 같은 종목 <b>30분 쿨다운</b>,
+          위급 매도용 <b>예산 20% 예약</b>, 유료 콜은 <code>tb_watch_sweep_item</code>이
+          at-most-once로 펜싱한다(dispatched는 재시도 금지).</td>
+          <td class="mono">여기서만</td><td><span class="b b-hold">꺼짐</span> <code>rejudge=false</code></td></tr>
+        <tr><td><b>실시간 피드</b> (stream)</td><td class="mono">—</td>
+          <td>폴링 대신 실시간 시세 구독(30종목 상한). 켜지면 방어선의 반응이 틱 단위로 빨라진다.</td>
+          <td class="mono">0콜</td><td><span class="b b-hold">꺼짐</span> <code>stream=false</code></td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="note">
+      <b>이 절만은 실측 서사가 아니라 설계 서술이다.</b> 값은 전부
+      <code>config/pipeline.yaml</code>의 <code>watch:</code> 블록 원문이고, 구현·검증은
+      끝났지만(통합 테스트 + 강제 발동 E2E) <b>재판단은 운영에서 아직 켜지 않았다.</b>
+      그래서 원장도 스윕 0건 · 정규화 사건 0건이다(2026-07-27 실측) — 켜지 않은 기능은
+      원장에도 0으로 남는다. 켜는 순서와 조건은 <a href="#ops">§운영·검증</a>의 활성화
+      단계를 따르고, 켜져서 실측이 쌓이면 <a href="quantinue-day-anatomy.html">하루의 해부</a>
+      방식의 장중 편을 따로 쓴다.
     </div>
   </section>
 
@@ -908,7 +1028,7 @@ flowchart TB
       이 시스템의 등뼈는 <b>계보 FK</b>다. 판단 행(<code>tb_strategist_signals</code>)은
       자기가 본 픽·공시 채점·뉴스 채점·국면을 FK로 가리키고, 주문은 판단을, 체결은 주문을,
       청산은 자기가 닫는 매수를 가리킨다. "왜 샀나"는 기억이 아니라 조인으로 답한다.
-      출처: <code>app-v2/db/schema.sql</code>.
+      출처: <a href="https://github.com/jaymunsh/quantinue/blob/main/app-v2/db/schema.sql"><code>app-v2/db/schema.sql</code></a>.
     </p>
 
     <div class="mermaid">
@@ -2056,7 +2176,7 @@ erDiagram
     <ul class="rules">
       <li><b>무인 완주 실적 0일.</b> 자동 운행은 2026-07-20에 켜졌고 관측 카운트는 2026-07-21부터다.
         수동 스모크로는 전 JOB 완주를 확인했지만, 사람이 안 보는 날의 연속 완주는 아직 검증되지 않았다.
-        확인 루틴은 <code>docs/mvp2-planning/how-to-check-guide.md</code>.</li>
+        확인 루틴은 <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/how-to-check-guide.md"><code>docs/mvp2-planning/how-to-check-guide.md</code></a>.</li>
       <li><b>인사이더 표는 아직 드물다.</b> 픽의 12~14%만 Form 4가 걸리고 그중 재량 거래는 다시 일부다.
         문턱(0.80/0.30)은 며칠 데이터를 쌓은 뒤 재조정해야 한다.</li>
       <li><b><code>premarket_gap_max</code>(0.03)는 잠정값.</b> 실제 갭 분포를 1~2주 관측한 뒤 조정한다.
@@ -2082,7 +2202,7 @@ erDiagram
     <div class="sec-eyebrow">Operations</div>
     <h2>운영·검증</h2>
     <p class="sec-intro">
-      <b>운영(켜고 보고 끄기)의 정본은 <code>docs/operations-runbook.md</code>다.</b>
+      <b>운영(켜고 보고 끄기)의 정본은 <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/operations-runbook.md"><code>docs/operations-runbook.md</code></a>다.</b>
       관측 인스턴스는 8020(<code>scripts/run_observation.sh</code>), 코드 작업은 8021로 분리한다.
       외부 생존 감시는 owner-only heartbeat(5분/5분 + Telegram Webhook)로 구현돼 있다.
       현재 8020의 송신 여부는 외부 원장으로 별도 확인한다. 자격 증명은 문서에 기록하지 않는다.
@@ -2118,6 +2238,12 @@ erDiagram
     <div class="twrap"><table>
       <thead><tr><th>버전</th><th>날짜</th><th>내용</th></tr></thead>
       <tbody>
+        <tr class="r-new"><td class="mono"><b>v6.5</b></td><td class="mono">2026-07-28</td>
+          <td><b>제3자 독해 보강 — 설계 서술 변경 없음.</b> "처음 읽는 분께"(3부작 읽는 순서 ·
+          키 없이 띄우는 법 · 모드 스위치 4개) 신설. <b>"장중 층 — 1분 방어와 사건 재판단"</b>
+          신설 — 그간 스키마·결정 기록으로만 존재하던 2차 장중 층의 산문 설명
+          (설계 서술임을 명시, 값은 <code>pipeline.yaml</code> 원문). 07-27 대조 주석 —
+          테스트 수 799+190 갱신, 계보 컬럼 채움률 실측 표(§데이터 모델).</td></tr>
         <tr class="r-new"><td class="mono"><b>v6.4</b></td><td class="mono">2026-07-24</td>
           <td><b>로컬 개발 완료 경계 반영.</b> 장중 사건 증분 수집·관련 종목
           at-most-once 재판단·표적 모의 주문과 source 상태 관측을 구현했다.
@@ -2155,8 +2281,10 @@ erDiagram
         <tr><td class="mono">~v3.8</td><td class="mono">—</td><td>1차(MVP-1) 동결본 → <a href="quantinue-integrated-design-mvp1.html">quantinue-integrated-design-mvp1.html</a></td></tr>
       </tbody>
     </table></div>
-    <p class="small muted">작성: 문성혁 + Claude · 원천: <code>docs/mvp2-planning/dev-handoff.md</code> ·
-    <code>docs/mvp2-planning/future-roadmap.md</code> · <code>app-v2/</code> 코드</p>
+    <p class="small muted">작성: 문성혁 + Claude · 원천:
+    <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/dev-handoff.md"><code>docs/mvp2-planning/dev-handoff.md</code></a> ·
+    <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/future-roadmap.md"><code>docs/mvp2-planning/future-roadmap.md</code></a> ·
+    <a href="https://github.com/jaymunsh/quantinue/tree/main/app-v2"><code>app-v2/</code></a> 코드</p>
   </section>
 
   </div>

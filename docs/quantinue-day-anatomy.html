@@ -101,7 +101,9 @@ td.mono,th.mono{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
   <p class="lede">설계서는 <b>구조</b>를 말하고 부록은 <b>만든 과정</b>을 말한다. 이 문서는 그 사이의 입구다 —
   실제로 돌았던 하루, <b><span class="nowrap">2026-07-21</span> 슬롯</b>을 처음부터 끝까지 따라간다.
   여기 나오는 숫자는 전부 관측 DB에서 그대로 읽은 실측값이고, 의도적으로 갱신하지 않는 스냅샷이다.
-  이 하루를 이해하면 나머지 문서들은 색인이 된다.</p>
+  이 하루를 이해하면 나머지 문서들은 색인이 된다.
+  <b>Quantinue를 처음 접한다면 3부작 중 이 문서부터 읽으면 된다</b> — 설치·설정 없이 읽기만 하면 되고,
+  낯선 말이 나오면 <a href="quantinue-integrated-design.html#glossary">설계서의 용어 30초 사전</a>을 옆에 두면 된다.</p>
   <div class="toc">
     <a href="#big">① 큰 그림</a>
     <a href="#clock">② 시계</a>
@@ -210,8 +212,15 @@ flowchart LR
     <div class="step"><div class="rail"><div class="dot"></div><div class="bar"></div></div><div class="body">
       <span class="t">tb_order_plan · allocation</span>
       <div class="h">4. 사이징 — 안전형 계좌 3개에 각각 계획이 선다</div>
-      <div class="d">진입 184.59 · 손절 156.90(−15%) · 익절 221.51(+20%)의 브래킷으로,
-      계좌 크기에 따라 54주 · 54주 · 2주. 손절·익절 비율은 코드가 아니라 <code>pipeline.yaml</code>이 정한다(⑦).
+      <div class="d">브래킷은 진입가에서 비율로 바로 나온다 —
+      <b>손절 = 184.59 × (1−0.15) = 156.90 · 익절 = 184.59 × (1+0.20) = 221.51</b>.
+      수량은 세 줄 계산이다:
+      <span class="quote" style="display:block"><span class="who">수량 산식 (role_09, 실측 검산)</span>
+      ① 위험예산 = 자본 × 4% ÷ 손절폭 15% = 자본의 26.7%<br>
+      ② 상한 적용 = min(①, 자본 × 종목당 최대 비중) — 안전형은 10%라 <b>여기서 잘린다</b><br>
+      ③ 수량 = ⌊자본의 10% ÷ 진입가 184.59⌋ → $100,000 계좌면 <b>⌊10,000 ÷ 184.59⌋ = 54주</b>, 소형 검증 계좌는 같은 식으로 2주<br>
+      단, 매수 뒤 현금이 자본의 30%(안전형 <code>min_cash_ratio</code>) 아래로 내려가면 수량을 0으로 하고 사지 않는다.</span>
+      손절·익절 비율과 비중·현금 문턱은 코드가 아니라 <code>pipeline.yaml</code>이 정한다(⑦).
       <span class="quote" style="display:block"><span class="who">계좌를 셀 때 주의 (2026-07-27 확인)</span>여기 3개는
       <code>DEMO-CONSERVATIVE-01</code> · <code>DEMO-CONSERVATIVE-02</code> · <code>TEST-CONSERVATIVE-01</code>이다.
       셋째는 <b>회귀 검증용</b> 계좌라 배분이 성향으로만 고르면 같이 잡힌다 — <b>운용 안전형은 2개</b>다.
@@ -351,7 +360,7 @@ flowchart LR
   <div class="note">이 페이지의 숫자와 타임라인은 07-21 실측 하루를 보존한다.
   <b>바로 위 문단만 예외로 07-27 재조회 값이고, 나머지 본문은 고치지 않았다.</b>
   살아있는 최신 상태는 관제실(<code>/admin</code>)과
-  <code>dev-handoff.md</code>를 볼 것.</div>
+  <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/dev-handoff.md"><code>dev-handoff.md</code></a>를 볼 것.</div>
 </section>
 
 <section id="map">
@@ -359,17 +368,22 @@ flowchart LR
   <div class="tbl-wrap"><table>
     <tr><th>궁금한 것</th><th>읽을 문서</th></tr>
     <tr><td>구조와 확정 결정(D1~D8), 데이터 모델, JOB별 계약</td><td><a href="quantinue-integrated-design.html">quantinue-integrated-design.html</a> (설계 정본)</td></tr>
+    <tr><td>직접 띄워보고 싶다 (키 없이 3분, 기본값 오프라인)</td><td><a href="quantinue-integrated-design.html#start">설계서 · 처음 읽는 분께</a></td></tr>
     <tr><td>어떻게 만들어졌나 — 개발기 · 결함 27건 · ERD · 교훈</td><td><a href="quantinue-engineering.html">quantinue-engineering.html</a> (기술 부록)</td></tr>
-    <tr><td>켜고 · 보고 · 끄는 법, 장애 대응</td><td><a href="operations-runbook.md">operations-runbook.md</a> (운영 정본)</td></tr>
-    <tr><td>지금 어디까지 왔나 (세션별 기록)</td><td><a href="mvp2-planning/dev-handoff.md">mvp2-planning/dev-handoff.md</a></td></tr>
-    <tr><td>남은 일과 순서 · 열린 항목</td><td><a href="mvp2-planning/completion-plan.md">completion-plan.md</a> · <a href="mvp2-planning/open-items.md">open-items.md</a></td></tr>
-    <tr><td>LLM을 어디서 어떻게 쓰고 얼마가 드나</td><td><a href="mvp2-planning/llm-usage-guide.md">llm-usage-guide.md</a></td></tr>
+    <tr><td>켜고 · 보고 · 끄는 법, 장애 대응</td><td><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/operations-runbook.md">operations-runbook.md</a> (운영 정본)</td></tr>
+    <tr><td>지금 어디까지 왔나 (세션별 기록)</td><td><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/dev-handoff.md">mvp2-planning/dev-handoff.md</a></td></tr>
+    <tr><td>남은 일과 순서 · 열린 항목</td><td><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/completion-plan.md">completion-plan.md</a> · <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/open-items.md">open-items.md</a></td></tr>
+    <tr><td>LLM을 어디서 어떻게 쓰고 얼마가 드나</td><td><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/llm-usage-guide.md">llm-usage-guide.md</a></td></tr>
+    <tr><td>소스 코드 전체 · 스키마 · 정책 YAML</td><td><a href="https://github.com/jaymunsh/quantinue">github.com/jaymunsh/quantinue</a> — 앱은 <code>app-v2/</code>, 스키마는 <a href="https://github.com/jaymunsh/quantinue/blob/main/app-v2/db/schema.sql">db/schema.sql</a>, 정책은 <a href="https://github.com/jaymunsh/quantinue/blob/main/app-v2/config/pipeline.yaml">config/pipeline.yaml</a></td></tr>
   </table></div>
   <p>읽는 순서 제안: <b>이 문서 → 설계서의 "JOB별 상세" → 관제실을 직접 열어 오늘 슬롯 확인</b>.
   문서에서 본 하루와 화면의 오늘이 같은 모양이면, 이해는 끝난 것이다.</p>
+  <p class="sub"><code>.md</code> 문서와 코드는 GitHub 저장소
+  (<a href="https://github.com/jaymunsh/quantinue">jaymunsh/quantinue</a>)로 연결된다 —
+  HTML만 받았어도 링크는 열린다.</p>
 </section>
 
-<div class="foot">Quantinue · 하루의 해부 v1.1 · 실측 스냅샷: 슬롯 <span class="nowrap">2026-07-21</span> (관측 DB 5445) · 작성 <span class="nowrap">2026-07-21</span> · 최종 대조 <span class="nowrap">2026-07-27</span> (⑨ 재조회 문단·④ 계좌 주석만 추가)</div>
+<div class="foot">Quantinue · 하루의 해부 v1.1 · 실측 스냅샷: 슬롯 <span class="nowrap">2026-07-21</span> (관측 DB 5445) · 작성 <span class="nowrap">2026-07-21</span> · 최종 대조 <span class="nowrap">2026-07-27</span> (⑨ 재조회 문단·④ 계좌 주석) · 읽기 안내·수량 산식 명시 <span class="nowrap">2026-07-28</span></div>
 
 </div>
 

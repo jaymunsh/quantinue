@@ -307,13 +307,15 @@
   <div class="wrap">
 
   <header class="hero">
-    <div class="eyebrow">Quantinue MVP-2 · 기술 부록 v1.4 · <span class="nowrap">2026-07-24</span></div>
+    <div class="eyebrow">Quantinue MVP-2 · 기술 부록 v1.5 · <span class="nowrap">2026-07-28</span></div>
     <h1>어떻게 여기까지 왔고,<br><span class="hl">내부는 어떻게</span> 생겼나</h1>
     <p class="lede">
       <a href="quantinue-integrated-design.html">설계 정본</a>이 "현재의 시스템"이라면, 이 문서는
       <b>과정과 내부</b>다 — 10일 281커밋의 연대기, 실행에서만 잡힌 <b>결함 통산 27건</b>의 전체 기록,
       코드 구조 맵, 28테이블 전체 ERD, 그리고 운영 런북. 개발을 이어받는 사람이 읽는 문서다.
-      켜고 보고 끄는 <b>운영 방법의 정본은 <code class="nowrap">docs/operations-runbook.md</code></b>다 — 여기 런북 절은 개발용 명령만 담는다.
+      3부작의 셋째다 — 처음 접한다면 <a href="quantinue-day-anatomy.html">하루의 해부</a>(실측 하루의 서사) →
+      설계 정본 → 이 문서 순서가 빠르다.
+      켜고 보고 끄는 <b>운영 방법의 정본은 <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/operations-runbook.md"><code class="nowrap">docs/operations-runbook.md</code></a></b>다 — 여기 런북 절은 개발용 명령만 담는다.
     </p>
     <div class="chips">
       <span class="chip">기간 <b>10일</b> (07-12 ~ 07-21)</span>
@@ -700,7 +702,7 @@ erDiagram
       </tbody>
     </table></div>
     <div class="note">
-      <b>LLM 사용처 전수는 <code>docs/mvp2-planning/llm-usage-guide.md</code>가 정본이다(2026-07-21).</b>
+      <b>LLM 사용처 전수는 <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/llm-usage-guide.md"><code>docs/mvp2-planning/llm-usage-guide.md</code></a>가 정본이다(2026-07-21).</b>
       요지: 실제 콜사이트는 <b>STRATEGY(전략 판단)·CRITIC(반증) 둘뿐</b>이고(공시는 결정론, 뉴스는 프롬프트 흡수,
       리뷰는 결정론), 모델은 모드당 하나라 태스크별(추론/경량) 분리는 미배선이다. 하루 최대 ~100콜.
       openai 전환 검토는 <code>aws-migration-review.md</code>.
@@ -722,7 +724,7 @@ erDiagram
     <div class="sec-eyebrow">Runbook</div>
     <h2>런북 — 명령과, 우리가 실제로 밟은 함정들</h2>
     <p class="sec-intro">
-      <b>일상 운영(켜고 보고 끄기)의 정본은 <code>docs/operations-runbook.md</code>다</b> — 관측 인스턴스는
+      <b>일상 운영(켜고 보고 끄기)의 정본은 <a href="https://github.com/jaymunsh/quantinue/blob/main/docs/operations-runbook.md"><code>docs/operations-runbook.md</code></a>다</b> — 관측 인스턴스는
       <code>scripts/run_observation.sh</code>(8020, --reload 없음)로 띄우고, 코드 작업은 8021로 분리한다.
       여기는 개발 명령과 함정만 담는다.
     </p>
@@ -805,26 +807,30 @@ erDiagram
     <div class="twrap"><table>
       <thead><tr><th>문서</th><th>역할</th></tr></thead>
       <tbody>
-        <tr class="r-new"><td class="mono">docs/quantinue-integrated-design.html</td><td><b>설계 정본 (v6.3)</b> — 현재의 시스템. 처음 보는 사람은 여기부터</td></tr>
-        <tr class="r-new"><td class="mono">docs/quantinue-engineering.html</td><td><b>이 문서</b> — 과정·코드·결함·런북. 개발을 이어받는 사람용</td></tr>
-        <tr><td class="mono">docs/quantinue-integrated-design-mvp1.html</td><td>1차(MVP-1) 동결본 v3.8 — 수정 금지</td></tr>
-        <tr><td class="mono">mvp2-planning/dev-handoff.md</td><td>세션 간 핸드오프 정본 — 현재 상태·결정·실측 전부. <b>이 부록의 1차 원천</b></td></tr>
-        <tr><td class="mono">mvp2-planning/pipeline-redesign.md</td><td>재설계 정본 — D1~D8·진단·Phase 1~5 실행 지시</td></tr>
-        <tr><td class="mono">mvp2-planning/future-roadmap.md</td><td>로드맵 R1~R11 — 미룬 것과 기각된 것</td></tr>
-        <tr><td class="mono">mvp2-planning/troubleshooting-log.md</td><td>1차 T1~T13 시점 기록 (동결)</td></tr>
-        <tr><td class="mono">mvp2-planning/dev-playbook.md · phase*-*.md · ghost-config-audit.md · m4-scope-decisions.md · remaining-work-plan.md</td><td>단계별 계획·감사의 시점 기록 (M5~M11 표는 superseded)</td></tr>
-        <tr class="r-new"><td class="mono">docs/operations-runbook.md</td><td><b>운영 정본</b> — 켜고 보고 끄는 법·문제 해결·코드 작업 분리 (2026-07-21 신설)</td></tr>
-        <tr class="r-new"><td class="mono">mvp2-planning/completion-plan.md</td><td>완성 계획 — "완성"의 정의 3조건과 남은 것의 순서</td></tr>
-        <tr class="r-new"><td class="mono">mvp2-planning/open-items.md</td><td>열린 항목 정본 — 아직 안 끝난 것만</td></tr>
-        <tr class="r-new"><td class="mono">mvp2-planning/how-to-check-guide.md</td><td>"로컬 기준 완성인가?"를 5분에 확인하는 법 (2026-07-21 신설)</td></tr>
-        <tr class="r-new"><td class="mono">mvp2-planning/llm-usage-guide.md</td><td>LLM 사용처 전수 — 콜사이트 2곳·모드 배선·tier 제안 (2026-07-21 신설)</td></tr>
-        <tr class="r-new"><td class="mono">mvp2-planning/aws-migration-review.md</td><td>AWS 이전 검토 — 10일 지평엔 비권고, openai 전환은 분리 선행 (2026-07-21 신설)</td></tr>
-        <tr><td class="mono">mvp2-planning/NEXT-SESSION-PROMPT.md</td><td>다음 세션 시작 프롬프트</td></tr>
-        <tr><td class="mono">app-v2/db/schema.sql</td><td>스키마 단일 정본 — 문서의 모든 스키마 서술이 여기서 파생</td></tr>
-        <tr><td class="mono">app-v2/config/pipeline.yaml</td><td>정책 단일 소유자 — 문턱·주기·한도</td></tr>
+        <tr class="r-new"><td class="mono"><a href="quantinue-day-anatomy.html">docs/quantinue-day-anatomy.html</a></td><td><b>하루의 해부</b> — 실측 하루(07-21)를 계보로 따라가는 입구. <b>처음 보는 사람은 여기부터</b></td></tr>
+        <tr class="r-new"><td class="mono"><a href="quantinue-integrated-design.html">docs/quantinue-integrated-design.html</a></td><td><b>설계 정본 (v6.5)</b> — 현재의 시스템: JOB 계약·데이터 모델·확정 결정. 둘째로 읽는다</td></tr>
+        <tr class="r-new"><td class="mono">docs/quantinue-engineering.html</td><td><b>이 문서</b> — 과정·코드·결함·런북. 개발을 이어받는 사람용. 셋째로 읽는다</td></tr>
+        <tr><td class="mono"><a href="quantinue-integrated-design-mvp1.html">docs/quantinue-integrated-design-mvp1.html</a></td><td>1차(MVP-1) 동결본 v3.8 — 수정 금지</td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/dev-handoff.md">mvp2-planning/dev-handoff.md</a></td><td>세션 간 핸드오프 정본 — 현재 상태·결정·실측 전부. <b>이 부록의 1차 원천</b></td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/pipeline-redesign.md">mvp2-planning/pipeline-redesign.md</a></td><td>재설계 정본 — D1~D8·진단·Phase 1~5 실행 지시</td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/future-roadmap.md">mvp2-planning/future-roadmap.md</a></td><td>로드맵 R1~R11 — 미룬 것과 기각된 것</td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/troubleshooting-log.md">mvp2-planning/troubleshooting-log.md</a></td><td>1차 T1~T13 시점 기록 (동결)</td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/tree/main/docs/mvp2-planning">mvp2-planning/</a> dev-playbook.md · phase*-*.md · ghost-config-audit.md · m4-scope-decisions.md · remaining-work-plan.md</td><td>단계별 계획·감사의 시점 기록 (M5~M11 표는 superseded)</td></tr>
+        <tr class="r-new"><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/operations-runbook.md">docs/operations-runbook.md</a></td><td><b>운영 정본</b> — 켜고 보고 끄는 법·문제 해결·코드 작업 분리 (2026-07-21 신설)</td></tr>
+        <tr class="r-new"><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/completion-plan.md">mvp2-planning/completion-plan.md</a></td><td>완성 계획 — "완성"의 정의 3조건과 남은 것의 순서</td></tr>
+        <tr class="r-new"><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/open-items.md">mvp2-planning/open-items.md</a></td><td>열린 항목 정본 — 아직 안 끝난 것만</td></tr>
+        <tr class="r-new"><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/how-to-check-guide.md">mvp2-planning/how-to-check-guide.md</a></td><td>"로컬 기준 완성인가?"를 5분에 확인하는 법 (2026-07-21 신설)</td></tr>
+        <tr class="r-new"><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/llm-usage-guide.md">mvp2-planning/llm-usage-guide.md</a></td><td>LLM 사용처 전수 — 콜사이트 2곳·모드 배선·tier 제안 (2026-07-21 신설)</td></tr>
+        <tr class="r-new"><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/aws-migration-review.md">mvp2-planning/aws-migration-review.md</a></td><td>AWS 이전 검토 — 10일 지평엔 비권고, openai 전환은 분리 선행 (2026-07-21 신설)</td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/docs/mvp2-planning/NEXT-SESSION-PROMPT.md">mvp2-planning/NEXT-SESSION-PROMPT.md</a></td><td>다음 세션 시작 프롬프트</td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/app-v2/db/schema.sql">app-v2/db/schema.sql</a></td><td>스키마 단일 정본 — 문서의 모든 스키마 서술이 여기서 파생</td></tr>
+        <tr><td class="mono"><a href="https://github.com/jaymunsh/quantinue/blob/main/app-v2/config/pipeline.yaml">app-v2/config/pipeline.yaml</a></td><td>정책 단일 소유자 — 문턱·주기·한도</td></tr>
       </tbody>
     </table></div>
-    <p class="small muted">부록 v1.4 · 2026-07-24 (v1.0: 07-20) · 작성: 문성혁 + Claude · 원천: dev-handoff.md ·
+    <p class="small muted">저장소는 <a href="https://github.com/jaymunsh/quantinue">github.com/jaymunsh/quantinue</a> —
+    <code>.md</code> 문서와 코드는 전부 GitHub로 연결해 뒀으므로 HTML만 받았어도 링크는 열린다.
+    이 3부작 HTML은 GitHub Pages(<a href="https://jaymunsh.github.io/quantinue/">jaymunsh.github.io/quantinue</a>)로도 서빙된다.</p>
+    <p class="small muted">부록 v1.5 · 2026-07-28 — 테스트 수 07-27 재실행 반영 + 3부작 읽기 안내 (v1.4: 07-24 · v1.0: 07-20) · 작성: 문성혁 + Claude · 원천: dev-handoff.md ·
     troubleshooting-log.md · git 이력 · app-v2 코드</p>
   </section>
 
