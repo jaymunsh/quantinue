@@ -132,6 +132,25 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 .layer.ai{border-left:5px solid var(--ai)}   .layer.ai .cad{background:#EDE8FA;color:var(--ai)}
 .layer .note{margin-left:auto;font-family:var(--mono);font-size:18px;font-weight:700}
 
+/* 감시 3층(8화면) — 발표 전날 층 3이 실제로 잡은 사건. 시각열은 전부 실측이라
+   여기 숫자를 바꾸면 안 된다(slides-content.md §6-1-1). */
+.incident{background:var(--card);border:1px solid var(--rule);border-left:5px solid var(--alert);
+          border-radius:14px;padding:14px 24px;margin-top:16px}
+.incident .tl{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
+              font-size:21px;color:var(--ink2)}
+.incident .tl b{font-family:var(--mono);font-size:20px;color:var(--ink);font-weight:700}
+.incident .tl .arr{color:var(--muted)}
+.incident .tl .down{color:var(--alert)} .incident .tl .up{color:var(--det)}
+.incident .claim{margin-top:7px;font-size:21px;color:var(--ink);font-weight:600}
+.incident .claim span{color:var(--muted);font-weight:500}
+/* 증거 캡처 두 장 — 원본 비율대로 두면 세로가 무대(900px)를 뚫는다. 위쪽을
+   보여준다: Healthchecks는 상단에 사건 이벤트와 가동률이 다 있다. */
+.evidence .shot img{max-height:200px;object-fit:cover;object-position:top}
+.evidence .shot-todo{min-height:160px;padding:16px 22px}
+.evidence .shot-todo b{font-size:20px;margin-bottom:6px}
+.evidence .shot-todo span{font-size:17px;line-height:1.5}
+.evidence .shot figcaption{margin-top:8px}
+
 /* 깔때기 (슬라이드 7) */
 .funnel{display:flex;flex-direction:column;gap:11px}
 .step{display:flex;align-items:center;gap:20px}
@@ -409,31 +428,43 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 6a ────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="알림은 앱이 보냅니다. 그런데 앱이 통째로 죽으면요? 알리는 주체가 같이 죽습니다. 그래서 시스템 <b>바깥에</b> 감시자를 하나 더 뒀습니다. 5분마다 신호를 보내다가 끊기면 외부 서비스가 알려줍니다.">
+<section class="slide" data-notes="알림은 앱이 보냅니다. 그런데 앱이 통째로 죽으면요? 알리는 주체가 같이 죽습니다. 그래서 시스템 <b>바깥에</b> 감시자를 하나 더 뒀습니다. 5분마다 신호를 보내다가 끊기면 외부 서비스가 알려줍니다.<br><br>[사건 — 15초 안에 끝낸다] 어제 아침에 실제로 한 번 잡혔습니다. 집에서 이동하면서 노트북이 절전에 들어갔고, 앱은 살아 있었지만 바깥과 끊겼습니다. <b>앱은 자기가 고립된 걸 알릴 수 없습니다.</b> 그걸 안 건 시스템 바깥의 감시자뿐이었고, 메일과 텔레그램으로 알려왔습니다. 그리고 이게 뒤에 나올 클라우드 이전을 다시 판단한 이유이기도 합니다.<br><br>⚠️ 변명하지 않는다 — &quot;설계가 예상한 상황이 실제로 일어났고 설계대로 잡혔다&quot;로 말하고 바로 넘어간다. 가동률(99.38%)을 방어하려 들면 오히려 약해진다.">
   <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">운영 이야기</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">감시자는 누가 감시하나</h1>
-  <div class="body">
+  <h1 class="sm" style="margin-top:24px">감시자는 누가 감시하나</h1>
+  <div class="body" style="padding:14px 0">
     <div class="grid g3">
       <div class="card"><span class="n">층 1</span><h3>관제실 화면</h3><p>메우는 구멍 —<br>사람이 보러 가야 안다</p></div>
       <div class="card"><span class="n">층 2</span><h3>텔레그램 알림</h3><p>메우는 구멍 —<br>화면을 안 보고 있을 때</p></div>
       <div class="card ai"><span class="n">층 3</span><h3>외부 감시 · Healthchecks.io</h3><p>메우는 구멍 —<br><strong>알림 보내는 앱이 죽으면?</strong></p></div>
     </div>
+    <!-- 발표 하루 전 아침, 이 장이 주장하는 그대로의 일이 실제로 일어났다.
+         만든 사례가 아니라 당일 기록 — 15초, 변명 없이 말하고 넘어간다. -->
+    <div class="incident">
+      <div class="tl">
+        <b>07-28 09:03</b> 마지막 정상 heartbeat
+        <span class="arr">→</span> 이동 중 노트북 절전 <span class="arr">·</span> 앱 로그엔 <b>ConnectError ×3</b>
+        <span class="arr">→</span> <b class="down">09:13 up → down</b> · Gmail·텔레그램 양쪽 알림
+        <span class="arr">→</span> <b class="up">09:36 down → up</b>
+      </div>
+      <div class="claim">앱 프로세스는 내내 살아 있었다 — <strong>고립된 앱은 자기 상태를 알릴 수 없다.</strong>
+        <span>층 1·2가 원리적으로 못 잡는 구멍이고, 층 3이 잡았다.</span></div>
+    </div>
     <!-- 2·3층은 말로만 하면 "설정해뒀다"로 들린다. 실제로 오는 화면 두 장이
          "작동한다"로 바꾼다. 파일만 넣으면 아래 자리에 자동으로 들어간다. -->
-    <div class="grid g2" style="margin-top:26px">
+    <div class="grid g2 evidence" style="margin-top:14px">
       <figure class="shot" data-shot="assets/telegram-alerts.png"
               data-todo-title="텔레그램 알림 이력 (층 2)"
-              data-todo-body="여러 날의 일일 요약이 세로로 쌓인 스크롤 화면. 한 통 클로즈업보다 낫다 — <b>매일 온다</b>가 화면으로 증명된다. ⚠️ 실패 알림이 ✅ 요약들 사이에 섞여 있으면 최고. <b>07-24 구간은 피할 것</b>(같은 실패 알림 30여 통).">
+              data-todo-body="여러 날의 일일 요약이 세로로 쌓인 스크롤 화면 — <b>매일 온다</b>가 증명된다. ⚠️ <b>07-24 구간은 피할 것</b>(같은 실패 알림 30여 통).">
         <figcaption>텔레그램 — 화면을 안 보고 있을 때</figcaption>
       </figure>
       <figure class="shot" data-shot="assets/healthchecks.png"
               data-todo-title="Healthchecks.io 대시보드 (층 3)"
               data-todo-body="체크 상세 페이지. <b>Status: Up · Last ping · Period 5 min</b>과 규칙적인 ping 타임라인이 한 화면에. 과거 <b>DOWN → UP 기록</b>이 있으면 꼭 포함 — 감시자가 실제로 잡아냈다는 증거다.">
-        <figcaption>외부 감시 — 앱이 죽어도 남는 신호</figcaption>
+        <figcaption>외부 감시 — 09:13 down 판정과 09:36 복구가 기록에 남았다</figcaption>
       </figure>
     </div>
   </div>
-  <div class="ledger"><span class="tag">운영 8020</span><span>2026-07-27 잡 14/14 성공</span><span class="dot">·</span><span>heartbeat 5분 주기</span></div>
+  <div class="ledger"><span class="tag">운영 8020</span><span>2026-07-27 잡 14/14 성공</span><span class="dot">·</span><span>heartbeat 5분 주기</span><span class="dot">·</span><span>Healthchecks 7월 6 downtimes · uptime 99.38%</span></div>
 </section>
 
 <!-- 6b ────────────────────────────────────────────────────────────────── -->

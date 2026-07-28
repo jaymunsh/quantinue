@@ -73,7 +73,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8020/login   # 200이�
 | 파일 | 무엇을 찍나 |
 |---|---|
 | `assets/telegram-alerts.png` | **여러 날의 일일 요약이 세로로 쌓인 스크롤 화면.** 한 통 클로즈업은 "한 번 보내봤다"로 읽힌다 — 쌓여 있어야 *매일 온다*가 증명된다. ⚠️ 실패 알림이 ✅ 사이에 섞여 있으면 최고 |
-| `assets/healthchecks.png` | 체크 상세 페이지 — `Status: Up` · `Last ping` · `Period 5 min` + 규칙적인 ping 타임라인. 과거 **DOWN → UP 기록이 있으면 꼭 포함** — 감시자를 걸어뒀다가 아니라 **실제로 잡아냈다**가 되는 유일한 한 장이다 |
+| `assets/healthchecks.png` | ✅ **07-28 들어옴** — 09:13 `up → down` · 09:36 `down → up`이 담겼고, ping UUID URL·hc-ping 이메일·개인 gmail은 가림 처리했다 |
 
 ⚠️ **텔레그램 07-24 구간은 피한다.** 그날 `allocation` 잡이
 `max_app_order_exposure_usd` 오류로 **1분마다 30번 넘게 같은 실패 알림을
@@ -106,7 +106,15 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8020/login   # 200이�
 
 ---
 
-## 4-1. 덱 8화면에 "실제로 잡힌 사건" 넣기 — **결정됨, 아직 미구현** ★
+## 4-1. 덱 8화면에 "실제로 잡힌 사건" 넣기 — ✅ **07-28 구현 완료**
+
+8화면에 사건 타임라인 스트립(`--alert` 왼줄)이 들어갔다 — 09:03 heartbeat →
+절전·ConnectError ×3 → 09:13 up→down(양쪽 알림) → 09:36 down→up.
+발표자 노트에 15초 문안과 "변명하지 않는다" 경고, 원장 각주에
+`7월 6 downtimes · uptime 99.38%`를 넣었다. healthchecks.png도 들어왔다 —
+**ping UUID URL·hc-ping 이메일·개인 gmail 세 곳을 가림 처리**했다(원본은
+세션 스크래치패드에만 백업). 캡처는 슬라이드에서 위쪽 200px만 보인다
+(사건 이벤트 빨간 박스가 그 안에 있다).
 
 발표 하루 전 아침에 **덱 8화면(감시 3층)이 주장하는 그대로의 일이 실제로
 일어났다.** 문안과 근거는 `slides-content.md` §6-1-1에 다 적어 뒀다 —
