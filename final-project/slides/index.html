@@ -108,7 +108,8 @@ h1 b{font-weight:800;color:var(--det)}
 .shot-todo{border:2px dashed var(--accent2,#d29922);border-radius:12px;
            background:repeating-linear-gradient(45deg,rgba(210,153,34,.05) 0 12px,transparent 12px 24px);
            padding:26px 24px;min-height:250px;display:flex;flex-direction:column;justify-content:center}
-.shot-todo b{display:block;font-size:22px;color:var(--ink);margin-bottom:10px}
+/* >가 없으면 본문(span) 안의 <b>까지 block이 되어 굵은 구절마다 줄이 갈라진다 */
+.shot-todo>b{display:block;font-size:22px;color:var(--ink);margin-bottom:10px}
 .shot-todo span{font-size:19px;line-height:1.55;color:var(--ink2)}
 .shot-todo code{font-family:var(--mono);font-size:16px;color:var(--muted)}
 
@@ -145,9 +146,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 .incident .claim span{color:var(--muted);font-weight:500}
 /* 증거 캡처 두 장 — 원본 비율대로 두면 세로가 무대(900px)를 뚫는다. 위쪽을
    보여준다: Healthchecks는 상단에 사건 이벤트와 가동률이 다 있다. */
-.evidence .shot img{max-height:200px;object-fit:cover;object-position:top}
-.evidence .shot-todo{min-height:200px;padding:16px 28px}
-.evidence .shot-todo b{font-size:20px;margin-bottom:6px}
+.evidence .shot img{max-height:180px;object-fit:cover;object-position:top}
+.evidence .shot-todo{min-height:180px;padding:16px 28px}
+.evidence .shot-todo>b{font-size:20px;margin-bottom:6px}
 .evidence .shot-todo span{font-size:17px;line-height:1.5}
 .evidence .shot figcaption{margin-top:10px}
 
@@ -175,7 +176,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 /* 표지 */
 .videobox{position:relative}
-.videobox video{width:100%;max-height:520px;display:block;background:#0a0e14;border-radius:14px;
+.videobox video{width:100%;max-height:505px;display:block;background:#0a0e14;border-radius:14px;
                 border:1px solid var(--rule);box-shadow:0 14px 40px rgba(10,20,32,.16)}
 .videobox.missing video{display:none}
 .videofall{display:none;border:2px dashed var(--rule);border-radius:14px;padding:30px;text-align:center}
@@ -200,7 +201,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
        font-size:19px;letter-spacing:-.01em;opacity:0;pointer-events:none;z-index:99;
        transition:opacity .18s,transform .18s}
 #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
-.cover .qmark{width:92px;height:92px;border-radius:20px;display:block;margin-bottom:26px;
+/* margin-top:auto — 팀 라인이 바닥에 붙은 만큼 위에도 auto를 줘야
+   제목 블록이 위로 쏠리지 않고 가운데에 선다 */
+.cover .qmark{width:92px;height:92px;border-radius:20px;display:block;margin:auto 0 26px;
                box-shadow:0 10px 30px rgba(11,77,219,.22)}
 /* 마무리 화면 오른쪽 아래. 발표가 끝나고 질문받는 동안 계속 떠 있는 화면이라
    상표가 조용히 남는 자리다. 본문을 가리지 않게 옅게 깐다. */
@@ -256,7 +259,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <h1>Quantinue</h1>
   <div class="sub">실물 시장 데이터와 AI 판단으로 굴러가는 모의 자동매매 시스템</div>
   <div class="meta">MVP-2 · 2026.07 · 발표 문성혁</div>
-  <div class="ledger" style="margin-top:64px">
+  <div class="ledger">
     <span class="tag">팀 = 에이전트</span>
     <span>김지현 PM·전체 리딩</span><span class="dot">·</span>
     <span>정창욱 공시·뉴스</span><span class="dot">·</span>
@@ -476,8 +479,8 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <!-- 6b ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="실제 주문은 못 한 게 아니라, 검증이 끝난 뒤에 켜는 마지막 스위치로 설계한 겁니다.<br><br>클라우드는 이야기가 조금 다릅니다. 처음엔 로컬로 도는 시스템이라 <b>필요 없다</b>고 판단했습니다. 그런데 전제가 틀렸더군요. 실제로 돌려보니 <b>노트북을 들고 이동하는 일이 잦았고</b>, 그러면 전원과 네트워크가 끊깁니다. 더 나쁜 건 <b>그 공백이 감지도 안 된다</b>는 겁니다 — 알림을 보내는 주체가 앱인데 앱이 같이 죽으니까요. 그래서 <b>이전이 정당하다고 다시 판단했습니다.</b> 다만 착수 시점은 보류했고, 보류하는 동안엔 텔레그램 알림으로 사각지대를 좁혔습니다.<br><br>한다면 어떻게 할지는 오른쪽에 있습니다. 인스턴스는 t4g.small급이면 충분하고, 비밀키는 서버에 파일로 두지 않고 파라미터 스토어에서 읽어 주입합니다. 관리 화면은 인터넷에 열지 않고 SSH 터널로만 봅니다. 그리고 원장은 반드시 가져갑니다 — 계좌와 체결 기록이 이 시스템의 연속성이니까요.">
   <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">안 한 것 · 판단이 뒤집힌 것</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm" style="margin-top:24px">못 한 게 아니라 안 한 것<span style="color:var(--muted)">,</span><br>그리고 <em>다시 판단한 것</em></h1>
-  <div class="body" style="padding:16px 0">
+  <h1 class="sm" style="margin-top:20px">못 한 게 아니라 안 한 것<span style="color:var(--muted)">,</span><br>그리고 <em>다시 판단한 것</em></h1>
+  <div class="body" style="padding:6px 0">
     <div class="split" style="grid-template-columns:1fr 1.25fr">
       <div>
         <div class="card" style="margin-bottom:16px"><span class="n">안 한 것</span><h3>실제 주문</h3><p>시세·뉴스·AI 판단까지 전부 진짜로 돌고, 브로커에 주문을 내는 <strong>마지막 한 단계만</strong> 잠가 뒀습니다. 무인 검증이 끝나면 켜는 <strong>마지막 스위치</strong>입니다.</p></div>
