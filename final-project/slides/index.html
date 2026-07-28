@@ -658,9 +658,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
         <p style="font-size:16.5px;line-height:1.45;margin-top:4px">손절·익절선에 닿았는지만 기계가 확인합니다. <strong>AI 호출 0회</strong> — 아무 일 없는 1분의 비용은 0원입니다.</p>
       </div>
       <div class="card" style="padding:12px 17px">
-        <span class="n" style="font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--muted);font-weight:700">IDEMPOTENCE</span>
+        <span class="n" style="font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--muted);font-weight:700">다시 켜도 안전</span>
         <h3 style="font-size:20px;margin-top:4px">시각이 아니라 조건으로 돕니다</h3>
-        <p style="font-size:16.5px;line-height:1.45;margin-top:4px">"마지막 성공이 하루 전이면 실행" — 재시작해도 <strong>이어서 돌고 같은 일을 두 번 하지 않습니다.</strong> 보장은 <code>tb_job_run</code>이 합니다.</p>
+        <p style="font-size:16.5px;line-height:1.45;margin-top:4px">"마지막 성공이 하루 전이면 실행" — 도중에 꺼졌다 켜져도 <strong>이어서 돌고, 이미 한 일은 기록을 보고 건너뜁니다.</strong></p>
       </div>
     </div>
 
@@ -733,8 +733,8 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <!-- 5 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="[영상 직전] 지금 보실 것은 방금 그림의 아래 두 층입니다. 시장이 촬영 시간에 맞춰 급락해주지 않기 때문에, 운영 환경과 완전히 분리된 데모에서 <b>각본대로 재현</b>했습니다. 마지막 16초만 실제 운영 서버입니다. <b>주황색 테두리가 지금 봐야 할 곳</b>입니다.<br><br>[영상 직후] 마지막 16초는 각본이 아니라 저희가 실제로 돌리고 있는 서버의 기록입니다.">
   <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">데모 영상</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">아래 두 층이 실제로 도는 것</h1>
-  <div class="lead">"지킨다"는 말은 증명이 안 됩니다 — <strong>방어선이 발동해 청산까지 가는 순간</strong>을 직접 보여드립니다.</div>
+  <h1 class="sm">사람이 없을 때, <b>시스템이 움직이는 법</b></h1>
+  <div class="lead">급락에는 <strong>기계 방어</strong>가, 사건에는 <strong>AI 재판단</strong>이 움직입니다 — 그 2분을 각본으로 재현했습니다.</div>
   <div class="body">
     <!-- 영상은 저장소 밖(footage/)에 있다. 파일이 있으면 여기서 바로 틀고,
          없으면 아래 구성표가 대신 뜬다 — 발표장 노트북이 바뀌어도 화면이
@@ -759,7 +759,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       </table>
     </div>
   </div>
-  <div class="ledger"><span class="tag">영상</span><span>급락은 기다릴 수 없어 데모에서 각본으로 재현했습니다 · 마지막 16초는 지금 운영 중인 서버의 실제 화면입니다</span></div>
+  <div class="ledger"><span class="tag">영상</span><span>판단 장면까지 각본으로 재현한 데모입니다</span><span class="dot">·</span><span>중간 psql은 데모 원장 무결 검증</span><span class="dot">·</span><span>마지막 16초는 지금 돌고 있는 <strong>실제 서버</strong></span></div>
 </section>
 
 <!-- 6a 기록·깔때기 (07-28 영상 뒤로 이동) ────────────────────────────────────────────────────────────────── -->
