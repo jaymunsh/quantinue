@@ -18,8 +18,10 @@ app/.ruff_cache/
 app/.coverage*
 app/htmlcov/
 
-# 촬영 원본(대용량 바이너리)은 저장소에 넣지 않는다
-final-project/footage/
+# 촬영 원본(대용량 바이너리)은 저장소에 넣지 않는다.
+# 단 발표용 최종본(12MB) 하나는 예외 — 클론만 받아도 발표가 되게 (07-28 결정)
+final-project/footage/*
+!final-project/footage/summary-3min.mp4
 
 # 촬영 중간물 (프레임·임시 클립, 수백 MB)
 final-project/shoot/.work/
