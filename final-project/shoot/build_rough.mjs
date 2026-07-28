@@ -123,8 +123,10 @@ for (const step of PLAN) {
     .filter((s) => s.from < dur - 0.4)
     .map((s) => ({ ...s, to: Math.min(s.to, dur - 0.2) }));
   const dest = join(CUT, step.file);
-  // badge: null = 배지 없음(S5는 페이지에 이미 박혀 있다), 문자열 = 그 배지, 미지정 = DEMO
-  const badge = step.badge === null ? null : (step.badge ?? 'badge-demo.png');
+  // 07-28 사용자 결정: 데모 구간의 상시 배지는 뺀다 — 발표 멘트와 슬라이드가
+  // 이미 "각본 재현"을 선언한다. 단 s6의 '실제 운영 기록' 배지(badge-live)는
+  // 남긴다: 각본→실서버 전환을 배지 등장으로 보여주는 장치라서다.
+  const badge = step.badge ?? null;
   burn(src, dest, { badge, subs, fadeIn: step.fadeIn ?? 0, fadeOut: step.fadeOut ?? 0 });
   built.push(dest);
   console.log(`  ${step.file.padEnd(26)} ${dur.toFixed(1)}s · 자막 ${subs.length}`);
