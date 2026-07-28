@@ -606,7 +606,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <section class="slide" data-notes="이 시스템의 하루입니다. 방금 본 역할 11개가 코드의 조직도라면, 그 코드가 하루에 실제로 하는 일이 잡 14종입니다 — 잡 하나는 <b>매 거래일 한 번 도는 자동 작업</b> 하나입니다.<br><br>뉴욕의 새 날이 열리는 <b>한국 시간 13시</b>에 슬롯이 열리고, 잡 14종이 등록된 순서대로 돕니다. 이름이 화면에 있는 그대로입니다 — 종목을 모으고, 시세·공시·뉴스·지표를 모으고, 후보를 좁힌 뒤, 성향 둘이 각각 판단하고, 팔 것을 먼저 팔아 자리를 만든 다음 삽니다. 마지막에 텔레그램 요약이 갑니다.<br><br>밤 <b>22시 30분 정규장</b>부터는 1분마다 방어가 돕니다. 손절선만 보고 AI는 부르지 않습니다.<br><br>설계를 하나 짚자면, 잡은 시각에 묶여 있지 않습니다. 러너가 <b>60초마다 깨어나서</b> '마지막 성공이 하루 전이고 아직 안 한 잡'을 찾아 돌립니다. 그래서 도중에 재시작해도 이어서 돌고, 같은 일을 두 번 하지 않습니다 — 그 보장은 원장 테이블이 합니다.">
   <div class="eyebrow"><span class="no">05-4</span><i class="sep"></i><span class="kr">하루 파이프라인</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">매일 <b>14가지 작업</b>이 스스로 돌아갑니다</h1>
-  <div class="lead"><strong>잡(job)</strong> = 매 거래일 1회 도는 자동 작업 하나 — <strong>등록 순서가 곧 데이터 의존 순서</strong>입니다.</div>
+  <div class="lead">이 작업 하나하나를 <strong>잡(job)</strong>이라 부릅니다 — 매 거래일 1회, <strong>등록 순서가 곧 데이터 의존 순서</strong>입니다.</div>
   <div class="body" style="padding:6px 0 0">
 
     <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:12px">
