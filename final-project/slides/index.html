@@ -754,7 +754,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       </table>
     </div>
   </div>
-  <div class="ledger"><span class="tag">주황 테두리 = 지금 볼 곳</span><span class="dot">·</span><span>각본 체결</span><span class="dot">·</span><span>VRDN 손절 $139.50</span><span class="dot">·</span><span>HLXM 반전 $80.00</span><span class="dot">·</span><span>주문 34 = 체결 34</span></div>
+  <div class="ledger"><span class="tag">왜 영상인가</span><span>"지킨다"는 말로는 증명되지 않아서 — 방어선이 실제로 발동해 청산까지 가는 순간을 눈으로 보여드립니다</span><span class="dot">·</span><span>주황 테두리 = 지금 볼 곳</span></div>
 </section>
 
 <!-- 6a 기록·깔때기 (07-28 영상 뒤로 이동) ────────────────────────────────────────────────────────────────── -->
@@ -863,45 +863,82 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="ledger"><span class="tag">운영 기록</span><span>잡 14/14 성공 (07-27)</span><span class="dot">·</span><span>생존 신호 5분 주기</span><span class="dot">·</span><span>7월 가동률 99.38%</span></div>
 </section>
 
-<!-- 7b 남겨 둔 것 ────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="두 가지는 일부러 남겨 뒀습니다.<br><br>실제 주문은 무인 검증이 끝나기 전에는 켜지 않는 것이 맞다고 판단했습니다 — 마지막에 켜는 스위치로 잠가 뒀습니다.<br><br>클라우드는 <b>조사만 하고 도입하지 않았습니다.</b> 방금 보신 것처럼 노트북 운영은 이동할 때마다 끊기니까, 옮긴다면 무엇이 얼마나 필요한지는 철저히 조사해서 문서로 남겼습니다 — 인스턴스 크기, 비용, 비밀키 관리, 접근 방식, 데이터 이전까지. 다만 지금 우선순위는 기능 검증이라 착수는 하지 않기로 했습니다. 보류하는 동안엔 텔레그램 알림으로 사각지대를 좁혔습니다.<br><br>이 장은 길게 안 갑니다 — 오른쪽 표만 짚고 넘어갑니다. 질문이 오면: 인스턴스는 t4g.small급이면 충분하고(디스크는 EBS라 필요한 만큼 늘립니다), 비밀키는 서버에 파일로 두지 않고 파라미터 스토어에서 주입, 관리 화면은 SSH 터널로만, 원장은 반드시 가져갑니다.">
+<!-- 7b 남겨 둔 것 — 07-28 codex 2안 반영: 사양표 대신 보류 결정 + 해제 조건 ── -->
+<section class="slide" data-notes="운영 한계는 방금 보신 것처럼 실제로 드러났습니다. 그래도 검증 순서를 바꾸지는 않았습니다.<br><br>두 기능을 조건을 정해 두고 보류했습니다. <b>실제 주문은 OFF</b> — 무인 검증이 끝나기 전에는 실제 자금을 움직이지 않습니다. 켜는 조건은 무인 검증 통과, 그때까지는 마지막 스위치로 잠가 뒀습니다. <b>클라우드 이전은 보류</b> — 서버를 옮겨도 지금 하는 기능 검증이 빨라지지 않기 때문입니다. 착수 조건은 검증 완료와 상시 운영 필요, 필요한 이전 방식은 이미 조사해 문서로 남겼습니다.<br><br>이 장은 길게 안 갑니다 — 두 카드의 조건만 짚고 넘어갑니다. 사양 질문이 오면: 인스턴스는 t4g.small급 · 월 $20~40, 비밀키는 SSM 주입(.env를 서버에 안 둠), 화면은 SSH 터널로만, 원장은 pg_dump로 가져가고, restart=always가 이 이전의 존재 이유입니다.">
   <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">남겨 둔 것</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm" style="margin-top:20px">일부러 <em>남겨 둔</em> 두 가지</h1>
-  <div class="body" style="padding:6px 0">
-    <div class="split" style="grid-template-columns:1fr 1.25fr">
-      <div>
-        <div class="card" style="margin-bottom:16px"><span class="n">남겨 둔 것 ①</span><h3>실제 주문</h3><p>시세·뉴스·AI 판단까지는 실제로 돌지만, 브로커 주문만은 <span style="white-space:nowrap">잠가 두었습니다</span>. <strong>무인 검증이 끝나기 전에는 켜지 않는 것이 맞다</strong>고 판단했습니다.</p></div>
-        <div class="card ai"><span class="n">남겨 둔 것 ②</span><h3>클라우드 이전</h3><p>노트북 운영의 한계는 알고 있습니다 — 어제 아침 사건이 그 장면입니다. 그래도 지금 도입하지 않은 이유는, <strong>아직 검증 단계라 서버를 옮겨도 검증이 빨라지지 않기 때문</strong>입니다. 그 사이 공백은 알림과 외부 모니터링으로 좁혔고, 사양·비용·절차를 조사해 두어 <strong>검증이 끝나면 바로 착수할 수 있습니다.</strong></p></div>
+  <h1 class="sm" style="margin-top:20px">마지막 <em>두 스위치</em>는 검증 뒤에 켭니다</h1>
+  <div class="lead">한계가 드러났다고 검증 순서를 바꾸지는 않았습니다 — 대신 <strong>켜는 조건을 정해 두었습니다.</strong></div>
+  <div class="body" style="padding:14px 0 0">
+    <div class="grid g2" style="gap:24px">
+      <div class="card" style="border-left:5px solid var(--alert);padding:20px 24px">
+        <div style="display:flex;align-items:baseline;gap:14px">
+          <h3 style="font-size:27px">실제 주문</h3>
+          <span style="font-family:var(--mono);font-size:16px;font-weight:800;color:var(--alert);background:#F7EEDF;border-radius:7px;padding:3px 11px">OFF</span>
+        </div>
+        <p style="font-size:20px;line-height:1.55;margin-top:11px"><span class="n" style="font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:4px">지금 잠근 이유</span>무인 검증 전에는 <strong>실제 자금을 움직이지 않습니다</strong> — 그 외 시세·뉴스·AI 판단은 전부 실물로 돕니다.</p>
+        <p style="font-size:20px;line-height:1.55;margin-top:12px"><span class="n" style="font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--det);display:block;margin-bottom:4px">켜는 조건</span><strong>무인 검증 통과</strong> — 그때 켜는 마지막 스위치로 잠가 뒀습니다.</p>
       </div>
-      <div class="card" style="height:100%">
-        <span class="n">조사해 둔 것 — 한다면 이렇게</span>
-        <table style="font-size:21px;margin-top:6px">
-          <tr><td><strong>인스턴스</strong></td><td>EC2 t4g.small급이면 충분합니다 <span class="muted">(앱 24MB · DB 201MB · 하루 수 MB씩 증가)</span> · 인프라 <strong>월 $20~40</strong></td></tr>
-          <tr><td><strong>비밀</strong></td><td>SSM Parameter Store에서 읽어 주입합니다 — <strong>서버에 <code>.env</code>를 두지 않습니다</strong></td></tr>
-          <tr><td><strong>접근</strong></td><td>8020은 <strong>열지 않습니다</strong>. 화면은 SSH 터널로만 봅니다 — 공개하면 TLS·도메인이 딸려 옵니다</td></tr>
-          <tr><td><strong>데이터</strong></td><td><code>pg_dump</code>로 원장을 <strong>가져갑니다</strong> — 계좌·체결 기록이 이 시스템의 연속성입니다. 증가분은 디스크 볼륨만 늘리면 됩니다</td></tr>
-          <tr><td><strong>기동</strong></td><td><code>restart=always</code> — <strong>재부팅 자동 기동이 이 이전의 존재 이유</strong>입니다</td></tr>
-        </table>
+      <div class="card" style="border-left:5px solid var(--alert);padding:20px 24px">
+        <div style="display:flex;align-items:baseline;gap:14px">
+          <h3 style="font-size:27px">클라우드 이전</h3>
+          <span style="font-family:var(--mono);font-size:16px;font-weight:800;color:var(--alert);background:#F7EEDF;border-radius:7px;padding:3px 11px">보류</span>
+        </div>
+        <p style="font-size:20px;line-height:1.55;margin-top:11px"><span class="n" style="font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--muted);display:block;margin-bottom:4px">지금 보류한 이유</span>서버를 옮겨도 <strong>지금 하는 기능 검증이 빨라지지 않습니다</strong> — 그 사이 공백은 알림과 외부 모니터링으로 좁혔습니다.</p>
+        <p style="font-size:20px;line-height:1.55;margin-top:12px"><span class="n" style="font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--det);display:block;margin-bottom:4px">착수 조건</span><strong>기능 검증 완료 + 상시 운영 필요</strong> — 이전 방식은 조사해 문서로 남겼습니다.</p>
       </div>
     </div>
+    <div class="quiet" style="margin-top:22px;font-family:var(--mono);font-size:17px;text-align:center">준비 완료 — t4g.small · 월 $20~40 · SSM 주입 · SSH 터널 전용 · pg_dump 이전 · restart=always</div>
   </div>
   <div class="ledger"><span class="tag">근거</span><span>docs/mvp2-planning/aws-migration-review.md</span><span class="dot">·</span><span>2026-07-21 재판정 · 착수 보류(사용자 결정)</span></div>
 </section>
 
 
-<!-- 8 ─────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="돌아보면 세 가지를 배웠고, 한 가지가 아쉽습니다.<br><br>AI는 넣으면 되는 기능이 아니라 통제해야 하는 대상이라는 것. 재현할 수 없는 판단은 믿을 수 없다는 것. 그리고 만드는 과정에도 AI 협업을 설계해야 한다는 것입니다.<br><br>아쉬운 것도 말씀드리면 — 공시와 뉴스를 모으는 것까지는 돌렸지만, 그 채점을 판단에 연결하는 구간은 얕게 끝났습니다. 다음 단계의 첫 항목으로 남겨 두었습니다.">
+<!-- 8 회고 — 07-28 codex 2안 반영: 4카드 평면 나열 → 원칙 3 + 끊긴 연결 1 ── -->
+<section class="slide" data-notes="실제로 돌려보니 세 가지 원칙이 남았습니다.<br><br>첫째, AI 호출은 <b>예산으로 통제</b>해야 합니다 — 모든 호출이 예산 경계를 통과했고 4일에 0.53달러였습니다. 둘째, 판단은 <b>재현할 수 있어야</b> 합니다 — 342건 전부에 근거가 있고 234건은 그대로 재현됩니다. 셋째, AI와 개발하는 <b>과정도 문서로 인수인계</b>돼야 합니다 — 세션이 바뀌어도 금지선과 검증 절차가 이어졌습니다.<br><br>반면 <b>아직 끊긴 구간</b>도 있습니다. 뉴스와 공시 1.9만여 건을 모아 채점까지는 돌렸지만, 그 채점이 실제 판단에 닿은 사례는 한 자릿수였습니다. 이 <b>상류 연결</b>이 다음 단계의 첫 검증 항목입니다.<br><br>⚠️ 다음 장과의 관계: 끊긴 건 데이터 상류(수집→판단 연결)이고, 다음 장이 주장하는 판단→검토→체결→기록의 <b>실행 구간은 끊긴 적이 없다.</b> 모순 질문이 오면 이 구분으로 답한다.">
   <div class="eyebrow"><span class="no">09</span><i class="sep"></i><span class="kr">회고</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">돌아보며 — <b>배운 것</b>과 <em>아쉬운 것</em></h1>
-  <div class="body">
-    <div class="grid g4">
-      <div class="card"><span class="n">배운 것 ①</span><h3>AI는 기능이 아니라<br>통제 대상입니다</h3><p>1차에서 LLM을 그대로 <span style="white-space:nowrap">붙여 보니</span> 비용과 품질이 흔들렸습니다. 2차는 원칙부터 세웠습니다 — <strong>모든 호출은 예산 경계를 통과한다.</strong></p><p style="margin-top:10px"><strong>결과: 4일 동안 $0.53.</strong> 요율을 모르는 모델은 기동 자체를 거부합니다.</p></div>
-      <div class="card"><span class="n">배운 것 ②</span><h3>재현할 수 없는 판단은<br>믿을 수 없습니다</h3><p>"왜 샀지?"에 답하지 못하면 개선도 못 합니다. 그래서 판단마다 <strong>모델·프롬프트 버전·입력값까지</strong> 남기게 했습니다.</p><p style="margin-top:10px"><strong>결과: 판단 342건 전부에 근거</strong>가 있고, 234건은 그대로 재현됩니다.</p></div>
-      <div class="card"><span class="n">배운 것 ③</span><h3>만드는 과정에도<br>설계가 필요합니다</h3><p>AI와 개발하며 세션이 바뀔 때마다 맥락이 끊겼습니다. <strong>사람처럼 문서로 인수인계하는 규약</strong>을 만들었습니다.</p><p style="margin-top:10px"><strong>결과: 세션이 바뀌어도</strong> 금지선과 검증 절차가 같은 기준으로 이어졌습니다.</p></div>
-      <div class="card" style="border-left:5px solid var(--alert)"><span class="n">아쉬운 것</span><h3>모으는 것과 쓰는 것은<br>다른 문제였습니다</h3><p>뉴스 1만여 건·공시 9천여 건을 모았지만, 그 채점이 <strong>실제 판단에 닿은 사례는 한 자릿수</strong>였습니다.</p><p style="margin-top:10px">부풀리는 대신 <strong>다음 단계의 첫 항목</strong>으로 적어 두었습니다.</p></div>
+  <h1 class="sm">통제는 <b>증명했고</b>, 연결은 <em>남았습니다</em></h1>
+  <div class="body" style="padding:14px 0 0">
+    <div class="split" style="grid-template-columns:1.5fr 1fr;gap:26px;align-items:stretch">
+
+      <div class="card" style="padding:20px 26px">
+        <span class="n">검증된 세 원칙</span>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:22px;margin-top:12px">
+          <div>
+            <div style="font-family:var(--mono);font-size:34px;font-weight:800;color:var(--det)">$0.53</div>
+            <div style="font-size:15px;color:var(--muted);font-family:var(--mono)">4일 실측 · 상한 $3/일</div>
+            <h3 style="font-size:21px;margin-top:10px">AI는 통제 대상</h3>
+            <p style="font-size:17.5px;line-height:1.5;margin-top:6px">모든 호출이 <strong>예산 경계를 통과</strong>합니다. 요율 없는 모델은 기동을 거부합니다.</p>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:34px;font-weight:800;color:var(--det)">342건</div>
+            <div style="font-size:15px;color:var(--muted);font-family:var(--mono)">전부 근거 보존 · 234 재현</div>
+            <h3 style="font-size:21px;margin-top:10px">판단은 재현 가능</h3>
+            <p style="font-size:17.5px;line-height:1.5;margin-top:6px">모델·프롬프트 버전·입력값까지 <strong>원장에 남깁니다.</strong></p>
+          </div>
+          <div>
+            <div style="font-family:var(--mono);font-size:34px;font-weight:800;color:var(--det)">3종</div>
+            <div style="font-size:15px;color:var(--muted);font-family:var(--mono)">NEXT · handoff · 금지선</div>
+            <h3 style="font-size:21px;margin-top:10px">과정도 설계 대상</h3>
+            <p style="font-size:17.5px;line-height:1.5;margin-top:6px">세션이 바뀌어도 <strong>금지선과 검증 절차</strong>가 같은 기준으로 이어집니다.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:5px solid var(--alert);padding:20px 24px">
+        <span class="n" style="color:var(--alert)">아직 끊긴 상류 연결</span>
+        <div style="font-family:var(--mono);font-size:19px;line-height:2.0;margin-top:12px;color:var(--ink)">
+          뉴스·공시 <b>1.9만여 건</b><br>
+          &nbsp;&nbsp;↓ 채점<br>
+          &nbsp;&nbsp;<span style="color:var(--alert);font-weight:800">── ✕ ──</span><br>
+          &nbsp;&nbsp;↓<br>
+          실제 판단 <b>한 자릿수</b>
+        </div>
+        <p style="font-size:18px;line-height:1.55;margin-top:12px">모으는 것과 쓰는 것은 다른 문제였습니다. <strong>채점 → 판단 연결</strong>이 다음 단계의 첫 검증 항목입니다.</p>
+      </div>
+
     </div>
   </div>
-  <div class="ledger"><span class="tag">기록</span><span>배운 것과 아쉬운 것 모두 문서로 남아 있습니다 — 다음 사람이 이어받을 수 있게</span></div>
+  <div class="ledger"><span class="tag">기록</span><span>tb_llm_usage 4일 $0.53</span><span class="dot">·</span><span>prompt_version 234 / 342</span><span class="dot">·</span><span>src_disclosure_at 6 · src_news_at 0 / 342</span></div>
 </section>
 
 <!-- 9 ─────────────────────────────────────────────────────────────────── -->
