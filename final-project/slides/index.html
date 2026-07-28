@@ -556,39 +556,49 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <h1 class="sm">역할 11개 — <b>AI는 두 자리</b>, 규칙이 아홉</h1>
   <div class="lead">팀이 나눈 역할이 그대로 패키지가 됐습니다 — 각자 무엇을 보고, 무엇을 넘기는지입니다.</div>
   <div class="body" style="padding:12px 0 0">
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
-      <div class="card det" style="padding:15px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21.5px">수집 · 선별</h3><span class="muted" style="font-family:var(--mono);font-size:13.5px">role_01–03</span></div>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">상장사 2,000을 모으고 지표를 계산해, <strong>상위 20 + 보유 종목</strong>만 남깁니다. 여기까지 AI 호출 0회 — 지표는 흔들리지 않으니까요.</p>
+    <div style="display:grid;grid-template-columns:1fr 40px 1fr 40px 1fr;gap:12px 0;align-items:stretch">
+
+      <div class="card det" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">① 수집 · 선별</h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_01–03</span></div>
+        <p style="font-size:17px;line-height:1.5;margin-top:6px">상장사 2,000을 지표로 걸러 <strong>상위 20 + 보유 종목</strong>만 남깁니다 — AI 호출 0회.</p>
         <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">2,000 → 20+α / 매일</p>
       </div>
-      <div class="card det" style="padding:15px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21.5px">맥락 채점</h3><span class="muted" style="font-family:var(--mono);font-size:13.5px">role_04–06</span></div>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">시장 국면(risk-on/off)을 정하고, <strong>공시·뉴스에 신뢰도 점수</strong>를 매깁니다. 판단이 쓸 "근거 묶음"을 만드는 자리입니다.</p>
-        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">뉴스 10,728 · 공시 8,973 처리</p>
+      <div class="fjoin">→</div>
+      <div class="card det" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">② 맥락 채점</h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_04–06</span></div>
+        <p style="font-size:17px;line-height:1.5;margin-top:6px">시장 국면을 판정하고 공시·뉴스에 신뢰도를 매겨 <strong>판단이 쓸 근거 묶음</strong>을 만듭니다.</p>
+        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">뉴스 10,728 · 공시 8,973</p>
       </div>
-      <div class="card ai" style="padding:15px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21.5px">전략가 <span style="font-size:14px;color:var(--ai)">AI ①</span></h3><span class="muted" style="font-family:var(--mono);font-size:13.5px">role_07</span></div>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">성향 둘(공격·안전)이 <strong>같은 근거를 각자 판단</strong>합니다. 확신이 문턱을 못 넘으면 제안 자체가 나가지 않습니다.</p>
+      <div class="fjoin">→</div>
+      <div class="card ai" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">③ 전략가 <span style="font-size:13.5px;color:var(--ai)">AI</span></h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_07</span></div>
+        <p style="font-size:17px;line-height:1.5;margin-top:6px">성향 둘이 같은 근거를 각자 판단 — <strong>확신이 문턱을 못 넘으면 제안이 없습니다.</strong></p>
         <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">매수 확신 ≥ 0.65(공격) · 0.75(안전)</p>
       </div>
-      <div class="card ai" style="padding:15px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21.5px">비평가 <span style="font-size:14px;color:var(--ai)">AI ②</span></h3><span class="muted" style="font-family:var(--mono);font-size:13.5px">role_08</span></div>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">전략가의 제안을 <strong>반박하는 것이 직업</strong>입니다. 단순한 건 기계 게이트가 먼저 걸러 84%는 AI까지 가지 않고, 반려 사유는 원장에 남습니다.</p>
+
+      <div></div><div></div><div></div><div></div>
+      <div class="fjoin" style="padding:0;font-size:24px">↓</div>
+
+      <div class="card" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">⑥ 회고</h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_11</span></div>
+        <p style="font-size:17px;line-height:1.5;margin-top:6px">체결 <strong>닷새 뒤(T+5)</strong> 그 판단을 재평가합니다 — 판단→결과→개선의 고리를 닫는 자리.</p>
+        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">2차 원장 0건 — 주장하지 않음</p>
+      </div>
+      <div class="fjoin">←</div>
+      <div class="card det" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">⑤ 위험 · 집행</h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_09–10</span></div>
+        <p style="font-size:17px;line-height:1.5;margin-top:6px">비중·한도를 정해 주문 — 살 때 <strong>손절 −15% · 익절 +20%</strong>가 같이 적힙니다.</p>
+        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">주문 고유 키(DB UNIQUE)가 중복 차단</p>
+      </div>
+      <div class="fjoin">←</div>
+      <div class="card ai" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">④ 비평가 <span style="font-size:13.5px;color:var(--ai)">AI</span></h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_08</span></div>
+        <p style="font-size:17px;line-height:1.5;margin-top:6px">제안을 <strong>반박하는 것이 직업</strong> — 단순한 건 게이트가 84% 먼저 거르고, 반려는 원장에 남습니다.</p>
         <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">게이트 84% · 반려 57/323</p>
       </div>
-      <div class="card det" style="padding:15px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21.5px">위험 · 집행</h3><span class="muted" style="font-family:var(--mono);font-size:13.5px">role_09–10</span></div>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">비중·현금 한도를 정해 주문을 냅니다. 살 때 <strong>손절 −15% · 익절 +20%</strong>가 같이 적히고, 주문 고유 키(DB UNIQUE)가 중복을 막습니다.</p>
-        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">종목당 ≤20%(공격)·10%(안전)</p>
-      </div>
-      <div class="card" style="padding:15px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21.5px">회고</h3><span class="muted" style="font-family:var(--mono);font-size:13.5px">role_11</span></div>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">체결 <strong>닷새 뒤(T+5)</strong> 그 판단이 맞았는지 되돌아봅니다. 판단 → 결과 → 개선의 고리를 닫는 자리입니다.</p>
-        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">2차 원장은 아직 0건 — 주장하지 않음</p>
-      </div>
+
     </div>
-    <div class="quiet" style="margin-top:14px;font-size:18px;text-align:center"><strong style="color:var(--ai)">AI는 두 자리</strong>에서만 판단하고, <strong style="color:var(--det)">나머지 아홉 자리의 규칙</strong>이 그 판단을 감쌉니다.</div>
+    <div class="quiet" style="margin-top:14px;font-size:18px;text-align:center"><strong style="color:var(--ai)">AI는 ③·④ 두 자리</strong>에서만 판단하고, <strong style="color:var(--det)">나머지 아홉 자리의 규칙</strong>이 그 판단을 감쌉니다.</div>
   </div>
   <div class="ledger"><span class="tag">근거</span><span>quantinue/roles/role_01…11</span><span class="dot">·</span><span>문턱·한도 = config/pipeline.yaml</span><span class="dot">·</span><span>게이트·반려 = 운영 원장</span></div>
 </section>
@@ -605,7 +615,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <span class="quiet" style="font-size:17px">뉴욕의 새 날이 열리면 슬롯이 열립니다 — 잡 러너가 <strong>60초마다</strong> 깨어나 아직 안 한 잡을 순서대로 돌립니다</span>
     </div>
 
-    <div style="display:grid;grid-template-columns:1.15fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr;gap:0;align-items:start">
+    <div style="display:grid;grid-template-columns:1.15fr 28px 1fr 28px 1fr 28px 1fr 28px 1fr;gap:0;align-items:center;min-height:340px">
       <div>
         <div class="quiet" style="font-family:var(--mono);font-size:14.5px;letter-spacing:.06em;margin-bottom:8px;text-align:center">① 모은다</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
@@ -618,7 +628,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
           <div class="job" style="grid-column:1/-1"><div class="jn">macro</div><div class="jd">거시지표</div></div>
         </div>
       </div>
-      <div class="fjoin" style="padding-top:64px">→</div>
+      <div class="fjoin">→</div>
       <div>
         <div class="quiet" style="font-family:var(--mono);font-size:14.5px;letter-spacing:.06em;margin-bottom:8px;text-align:center">② 좁힌다</div>
         <div style="display:grid;gap:6px">
@@ -626,7 +636,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
           <div class="job det"><div class="jn">insider_scoring</div><div class="jd">내부자 거래</div></div>
         </div>
       </div>
-      <div class="fjoin" style="padding-top:64px">→</div>
+      <div class="fjoin">→</div>
       <div>
         <div class="quiet" style="font-family:var(--mono);font-size:14.5px;letter-spacing:.06em;margin-bottom:8px;text-align:center;color:var(--ai)">③ 판단한다 <b>AI</b></div>
         <div style="display:grid;gap:6px">
@@ -634,7 +644,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
           <div class="job ai"><div class="jn">analysis:<br>conservative</div><div class="jd">안전형 판단</div></div>
         </div>
       </div>
-      <div class="fjoin" style="padding-top:64px">→</div>
+      <div class="fjoin">→</div>
       <div>
         <div class="quiet" style="font-family:var(--mono);font-size:14.5px;letter-spacing:.06em;margin-bottom:8px;text-align:center">④ 집행한다</div>
         <div style="display:grid;gap:6px">
@@ -642,7 +652,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
           <div class="job det"><div class="jn">allocation</div><div class="jd">배분 · 매수</div></div>
         </div>
       </div>
-      <div class="fjoin" style="padding-top:64px">→</div>
+      <div class="fjoin">→</div>
       <div>
         <div class="quiet" style="font-family:var(--mono);font-size:14.5px;letter-spacing:.06em;margin-bottom:8px;text-align:center">⑤ 알린다</div>
         <div style="display:grid;gap:6px">
@@ -758,7 +768,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       </table>
     </div>
   </div>
-  <div class="ledger"><span class="tag">영상</span><span>급락은 기다릴 수 없어 데모에서 각본으로 재현했습니다 — 마지막 16초는 실제 운영 서버입니다</span></div>
+  <div class="ledger"><span class="tag">영상</span><span>급락은 기다릴 수 없어 각본으로 재현했고, "그래서 진짜 돌긴 하냐"에 답하려 마지막 16초는 실제 운영 화면을 담았습니다</span></div>
 </section>
 
 <!-- 6a 기록·깔때기 (07-28 영상 뒤로 이동) ────────────────────────────────────────────────────────────────── -->
@@ -867,82 +877,92 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="ledger"><span class="tag">운영 기록</span><span>잡 14/14 성공 (07-27)</span><span class="dot">·</span><span>생존 신호 5분 주기</span><span class="dot">·</span><span>7월 가동률 99.38%</span></div>
 </section>
 
-<!-- 7b 남겨 둔 것 — 07-28 5차: 실거래 3겹 확인 + 클라우드 보강 + 준비 상세 복원 ── -->
-<section class="slide" data-notes="운영 한계는 방금 보신 것처럼 실제로 드러났습니다. 그래도 검증 순서를 바꾸지는 않았습니다.<br><br><b>실제 주문</b> — 켜기 전에 확인할 것이 기술 말고도 있다는 걸 조사에서 확인했습니다. 세 겹입니다. 첫째, 무인 검증 — 사람 없이 안전하게 도는지. 둘째, <b>정책</b> — 브로커 실계좌 약관과, LLM 제공사 이용정책이 사람 검토 없는 금융 자문·집행을 제한하는 부분. 셋째, <b>인가</b> — 남의 돈을 운용하거나 자문하는 순간 등록이 필요한 영역이라, 그건 아예 범위 밖으로 명시했습니다.<br><br><b>클라우드 이전</b> — 노트북 운영의 한계는 알지만, 서버를 옮겨도 지금 하는 기능 검증이 빨라지지 않습니다. 대신 옮긴다면 필요한 것을 다섯 항목으로 조사해 문서로 남겼고, 보류하는 동안의 공백은 알림과 외부 모니터링으로 좁혔습니다.<br><br>아래 다섯 칸이 그 조사 결과입니다 — 항목만 짚고 넘어갑니다.<br><br>⚠️ 규제는 단정하지 않는다 — &quot;켜기 전 검토 목록으로 관리한다&quot;까지만. 법률 자문을 받았다고 말하지 말 것.">
+<!-- 7b 남겨 둔 것 — 07-28 6차: 가로 밴드로 영역 분리, 정책 행에 결론 명시 ── -->
+<section class="slide" data-notes="운영 한계는 방금 보신 것처럼 실제로 드러났습니다. 그래도 검증 순서를 바꾸지는 않았습니다.<br><br><b>실제 주문</b> — 켜기 전에 확인할 것이 기술 말고도 있다는 걸 조사에서 확인했습니다. 무인 검증은 당연하고, <b>정책</b> — LLM 제공사 이용정책이 사람 검토 없는 금융 자문·집행을 제한합니다. 즉 <b>사람 승인 단계 없이 AI 판단만으로 실거래를 켜면 정책 위반 소지</b>가 있어서, 켠다면 사람 승인 단계를 넣는 설계까지 정해 두고 잠갔습니다. 그리고 <b>인가</b> — 남의 돈을 운용하는 순간 등록이 필요한 영역이라 아예 범위 밖으로 명시했습니다.<br><br><b>클라우드 이전</b> — 서버를 옮겨도 지금 하는 기능 검증이 빨라지지 않아 보류했고, 공백은 알림과 외부 모니터링으로 좁혔습니다. 대신 옮긴다면 필요한 다섯 가지를 조사해 문서로 남겼습니다 — 오른쪽 다섯 칸입니다. 항목만 짚고 넘어갑니다.<br><br>⚠️ 규제는 단정하지 않는다 — &quot;켜기 전 검토 목록으로 관리한다&quot;까지만. 법률 자문을 받았다고 말하지 말 것.">
   <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">남겨 둔 것</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm" style="margin-top:20px">마지막 <em>두 스위치</em>는 검증 뒤에 켭니다</h1>
-  <div class="lead">한계가 드러났다고 순서를 바꾸지 않았습니다 — 대신 <strong>켜기 전에 확인할 것</strong>을 조사해 두었습니다.</div>
+  <div class="lead">한계가 드러났다고 순서를 바꾸지 않았습니다 — <strong>켜기 전에 확인할 것</strong>을 조사해 두었습니다.</div>
   <div class="body" style="padding:12px 0 0">
-    <div class="grid g2" style="gap:20px">
-      <div class="card" style="border-left:5px solid var(--alert);padding:16px 22px">
-        <div style="display:flex;align-items:baseline;gap:14px">
-          <h3 style="font-size:25px">실제 주문 <span class="muted" style="font-size:16px;font-weight:400">— 실제 돈이 나가는 스위치</span></h3>
-          <span style="font-family:var(--mono);font-size:15px;font-weight:800;color:var(--alert);background:#F7EEDF;border-radius:7px;padding:2px 10px;margin-left:auto">OFF</span>
-        </div>
-        <p style="font-size:18px;line-height:1.5;margin-top:9px">켜기 전에 확인할 것이 <strong>기술 말고도 있다는 것</strong>까지 조사했습니다 — 세 겹입니다.</p>
-        <table style="font-size:17px;margin-top:8px">
-          <tr><td style="width:84px;padding:8px 10px"><strong>검증</strong></td><td style="padding:8px 10px">사람 없이 안전하게 도는지 — <strong>무인 검증 통과</strong>가 첫 조건</td></tr>
-          <tr><td style="padding:8px 10px"><strong>정책</strong></td><td style="padding:8px 10px">브로커 실계좌 약관 + <strong>LLM 제공사 정책이 사람 검토 없는 금융 자문·집행을 제한</strong> — 위반 소지를 확인</td></tr>
-          <tr><td style="padding:8px 10px"><strong>인가</strong></td><td style="padding:8px 10px">타인 자금 운용·자문은 <strong>등록이 필요한 영역</strong> → 아예 범위 밖으로 명시</td></tr>
-        </table>
+
+    <div class="card" style="border-left:5px solid var(--alert);padding:15px 22px">
+      <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
+        <h3 style="font-size:24px">실제 주문</h3>
+        <span class="muted" style="font-size:16px">실제 돈이 나가는 스위치 — 확인할 것이 기술 말고도 셋</span>
+        <span style="font-family:var(--mono);font-size:15px;font-weight:800;color:var(--alert);background:#F7EEDF;border-radius:7px;padding:2px 10px;margin-left:auto">OFF</span>
       </div>
-      <div class="card" style="border-left:5px solid var(--alert);padding:16px 22px">
-        <div style="display:flex;align-items:baseline;gap:14px">
-          <h3 style="font-size:25px">클라우드 이전 <span class="muted" style="font-size:16px;font-weight:400">— 노트북 → 서버</span></h3>
-          <span style="font-family:var(--mono);font-size:15px;font-weight:800;color:var(--alert);background:#F7EEDF;border-radius:7px;padding:2px 10px;margin-left:auto">보류</span>
+      <div style="display:grid;grid-template-columns:1fr 1.35fr 1fr;gap:12px">
+        <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:11px 14px">
+          <span class="n" style="font-family:var(--mono);font-size:13px;color:var(--det);font-weight:800">검증</span>
+          <p style="font-size:16.5px;line-height:1.5;margin-top:4px">사람 없이 안전하게 도는가 — <strong>무인 검증 통과가 첫 조건</strong>입니다.</p>
         </div>
-        <p style="font-size:18px;line-height:1.5;margin-top:9px">한계는 알지만, 서버를 옮겨도 <strong>지금 하는 기능 검증이 빨라지지 않습니다.</strong></p>
-        <table style="font-size:17px;margin-top:8px">
-          <tr><td style="width:84px;padding:8px 10px"><strong>보류 중</strong></td><td style="padding:8px 10px">공백은 <strong>알림 + 외부 모니터링</strong>으로 좁혔습니다 — 어제 사건이 그 증명</td></tr>
-          <tr><td style="padding:8px 10px"><strong>착수 조건</strong></td><td style="padding:8px 10px"><strong>기능 검증 완료 + 상시 운영 필요</strong>가 확인되는 시점</td></tr>
-          <tr><td style="padding:8px 10px"><strong>준비</strong></td><td style="padding:8px 10px">필요한 다섯 가지를 조사해 <strong>문서로 남겼습니다</strong> ↓</td></tr>
-        </table>
+        <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:11px 14px">
+          <span class="n" style="font-family:var(--mono);font-size:13px;color:var(--alert);font-weight:800">정책</span>
+          <p style="font-size:16.5px;line-height:1.5;margin-top:4px">LLM 제공사 정책이 <strong>사람 검토 없는 금융 집행을 제한</strong> → 그대로 켜면 위반 소지. <strong>켠다면 사람 승인 단계를 넣는 설계</strong>까지 정해 두고 잠갔습니다.</p>
+        </div>
+        <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:11px 14px">
+          <span class="n" style="font-family:var(--mono);font-size:13px;color:var(--muted);font-weight:800">인가</span>
+          <p style="font-size:16.5px;line-height:1.5;margin-top:4px">타인 자금 운용·자문은 <strong>등록이 필요한 영역</strong> → 아예 범위 밖으로 명시했습니다.</p>
+        </div>
       </div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px">
-      <div class="card" style="padding:11px 14px"><span class="n" style="font-family:var(--mono);font-size:13px;color:var(--muted)">인스턴스</span><p style="font-size:16px;line-height:1.45;margin-top:4px"><strong>t4g.small</strong>급 · 월 $20~40<br><span class="muted">앱 24MB · DB 201MB</span></p></div>
-      <div class="card" style="padding:11px 14px"><span class="n" style="font-family:var(--mono);font-size:13px;color:var(--muted)">비밀키</span><p style="font-size:16px;line-height:1.45;margin-top:4px"><strong>SSM 주입</strong><br><span class="muted">서버에 .env를 안 둔다</span></p></div>
-      <div class="card" style="padding:11px 14px"><span class="n" style="font-family:var(--mono);font-size:13px;color:var(--muted)">접근</span><p style="font-size:16px;line-height:1.45;margin-top:4px"><strong>SSH 터널 전용</strong><br><span class="muted">8020은 공개하지 않는다</span></p></div>
-      <div class="card" style="padding:11px 14px"><span class="n" style="font-family:var(--mono);font-size:13px;color:var(--muted)">데이터</span><p style="font-size:16px;line-height:1.45;margin-top:4px"><strong>pg_dump 원장 이전</strong><br><span class="muted">체결 기록이 연속성</span></p></div>
-      <div class="card" style="padding:11px 14px"><span class="n" style="font-family:var(--mono);font-size:13px;color:var(--muted)">기동</span><p style="font-size:16px;line-height:1.45;margin-top:4px"><strong>restart=always</strong><br><span class="muted">재부팅 자동 기동이 목적</span></p></div>
+
+    <div class="card" style="border-left:5px solid var(--alert);padding:15px 22px;margin-top:14px">
+      <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:10px">
+        <h3 style="font-size:24px">클라우드 이전</h3>
+        <span class="muted" style="font-size:16px">노트북 → 서버 — 옮겨도 지금 하는 검증이 빨라지지 않아 보류</span>
+        <span style="font-family:var(--mono);font-size:15px;font-weight:800;color:var(--alert);background:#F7EEDF;border-radius:7px;padding:2px 10px;margin-left:auto">보류</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1.15fr 2fr;gap:14px;align-items:start">
+        <div style="font-size:16.5px;line-height:1.6">
+          <p><strong>보류 중</strong> — 공백은 알림 + 외부 모니터링으로 좁혔습니다</p>
+          <p style="margin-top:6px"><strong>착수 조건</strong> — 기능 검증 완료 + 상시 운영 필요</p>
+          <p style="margin-top:6px"><strong>준비</strong> — 필요한 다섯 가지를 조사해 문서로 → </p>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+          <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:9px 11px"><span class="n" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">인스턴스</span><p style="font-size:15px;line-height:1.4;margin-top:3px"><strong>t4g.small</strong>급<br>월 $20~40</p></div>
+          <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:9px 11px"><span class="n" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">비밀키</span><p style="font-size:15px;line-height:1.4;margin-top:3px"><strong>SSM 주입</strong><br>.env 안 둠</p></div>
+          <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:9px 11px"><span class="n" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">접근</span><p style="font-size:15px;line-height:1.4;margin-top:3px"><strong>SSH 터널</strong><br>8020 비공개</p></div>
+          <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:9px 11px"><span class="n" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">데이터</span><p style="font-size:15px;line-height:1.4;margin-top:3px"><strong>pg_dump</strong><br>원장 이전</p></div>
+          <div style="background:#F9FBFD;border:1px solid var(--rule);border-radius:10px;padding:9px 11px"><span class="n" style="font-family:var(--mono);font-size:12.5px;color:var(--muted)">기동</span><p style="font-size:15px;line-height:1.4;margin-top:3px"><strong>restart=always</strong><br>자동 재기동</p></div>
+        </div>
+      </div>
     </div>
+
   </div>
   <div class="ledger"><span class="tag">근거</span><span>클라우드 조사 = docs/mvp2-planning/aws-migration-review.md</span><span class="dot">·</span><span>실거래 요건은 켜기 전 검토 목록으로 관리</span></div>
 </section>
 
 
-<!-- 8 회고 — 07-28 4차: 정석 회고 구조(계속할 것 / 아쉬웠던 것 / 다음에 한다면) ── -->
-<section class="slide" data-notes="마지막으로 돌아보겠습니다.<br><br><b>계속할 것</b> 둘 — AI와 규칙의 경계를 먼저 그은 것. 손절은 기계에, 비용은 상한에 맡겼더니 3주 동안 판단 밖의 사고가 없었고 AI 비용은 4일에 0.53달러였습니다. 그리고 모든 판단을 기록한 것 — &quot;왜 샀지?&quot;에 늘 답할 수 있었고, 장애가 났을 때도 원장을 보고 원인을 찾았습니다.<br><br><b>아쉬웠던 것</b> 둘 — 데이터를 모은 만큼 쓰지 못했습니다. 뉴스와 공시를 1.9만 건 넘게 모았는데 판단에 반영된 건 아직 적습니다. 그리고 알림 설계 — 같은 실패 알림이 하루 30통 온 날이 있었습니다. 보내는 것보다 안 보내는 규칙이 어렵다는 걸 배웠습니다.<br><br><b>다음에 한다면</b> — 채점을 판단에 연결하는 것부터 하고, 알림 중복을 억제하고, 무인 검증을 통과하면 아까의 두 스위치를 켭니다.<br><br>이 회고에 적은 건 전부 원장과 커밋에 남아 있습니다 — 아쉬운 점까지요.">
+<!-- 8 회고 — 07-28 5차: 계속할 것 유지 · 아쉬움/다음은 "다시 한다면" 교훈으로 교체 ── -->
+<section class="slide" data-notes="마지막으로 돌아보겠습니다.<br><br><b>계속할 것</b> — 모든 걸 AI에 맡기지 않은 것. 손절은 기계에, 비용은 상한에 맡겼더니 3주간 판단 밖의 사고가 없었고 AI 비용은 4일 0.53달러였습니다. 그리고 모든 판단을 기록한 것 — &quot;왜 샀지?&quot;에 늘 답할 수 있었고, 장애가 나도 원장을 보고 원인을 찾았습니다.<br><br><b>아쉬웠던 것</b> — 만드는 데 3주를 쓰고 정작 굴린 건 7거래일입니다. 성과 검증은 시작 단계입니다. 그리고 완전한 무인까지는 못 갔습니다 — 노트북 한 대 위에서 돌고, 재기동엔 아직 사람 손이 필요합니다.<br><br><b>다시 한다면</b> — 기록 설계를 첫날부터 합니다. 3주차에 넣는 바람에 초기 판단 102건은 재현 불가로 남았습니다. 알림 규칙도 먼저 정합니다 — 하루 30통을 겪고서야 &quot;안 보내는 규칙&quot;을 생각했습니다. 데이터는 쓸 곳부터 정하고 모읍니다 — 1.9만 건을 모았지만 판단에 닿은 건 적었습니다.<br><br>여기 적은 건 전부 원장과 커밋에 남아 있습니다 — 아쉬운 점까지요.">
   <div class="eyebrow"><span class="no">09</span><i class="sep"></i><span class="kr">회고</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">돌아보며 — <b>계속할 것</b>과 <em>고칠 것</em></h1>
-  <div class="lead">3주를 돌아보고 셋으로 정리했습니다 — 계속할 것, 아쉬웠던 것, 다음에 한다면.</div>
-  <div class="body" style="padding:12px 0 0">
+  <h1 class="sm">돌아보며 — <b>계속할 것</b>과 <em>다시 한다면</em></h1>
+  <div class="body" style="padding:16px 0 0">
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px">
 
       <div class="card det" style="padding:17px 20px">
         <span class="n" style="font-size:16px;letter-spacing:.06em;color:var(--det);font-weight:800">계속할 것</span>
-        <h3 style="font-size:20.5px;margin-top:10px">AI와 규칙의 경계를<br>먼저 그은 것</h3>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">손절은 기계에, 비용은 상한에 맡겼습니다. 3주간 <strong>판단 밖의 사고 0건</strong>, AI 비용은 4일 <strong>$0.53</strong>.</p>
-        <h3 style="font-size:20.5px;margin-top:15px">모든 판단을<br>기록한 것</h3>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">"왜 샀지?"에 늘 답할 수 있었고, <strong>장애가 나도 원장을 보고 원인을 찾았습니다.</strong></p>
+        <h3 style="font-size:21px;margin-top:11px">모든 걸 AI에 맡기지 않은 것</h3>
+        <p style="font-size:17px;line-height:1.55;margin-top:6px">손절은 기계에, 비용은 상한에. 3주간 <strong>판단 밖의 사고 0건</strong> · AI 비용 4일 <strong>$0.53</strong>.</p>
+        <h3 style="font-size:21px;margin-top:16px">모든 판단을 기록한 것</h3>
+        <p style="font-size:17px;line-height:1.55;margin-top:6px">"왜 샀지?"에 늘 답할 수 있었고, <strong>장애가 나도 원장에서 원인을 찾았습니다.</strong></p>
       </div>
 
       <div class="card" style="border-left:5px solid var(--alert);padding:17px 20px">
         <span class="n" style="font-size:16px;letter-spacing:.06em;color:var(--alert);font-weight:800">아쉬웠던 것</span>
-        <h3 style="font-size:20.5px;margin-top:10px">모은 만큼<br>쓰지 못한 것</h3>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">뉴스·공시 <strong>1.9만여 건</strong>을 모아 채점까지 돌렸지만, 판단에 반영된 건 아직 적습니다. 부풀리는 대신 다음 단계로 적었습니다.</p>
-        <h3 style="font-size:20.5px;margin-top:15px">알림을<br>설계하지 못한 것</h3>
-        <p style="font-size:17px;line-height:1.52;margin-top:6px">같은 실패 알림이 하루 <strong>30통</strong> 온 날이 있었습니다 — 보내기보다 <strong>"안 보내는 규칙"이 어려웠습니다.</strong></p>
+        <h3 style="font-size:21px;margin-top:11px">굴린 시간이 짧았습니다</h3>
+        <p style="font-size:17px;line-height:1.55;margin-top:6px">만드는 데 3주, 실제 운용은 <strong>7거래일</strong> — 성과 검증은 이제 시작 단계입니다.</p>
+        <h3 style="font-size:21px;margin-top:16px">완전한 무인까지는 못 갔습니다</h3>
+        <p style="font-size:17px;line-height:1.55;margin-top:6px">노트북 한 대 위에서 돌고, <strong>재기동엔 아직 사람 손이 필요합니다.</strong></p>
       </div>
 
       <div class="card ai" style="padding:17px 20px">
-        <span class="n" style="font-size:16px;letter-spacing:.06em;color:var(--ai);font-weight:800">다음에 한다면</span>
-        <div style="display:grid;gap:11px;margin-top:12px">
-          <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:var(--mono);font-weight:800;color:var(--ai)">1</span><p style="font-size:17.5px;line-height:1.5"><strong>채점을 판단에 연결</strong> — 모은 데이터가 실제 판단을 바꾸게</p></div>
-          <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:var(--mono);font-weight:800;color:var(--ai)">2</span><p style="font-size:17.5px;line-height:1.5"><strong>알림 중복 억제</strong> — 같은 실패는 한 번만</p></div>
-          <div style="display:flex;gap:12px;align-items:baseline"><span style="font-family:var(--mono);font-weight:800;color:var(--ai)">3</span><p style="font-size:17.5px;line-height:1.5"><strong>무인 검증 통과</strong> — 그 뒤에 아까의 두 스위치를 켭니다</p></div>
+        <span class="n" style="font-size:16px;letter-spacing:.06em;color:var(--ai);font-weight:800">다시 한다면</span>
+        <div style="display:grid;gap:12px;margin-top:11px">
+          <p style="font-size:17px;line-height:1.55"><strong>기록 설계를 첫날부터</strong> — 3주차에 넣어 초기 판단 102건이 재현 불가로 남았습니다.</p>
+          <p style="font-size:17px;line-height:1.55"><strong>알림 규칙을 먼저</strong> — 하루 30통을 겪고서야 "안 보내는 규칙"을 생각했습니다.</p>
+          <p style="font-size:17px;line-height:1.55"><strong>데이터는 쓸 곳부터</strong> — 1.9만 건을 모았지만 판단에 닿은 건 적었습니다. 연결부터 설계합니다.</p>
         </div>
-        <p style="font-size:16.5px;line-height:1.5;margin-top:14px;color:var(--muted)">순서까지 정해 둔 이유 — 회고가 소감으로 끝나지 않게, 다음 검증 항목으로 이어지게 하려고요.</p>
       </div>
 
     </div>
