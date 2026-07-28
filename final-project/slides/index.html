@@ -140,6 +140,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
    여기 숫자를 바꾸면 안 된다(slides-content.md §6-1-1). */
 .incident{background:var(--card);border:1px solid var(--rule);border-left:5px solid var(--alert);
           border-radius:14px;padding:16px 28px;margin-top:18px}
+.cfg th,.cfg td{padding:10px 12px}
 .incident .n{font-family:var(--mono);font-size:16px;letter-spacing:.1em;font-weight:700;
              color:var(--alert);display:block;margin-bottom:8px}
 .incident .tl{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap;
@@ -511,8 +512,8 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <!-- 4d 투자 페르소나 ────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="두 성향은 말투가 다른 게 아니라, 실제 투자 방법론과 실제로 다른 세팅입니다. 공격형은 오닐과 미너비니의 추세·돌파 계열 — 시장보다 강한 종목의 돌파를 삽니다. 안전형은 하워드 막스의 2차적 사고 — &quot;지금 가격에 무엇이 이미 반영돼 있나&quot;를 먼저 묻습니다.<br><br>오른쪽이 그 철학이 숫자로 내려온 세팅입니다. 안전형은 <b>더 확실해야 사고(0.75 대 0.65), 더 빨리 팔고(0.50 대 0.60)</b>, 절반만 담고(비중 10%·5종목), 현금을 세 배 남깁니다. 하루 손실 한도를 넘으면 공격형은 확신을 감점하고, 안전형은 아예 신규 매수를 멈춥니다. 이 숫자들은 코드가 아니라 정책 파일(pipeline.yaml)이 정합니다.<br><br>그리고 두 프롬프트에 같은 문장이 있습니다 — <b>&quot;재무제표는 우리 증거 밖이다. 지어내지 마라.&quot;</b> 없는 숫자를 지어낸 판단은 틀린 판단보다 나쁘기 때문입니다.">
   <div class="eyebrow"><span class="no">05</span><i class="sep"></i><span class="kr">AI 엔지니어링 · 투자 페르소나</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">두 성향 — <b>방법론</b>이 다르고, <b>세팅</b>이 다릅니다</h1>
-  <div class="body" style="padding:12px 0">
+  <h1 class="sm" style="margin-top:20px">두 성향 — <b>방법론</b>이 다르고, <b>세팅</b>이 다릅니다</h1>
+  <div class="body" style="padding:8px 0">
     <div class="split" style="grid-template-columns:1fr 1.05fr;align-items:stretch">
       <div>
         <div class="card" style="border-left:5px solid var(--alert);margin-bottom:14px">
@@ -528,19 +529,20 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       </div>
       <div class="card" style="height:100%">
         <span class="n">철학이 숫자로 내려온 세팅 — pipeline.yaml</span>
-        <table style="font-size:20px;margin-top:4px">
-          <tr><th>세팅</th><th style="text-align:right;color:var(--alert)">공격형</th><th style="text-align:right;color:var(--det)">안전형</th></tr>
-          <tr><td>매수 확신 문턱</td><td class="num">0.65</td><td class="num"><strong>0.75</strong> — 더 확실해야 삽니다</td></tr>
-          <tr><td>매도 확신 문턱</td><td class="num">0.60</td><td class="num"><strong>0.50</strong> — 더 빨리 팝니다</td></tr>
-          <tr><td>종목당 비중 · 보유 수</td><td class="num">20% · 10종목</td><td class="num">10% · 5종목</td></tr>
+        <table class="cfg" style="font-size:19px;margin-top:2px">
+          <tr><th style="width:170px">세팅</th><th style="text-align:right;color:var(--alert)">공격형</th><th style="text-align:right;color:var(--det)">안전형</th></tr>
+          <tr><td>매수 확신 문턱</td><td class="num">0.65</td><td class="num"><strong>0.75</strong> · 확실해야 삽니다</td></tr>
+          <tr><td>매도 확신 문턱</td><td class="num">0.60</td><td class="num"><strong>0.50</strong> · 더 빨리 팝니다</td></tr>
+          <tr><td>비중 · 보유 수</td><td class="num">20% · 10종목</td><td class="num">10% · 5종목</td></tr>
           <tr><td>현금 바닥</td><td class="num">10%</td><td class="num">30%</td></tr>
           <tr><td>일일 손실 한도</td><td class="num">4% → 확신 감점</td><td class="num">2% → 신규 매수 금지</td></tr>
+          <tr><td><strong>실제 운용 (7거래일)</strong></td><td class="num">판단 175건 · 계좌 3</td><td class="num">판단 167건 · 계좌 2</td></tr>
+          <tr><td><strong>결과 곡선 (14화면)</strong></td><td class="num" style="color:var(--alert)">−0.55 ~ −0.65%</td><td class="num" style="color:var(--det)">+0.02 ~ +0.19%</td></tr>
         </table>
       </div>
     </div>
-    <div class="incident" style="margin-top:16px;border-left-color:var(--ai)">
-      <div class="claim" style="margin-top:0;font-size:23px;line-height:1.5">두 프롬프트에 같은 문장이 있습니다 — <strong>"재무제표는 우리 증거 밖이다. 지어내지 마라."</strong>
-        <span>어떤 성향 문서가 쓰였는지도 판단마다 원장에 남습니다.</span></div>
+    <div class="incident" style="margin-top:14px;border-left-color:var(--ai)">
+      <div class="claim" style="margin-top:0;font-size:22px;line-height:1.45">두 성향은 <strong>서로의 판단을 보지 않고 각자 돕니다</strong> — <span>프롬프트 공통 규칙은 하나, <strong>"재무제표는 증거 밖이다. 지어내지 마라."</strong></span></div>
     </div>
   </div>
   <div class="ledger"><span class="tag">정본</span><span>prompts/role_07_strategist_{aggressive,conservative}.md</span><span class="dot">·</span><span>config/pipeline.yaml profiles</span><span class="dot">·</span><span>판단 지평 5영업일</span></div>
