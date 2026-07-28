@@ -521,7 +521,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <section class="slide" data-notes="[영상 직전] 지금 보실 것은 방금 그림의 아래 두 층입니다. 시장이 촬영 시간에 맞춰 급락해주지 않기 때문에, 운영 환경과 완전히 분리된 데모에서 <b>각본대로 재현</b>했습니다. 마지막 20초만 실제 운영 서버입니다.<br><br>[영상 직후] 마지막 30초는 각본이 아니라 저희가 실제로 돌리고 있는 서버의 기록입니다.">
   <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">데모 영상</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">아래 두 층이 실제로 도는 것</h1>
-  <div class="lead">운영과 완전히 분리된 데모 환경에서 각본대로 재현한 화면입니다. 마지막 20초만 실제 운영 서버입니다.</div>
+  <div class="lead">운영과 분리된 데모에서 각본대로 재현했습니다 — 마지막 20초만 실제 운영 서버입니다.</div>
   <div class="body">
     <!-- 영상은 저장소 밖(footage/)에 있다. 파일이 있으면 여기서 바로 틀고,
          없으면 아래 구성표가 대신 뜬다 — 발표장 노트북이 바뀌어도 화면이
@@ -636,23 +636,6 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   </div>
 </section>
 
-<!-- 7b ────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="하나 분명히 말씀드리면, <b>코드가 있는 것과 지금 켜져 있는 것은 다릅니다.</b> 1분 방어는 운영에서 돌고 있고, 유료 AI 재판단과 웹소켓은 검증 절차를 통과한 뒤에 켭니다. 방금 영상의 재판단은 데모에서만 켠 것입니다.">
-  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">지금 상태</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">구현 완료 <span style="color:var(--muted)">≠</span> 지금 켜져 있음</h1>
-  <div class="body">
-    <table>
-      <tr><th style="width:430px">기능</th><th style="width:200px">코드</th><th>운영 서버</th></tr>
-      <tr><td><strong>1분 방어</strong> — 손절·익절 자동 청산</td><td>완성</td><td class="k-det"><strong>켜져 있습니다</strong></td></tr>
-      <tr><td><strong>텔레그램 알림</strong> — 일일 요약·실패 알림</td><td>완성</td><td class="k-det"><strong>켜져 있습니다</strong></td></tr>
-      <tr><td><strong>장중 AI 재판단</strong> — 사건이 나면 다시 판단</td><td>완성</td><td>검증 후 켭니다</td></tr>
-      <tr><td><strong>웹소켓 스트림</strong> — 실시간 시세 수신</td><td>완성</td><td>검증 후 켭니다</td></tr>
-    </table>
-    <div class="quiet">유료 AI가 자동으로 도는 두 기능은 <strong style="color:var(--ai)">검증이 끝나는 대로 켭니다</strong> — 영상에서 보신 것은 데모 환경에서 켠 모습입니다.</div>
-  </div>
-  <div class="ledger"><span class="tag">운영 8020</span><span>방어층 가동 중</span><span class="dot">·</span><span>재판단·스트림은 검증 대기</span></div>
-</section>
-
 <!-- 8 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="돌아보면 세 가지를 배웠고, 한 가지가 아쉽습니다.<br><br>AI는 넣으면 되는 기능이 아니라 통제해야 하는 대상이라는 것. 재현할 수 없는 판단은 믿을 수 없다는 것. 그리고 만드는 과정에도 AI 협업을 설계해야 한다는 것입니다.<br><br>아쉬운 것도 말씀드리면 — 공시와 뉴스를 모으는 것까지는 돌렸지만, 그 채점을 판단에 연결하는 구간은 얕게 끝났습니다. 다음 단계의 첫 항목으로 남겨 두었습니다.">
   <div class="eyebrow"><span class="no">09</span><i class="sep"></i><span class="kr">회고</span><span class="right">QUANTINUE</span></div>
@@ -700,6 +683,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <tr><td><strong>영상은 각본 아닌가요?</strong></td><td>맞습니다. 그래서 마지막 20초에 <strong>실제 운영 기록</strong>을 붙였습니다</td></tr>
       <tr><td><strong>계좌가 왜 여러 개?</strong></td><td>운용 6 + 회귀 검증용 4 = <strong>등록 10</strong>입니다. 관제실이 <strong>9</strong>로 세는 건 1개가 일시정지라 활성만 세기 때문입니다. 시연 화면에서는 검증용을 뺐습니다</td></tr>
       <tr><td><strong>계좌 이름이 왜 DEMO-?</strong></td><td>브로커 <strong>모의 계좌</strong>라는 뜻입니다. 실제 운영인지는 좌하단이 말해 줍니다 — 운영 <code>LLM openai</code>, 데모 <code>LLM mock</code></td></tr>
+      <tr><td><strong>지금 다 켜져 있나요?</strong></td><td>1분 방어와 텔레그램 알림은 <strong>운영에서 켜져 있습니다</strong>. 장중 AI 재판단·웹소켓 스트림은 완성됐지만 <strong>검증을 통과한 뒤 켭니다</strong> — 영상의 재판단은 데모 환경입니다</td></tr>
       <tr><td><strong>본인은 뭘 했나요?</strong></td><td>1차에서 Reviewer와 메모리를 설계·구현했고, 2차는 전체를 인수받아 장중 감시·사건 재판단·운영을 마무리했습니다</td></tr>
     </table>
   </div>
