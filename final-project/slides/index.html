@@ -140,11 +140,13 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
    여기 숫자를 바꾸면 안 된다(slides-content.md §6-1-1). */
 .incident{background:var(--card);border:1px solid var(--rule);border-left:5px solid var(--alert);
           border-radius:14px;padding:16px 28px;margin-top:18px}
-.cfg th,.cfg td{padding:9px 12px}
-.cfg td.v{font-family:var(--mono);font-weight:700;color:var(--ink);text-align:center;white-space:nowrap}
-.cfg td.m{color:var(--ink2)}
-.cfg tr.sect td{font-family:var(--mono);font-size:15px;letter-spacing:.08em;font-weight:700;
-                color:var(--muted);padding-top:14px;border-bottom-style:dashed}
+.cfg th,.cfg td{padding:7px 14px}
+/* 값 열은 숫자만, 세로선과 옅은 배경으로 성향 영역을 가른다 */
+.cfg th.a,.cfg td.a{border-left:1px solid var(--rule);background:#FDF9F2;text-align:center}
+.cfg th.c,.cfg td.c{border-left:1px solid var(--rule);background:#F4FAF6;text-align:center}
+.cfg td.a,.cfg td.c{font-family:var(--mono);font-weight:700;color:var(--ink);white-space:nowrap}
+.cfg tr.sect td{font-family:var(--mono);font-size:14px;letter-spacing:.08em;font-weight:700;
+                color:var(--muted);padding-top:11px;border-bottom-style:dashed}
 .incident .n{font-family:var(--mono);font-size:16px;letter-spacing:.1em;font-weight:700;
              color:var(--alert);display:block;margin-bottom:8px}
 .incident .tl{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap;
@@ -534,16 +536,18 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <div class="card" style="height:100%">
         <span class="n">철학이 숫자로 내려온 세팅 — pipeline.yaml</span>
         <table class="cfg" style="font-size:19px;margin-top:2px">
-          <tr><th style="width:150px">세팅</th><th style="width:105px;text-align:center;color:var(--alert)">공격형</th><th style="width:105px;text-align:center;color:var(--det)">안전형</th><th>이 차이의 뜻</th></tr>
-          <tr><td>매수 확신 문턱</td><td class="v">0.65</td><td class="v">0.75</td><td class="m">안전형은 <strong>더 확실해야 삽니다</strong></td></tr>
-          <tr><td>매도 확신 문턱</td><td class="v">0.60</td><td class="v">0.50</td><td class="m">대신 <strong>더 빨리 팝니다</strong></td></tr>
-          <tr><td>비중 · 보유 수</td><td class="v">20% · 10</td><td class="v">10% · 5</td><td class="m">절반만 담습니다</td></tr>
-          <tr><td>현금 바닥</td><td class="v">10%</td><td class="v">30%</td><td class="m">현금을 세 배 남깁니다</td></tr>
-          <tr><td>일일 손실 한도</td><td class="v">4%</td><td class="v">2%</td><td class="m">넘으면 <strong>감점</strong> vs <strong>매수 중단</strong></td></tr>
-          <tr class="sect"><td colspan="4">실측 — 7거래일 운용 결과</td></tr>
-          <tr><td>판단 · 계좌</td><td class="v">175건 · 3</td><td class="v">167건 · 2</td><td class="m">각자 독립적으로 판단했습니다</td></tr>
-          <tr><td>수익률</td><td class="v" style="color:var(--alert)">−0.6%</td><td class="v" style="color:var(--det)">+0.1%</td><td class="m">성향 차이가 결과로 갈렸습니다 (14화면)</td></tr>
+          <tr><th>세팅</th><th class="a" style="color:var(--alert);width:170px">공격형</th><th class="c" style="color:var(--det);width:170px">안전형</th></tr>
+          <tr><td>매수 확신 문턱</td><td class="a">0.65</td><td class="c">0.75</td></tr>
+          <tr><td>매도 확신 문턱</td><td class="a">0.60</td><td class="c">0.50</td></tr>
+          <tr><td>종목당 최대 비중</td><td class="a">20%</td><td class="c">10%</td></tr>
+          <tr><td>최대 보유 종목</td><td class="a">10개</td><td class="c">5개</td></tr>
+          <tr><td>현금 바닥</td><td class="a">10%</td><td class="c">30%</td></tr>
+          <tr><td>일일 손실 한도 · 대응</td><td class="a">4% · 감점</td><td class="c">2% · 매수 중단</td></tr>
+          <tr class="sect"><td colspan="3">실측 — 7거래일 운용</td></tr>
+          <tr><td>판단 · 계좌</td><td class="a">175건 · 3</td><td class="c">167건 · 2</td></tr>
+          <tr><td>수익률</td><td class="a" style="color:var(--alert)">−0.6%</td><td class="c" style="color:var(--det)">+0.1%</td></tr>
         </table>
+        <p style="font-size:18px;color:var(--ink2);margin-top:8px">읽는 법 — 안전형은 <strong>더 확실해야 사고(0.75), 더 빨리 팔고(0.50)</strong>, 절반만 담고, 현금을 세 배 남깁니다.</p>
       </div>
     </div>
     <div class="incident" style="margin-top:14px;border-left-color:var(--ai)">
