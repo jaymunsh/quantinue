@@ -140,7 +140,11 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
    여기 숫자를 바꾸면 안 된다(slides-content.md §6-1-1). */
 .incident{background:var(--card);border:1px solid var(--rule);border-left:5px solid var(--alert);
           border-radius:14px;padding:16px 28px;margin-top:18px}
-.cfg th,.cfg td{padding:10px 12px}
+.cfg th,.cfg td{padding:9px 12px}
+.cfg td.v{font-family:var(--mono);font-weight:700;color:var(--ink);text-align:center;white-space:nowrap}
+.cfg td.m{color:var(--ink2)}
+.cfg tr.sect td{font-family:var(--mono);font-size:15px;letter-spacing:.08em;font-weight:700;
+                color:var(--muted);padding-top:14px;border-bottom-style:dashed}
 .incident .n{font-family:var(--mono);font-size:16px;letter-spacing:.1em;font-weight:700;
              color:var(--alert);display:block;margin-bottom:8px}
 .incident .tl{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap;
@@ -530,14 +534,15 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <div class="card" style="height:100%">
         <span class="n">철학이 숫자로 내려온 세팅 — pipeline.yaml</span>
         <table class="cfg" style="font-size:19px;margin-top:2px">
-          <tr><th style="width:170px">세팅</th><th style="text-align:right;color:var(--alert)">공격형</th><th style="text-align:right;color:var(--det)">안전형</th></tr>
-          <tr><td>매수 확신 문턱</td><td class="num">0.65</td><td class="num"><strong>0.75</strong> · 확실해야 삽니다</td></tr>
-          <tr><td>매도 확신 문턱</td><td class="num">0.60</td><td class="num"><strong>0.50</strong> · 더 빨리 팝니다</td></tr>
-          <tr><td>비중 · 보유 수</td><td class="num">20% · 10종목</td><td class="num">10% · 5종목</td></tr>
-          <tr><td>현금 바닥</td><td class="num">10%</td><td class="num">30%</td></tr>
-          <tr><td>일일 손실 한도</td><td class="num">4% → 확신 감점</td><td class="num">2% → 신규 매수 금지</td></tr>
-          <tr><td><strong>실제 운용 (7거래일)</strong></td><td class="num">판단 175건 · 계좌 3</td><td class="num">판단 167건 · 계좌 2</td></tr>
-          <tr><td><strong>결과 곡선 (14화면)</strong></td><td class="num" style="color:var(--alert)">−0.55 ~ −0.65%</td><td class="num" style="color:var(--det)">+0.02 ~ +0.19%</td></tr>
+          <tr><th style="width:150px">세팅</th><th style="width:105px;text-align:center;color:var(--alert)">공격형</th><th style="width:105px;text-align:center;color:var(--det)">안전형</th><th>이 차이의 뜻</th></tr>
+          <tr><td>매수 확신 문턱</td><td class="v">0.65</td><td class="v">0.75</td><td class="m">안전형은 <strong>더 확실해야 삽니다</strong></td></tr>
+          <tr><td>매도 확신 문턱</td><td class="v">0.60</td><td class="v">0.50</td><td class="m">대신 <strong>더 빨리 팝니다</strong></td></tr>
+          <tr><td>비중 · 보유 수</td><td class="v">20% · 10</td><td class="v">10% · 5</td><td class="m">절반만 담습니다</td></tr>
+          <tr><td>현금 바닥</td><td class="v">10%</td><td class="v">30%</td><td class="m">현금을 세 배 남깁니다</td></tr>
+          <tr><td>일일 손실 한도</td><td class="v">4%</td><td class="v">2%</td><td class="m">넘으면 <strong>감점</strong> vs <strong>매수 중단</strong></td></tr>
+          <tr class="sect"><td colspan="4">실측 — 7거래일 운용 결과</td></tr>
+          <tr><td>판단 · 계좌</td><td class="v">175건 · 3</td><td class="v">167건 · 2</td><td class="m">각자 독립적으로 판단했습니다</td></tr>
+          <tr><td>수익률</td><td class="v" style="color:var(--alert)">−0.6%</td><td class="v" style="color:var(--det)">+0.1%</td><td class="m">성향 차이가 결과로 갈렸습니다 (14화면)</td></tr>
         </table>
       </div>
     </div>
