@@ -148,7 +148,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 .incident .claim span{color:var(--muted);font-weight:500}
 /* 증거 캡처 두 장 — 원본 비율대로 두면 세로가 무대(900px)를 뚫는다. 위쪽을
    보여준다: Healthchecks는 상단에 사건 이벤트와 가동률이 다 있다. */
-.evidence .shot img{max-height:180px;object-fit:cover;object-position:top}
+/* 캡처는 슬라이드 비율에 맞춰 미리 합성해 둔다(assets/) — cover로 자르면
+   위쪽만 보여서 "깨져 보인다". contain으로 전체를 그대로 보여준다. */
+.evidence .shot img{max-height:180px;object-fit:contain;object-position:center}
 .evidence .shot-todo{min-height:180px;padding:16px 28px}
 .evidence .shot-todo>b{font-size:20px;margin-bottom:6px}
 .evidence .shot-todo span{font-size:17px;line-height:1.5}
@@ -575,7 +577,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <figure class="shot" data-shot="assets/telegram-alerts.png"
               data-todo-title="텔레그램 알림 이력 (층 2)"
               data-todo-body="여러 날의 일일 요약이 세로로 쌓인 스크롤 화면 — <b>매일 온다</b>가 증명된다. ⚠️ <b>07-24 구간은 피할 것</b>(같은 실패 알림 30여 통).">
-        <figcaption>텔레그램 — 매일 이렇게 도착합니다</figcaption>
+        <figcaption>텔레그램 — 장애·복구·실패까지 그대로 도착합니다 (07-28)</figcaption>
       </figure>
       <figure class="shot" data-shot="assets/healthchecks.png"
               data-todo-title="Healthchecks.io 대시보드 (층 3)"
