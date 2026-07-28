@@ -46,7 +46,12 @@ const OVERLAY_ITEMS = [
   { id: 'sub-verify',   text: '재실행해도 주문은 늘지 않습니다 — 중복 0', kind: 'det' },
   // 각본 → 실운영 전환. 이 한 장이 "이거 진짜예요?"에 답하는 자리다.
   { id: 'sub-switch',   text: '여기까지는 각본입니다.<br>지금부터는 실제로 돌고 있는 서버입니다', kind: 'live' },
-  { id: 'sub-live',     text: '실물 시세 · 실제 AI 판단 · 모의 체결<br>화면 좌하단이 <span style="color:#ffd77a">LLM openai</span>로 바뀐 것을 봐 주세요', kind: 'live' },
+  // 07-28 수정: 예전 문안은 "화면 좌하단이 LLM openai로 바뀐 것을 봐 주세요"였다.
+  // 그런데 이 테이크의 스크롤 위치에서는 **그 배지가 화면에 없다**(1:56·2:00·
+  // 2:04·2:08·2:13 전부 확인). 영상의 클라이맥스가 없는 것을 가리키고 있었다.
+  // 실제로 찍혀 있는 증거(모의 계좌 패널)로 바꾼다 — 재촬영은 정규장에만
+  // 가능해서 발표 전에 못 다시 찍는다.
+  { id: 'sub-live',     text: '실물 시세 · 실제 AI 판단 · <span style="color:#ffd77a">모의 체결</span><br>모의인 것은 브로커 주문 한 군데뿐입니다', kind: 'live' },
 ];
 
 // 장면별 자막 배치. from/to는 장면 시작 기준 초.
@@ -63,23 +68,35 @@ const PLAN = [
   { file: 'a-control-room.mp4', subs: [
     { png: 'sub-intro.png', from: 1.0, to: 9.0 },
   ], fadeIn: 0.8 },
-  // 막 1 — 축. VRDN 행이 페이지 맨 아래라 자막을 올려서 피한다(edit.mjs `up`).
-  { file: 'b-me-stoploss-preset.mp4', subs: [
+  // 막 1 — 축. VRDN 행이 페이지 맨 아래(y≈975~1035)라 자막 띠에 정확히
+  // 덮인다. `lift: 140`으로 화면을 끌어올려(헤더 3중 시계를 버리고) 그 행을
+  // y≈835~895로 옮긴 뒤, 자막은 하단 제자리에 두고 행에 스포트라이트를 준다.
+  { file: 'b-me-stoploss-preset.mp4', lift: 140, subs: [
     { png: 'sub-preset.png', from: 1.0, to: 8.0 },
-    { png: 'sub-stop.png', from: 9.5, to: 22.0, up: 400 },
+    { png: 'sub-stop.png', from: 9.5, to: 22.0 },
+  ], spots: [
+    { x: 412, y: 828, w: 1348, h: 76, from: 9.5, to: 22.0 },
   ] },
   // 막 2 — 대조군 → 사건 → 결말
   { file: 'c-protection-before.mp4', subs: [
     { png: 'sub-before.png', from: 0.8, to: 9.0 },
   ] },
+  // 막 2의 심장. 22초 지점부터 `방어선 발동 내역`이 2건이 되고 VRDN 행이
+  // y≈300~370에 자리를 잡는다(그 전 구간은 페이지가 아직 스크롤 중이라
+  // 좌표가 흔들려서 스포트라이트를 걸지 않는다).
   { file: 'd-protection-grows.mp4', subs: [
     { png: 'sub-det.png', from: 0.5, to: 7.0 },
     { png: 'sub-grow.png', from: 8.0, to: 18.0 },
     { png: 'sub-vrdn.png', from: 19.0, to: 30.0 },
+  ], spots: [
+    { x: 412, y: 288, w: 1344, h: 92, from: 22.0, to: 30.0 },
   ] },
+  // `손절 조건 도달 — 모델 판단 없이…` 문구가 이 영상의 결론이다.
   { file: 'e-me-after-exit.mp4', subs: [
     { png: 'sub-gone.png', from: 1.0, to: 8.0 },
     { png: 'sub-rule.png', from: 10.0, to: 22.0 },
+  ], spots: [
+    { x: 415, y: 196, w: 1340, h: 112, from: 12.0, to: 22.0 },
   ] },
   // 막 3 — 여기서만 AI
   { file: 'f-nvex-buy.mp4', subs: [
@@ -90,13 +107,15 @@ const PLAN = [
     { png: 'sub-hlxm.png', from: 1.0, to: 13.0 },
   ] },
   // 막 4 — 근거와 반박
+  // 07-28: 요약본에서 이 두 장면을 짧게 자르기로 해서 자막을 앞당겼다.
+  // 예전 타이밍(12~22초)이면 컷 뒤에 자막이 통째로 사라진다.
   { file: 'h-judgements.mp4', subs: [
-    { png: 'sub-evidence.png', from: 1.5, to: 10.0 },
-    { png: 'sub-critic.png', from: 12.0, to: 22.0 },
+    { png: 'sub-evidence.png', from: 1.0, to: 8.0 },
+    { png: 'sub-critic.png', from: 9.0, to: 17.0 },
   ] },
   // S5는 페이지 자체에 배지가 박혀 있어 오버레이 배지를 겹치지 않는다.
   { file: 's5-verify.mp4', badge: null, subs: [
-    { png: 'sub-verify.png', from: 1.5, to: 11.0 },
+    { png: 'sub-verify.png', from: 1.0, to: 9.0 },
   ] },
   // 막 5 — 운영 실증거. 배지 색이 바뀌는 것 자체가 장치다.
   //
@@ -127,9 +146,14 @@ for (const step of PLAN) {
   // 이미 "각본 재현"을 선언한다. 단 s6의 '실제 운영 기록' 배지(badge-live)는
   // 남긴다: 각본→실서버 전환을 배지 등장으로 보여주는 장치라서다.
   const badge = step.badge ?? null;
-  burn(src, dest, { badge, subs, fadeIn: step.fadeIn ?? 0, fadeOut: step.fadeOut ?? 0 });
+  const spots = (step.spots ?? []).filter((s) => s.from < dur - 0.4)
+    .map((s) => ({ ...s, to: Math.min(s.to, dur - 0.2) }));
+  burn(src, dest, {
+    badge, subs, spots, lift: step.lift ?? 0,
+    fadeIn: step.fadeIn ?? 0, fadeOut: step.fadeOut ?? 0,
+  });
   built.push(dest);
-  console.log(`  ${step.file.padEnd(26)} ${dur.toFixed(1)}s · 자막 ${subs.length}`);
+  console.log(`  ${step.file.padEnd(26)} ${dur.toFixed(1)}s · 자막 ${subs.length} · 강조 ${spots.length}`);
 }
 
 const out = join(FOOTAGE, 'roughcut-demo.mp4');

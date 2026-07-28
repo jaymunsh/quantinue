@@ -21,7 +21,7 @@
   --card:#FFFFFF;
   --ink:#0A1420;
   --ink2:#33465C;
-  --muted:#6B7C90;
+  --muted:#5A6B7E; /* #6B7C90은 배경 #EDF1F6 대비 3.8:1 — 4.5:1을 넘도록 한 단계 어둡게 */
   --rule:#C9D4E0;
   --det:#17743F;        /* 기계적 경로 — AI를 부르지 않는 곳 */
   --ai:#5B3FB5;         /* AI 경로 — 사건이 있을 때만 */
@@ -279,7 +279,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <div id="viewport"><div id="stage">
 
 <!-- 1 ─────────────────────────────────────────────────────────────────── -->
-<section class="slide cover on" data-notes="저희 팀 분담표가 곧 <b>에이전트 분담표</b>입니다. 다섯 명이 역할별 AI 에이전트를 하나씩 맡았고, PM 김지현 님이 전체를 리딩했습니다. Strategist를 맡았던 이은미 님은 1차 이후 취업으로 빠지셔서, 2차는 제가 이어받아 마무리했습니다.">
+<section class="slide cover on" data-notes="다섯 명이 역할을 나눠 맡았고, PM인 제가 전체 범위와 우선순위를 정하며 리딩했습니다. 이은미 님이 맡았던 전략 판단은 2차에 문성혁 님이 이어받아 마무리했습니다.">
   <img class="qmark" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iUXVhbnRpbnVlIFEgYmx1ZSBhcHAgaWNvbiI+CiAgPGRlZnM+CiAgICA8bWFzayBpZD0icS1jdXQiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9IndoaXRlIi8+PHBhdGggZD0iTTUwMSA2NDQgNTQ1IDYzMiA3MTEgNzk4IDY2NSA3OThaIiBmaWxsPSJibGFjayIvPjwvbWFzaz4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCIgcng9IjE4NCIgZmlsbD0iIzBCNEREQiIvPgogIDxnIGZpbGw9IiNGRkZERjUiIG1hc2s9InVybCgjcS1jdXQpIj4KICAgIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ2NiAxMDRDMjY3IDEwNCAxMDYgMjY1IDEwNiA0NjRzMTYxIDM2MCAzNjAgMzYwYzQ4IDAgOTQtOSAxMzYtMjZsLTEyMS0xMjEtMTUgMWMtMTE4IDAtMjE0LTk2LTIxNC0yMTRzOTYtMjE0IDIxNC0yMTQgMjE0IDk2IDIxNCAyMTRjMCA2My0yNyAxMTktNzAgMTU4bDEwNCAxMDRjNjktNjYgMTEyLTE1OSAxMTItMjYyIDAtMTk5LTE2MS0zNjAtMzYwLTM2MFoiLz4KICAgIDxwYXRoIGQ9Im00NzUgNjAzIDExMS0zMSAyODIgMjgySDY2NloiLz4KICA8L2c+Cjwvc3ZnPgo=" alt="Quantinue">
   <div class="mark">FINANCIAL AUTOMATION</div>
   <h1>Quantinue</h1>
@@ -297,7 +297,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <div class="card">
         <span class="n">1 · 고른다</span>
         <h3>2,000종목 → 하루 20종목</h3>
-        <p>시가총액 상위 2,000에서 오늘 AI가 들여다볼 20종목(+ 보유 종목)만 남깁니다.
+        <p>시가총액 상위 2,000에서 오늘 AI가 들여다볼 20종목(+ <span style="white-space:nowrap">보유 종목</span>)만 남깁니다.
            <strong>여기까지는 지표만 보고 AI를 쓰지 않습니다.</strong></p>
       </div>
       <div class="card ai">
@@ -327,7 +327,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="ledger"><span class="tag">지금 상태</span><span>운영 서버에서 매일 14개 작업이 자동으로 돌고 있습니다</span><span class="dot">·</span><span>최근 7거래일 — AI 판단 342건 · 모의 체결 62건 · AI 비용 $0.53</span></div>
 </section>
 
-<section class="slide" data-notes="다섯 명이 역할을 나눠 맡았고, 각자 맡은 영역이 그대로 시스템의 한 부분이 됐습니다.<br><br>PM 김지현 님이 범위와 우선순위를 정하고 단계마다 검수했습니다. 정창욱 님이 공시와 뉴스를, 이은미 님이 전략 판단을, 김미연 님이 리스크 검증을 맡았습니다. 저는 판단 기록과 회고 쪽을 맡았고, 2차에서는 장중 감시와 사건 재판단을 구현했습니다.">
+<section class="slide" data-notes="다섯 명이 역할을 나눠 맡았고, 각자 맡은 영역이 그대로 시스템의 한 부분이 됐습니다.<br><br>저는 PM으로 범위와 우선순위를 정하고 단계마다 검수했습니다. 정창욱 님이 공시와 뉴스를, 이은미 님이 전략 판단을, 김미연 님이 리스크 검증을 맡았습니다. 문성혁 님이 판단 기록과 회고를 맡았고, 2차에서는 장중 감시와 사건 재판단을 구현했습니다.">
   <div class="eyebrow"><span class="no">02</span><i class="sep"></i><span class="kr">팀</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">다섯 명이 <b>역할을 나눠</b> 맡았습니다</h1>
   <div class="lead">각자 맡은 영역이 그대로 시스템의 한 부분이 됐습니다.</div>
@@ -502,14 +502,14 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="verdict"><i class="v-det" style="background:var(--det);width:84%"></i><i style="background:var(--ai);width:16%"></i></div>
   <div class="verdict-cap">
     <span class="k-det"><b>84%</b>는 기계 규칙이 먼저 거릅니다</span>
-    <span class="k-ai"><b>16%</b>만 AI 비평가에게 갑니다</span>
+    <span class="k-ai"><b>16%</b>만 AI 비평가에게 갑니다 — 검증 323건 기준</span>
   </div>
   <div class="body">
     <div class="grid g4">
       <div class="card det"><span class="n">① 안 쓸 곳</span><h3>안 쓸 곳부터<br>정했습니다</h3><p>손절·익절은 판단이 아니라 규칙이라서, AI에게 묻지 않고 기계가 지킵니다.</p><p style="margin-top:12px"><strong>아무 일 없는 1분에는<br>AI 호출이 0회입니다</strong></p></div>
       <div class="card ai"><span class="n">② 쓰는 곳</span><h3>비용부터<br>묶었습니다</h3><p>하루 상한 $3 · 매도용 예산 20% 확보 · 같은 종목 30분 재호출 금지.</p><p style="margin-top:12px"><strong>4일 동안 쓴 비용은<br>$0.53입니다</strong></p></div>
-      <div class="card"><span class="n">③ 검증</span><h3>기계가 먼저,<br>AI는 나중입니다</h3><p>단순한 판단은 기계 규칙이 걸러 내고(84%), 애매한 것만 AI 비평가가 봅니다.</p><p style="margin-top:12px"><strong>전체 판단의 18%가<br>반려됐습니다</strong></p></div>
-      <div class="card"><span class="n">④ 기록</span><h3>다시 돌려볼 수<br>있게 남깁니다</h3><p>모든 판단에 근거를 남기고, 7월 21일부터는 모델·프롬프트 버전·입력값까지 남깁니다.</p><p style="margin-top:12px"><strong>지난 판단을 그대로<br>재현할 수 있습니다</strong></p></div>
+      <div class="card"><span class="n">③ 검증</span><h3>기계가 먼저,<br>AI는 나중입니다</h3><p>단순한 판단은 기계 규칙이 걸러 내고(84%), 애매한 것만 AI 비평가가 봅니다.</p><p style="margin-top:12px"><strong>검증 대상 323건 중 57건,<br>18%가 반려됐습니다</strong></p></div>
+      <div class="card"><span class="n">④ 기록</span><h3>다시 돌려볼 수 있게<br>남깁니다</h3><p>모든 판단에 근거를 남기고, 7월 21일부터는 모델·프롬프트 버전·입력값까지 남깁니다.</p><p style="margin-top:12px"><strong>지난 판단을 그대로<br>재현할 수 있습니다</strong></p></div>
     </div>
   </div>
   <div class="ledger"><span class="tag">원장</span><span>tb_llm_usage 4일 $0.53 / 상한 $3·일</span><span class="dot">·</span><span>게이트 84% / LLM 16%</span><span class="dot">·</span><span>반려 57 / 323</span><span class="dot">·</span><span>prompt_version 234 / 342</span></div>
@@ -558,10 +558,10 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 5 ─────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="[영상 직전] 지금 보실 것은 방금 그림의 아래 두 층입니다. 시장이 촬영 시간에 맞춰 급락해주지 않기 때문에, 운영 환경과 완전히 분리된 데모에서 <b>각본대로 재현</b>했습니다. 마지막 20초만 실제 운영 서버입니다.<br><br>[영상 직후] 마지막 20초는 각본이 아니라 저희가 실제로 돌리고 있는 서버의 기록입니다.">
+<section class="slide" data-notes="[영상 직전] 지금 보실 것은 방금 그림의 아래 두 층입니다. 시장이 촬영 시간에 맞춰 급락해주지 않기 때문에, 운영 환경과 완전히 분리된 데모에서 <b>각본대로 재현</b>했습니다. 마지막 16초만 실제 운영 서버입니다. <b>주황색 테두리가 지금 봐야 할 곳</b>입니다.<br><br>[영상 직후] 마지막 16초는 각본이 아니라 저희가 실제로 돌리고 있는 서버의 기록입니다.">
   <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">데모 영상</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">아래 두 층이 실제로 도는 것</h1>
-  <div class="lead">운영과 분리된 데모에서 각본대로 재현했습니다 — 마지막 20초만 실제 운영 서버입니다.</div>
+  <div class="lead">운영과 분리된 데모에서 각본대로 재현했습니다 — 마지막 16초만 실제 운영 서버입니다. 주황색 테두리가 그때 봐야 할 곳입니다.</div>
   <div class="body">
     <!-- 영상은 저장소 밖(footage/)에 있다. 파일이 있으면 여기서 바로 틀고,
          없으면 아래 구성표가 대신 뜬다 — 발표장 노트북이 바뀌어도 화면이
@@ -571,26 +571,92 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
              controlslist="nodownload" poster="assets/demo-poster.jpg"
              src="../footage/summary-3min.mp4"></video>
       <div class="videofall">
-        <b>▶ 데모 영상 2:14</b>
+        <b>▶ 데모 영상 2:00</b>
         <span>파일을 못 찾았습니다 — <code>final-project/footage/summary-3min.mp4</code><br>
         플레이어로 따로 틀고, 이 장은 아래 구성표로 말합니다.</span>
       </div>
       <table class="cuesheet">
         <tr><th style="width:150px">구간</th><th>내용</th><th style="width:400px">자막</th></tr>
         <tr><td class="num">0:00</td><td><strong>관제실 첫 화면</strong> — 잡·판단·방어선이 한 화면에</td><td>자동으로 도는 잡이 오늘 한 일</td></tr>
-        <tr><td class="num">0:09</td><td><strong>손절선이 살 때 이미 적혀 있다</strong> — VRDN $139.50</td><td class="k-det"><strong>살 때 이미 정해집니다</strong></td></tr>
-        <tr><td class="num">0:38</td><td><strong>방어선 발동이 1건 → 2건</strong>으로 자란다</td><td class="k-det"><strong>이 경로는 AI를 부르지 않습니다</strong></td></tr>
-        <tr><td class="num">1:20</td><td><strong>호재 → 재판단 → 매수</strong> / 악재 → 반전 매도</td><td class="k-ai"><strong>여기서만 AI가 다시 판단합니다</strong></td></tr>
-        <tr><td class="num">1:55</td><td><strong>운영 서버 실제 기록</strong></td><td>실제 운영 기록 (읽기 전용)</td></tr>
+        <tr><td class="num">0:14</td><td><strong>손절선이 살 때 이미 적혀 있다</strong> — VRDN $139.50</td><td class="k-det"><strong>살 때 이미 정해집니다</strong></td></tr>
+        <tr><td class="num">0:36</td><td><strong>방어선 발동이 1건 → 2건</strong>으로 자란다</td><td class="k-det"><strong>이 경로는 AI를 부르지 않습니다</strong></td></tr>
+        <tr><td class="num">1:01</td><td><strong>원장에 남은 청산 사유</strong> — 모델 판단 없이 체결</td><td class="k-det"><strong>규칙이 한 일이라고 적힙니다</strong></td></tr>
+        <tr><td class="num">1:10</td><td><strong>호재 → 재판단 → 매수</strong> / 악재 → 반전 매도</td><td class="k-ai"><strong>여기서만 AI가 다시 판단합니다</strong></td></tr>
+        <tr><td class="num">1:44</td><td><strong>운영 서버 실제 기록</strong></td><td>실제 운영 기록 (읽기 전용)</td></tr>
       </table>
     </div>
   </div>
   <div class="ledger"><span class="tag">각본 체결</span><span>VRDN 손절 $139.50</span><span class="dot">·</span><span>HLXM 판단 반전 $80.00</span><span class="dot">·</span><span>NVEX 매수 1,090주 $55.00</span><span class="dot">·</span><span>주문 34 = 체결 34 · 중복 0</span></div>
 </section>
 
-<!-- 6a ────────────────────────────────────────────────────────────────── -->
+<!-- 6a 기록·깔때기 (07-28 영상 뒤로 이동) ────────────────────────────────────────────────────────────────── -->
+<section class="slide" data-notes="실제로 돌린 기록입니다. 시가총액 상위 2천 종목에서 시작해 최종 62건이 체결됐고, 주문 62건이 미체결·거절 없이 전부 체결됐습니다. 같은 주문이 두 번 나가지 않는 것은 계좌+시그널로 파생한 주문 고유 키에 DB 고유 제약을 걸어 보장합니다 — 재시작이 겹쳐도 두 번째 시도는 키가 막습니다. 그중 27건이 운용 계좌, 35건이 회귀 검증용 계좌입니다. 비평가는 검토 323건 중 57건(18%)을 실제로 반려했습니다.<br><br><b>주의</b> — 판단이 후보보다 많은 건 성향 2종이 각각 판단하기 때문입니다.">
+  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
+  <h1 class="sm">2,000종목이 <b>62건의 체결</b>이 되기까지</h1>
+  <div class="lead">운영 서버가 실제로 돌린 누적 기록입니다(7거래일). 후보를 AI 둘이 각각 판단해 한 번 늘고, 그 뒤는 검증이 거르며 줄어듭니다.</div>
+  <div class="body" style="padding:16px 0">
+    <div class="funnel">
+      <div class="step"><span class="lb">전체 종목</span><span class="v">2,000</span><span class="track"><i style="width:100%"></i></span><span class="sub">시가총액 상위 — 매일 여기서 시작합니다</span></div>
+      <div class="step"><span class="lb">후보로 선정</span><span class="v">222</span><span class="track"><i style="width:56px"></i></span><span class="sub">매일 "상위 20 + 그날 보유 종목"을 추립니다 — 7거래일 누적이라 222입니다</span></div>
+      <div class="step"><span class="lb">AI 판단</span><span class="v">342</span><span class="track"><i class="thin" style="width:86px"></i></span><span class="sub">매수 266 · 보류 49 · 매도 27 — AI 둘이 각각 판단해 후보보다 많습니다</span></div>
+      <div class="step"><span class="lb">비평가 검토</span><span class="v">323</span><span class="track"><i class="thin" style="width:81px"></i></span><span class="sub">통과 222 · 반려 57 · 보류 44 — 걸러진 판단은 사지 않습니다</span></div>
+      <div class="step"><span class="lb">주문 = 체결</span><span class="v">62 = 62</span><span class="track"><i class="end" style="width:16px"></i></span><span class="sub">미체결·거절 0 — 중복은 주문 고유 키(계좌+시그널 · DB UNIQUE)가 막습니다</span></div>
+    </div>
+    <div class="kpi" style="margin-top:26px">
+      <div><div class="v">18%</div><div class="l">비평가 반려율 — 검토 323건 중 57건</div></div>
+      <div><div class="v">342</div><div class="l">판단 = 공격형 175 + 안전형 167</div></div>
+      <div><div class="v">$0.53</div><div class="l">4일간 AI 비용 (하루 상한 $3)</div></div>
+      <div><div class="v">994</div><div class="l">테스트 = 유닛·웹 804 + 통합 190</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 6b 성과 곡선 (07-28 영상 뒤로 이동) ─────────────────────────────────────────────────────────── -->
+<section class="slide" data-notes="결과 곡선입니다. 보라색이 운용 계좌 다섯을 합친 자산, 초록색이 SPY입니다. 운용은 7거래일 −0.34%, SPY는 07-27 종가까지 6거래일 −0.44% — 종료일이 하루 다르니 우열 비교가 아니라 참고선입니다. 시장이 빠질 때 덜 빠졌지만, 이 차이로 무언가를 주장하기엔 기간이 너무 짧습니다. 그래서 저희는 수익률을 주장하지 않습니다. 다만 숨기지도 않습니다 — 이 곡선은 매일 원장에 쌓이고, 관제실에서 언제든 같은 그림을 볼 수 있습니다. 안전형이 플러스, 공격형이 마이너스로 성향 차이도 벌써 기록에 보입니다.">
+  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
+  <h1 class="sm">결과 곡선도 <b>매일 기록됩니다</b></h1>
+  <div class="lead">운용 7거래일 — 수익률을 주장하기엔 짧지만, 숨기지도 않습니다.</div>
+  <div class="body" style="padding:14px 0">
+    <div class="split" style="grid-template-columns:1.5fr 1fr;align-items:center">
+      <figure class="shot" style="margin:0">
+        <div style="display:flex;gap:22px;font-size:16px;color:var(--ink2);margin-bottom:6px">
+          <span><i style="display:inline-block;width:18px;height:3px;background:var(--ai);vertical-align:middle;margin-right:7px"></i>운용 계좌 합산 (5계좌 · $360,000 시작)</span>
+          <span><i style="display:inline-block;width:18px;height:3px;background:var(--det);vertical-align:middle;margin-right:7px"></i>SPY (07-20=100 · 07-27까지 적재)</span>
+        </div>
+        <svg viewBox="0 0 790 320" style="width:100%;display:block" role="img" aria-label="운용 계좌 합산과 SPY의 7거래일 지수 비교">
+        <style>.cg{stroke:#DDE4EC;stroke-width:1}.cx{font:15px "SFMono-Regular",Menlo,monospace;fill:#5A6B7E}
+        .cy{font:15px "SFMono-Regular",Menlo,monospace;fill:#5A6B7E}.cl{font:600 17px "Apple SD Gothic Neo",sans-serif}</style>
+        <line x1="70" y1="24" x2="750" y2="24" class="cg"/><text x="62" y="29" text-anchor="end" class="cy">101</text>
+        <line x1="70" y1="120" x2="750" y2="120" stroke="#B8C4D2" stroke-width="1" stroke-dasharray="5 4"/><text x="62" y="125" text-anchor="end" class="cy">100</text>
+        <line x1="70" y1="216" x2="750" y2="216" class="cg"/><text x="62" y="221" text-anchor="end" class="cy">99</text>
+        <text x="90" y="300" text-anchor="middle" class="cx">07-20</text><text x="197" y="300" text-anchor="middle" class="cx">07-21</text><text x="303" y="300" text-anchor="middle" class="cx">07-22</text><text x="410" y="300" text-anchor="middle" class="cx">07-23</text><text x="517" y="300" text-anchor="middle" class="cx">07-24</text><text x="623" y="300" text-anchor="middle" class="cx">07-27</text><text x="730" y="300" text-anchor="middle" class="cx">07-28</text>
+        <polyline points="90.0,120.0 196.7,42.3 303.3,50.9 410.0,172.9 516.7,162.0 623.3,162.7" fill="none" stroke="#17743F" stroke-width="2" stroke-linejoin="round"/>
+        <polyline points="90.0,120.0 196.7,123.6 303.3,148.5 410.0,237.0 516.7,218.5 623.3,154.6 730.0,152.6" fill="none" stroke="#5B3FB5" stroke-width="2.5" stroke-linejoin="round"/>
+        <circle cx="623.3" cy="162.7" r="4.5" fill="#17743F" stroke="#fff" stroke-width="2"/>
+        <circle cx="730.0" cy="152.6" r="4.5" fill="#5B3FB5" stroke="#fff" stroke-width="2"/>
+        <text x="633" y="185" class="cl" fill="#17743F">SPY −0.44%</text>
+        <text x="722" y="139" text-anchor="end" class="cl" fill="#5B3FB5">운용 합산 −0.34%</text>
+      </svg>
+        <figcaption>07-20을 100으로 지수화 · 거래일 간격 · SPY는 07-27 종가까지 적재</figcaption>
+      </figure>
+      <div>
+        <table style="font-size:21px">
+          <tr><th>구분</th><th style="text-align:right">수익률 (07-20 기준)</th></tr>
+          <tr><td>공격형 3계좌 <span class="muted">7거래일</span></td><td class="num" style="color:var(--alert)">−0.55 ~ −0.65%</td></tr>
+          <tr><td>안전형 2계좌 <span class="muted">7거래일</span></td><td class="num" style="color:var(--det)">+0.02 ~ +0.19%</td></tr>
+          <tr><td><strong>운용 합산</strong> <span class="muted">7거래일 · ~07-28</span></td><td class="num">−0.34%</td></tr>
+          <tr><td>SPY (벤치마크) <span class="muted">6거래일 · ~07-27</span></td><td class="num">−0.44%</td></tr>
+        </table>
+        <div class="quiet" style="margin-top:14px;font-size:21px">이 차이로 실력을 주장하기엔 <strong>7거래일은 짧습니다.</strong> 저희가 보여드리는 것은 수익률이 아니라, <strong>이 곡선이 매일 원장에 남는다</strong>는 사실입니다.</div>
+      </div>
+    </div>
+  </div>
+  <div class="ledger"><span class="tag">원장</span><span>tb_account_equity_daily 07-20→07-28 · 운용 5계좌</span><span class="dot">·</span><span>tb_benchmark_price(SPY)</span><span class="dot">·</span><span>2026-07-28 13:30 조회</span></div>
+</section>
+
+<!-- 7a 모니터링 3층 ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="서비스를 실제로 운영하려면 &quot;지금 잘 돌고 있나&quot;를 확인할 방법이 필요합니다. 그래서 모니터링을 3층으로 쌓았습니다. 화면은 들어가서 보면 다 보이고, 텔레그램은 안 보고 있어도 찾아옵니다. 그런데 알림은 앱이 보냅니다 — 앱이 통째로 죽으면 알리는 주체가 같이 죽습니다. 그래서 시스템 바깥에 5분마다 생존 신호를 받는 외부 모니터링을 하나 더 뒀습니다.<br><br>[사건 — 15초 안에 끝낸다] 어제 아침에 실제로 한 번 잡혔습니다. 집에서 이동하면서 노트북이 절전에 들어갔고, 앱은 살아 있었지만 바깥과 끊겼습니다. <b>앱은 자기가 고립된 걸 알릴 수 없습니다.</b> 그걸 안 건 시스템 바깥의 감시자뿐이었고, 메일과 텔레그램으로 알려왔습니다. 그리고 이게 뒤에 나올 클라우드 이전을 다시 판단한 이유이기도 합니다.<br><br>⚠️ 변명하지 않는다 — &quot;설계가 예상한 상황이 실제로 일어났고 설계대로 잡혔다&quot;로 말하고 바로 넘어간다. 가동률(99.38%)을 방어하려 들면 오히려 약해진다.">
-  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">운영 이야기</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">운영 이야기</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm" style="margin-top:24px">잘 돌고 있는지 — <b>모니터링 3층</b></h1>
   <div class="body" style="padding:14px 0">
     <div class="grid g3">
@@ -629,14 +695,14 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="ledger"><span class="tag">운영 기록</span><span>잡 14/14 성공 (07-27)</span><span class="dot">·</span><span>생존 신호 5분 주기</span><span class="dot">·</span><span>7월 가동률 99.38%</span></div>
 </section>
 
-<!-- 6b ────────────────────────────────────────────────────────────────── -->
+<!-- 7b 남겨 둔 것 ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="두 가지는 일부러 남겨 뒀습니다.<br><br>실제 주문은 무인 검증이 끝나기 전에는 켜지 않는 것이 맞다고 판단했습니다 — 마지막에 켜는 스위치로 잠가 뒀습니다.<br><br>클라우드는 <b>조사만 하고 도입하지 않았습니다.</b> 방금 보신 것처럼 노트북 운영은 이동할 때마다 끊기니까, 옮긴다면 무엇이 얼마나 필요한지는 철저히 조사해서 문서로 남겼습니다 — 인스턴스 크기, 비용, 비밀키 관리, 접근 방식, 데이터 이전까지. 다만 지금 우선순위는 기능 검증이라 착수는 하지 않기로 했습니다. 보류하는 동안엔 텔레그램 알림으로 사각지대를 좁혔습니다.<br><br>이 장은 길게 안 갑니다 — 오른쪽 표만 짚고 넘어갑니다. 질문이 오면: 인스턴스는 t4g.small급이면 충분하고(디스크는 EBS라 필요한 만큼 늘립니다), 비밀키는 서버에 파일로 두지 않고 파라미터 스토어에서 주입, 관리 화면은 SSH 터널로만, 원장은 반드시 가져갑니다.">
-  <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">남겨 둔 것</span><span class="right">QUANTINUE</span></div>
+  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">남겨 둔 것</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm" style="margin-top:20px">일부러 <em>남겨 둔</em> 두 가지</h1>
   <div class="body" style="padding:6px 0">
     <div class="split" style="grid-template-columns:1fr 1.25fr">
       <div>
-        <div class="card" style="margin-bottom:16px"><span class="n">남겨 둔 것 ①</span><h3>실제 주문</h3><p>시세·뉴스·AI 판단까지는 실제로 돌지만, 브로커 주문만은 잠가 두었습니다. <strong>무인 검증이 끝나기 전에는 켜지 않는 것이 맞다</strong>고 판단했습니다.</p></div>
+        <div class="card" style="margin-bottom:16px"><span class="n">남겨 둔 것 ①</span><h3>실제 주문</h3><p>시세·뉴스·AI 판단까지는 실제로 돌지만, 브로커 주문만은 <span style="white-space:nowrap">잠가 두었습니다</span>. <strong>무인 검증이 끝나기 전에는 켜지 않는 것이 맞다</strong>고 판단했습니다.</p></div>
         <div class="card ai"><span class="n">남겨 둔 것 ②</span><h3>클라우드 이전</h3><p>노트북 운영의 한계는 알고 있습니다 — 어제 아침 사건이 그 장면입니다. 그래도 지금 도입하지 않은 이유는, <strong>아직 검증 단계라 서버를 옮겨도 검증이 빨라지지 않기 때문</strong>입니다. 그 사이 공백은 알림과 외부 모니터링으로 좁혔고, 사양·비용·절차를 조사해 두어 <strong>검증이 끝나면 바로 착수할 수 있습니다.</strong></p></div>
       </div>
       <div class="card" style="height:100%">
@@ -654,70 +720,6 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="ledger"><span class="tag">근거</span><span>docs/mvp2-planning/aws-migration-review.md</span><span class="dot">·</span><span>2026-07-21 재판정 · 착수 보류(사용자 결정)</span></div>
 </section>
 
-<!-- 7a ────────────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="실제로 돌린 기록입니다. 시가총액 상위 2천 종목에서 시작해 최종 62건이 체결됐고, 주문과 체결 수가 같습니다 — 재시작이 섞여도 같은 주문을 두 번 내지 않았다는 뜻입니다. 그중 27건이 운용 계좌, 35건이 회귀 검증용 계좌입니다. 비평가는 판단의 18%를 실제로 반려했습니다.<br><br><b>주의</b> — 판단이 후보보다 많은 건 성향 2종이 각각 판단하기 때문입니다.">
-  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">2,000종목이 <b>62건의 체결</b>이 되기까지</h1>
-  <div class="lead">운영 서버가 실제로 돌린 누적 기록입니다(7거래일). 단계를 지날수록 수가 줄어듭니다 — 걸러진다는 뜻입니다.</div>
-  <div class="body" style="padding:16px 0">
-    <div class="funnel">
-      <div class="step"><span class="lb">전체 종목</span><span class="v">2,000</span><span class="track"><i style="width:100%"></i></span><span class="sub">시가총액 상위 — 매일 여기서 시작합니다</span></div>
-      <div class="step"><span class="lb">후보로 선정</span><span class="v">222</span><span class="track"><i style="width:56px"></i></span><span class="sub">매일 "상위 20 + 그날 보유 종목"을 추립니다 — 7거래일 누적이라 222입니다</span></div>
-      <div class="step"><span class="lb">AI 판단</span><span class="v">342</span><span class="track"><i class="thin" style="width:86px"></i></span><span class="sub">매수 266 · 보류 49 · 매도 27 — AI 둘이 각각 판단해 후보보다 많습니다</span></div>
-      <div class="step"><span class="lb">비평가 검토</span><span class="v">323</span><span class="track"><i class="thin" style="width:81px"></i></span><span class="sub">통과 222 · 반려 57 · 보류 44 — 걸러진 판단은 사지 않습니다</span></div>
-      <div class="step"><span class="lb">주문 = 체결</span><span class="v">62 = 62</span><span class="track"><i class="end" style="width:16px"></i></span><span class="sub">주문과 체결이 같은 수 — 같은 주문을 두 번 낸 적이 없습니다</span></div>
-    </div>
-    <div class="kpi" style="margin-top:26px">
-      <div><div class="v">18%</div><div class="l">비평가가 실제로 반려한 비율</div></div>
-      <div><div class="v">342</div><div class="l">판단 = 공격형 175 + 안전형 167</div></div>
-      <div><div class="v">$0.53</div><div class="l">4일간 AI 비용 (하루 상한 $3)</div></div>
-      <div><div class="v">993</div><div class="l">테스트 = 유닛·웹 803 + 통합 190</div></div>
-    </div>
-  </div>
-</section>
-
-<!-- 7c 성과 곡선 ─────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="결과 곡선입니다. 보라색이 운용 계좌 다섯을 합친 자산, 초록색이 같은 기간 SPY입니다. 7거래일 동안 운용 −0.34%, SPY −0.44% — 시장이 빠질 때 덜 빠졌지만, 이 차이로 무언가를 주장하기엔 기간이 너무 짧습니다. 그래서 저희는 수익률을 주장하지 않습니다. 다만 숨기지도 않습니다 — 이 곡선은 매일 원장에 쌓이고, 관제실에서 언제든 같은 그림을 볼 수 있습니다. 안전형이 플러스, 공격형이 마이너스로 성향 차이도 벌써 기록에 보입니다.">
-  <div class="eyebrow"><span class="no">08</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">결과 곡선도 <b>매일 기록됩니다</b></h1>
-  <div class="lead">운용 7거래일 — 수익률을 주장하기엔 짧지만, 숨기지도 않습니다.</div>
-  <div class="body" style="padding:14px 0">
-    <div class="split" style="grid-template-columns:1.5fr 1fr;align-items:center">
-      <figure class="shot" style="margin:0">
-        <div style="display:flex;gap:22px;font-size:16px;color:var(--ink2);margin-bottom:6px">
-          <span><i style="display:inline-block;width:18px;height:3px;background:var(--ai);vertical-align:middle;margin-right:7px"></i>운용 계좌 합산 (5계좌 · $360,000 시작)</span>
-          <span><i style="display:inline-block;width:18px;height:3px;background:var(--det);vertical-align:middle;margin-right:7px"></i>SPY (같은 기간 · 100 기준)</span>
-        </div>
-        <svg viewBox="0 0 790 320" style="width:100%;display:block" role="img" aria-label="운용 계좌 합산과 SPY의 7거래일 지수 비교">
-        <style>.cg{stroke:#DDE4EC;stroke-width:1}.cx{font:15px "SFMono-Regular",Menlo,monospace;fill:#6B7C90}
-        .cy{font:15px "SFMono-Regular",Menlo,monospace;fill:#6B7C90}.cl{font:600 17px "Apple SD Gothic Neo",sans-serif}</style>
-        <line x1="70" y1="24" x2="750" y2="24" class="cg"/><text x="62" y="29" text-anchor="end" class="cy">101</text>
-        <line x1="70" y1="120" x2="750" y2="120" stroke="#B8C4D2" stroke-width="1" stroke-dasharray="5 4"/><text x="62" y="125" text-anchor="end" class="cy">100</text>
-        <line x1="70" y1="216" x2="750" y2="216" class="cg"/><text x="62" y="221" text-anchor="end" class="cy">99</text>
-        <text x="90" y="300" text-anchor="middle" class="cx">07-20</text><text x="197" y="300" text-anchor="middle" class="cx">07-21</text><text x="303" y="300" text-anchor="middle" class="cx">07-22</text><text x="410" y="300" text-anchor="middle" class="cx">07-23</text><text x="517" y="300" text-anchor="middle" class="cx">07-24</text><text x="623" y="300" text-anchor="middle" class="cx">07-27</text><text x="730" y="300" text-anchor="middle" class="cx">07-28</text>
-        <polyline points="90.0,120.0 196.7,42.3 303.3,50.9 410.0,172.9 516.7,162.0 623.3,162.7" fill="none" stroke="#17743F" stroke-width="2" stroke-linejoin="round"/>
-        <polyline points="90.0,120.0 196.7,123.6 303.3,148.5 410.0,237.0 516.7,218.5 623.3,154.6 730.0,152.6" fill="none" stroke="#5B3FB5" stroke-width="2.5" stroke-linejoin="round"/>
-        <circle cx="623.3" cy="162.7" r="4.5" fill="#17743F" stroke="#fff" stroke-width="2"/>
-        <circle cx="730.0" cy="152.6" r="4.5" fill="#5B3FB5" stroke="#fff" stroke-width="2"/>
-        <text x="633" y="185" class="cl" fill="#17743F">SPY −0.44%</text>
-        <text x="722" y="139" text-anchor="end" class="cl" fill="#5B3FB5">운용 합산 −0.34%</text>
-      </svg>
-        <figcaption>07-20을 100으로 지수화 · 거래일 간격 · SPY는 07-27 종가까지 적재</figcaption>
-      </figure>
-      <div>
-        <table style="font-size:21px">
-          <tr><th>구분</th><th style="text-align:right">7거래일 수익률</th></tr>
-          <tr><td>공격형 3계좌</td><td class="num" style="color:var(--alert)">−0.55 ~ −0.65%</td></tr>
-          <tr><td>안전형 2계좌</td><td class="num" style="color:var(--det)">+0.02 ~ +0.19%</td></tr>
-          <tr><td><strong>운용 합산</strong></td><td class="num">−0.34%</td></tr>
-          <tr><td>SPY (벤치마크)</td><td class="num">−0.44%</td></tr>
-        </table>
-        <div class="quiet" style="margin-top:14px;font-size:21px">이 차이로 실력을 주장하기엔 <strong>7거래일은 짧습니다.</strong> 저희가 보여드리는 것은 수익률이 아니라, <strong>이 곡선이 매일 원장에 남는다</strong>는 사실입니다.</div>
-      </div>
-    </div>
-  </div>
-  <div class="ledger"><span class="tag">원장</span><span>tb_account_equity_daily 07-20→07-28 · 운용 5계좌</span><span class="dot">·</span><span>tb_benchmark_price(SPY)</span><span class="dot">·</span><span>2026-07-28 13:30 조회</span></div>
-</section>
 
 <!-- 8 ─────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="돌아보면 세 가지를 배웠고, 한 가지가 아쉽습니다.<br><br>AI는 넣으면 되는 기능이 아니라 통제해야 하는 대상이라는 것. 재현할 수 없는 판단은 믿을 수 없다는 것. 그리고 만드는 과정에도 AI 협업을 설계해야 한다는 것입니다.<br><br>아쉬운 것도 말씀드리면 — 공시와 뉴스를 모으는 것까지는 돌렸지만, 그 채점을 판단에 연결하는 구간은 얕게 끝났습니다. 다음 단계의 첫 항목으로 남겨 두었습니다.">
@@ -725,7 +727,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <h1 class="sm">돌아보며 — <b>배운 것</b>과 <em>아쉬운 것</em></h1>
   <div class="body">
     <div class="grid g4">
-      <div class="card"><span class="n">배운 것 ①</span><h3>AI는 기능이 아니라<br>통제 대상입니다</h3><p>1차에서 LLM을 그대로 붙여 보니 비용과 품질이 흔들렸습니다. 2차는 원칙부터 세웠습니다 — <strong>모든 호출은 예산 경계를 통과한다.</strong></p><p style="margin-top:10px"><strong>결과: 4일 동안 $0.53.</strong> 요율을 모르는 모델은 기동 자체를 거부합니다.</p></div>
+      <div class="card"><span class="n">배운 것 ①</span><h3>AI는 기능이 아니라<br>통제 대상입니다</h3><p>1차에서 LLM을 그대로 <span style="white-space:nowrap">붙여 보니</span> 비용과 품질이 흔들렸습니다. 2차는 원칙부터 세웠습니다 — <strong>모든 호출은 예산 경계를 통과한다.</strong></p><p style="margin-top:10px"><strong>결과: 4일 동안 $0.53.</strong> 요율을 모르는 모델은 기동 자체를 거부합니다.</p></div>
       <div class="card"><span class="n">배운 것 ②</span><h3>재현할 수 없는 판단은<br>믿을 수 없습니다</h3><p>"왜 샀지?"에 답하지 못하면 개선도 못 합니다. 그래서 판단마다 <strong>모델·프롬프트 버전·입력값까지</strong> 남기게 했습니다.</p><p style="margin-top:10px"><strong>결과: 판단 342건 전부에 근거</strong>가 있고, 234건은 그대로 재현됩니다.</p></div>
       <div class="card"><span class="n">배운 것 ③</span><h3>만드는 과정에도<br>설계가 필요합니다</h3><p>AI와 개발하며 세션이 바뀔 때마다 맥락이 끊겼습니다. <strong>사람처럼 문서로 인수인계하는 규약</strong>을 만들었습니다.</p><p style="margin-top:10px"><strong>결과: 세션이 바뀌어도</strong> 금지선과 검증 절차가 같은 기준으로 이어졌습니다.</p></div>
       <div class="card" style="border-left:5px solid var(--alert)"><span class="n">아쉬운 것</span><h3>모으는 것과 쓰는 것은<br>다른 문제였습니다</h3><p>뉴스 1만여 건·공시 9천여 건을 모았지만, 그 채점이 <strong>실제 판단에 닿은 사례는 한 자릿수</strong>였습니다.</p><p style="margin-top:10px">부풀리는 대신 <strong>다음 단계의 첫 항목</strong>으로 적어 두었습니다.</p></div>
@@ -743,7 +745,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- Q&A ────────────────────────────────────────────────────────────────── -->
-<section class="slide thanks" data-notes="여기서 질문을 받는다. 질문 유형에 따라 백업 장으로 넘어간다 — <b>범위·설계</b>는 백업 1, <b>숫자·검증</b>은 백업 2. End 키를 누르면 마지막 백업으로 바로 간다.<br><br>답이 준비 안 된 질문은 <b>모른다고 말하고 어디를 보면 되는지</b>를 답한다. 이 발표의 주장 자체가 '기록이 남는다'이므로, 그 태도가 주장과 같은 방향이다.">
+<section class="slide thanks" data-notes="여기서 질문을 받는다. 예상 문답 정본은 <b>slides/자주나올질문.md</b>(종이로 지참) — 범위·설계 / 숫자·검증 두 묶음이다.<br><br>답이 준비 안 된 질문은 <b>모른다고 말하고 어디를 보면 되는지</b>를 답한다. 이 발표의 주장 자체가 '기록이 남는다'이므로, 그 태도가 주장과 같은 방향이다.">
   <div class="eyebrow"><span class="no">Q&amp;A</span><i class="sep"></i><span class="kr">질문</span><span class="right">QUANTINUE</span></div>
   <div class="body">
     <div class="thanks-mark"></div>
@@ -751,45 +753,6 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
     <div class="thanks-sub">질문 받겠습니다</div>
     <div class="thanks-meta">Quantinue</div>
   </div>
-</section>
-
-<!-- 백업 1 ─────────────────────────────────────────────────────────────── -->
-<section class="slide backup" data-notes="질문이 나올 때만 띄운다. 범위·설계 질문은 이 장, 숫자·검증 질문은 다음 장.">
-  <div class="eyebrow"><span class="no">백업 1</span><i class="sep"></i><span class="kr">범위와 설계</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm" style="font-size:46px;margin-top:22px">자주 나올 질문 — 범위·설계</h1>
-  <div class="body" style="padding-top:12px">
-    <table style="font-size:22px">
-      <tr><th style="width:400px">질문</th><th>답변 요지</th></tr>
-      <tr><td><strong>실거래는 왜 안 하나요?</strong></td><td>브로커 주문만 뺐고 나머지는 전부 실물입니다. 검증이 끝나면 켜는 <strong>마지막 스위치</strong>입니다</td></tr>
-      <tr><td><strong>배포는 왜 안 했나요?</strong></td><td><strong>판단이 뒤집힌 항목입니다.</strong> 처음엔 "필요 없다" → 운용자 이동을 겪고 <strong>"이전이 정당하다"</strong>로 재판정, 착수만 보류했습니다</td></tr>
-      <tr><td><strong>AI가 시장을 이기나요?</strong></td><td>수익률이 아니라 파이프라인과 비용 통제가 가치입니다. <code>/me</code>에 SPY 비교 화면이 있습니다</td></tr>
-      <tr><td><strong>영상은 각본 아닌가요?</strong></td><td>맞습니다. 그래서 마지막 20초에 <strong>실제 운영 기록</strong>을 붙였습니다</td></tr>
-      <tr><td><strong>계좌가 왜 여러 개?</strong></td><td>운용 6 + 회귀 검증용 4 = <strong>등록 10</strong>입니다. 관제실이 <strong>9</strong>로 세는 건 1개가 일시정지라 활성만 세기 때문입니다. 시연 화면에서는 검증용을 뺐습니다</td></tr>
-      <tr><td><strong>계좌 이름이 왜 DEMO-?</strong></td><td>브로커 <strong>모의 계좌</strong>라는 뜻입니다. 실제 운영인지는 좌하단이 말해 줍니다 — 운영 <code>LLM openai</code>, 데모 <code>LLM mock</code></td></tr>
-      <tr><td><strong>지금 다 켜져 있나요?</strong></td><td>1분 방어와 텔레그램 알림은 <strong>운영에서 켜져 있습니다</strong>. 장중 AI 재판단·웹소켓 스트림은 완성됐지만 <strong>검증을 통과한 뒤 켭니다</strong> — 영상의 재판단은 데모 환경입니다</td></tr>
-      <tr><td><strong>본인은 뭘 했나요?</strong></td><td>1차에서 Reviewer와 메모리를 설계·구현했고, 2차는 전체를 인수받아 장중 감시·사건 재판단·운영을 마무리했습니다</td></tr>
-    </table>
-  </div>
-  <div class="ledger"><span class="tag">원장</span><span>tb_account 운용 6 + TEST-* 4</span><span class="dot">·</span><span>주문 62 = 운용 27 + 검증용 35</span></div>
-</section>
-
-<!-- 백업 2 ─────────────────────────────────────────────────────────────── -->
-<section class="slide backup" data-notes="숫자로 파고드는 질문들. 전부 원장으로 재현 가능하다.">
-  <div class="eyebrow"><span class="no">백업 2</span><i class="sep"></i><span class="kr">숫자와 검증</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm" style="font-size:46px;margin-top:22px">자주 나올 질문 — 숫자·검증</h1>
-  <div class="body" style="padding-top:12px">
-    <table style="font-size:22px">
-      <tr><th style="width:400px">질문</th><th>답변 요지</th></tr>
-      <tr><td><strong>환각은 어떻게 막나요?</strong></td><td>근거 묶음 제공 → 비평가 반려(18%) → 판단 기록으로 사후 추적합니다. "막는다"가 아니라 <strong>"거르고 추적한다"</strong>입니다</td></tr>
-      <tr><td><strong>재현 기록이 234건뿐인가요?</strong></td><td>07-21 이후 판단은 <strong>240 = LLM 234(누락 0) + 규칙 6</strong>입니다. 그 6건은 손절·익절 자동 청산이라 <strong>애초에 프롬프트가 없습니다</strong> — "손절은 AI에게 안 묻는다"의 원장 증거입니다</td></tr>
-      <tr><td><strong>계보를 전부 남기나요?</strong></td><td>모델·프롬프트 버전·입력 지문은 남깁니다. <strong><code>policy_version</code>은 컬럼만 잡아두고 배선은 안 했습니다</strong> — 342건 전부 비어 있습니다</td></tr>
-      <tr><td><strong>공시·뉴스는 판단에 쓰이나요?</strong></td><td>수집·정규화까지는 돕니다(뉴스 10,728 · 공시 8,973). 다만 <strong>채점을 판단에 물리는 구간은 아직 얕습니다</strong> — 계보 기준 6/342 · 0/342. <strong>모은 것과 판단에 쓴 것은 다릅니다</strong></td></tr>
-      <tr><td><strong>프롬프트 관리는?</strong></td><td>프롬프트 버전을 판단 원장에 함께 기록합니다(07-21 이후 234건). 성향별로 분리돼 있습니다</td></tr>
-      <tr><td><strong>AI 비용이 얼마나?</strong></td><td>실측 4일 <strong>$0.53</strong>, 하루 상한 $3입니다. 요율을 선언하지 않은 모델은 <strong>기동 자체를 거부합니다</strong></td></tr>
-      <tr><td><strong>T+5 회고는요?</strong></td><td>1차에서 설계·구현한 파트. <strong>2차 원장에는 아직 데이터가 없습니다</strong>(<code>tb_review</code> 0건) — 실적은 주장하지 않습니다</td></tr>
-    </table>
-  </div>
-  <div class="ledger"><span class="tag">원장</span><span>prompt_version 234 / 342</span><span class="dot">·</span><span>policy_version 0 / 342</span><span class="dot">·</span><span>src_news_at 0 / 342</span><span class="dot">·</span><span>tb_review 0</span></div>
 </section>
 
 <div id="hud"></div><div id="bar"></div>
