@@ -497,7 +497,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <!-- 4a 아키텍처 — 07-28 재설계 2차: 존 격자가 "AI스럽다"는 지적, 3단 흐름으로 ── -->
 <section class="slide" data-notes="구조는 세 칸이면 다 설명됩니다 — 들어오고, 판단하고, 남습니다.<br><br>왼쪽, 실물 데이터가 들어옵니다. 시세와 뉴스는 Alpaca, 공시는 SEC EDGAR, 거시지표는 FRED — 전부 실제 소스입니다.<br><br>가운데가 저희가 만든 전부입니다. <b>FastAPI 앱 한 프로세스</b> 안에서 관제실 화면, 매일 잡 14종을 돌리는 잡 러너, 장중 1분 방어, 그리고 모든 AI 호출이 지나는 예산 관문이 함께 돕니다. 그리고 이 앱은 주문을 내는 시스템이라, 실수로 두 개를 켜면 같은 주문이 두 번 나갈 수 있습니다. 그래서 먼저 뜬 프로세스가 소유권을 잠그고, 두 번째는 뜨기 전에 거부됩니다.<br><br>오른쪽, 결과는 PostgreSQL 원장에 남습니다. 판단·주문·체결·AI 비용까지 테이블이 따로 있고, 주문만 모의 브로커입니다.<br><br>그리고 아래 — 알림은 앱이 보내지만, 앱이 통째로 죽으면 알림도 같이 죽습니다. 그래서 5분마다 생존 신호를 받는 Healthchecks를 시스템 바깥에 뒀습니다.">
   <div class="eyebrow"><span class="no">05-2</span><i class="sep"></i><span class="kr">시스템 아키텍처</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">데이터가 <b>들어와서, 판단되고, 남습니다</b></h1>
+  <h1 class="sm">데이터가 <b>들어와서, <span style="color:var(--ai)">판단되고</span>, 남습니다</b></h1>
   <div class="body" style="padding:16px 0 0">
     <div class="arch">
       <div class="abox">
@@ -579,10 +579,10 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <div></div><div></div><div></div><div></div>
       <div class="fjoin" style="padding:0;font-size:24px">↓</div>
 
-      <div class="card" style="padding:14px 18px">
-        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">⑥ 회고</h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_11</span></div>
+      <div class="card ai" style="padding:14px 18px">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h3 style="font-size:21px">⑥ 회고 <span style="font-size:13.5px;color:var(--ai)">AI 예정</span></h3><span class="muted" style="font-family:var(--mono);font-size:13px">role_11</span></div>
         <p style="font-size:17px;line-height:1.5;margin-top:6px">체결 <strong>닷새 뒤(T+5)</strong> 그 판단을 재평가합니다 — 판단→결과→개선의 고리를 닫는 자리.</p>
-        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">2차 원장 0건 — 주장하지 않음</p>
+        <p class="muted" style="font-family:var(--mono);font-size:14px;margin-top:7px">일정상 표본이 아직 충분치 않아 분석 미활용</p>
       </div>
       <div class="fjoin">←</div>
       <div class="card det" style="padding:14px 18px">
@@ -605,7 +605,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <!-- 4c 하루 파이프라인 ──────────────────────────────────────────────────── -->
 <section class="slide" data-notes="이 시스템의 하루입니다. 방금 본 역할 11개가 코드의 조직도라면, 그 코드가 하루에 실제로 하는 일이 잡 14종입니다 — 잡 하나는 <b>매 거래일 한 번 도는 자동 작업</b> 하나입니다.<br><br>뉴욕의 새 날이 열리는 <b>한국 시간 13시</b>에 슬롯이 열리고, 잡 14종이 등록된 순서대로 돕니다. 이름이 화면에 있는 그대로입니다 — 종목을 모으고, 시세·공시·뉴스·지표를 모으고, 후보를 좁힌 뒤, 성향 둘이 각각 판단하고, 팔 것을 먼저 팔아 자리를 만든 다음 삽니다. 마지막에 텔레그램 요약이 갑니다.<br><br>밤 <b>22시 30분 정규장</b>부터는 1분마다 방어가 돕니다. 손절선만 보고 AI는 부르지 않습니다.<br><br>설계를 하나 짚자면, 잡은 시각에 묶여 있지 않습니다. 러너가 <b>60초마다 깨어나서</b> '마지막 성공이 하루 전이고 아직 안 한 잡'을 찾아 돌립니다. 그래서 도중에 재시작해도 이어서 돌고, 같은 일을 두 번 하지 않습니다 — 그 보장은 원장 테이블이 합니다.">
   <div class="eyebrow"><span class="no">05-4</span><i class="sep"></i><span class="kr">하루 파이프라인</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">잡 <b>14종</b>이 도는 하루</h1>
+  <h1 class="sm">매일 <b>14종의 잡</b>이 작동합니다</h1>
   <div class="lead"><strong>잡(job)</strong> = 매 거래일 1회 도는 자동 작업 하나 — <strong>등록 순서가 곧 데이터 의존 순서</strong>입니다.</div>
   <div class="body" style="padding:6px 0 0">
 
@@ -651,7 +651,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:34px">
       <div class="card det" style="padding:12px 17px">
         <span class="n" style="font-family:var(--mono);font-size:14px;letter-spacing:.08em;color:var(--det);font-weight:700">22:30 – 05:00 KST · 정규장</span>
         <h3 style="font-size:20px;margin-top:4px">1분마다 방어만 돕니다</h3>
