@@ -135,7 +135,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 /* 감시 3층(8화면) — 발표 전날 층 3이 실제로 잡은 사건. 시각열은 전부 실측이라
    여기 숫자를 바꾸면 안 된다(slides-content.md §6-1-1). */
 .incident{background:var(--card);border:1px solid var(--rule);border-left:5px solid var(--alert);
-          border-radius:14px;padding:14px 24px;margin-top:16px}
+          border-radius:14px;padding:16px 28px;margin-top:18px}
 .incident .tl{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;
               font-size:21px;color:var(--ink2)}
 .incident .tl b{font-family:var(--mono);font-size:20px;color:var(--ink);font-weight:700}
@@ -146,10 +146,10 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 /* 증거 캡처 두 장 — 원본 비율대로 두면 세로가 무대(900px)를 뚫는다. 위쪽을
    보여준다: Healthchecks는 상단에 사건 이벤트와 가동률이 다 있다. */
 .evidence .shot img{max-height:200px;object-fit:cover;object-position:top}
-.evidence .shot-todo{min-height:160px;padding:16px 22px}
+.evidence .shot-todo{min-height:200px;padding:16px 28px}
 .evidence .shot-todo b{font-size:20px;margin-bottom:6px}
 .evidence .shot-todo span{font-size:17px;line-height:1.5}
-.evidence .shot figcaption{margin-top:8px}
+.evidence .shot figcaption{margin-top:10px}
 
 /* 깔때기 (슬라이드 7) */
 .funnel{display:flex;flex-direction:column;gap:11px}
@@ -163,8 +163,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 .kpi{display:flex;gap:0;border:1px solid var(--rule);border-radius:14px;overflow:hidden;
      background:var(--card)}
-.kpi div{flex:1;padding:22px 24px;border-right:1px solid var(--rule)}
-.kpi div:last-child{border-right:0}
+/* > 가 없으면 안쪽 .v/.l에도 오른줄이 그려져 숫자 옆에 세로줄이 하나 더 뜬다 */
+.kpi>div{flex:1;padding:22px 24px;border-right:1px solid var(--rule)}
+.kpi>div:last-child{border-right:0}
 .kpi .v{font-family:var(--mono);font-size:40px;font-weight:700;color:var(--ink);letter-spacing:-.02em}
 .kpi .l{font-size:19px;color:var(--muted);margin-top:6px}
 
@@ -203,7 +204,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
                box-shadow:0 10px 30px rgba(11,77,219,.22)}
 /* 마무리 화면 오른쪽 아래. 발표가 끝나고 질문받는 동안 계속 떠 있는 화면이라
    상표가 조용히 남는 자리다. 본문을 가리지 않게 옅게 깐다. */
-.finale{position:relative}
+/* position:relative를 다시 넣지 말 것 — .slide의 absolute+inset:0을 덮어써서
+   슬라이드가 내용 높이로 쪼그라들고, 원장 각주가 바닥이 아니라 중간에 뜬다.
+   ::after의 기준은 .slide의 absolute로 충분하다. */
 .finale::after{content:"";position:absolute;right:0;bottom:104px;width:132px;height:132px;
                border-radius:29px;opacity:.13;background:no-repeat center/contain url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iUXVhbnRpbnVlIFEgYmx1ZSBhcHAgaWNvbiI+CiAgPGRlZnM+CiAgICA8bWFzayBpZD0icS1jdXQiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIGZpbGw9IndoaXRlIi8+PHBhdGggZD0iTTUwMSA2NDQgNTQ1IDYzMiA3MTEgNzk4IDY2NSA3OThaIiBmaWxsPSJibGFjayIvPjwvbWFzaz4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEwMjQiIGhlaWdodD0iMTAyNCIgcng9IjE4NCIgZmlsbD0iIzBCNEREQiIvPgogIDxnIGZpbGw9IiNGRkZERjUiIG1hc2s9InVybCgjcS1jdXQpIj4KICAgIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZD0iTTQ2NiAxMDRDMjY3IDEwNCAxMDYgMjY1IDEwNiA0NjRzMTYxIDM2MCAzNjAgMzYwYzQ4IDAgOTQtOSAxMzYtMjZsLTEyMS0xMjEtMTUgMWMtMTE4IDAtMjE0LTk2LTIxNC0yMTRzOTYtMjE0IDIxNC0yMTQgMjE0IDk2IDIxNCAyMTRjMCA2My0yNyAxMTktNzAgMTU4bDEwNCAxMDRjNjktNjYgMTEyLTE1OSAxMTItMjYyIDAtMTk5LTE2MS0zNjAtMzYwLTM2MFoiLz4KICAgIDxwYXRoIGQ9Im00NzUgNjAzIDExMS0zMSAyODIgMjgySDY2NloiLz4KICA8L2c+Cjwvc3ZnPgo=")}
 .cover{justify-content:center}
@@ -213,7 +216,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 .cover .meta{margin-top:44px;font-family:var(--mono);font-size:20px;color:var(--muted);letter-spacing:.08em}
 
 /* 마무리 */
-.finale{justify-content:center;text-align:left}
+/* justify-content:center를 주면 원장 각주가 바닥에 붙지 않고 중간에 뜬다 —
+   본문 가운데 정렬은 .body의 auto 마진이 이미 해 준다. */
+.finale{text-align:left}
 .finale .claim{font-size:56px;line-height:1.28;font-weight:800;letter-spacing:-.035em;color:var(--ink)}
 .finale .claim s{text-decoration:line-through;text-decoration-thickness:3px;
                  text-decoration-color:var(--alert);color:var(--muted)}
@@ -382,18 +387,18 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <h1 class="sm">AI를 쓸 곳과 안 쓸 곳을 구분했다</h1>
   <div class="verdict"><i class="v-det" style="background:var(--det);width:84%"></i><i style="background:var(--ai);width:16%"></i></div>
   <div class="verdict-cap">
-    <span class="k-det"><b>84%</b> 기계 규칙이 먼저 거른다</span>
-    <span class="k-ai"><b>16%</b> 만 AI 비평가에게 간다</span>
+    <span class="k-det"><b>84%</b>는 기계 규칙이 먼저 거릅니다</span>
+    <span class="k-ai"><b>16%</b>만 AI 비평가에게 갑니다</span>
   </div>
   <div class="body">
     <div class="grid g4">
-      <div class="card det"><span class="n">① 안 쓸 곳</span><h3>먼저 정했다</h3><p>손절·익절은 AI에게 묻지 않는다. 1분마다 기계적으로 지킨다.<br><strong>아무 일 없는 1분엔 호출 0회</strong></p></div>
-      <div class="card ai"><span class="n">② 쓴 곳</span><h3>비용을 묶었다</h3><p>하루 상한 · 매도용 20% 별도 예약 · 같은 종목 30분 재호출 금지<br><strong>4일 $0.53</strong></p></div>
-      <div class="card"><span class="n">③ 검증</span><h3>2단으로 나눴다</h3><p>기계 규칙이 84%를 먼저 거르고, 애매한 것만 AI 비평가가 반박<br><strong>판단의 18%를 반려</strong></p></div>
-      <div class="card"><span class="n">④ 기록</span><h3>재현할 수 있게</h3><p>근거는 처음부터 <strong>342건 전부</strong>.<br>07-21에 재현성 기록을 넣은 뒤로는 <strong>234건 전부</strong>에 모델·프롬프트 버전·입력 지문까지</p></div>
+      <div class="card det"><span class="n">① 안 쓸 곳</span><h3>먼저 정했다</h3><p>손절·익절은 AI에게 묻지 않고 1분마다 기계가 지킵니다.<br><strong>아무 일 없는 1분엔 호출이 0회입니다</strong></p></div>
+      <div class="card ai"><span class="n">② 쓴 곳</span><h3>비용을 묶었다</h3><p>하루 상한을 두고, 매도용 20%는 미리 떼어 두고, 같은 종목은 30분 안에 다시 묻지 않습니다.<br><strong>4일 동안 $0.53 썼습니다</strong></p></div>
+      <div class="card"><span class="n">③ 검증</span><h3>2단으로 나눴다</h3><p>기계 규칙이 84%를 먼저 거르고, 애매한 것만 AI 비평가가 반박합니다.<br><strong>판단의 18%가 반려됐습니다</strong></p></div>
+      <div class="card"><span class="n">④ 기록</span><h3>재현할 수 있게</h3><p>근거는 처음부터 <strong>342건 전부</strong> 남겼습니다.<br>07-21부터는 <strong>234건 전부</strong>에 모델·프롬프트 버전·입력 지문까지 남습니다</p></div>
     </div>
   </div>
-  <div class="ledger"><span class="tag">원장</span><span>tb_llm_usage 4일 $0.53 / 상한 $3·일</span><span class="dot">·</span><span>tb_critic_verdict 게이트 271(84%) / LLM 52(16%)</span><span class="dot">·</span><span>반려 57 / 323 = 17.6%</span><span class="dot">·</span><span>prompt_version 234 / 342 (07-21~ LLM 234 · 누락 0)</span></div>
+  <div class="ledger"><span class="tag">원장</span><span>tb_llm_usage 4일 $0.53 / 상한 $3·일</span><span class="dot">·</span><span>게이트 84% / LLM 16%</span><span class="dot">·</span><span>반려 57 / 323</span><span class="dot">·</span><span>prompt_version 234 / 342</span></div>
 </section>
 
 <!-- 5 ─────────────────────────────────────────────────────────────────── -->
@@ -433,9 +438,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <h1 class="sm" style="margin-top:24px">감시자는 누가 감시하나</h1>
   <div class="body" style="padding:14px 0">
     <div class="grid g3">
-      <div class="card"><span class="n">층 1</span><h3>관제실 화면</h3><p>메우는 구멍 —<br>사람이 보러 가야 안다</p></div>
-      <div class="card"><span class="n">층 2</span><h3>텔레그램 알림</h3><p>메우는 구멍 —<br>화면을 안 보고 있을 때</p></div>
-      <div class="card ai"><span class="n">층 3</span><h3>외부 감시 · Healthchecks.io</h3><p>메우는 구멍 —<br><strong>알림 보내는 앱이 죽으면?</strong></p></div>
+      <div class="card"><span class="n">층 1</span><h3>관제실 화면</h3><p>다 보이지만,<br>사람이 보러 가야 압니다</p></div>
+      <div class="card"><span class="n">층 2</span><h3>텔레그램 알림</h3><p>화면을 안 보고 있어도<br>먼저 찾아옵니다</p></div>
+      <div class="card ai"><span class="n">층 3</span><h3>외부 감시 · Healthchecks.io</h3><p>그런데<br><strong>알림 보내는 앱이 죽으면요?</strong></p></div>
     </div>
     <!-- 발표 하루 전 아침, 이 장이 주장하는 그대로의 일이 실제로 일어났다.
          만든 사례가 아니라 당일 기록 — 15초, 변명 없이 말하고 넘어간다. -->
@@ -446,21 +451,21 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
         <span class="arr">→</span> <b class="down">09:13 up → down</b> · Gmail·텔레그램 양쪽 알림
         <span class="arr">→</span> <b class="up">09:36 down → up</b>
       </div>
-      <div class="claim">앱 프로세스는 내내 살아 있었다 — <strong>고립된 앱은 자기 상태를 알릴 수 없다.</strong>
-        <span>층 1·2가 원리적으로 못 잡는 구멍이고, 층 3이 잡았다.</span></div>
+      <div class="claim">앱은 내내 살아 있었습니다 — <strong>고립된 앱은 자기 상태를 알릴 수 없습니다.</strong>
+        <span>층 1·2로는 원리적으로 못 잡는 구멍을, 층 3이 잡아냈습니다.</span></div>
     </div>
     <!-- 2·3층은 말로만 하면 "설정해뒀다"로 들린다. 실제로 오는 화면 두 장이
          "작동한다"로 바꾼다. 파일만 넣으면 아래 자리에 자동으로 들어간다. -->
-    <div class="grid g2 evidence" style="margin-top:14px">
+    <div class="grid g2 evidence" style="margin-top:18px">
       <figure class="shot" data-shot="assets/telegram-alerts.png"
               data-todo-title="텔레그램 알림 이력 (층 2)"
               data-todo-body="여러 날의 일일 요약이 세로로 쌓인 스크롤 화면 — <b>매일 온다</b>가 증명된다. ⚠️ <b>07-24 구간은 피할 것</b>(같은 실패 알림 30여 통).">
-        <figcaption>텔레그램 — 화면을 안 보고 있을 때</figcaption>
+        <figcaption>텔레그램 — 매일 이렇게 도착합니다</figcaption>
       </figure>
       <figure class="shot" data-shot="assets/healthchecks.png"
               data-todo-title="Healthchecks.io 대시보드 (층 3)"
               data-todo-body="체크 상세 페이지. <b>Status: Up · Last ping · Period 5 min</b>과 규칙적인 ping 타임라인이 한 화면에. 과거 <b>DOWN → UP 기록</b>이 있으면 꼭 포함 — 감시자가 실제로 잡아냈다는 증거다.">
-        <figcaption>외부 감시 — 09:13 down 판정과 09:36 복구가 기록에 남았다</figcaption>
+        <figcaption>외부 감시 — 09:13 down 판정과 09:36 복구가 기록에 남았습니다</figcaption>
       </figure>
     </div>
   </div>
@@ -470,21 +475,21 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <!-- 6b ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="실제 주문은 못 한 게 아니라, 검증이 끝난 뒤에 켜는 마지막 스위치로 설계한 겁니다.<br><br>클라우드는 이야기가 조금 다릅니다. 처음엔 로컬로 도는 시스템이라 <b>필요 없다</b>고 판단했습니다. 그런데 전제가 틀렸더군요. 실제로 돌려보니 <b>노트북을 들고 이동하는 일이 잦았고</b>, 그러면 전원과 네트워크가 끊깁니다. 더 나쁜 건 <b>그 공백이 감지도 안 된다</b>는 겁니다 — 알림을 보내는 주체가 앱인데 앱이 같이 죽으니까요. 그래서 <b>이전이 정당하다고 다시 판단했습니다.</b> 다만 착수 시점은 보류했고, 보류하는 동안엔 텔레그램 알림으로 사각지대를 좁혔습니다.<br><br>한다면 어떻게 할지는 오른쪽에 있습니다. 인스턴스는 t4g.small급이면 충분하고, 비밀키는 서버에 파일로 두지 않고 파라미터 스토어에서 읽어 주입합니다. 관리 화면은 인터넷에 열지 않고 SSH 터널로만 봅니다. 그리고 원장은 반드시 가져갑니다 — 계좌와 체결 기록이 이 시스템의 연속성이니까요.">
   <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">안 한 것 · 판단이 뒤집힌 것</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">못 한 게 아니라 안 한 것<span style="color:var(--muted)">,</span><br>그리고 <em>다시 판단한 것</em></h1>
-  <div class="body">
+  <h1 class="sm" style="margin-top:24px">못 한 게 아니라 안 한 것<span style="color:var(--muted)">,</span><br>그리고 <em>다시 판단한 것</em></h1>
+  <div class="body" style="padding:16px 0">
     <div class="split" style="grid-template-columns:1fr 1.25fr">
       <div>
-        <div class="card" style="margin-bottom:16px"><span class="n">안 한 것</span><h3>실제 주문</h3><p>시세 · 뉴스 · AI는 전부 실물이고 브로커 주문만 뺐다.<br>무인 검증이 끝난 뒤 켜는 <strong>마지막 스위치</strong></p></div>
-        <div class="card ai"><span class="n">뒤집은 것</span><h3>클라우드 이전</h3><p>처음엔 "로컬이라 필요 없다"였다.<br><strong>전제가 틀렸다</strong> — 운용자가 이동이 잦아 노트북이 움직이면 전원·네트워크가 끊기는데, <strong>알리는 주체가 앱이라 그 공백은 감지도 안 된다.</strong><br>→ <strong>이전이 정당하다로 재판정</strong>, 착수만 보류</p></div>
+        <div class="card" style="margin-bottom:16px"><span class="n">안 한 것</span><h3>실제 주문</h3><p>시세·뉴스·AI 판단까지 전부 진짜로 돌고, 브로커에 주문을 내는 <strong>마지막 한 단계만</strong> 잠가 뒀습니다. 무인 검증이 끝나면 켜는 <strong>마지막 스위치</strong>입니다.</p></div>
+        <div class="card ai"><span class="n">뒤집은 것</span><h3>클라우드 이전</h3><p>처음엔 "로컬로 도니 필요 없다"고 판단했습니다. 돌려 보니 <strong>전제가 틀렸습니다</strong> — 노트북이 이동할 때마다 끊기는데, 알리는 주체가 앱이라 <strong>그 공백은 감지조차 안 됩니다.</strong> 어제 아침 사건이 바로 그 장면입니다.<br>→ <strong>"이전이 정당하다"로 다시 판단</strong>하고, 착수 시점만 보류했습니다.</p></div>
       </div>
       <div class="card" style="height:100%">
         <span class="n">한다면 이렇게 — 착수 체크리스트</span>
         <table style="font-size:21px;margin-top:6px">
-          <tr><td><strong>인스턴스</strong></td><td>EC2 t4g.small급이면 충분 <span class="muted">(앱 24MB · DB 201MB)</span> · 인프라 <strong>월 $20~40</strong></td></tr>
-          <tr><td><strong>비밀</strong></td><td>SSM Parameter Store에서 읽어 주입 — <strong>서버에 <code>.env</code>를 두지 않는다</strong></td></tr>
-          <tr><td><strong>접근</strong></td><td>8020을 <strong>열지 않는다</strong>. 화면은 SSH 터널로 — 공개하면 TLS·도메인이 딸려 온다</td></tr>
-          <tr><td><strong>데이터</strong></td><td><code>pg_dump</code>로 원장을 <strong>가져간다</strong> — 계좌·체결 기록이 연속성의 실체</td></tr>
-          <tr><td><strong>기동</strong></td><td><code>restart=always</code> — <strong>재부팅 자동 기동이 이 이전의 존재 이유</strong></td></tr>
+          <tr><td><strong>인스턴스</strong></td><td>EC2 t4g.small급이면 충분합니다 <span class="muted">(앱 24MB · DB 201MB)</span> · 인프라 <strong>월 $20~40</strong></td></tr>
+          <tr><td><strong>비밀</strong></td><td>SSM Parameter Store에서 읽어 주입합니다 — <strong>서버에 <code>.env</code>를 두지 않습니다</strong></td></tr>
+          <tr><td><strong>접근</strong></td><td>8020은 <strong>열지 않습니다</strong>. 화면은 SSH 터널로만 봅니다 — 공개하면 TLS·도메인이 딸려 옵니다</td></tr>
+          <tr><td><strong>데이터</strong></td><td><code>pg_dump</code>로 원장을 <strong>가져갑니다</strong> — 계좌·체결 기록이 이 시스템의 연속성입니다</td></tr>
+          <tr><td><strong>기동</strong></td><td><code>restart=always</code> — <strong>재부팅 자동 기동이 이 이전의 존재 이유</strong>입니다</td></tr>
         </table>
       </div>
     </div>
@@ -500,18 +505,18 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
     <div class="funnel">
       <div class="step"><span class="lb">시총 상위 종목</span><i class="bar" style="width:820px"></i><span class="v">2,000</span></div>
       <div class="step"><span class="lb">오늘의 후보</span><i class="bar" style="width:91px"></i><span class="v">222</span></div>
-      <div class="step"><span class="lb">전략가 판단</span><i class="bar thin" style="width:140px"></i><span class="v">342</span><span class="sub">매수 266 · 보류 49 · 매도 27 &nbsp;— 성향 2종이 각각 판단해 늘어난다</span></div>
+      <div class="step"><span class="lb">전략가 판단</span><i class="bar thin" style="width:140px"></i><span class="v">342</span><span class="sub">매수 266 · 보류 49 · 매도 27 &nbsp;— 성향 2종이 각각 판단해서 늘어납니다</span></div>
       <div class="step"><span class="lb">비평가 검토</span><i class="bar thin" style="width:132px"></i><span class="v">323</span><span class="sub">통과 222 · 반려 57 · 보류 44</span></div>
       <div class="step"><span class="lb">주문 = 체결</span><i class="bar end" style="width:46px"></i><span class="v">62 = 62</span><span class="sub">중복 0 &nbsp;— 운용 27 · 회귀 검증용 35</span></div>
     </div>
     <div class="kpi" style="margin-top:30px">
-      <div><div class="v">18%</div><div class="l">비평가 반려율 — 실제로 거른다</div></div>
+      <div><div class="v">18%</div><div class="l">비평가 반려율 — 실제로 거릅니다</div></div>
       <div><div class="v">175 / 167</div><div class="l">공격형 / 안전형 판단</div></div>
       <div><div class="v">$0.53</div><div class="l">AI 비용 4일 (상한 $3·일)</div></div>
       <div><div class="v">803 / 190</div><div class="l">유닛·웹 / 통합 테스트</div></div>
     </div>
   </div>
-  <div class="ledger"><span class="tag">원장</span><span>tb_daily_pick 222</span><span class="dot">·</span><span>tb_strategist_signals 342</span><span class="dot">·</span><span>tb_critic_verdict 323</span><span class="dot">·</span><span>tb_order 62 = tb_fill 62</span><span class="dot">·</span><span>뉴스 10,728 + 공시 8,973</span></div>
+  <div class="ledger"><span class="tag">원장</span><span>tb_daily_pick 222</span><span class="dot">·</span><span>tb_strategist_signals 342</span><span class="dot">·</span><span>tb_critic_verdict 323</span><span class="dot">·</span><span>tb_order 62 = tb_fill 62</span></div>
 </section>
 
 <!-- 7b ────────────────────────────────────────────────────────────────── -->
@@ -536,12 +541,12 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <h1 class="sm">만들고 돌려보며 배운 것</h1>
   <div class="body">
     <div class="grid g3">
-      <div class="card"><span class="n">01</span><h3>AI는 기능이 아니라<br>통제 대상이다</h3><p>1차에서 로컬 LLM으로 비용·품질을 실감 → 2차에서 <strong>"모든 호출은 예산 경계를 통과한다"</strong>는 원칙에 도달</p></div>
-      <div class="card"><span class="n">02</span><h3>AI 판단은<br>재현할 수 있어야 한다</h3><p>모델·프롬프트 버전·입력 지문을 남기니 "왜 그랬는지 모른다"가 <strong>"되짚을 수 있다"</strong>로 바뀌었다</p></div>
-      <div class="card"><span class="n">03</span><h3>만드는 과정에도<br>AI를 썼다</h3><p>인수인계 문서를 <strong>"다음 AI 에이전트가 이어받는 규약"</strong>으로 설계 — 세션이 바뀌어도 금지선·검증 절차가 유지되게</p></div>
+      <div class="card"><span class="n">01</span><h3>AI는 기능이 아니라<br>통제 대상이다</h3><p>1차에서 로컬 LLM으로 비용과 품질을 몸으로 겪었고, 2차에서 <strong>"모든 호출은 예산 경계를 통과한다"</strong>는 원칙에 닿았습니다</p></div>
+      <div class="card"><span class="n">02</span><h3>AI 판단은<br>재현할 수 있어야 한다</h3><p>모델·프롬프트 버전·입력 지문을 남기니, "왜 그랬는지 모른다"가 <strong>"되짚을 수 있다"</strong>로 바뀌었습니다</p></div>
+      <div class="card"><span class="n">03</span><h3>만드는 과정에도<br>AI를 썼다</h3><p>인수인계 문서를 <strong>"다음 AI 에이전트가 이어받는 규약"</strong>으로 설계했습니다 — 세션이 바뀌어도 금지선과 검증 절차가 유지됩니다</p></div>
     </div>
   </div>
-  <div class="ledger"><span class="tag">과정</span><span>세션이 바뀌어도 금지선과 검증 절차가 문서로 이어졌다</span></div>
+  <div class="ledger"><span class="tag">과정</span><span>세션이 바뀌어도 금지선과 검증 절차가 문서로 이어졌습니다</span></div>
 </section>
 
 <!-- 9 ─────────────────────────────────────────────────────────────────── -->
@@ -567,9 +572,8 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
     <div class="thanks-mark"></div>
     <h1 class="huge">감사합니다</h1>
     <div class="thanks-sub">질문 받겠습니다</div>
-    <div class="thanks-meta">문성혁 · Quantinue MVP-2 · 2026-07-29</div>
+    <div class="thanks-meta">Quantinue</div>
   </div>
-  <div class="ledger"><span class="tag">덧붙임</span><span>모든 숫자는 원장 쿼리로 재현할 수 있습니다</span><span class="dot">·</span><span>화면·코드·문서 전부 보여드릴 수 있습니다</span></div>
 </section>
 
 <!-- 백업 1 ─────────────────────────────────────────────────────────────── -->
@@ -579,13 +583,13 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="body" style="padding-top:12px">
     <table style="font-size:22px">
       <tr><th style="width:400px">질문</th><th>답변 요지</th></tr>
-      <tr><td><strong>실거래는 왜 안 하나요?</strong></td><td>브로커 주문만 뺐고 나머지는 전부 실물. 검증 후 켜는 <strong>마지막 스위치</strong></td></tr>
-      <tr><td><strong>배포는 왜 안 했나요?</strong></td><td><strong>판단이 뒤집힌 항목이다.</strong> 처음엔 "필요 없다" → 운용자 이동으로 재판정해 <strong>"이전이 정당하다"</strong>, 착수만 보류</td></tr>
-      <tr><td><strong>AI가 시장을 이기나요?</strong></td><td>수익률 주장이 아니라 파이프라인·비용 통제가 가치. <code>/me</code>에 SPY 비교 화면</td></tr>
+      <tr><td><strong>실거래는 왜 안 하나요?</strong></td><td>브로커 주문만 뺐고 나머지는 전부 실물입니다. 검증이 끝나면 켜는 <strong>마지막 스위치</strong>입니다</td></tr>
+      <tr><td><strong>배포는 왜 안 했나요?</strong></td><td><strong>판단이 뒤집힌 항목입니다.</strong> 처음엔 "필요 없다" → 운용자 이동을 겪고 <strong>"이전이 정당하다"</strong>로 재판정, 착수만 보류했습니다</td></tr>
+      <tr><td><strong>AI가 시장을 이기나요?</strong></td><td>수익률이 아니라 파이프라인과 비용 통제가 가치입니다. <code>/me</code>에 SPY 비교 화면이 있습니다</td></tr>
       <tr><td><strong>영상은 각본 아닌가요?</strong></td><td>맞습니다. 그래서 마지막 20초에 <strong>실제 운영 기록</strong>을 붙였습니다</td></tr>
-      <tr><td><strong>계좌가 왜 여러 개?</strong></td><td>운용 6 + 회귀 검증용 4 = <strong>등록 10</strong>. 관제실이 <strong>9</strong>로 세는 건 1개가 일시정지라 활성만 세기 때문. 시연 화면에서는 검증용을 뺐습니다</td></tr>
-      <tr><td><strong>계좌 이름이 왜 DEMO-?</strong></td><td>브로커 <strong>모의 계좌</strong>라는 뜻. 실제 운영인지는 좌하단이 말합니다 — 운영 <code>LLM openai</code>, 데모 <code>LLM mock</code></td></tr>
-      <tr><td><strong>본인은 뭘 했나요?</strong></td><td>1차 Reviewer·메모리 설계·구현, 2차는 전체를 인수받아 장중 감시·사건 재판단·운영 마무리</td></tr>
+      <tr><td><strong>계좌가 왜 여러 개?</strong></td><td>운용 6 + 회귀 검증용 4 = <strong>등록 10</strong>입니다. 관제실이 <strong>9</strong>로 세는 건 1개가 일시정지라 활성만 세기 때문입니다. 시연 화면에서는 검증용을 뺐습니다</td></tr>
+      <tr><td><strong>계좌 이름이 왜 DEMO-?</strong></td><td>브로커 <strong>모의 계좌</strong>라는 뜻입니다. 실제 운영인지는 좌하단이 말해 줍니다 — 운영 <code>LLM openai</code>, 데모 <code>LLM mock</code></td></tr>
+      <tr><td><strong>본인은 뭘 했나요?</strong></td><td>1차에서 Reviewer와 메모리를 설계·구현했고, 2차는 전체를 인수받아 장중 감시·사건 재판단·운영을 마무리했습니다</td></tr>
     </table>
   </div>
   <div class="ledger"><span class="tag">원장</span><span>tb_account 운용 6 + TEST-* 4</span><span class="dot">·</span><span>주문 62 = 운용 27 + 검증용 35</span></div>
@@ -598,12 +602,12 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="body" style="padding-top:12px">
     <table style="font-size:22px">
       <tr><th style="width:400px">질문</th><th>답변 요지</th></tr>
-      <tr><td><strong>환각은 어떻게 막나요?</strong></td><td>근거 묶음 제공 → 비평가 반려(18%) → 판단 기록으로 사후 추적. "막는다"가 아니라 <strong>"거르고 추적한다"</strong></td></tr>
-      <tr><td><strong>재현 기록이 234건뿐인가요?</strong></td><td>07-21 이후 판단 <strong>240 = LLM 234(누락 0) + 규칙 6</strong>. 그 6건은 손절·익절 자동 청산이라 <strong>애초에 프롬프트가 없다</strong> — "손절은 AI에게 안 묻는다"의 원장 증거</td></tr>
+      <tr><td><strong>환각은 어떻게 막나요?</strong></td><td>근거 묶음 제공 → 비평가 반려(18%) → 판단 기록으로 사후 추적합니다. "막는다"가 아니라 <strong>"거르고 추적한다"</strong>입니다</td></tr>
+      <tr><td><strong>재현 기록이 234건뿐인가요?</strong></td><td>07-21 이후 판단은 <strong>240 = LLM 234(누락 0) + 규칙 6</strong>입니다. 그 6건은 손절·익절 자동 청산이라 <strong>애초에 프롬프트가 없습니다</strong> — "손절은 AI에게 안 묻는다"의 원장 증거입니다</td></tr>
       <tr><td><strong>계보를 전부 남기나요?</strong></td><td>모델·프롬프트 버전·입력 지문은 남깁니다. <strong><code>policy_version</code>은 컬럼만 잡아두고 배선은 안 했습니다</strong> — 342건 전부 비어 있습니다</td></tr>
       <tr><td><strong>공시·뉴스는 판단에 쓰이나요?</strong></td><td>수집·정규화까지는 돕니다(뉴스 10,728 · 공시 8,973). 다만 <strong>채점을 판단에 물리는 구간은 아직 얕습니다</strong> — 계보 기준 6/342 · 0/342. <strong>모은 것과 판단에 쓴 것은 다릅니다</strong></td></tr>
-      <tr><td><strong>프롬프트 관리는?</strong></td><td>프롬프트 버전을 판단 원장에 함께 기록(07-21 이후 234건). 성향별로 분리</td></tr>
-      <tr><td><strong>AI 비용이 얼마나?</strong></td><td>실측 4일 <strong>$0.53</strong>, 하루 상한 $3. 요율 미선언 모델은 <strong>기동 자체를 거부</strong></td></tr>
+      <tr><td><strong>프롬프트 관리는?</strong></td><td>프롬프트 버전을 판단 원장에 함께 기록합니다(07-21 이후 234건). 성향별로 분리돼 있습니다</td></tr>
+      <tr><td><strong>AI 비용이 얼마나?</strong></td><td>실측 4일 <strong>$0.53</strong>, 하루 상한 $3입니다. 요율을 선언하지 않은 모델은 <strong>기동 자체를 거부합니다</strong></td></tr>
       <tr><td><strong>T+5 회고는요?</strong></td><td>1차에서 설계·구현한 파트. <strong>2차 원장에는 아직 데이터가 없습니다</strong>(<code>tb_review</code> 0건) — 실적은 주장하지 않습니다</td></tr>
     </table>
   </div>
