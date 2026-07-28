@@ -209,6 +209,61 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 .fnode.det{border-left:5px solid var(--det)} .fnode.det .cad{background:#E7F3EC;color:var(--det)}
 .fjoin{display:grid;place-items:center;padding:0 8px;font-size:26px;color:var(--muted);font-weight:600}
 
+/* ── 엔지니어링 다이어그램 (07-28) ────────────────────────────────────────
+   6·7화면은 원래 이모지 + 서술형 박스라 마케팅 슬라이드로 읽혔다. 개발자가
+   보고 판단할 수 있게 **실제 식별자**(모듈·테이블·포트·잡 이름)를 얹는
+   구조로 바꾼다. mermaid를 쓰지 않는 이유: 덱은 file://로 열리는 단일
+   파일이고, 비동기 렌더라 print-to-PDF에서 빈 칸으로 인쇄될 수 있다.
+   게다가 기본 테마가 이 덱의 색 체계(det/ai/alert) 밖이다. */
+
+/* 신뢰·프로세스 경계. 점선 = 우리가 소유하지 않는 영역. */
+.zone{position:relative;border:1.5px dashed var(--rule);border-radius:16px;
+      padding:32px 18px 16px;background:rgba(255,255,255,.42)}
+.zone.own{border-style:solid;border-color:#AFC0D2;background:rgba(255,255,255,.78)}
+.zone>.zt{position:absolute;top:-11px;left:18px;background:var(--paper);padding:0 10px;
+          font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.09em;
+          color:var(--muted)}
+.zone.own>.zt{color:var(--ink2)}
+
+/* 컴포넌트 노드 — 이름 / 역할 / 실제 식별자 3단. */
+.node{background:var(--card);border:1px solid var(--rule);border-radius:11px;
+      padding:12px 14px;border-left:4px solid var(--ink2)}
+.node .nm{font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.01em;line-height:1.25}
+.node .ro{font-size:16px;color:var(--ink2);line-height:1.42;margin-top:4px}
+.node .id{font-family:var(--mono);font-size:14px;color:var(--muted);margin-top:6px;line-height:1.5}
+.node.ai{border-left-color:var(--ai)} .node.det{border-left-color:var(--det)}
+.node.ext{border-left-color:#8A9AAC;background:#F7FAFD}
+.node.store{border-left-color:var(--det);background:#F9FCFA}
+
+/* 엣지 라벨 — 화살표에 프로토콜을 적는다. */
+.edge{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+      color:var(--ink2)}
+.edge .ar{font-size:27px;font-weight:700;line-height:1}
+.edge .pl{font-family:var(--mono);font-size:13px;letter-spacing:.04em;color:var(--muted);
+          text-align:center;line-height:1.35;white-space:nowrap}
+
+/* 잡 체인 — 14종을 실제 이름으로 늘어놓는다. */
+.jobs{display:flex;gap:6px;align-items:stretch}
+.job{flex:1 1 0;min-width:0;background:var(--card);border:1px solid var(--rule);
+     border-radius:9px;padding:13px 7px 14px;text-align:center}
+.job .jn{font-family:var(--mono);font-size:14px;font-weight:700;color:var(--ink);line-height:1.3}
+.job .jd{font-size:13px;color:var(--muted);margin-top:4px;line-height:1.3}
+.job.ai{border-color:#C9B8EE;background:#FBFAFE} .job.ai .jn{color:var(--ai)}
+.job.det{border-color:#A9CDBA;background:#F9FCFA} .job.det .jn{color:var(--det)}
+
+/* 실제 소스를 그대로 붙이는 자리. 발표에서 코드가 나오면 "만들었다"는 주장이
+   증거로 바뀐다 — 단, 읽히는 분량만. 한 화면에 12줄을 넘기지 않는다. */
+.code{background:#0E1A28;border:1px solid #1E3247;border-radius:12px;padding:15px 17px;
+      font-family:var(--mono);font-size:15.5px;line-height:1.62;color:#CFDCEA;white-space:pre;
+      overflow:hidden;box-shadow:0 10px 26px rgba(10,20,32,.16)}
+.code .c{color:#7E93A9;font-style:italic}   /* 주석 */
+.code .k{color:#C79BF0}                     /* 예약어 */
+.code .f{color:#7CB7F7}                     /* 함수·타입 */
+.code .s{color:#8ED39A}                     /* 문자열·리터럴 */
+.code .hl{background:rgba(232,89,12,.26);border-radius:3px;padding:1px 2px}
+.codecap{font-family:var(--mono);font-size:14px;color:var(--muted);margin-top:8px;
+         letter-spacing:.02em}
+
 .kpi{display:flex;gap:0;border:1px solid var(--rule);border-radius:14px;overflow:hidden;
      background:var(--card)}
 /* > 가 없으면 안쪽 .v/.l에도 오른줄이 그려져 숫자 옆에 세로줄이 하나 더 뜬다 */
@@ -223,7 +278,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 
 /* 표지 */
 .videobox{position:relative}
-.videobox video{width:100%;max-height:505px;display:block;background:#0a0e14;border-radius:14px;
+.videobox video{width:100%;max-height:452px;display:block;background:#0a0e14;border-radius:14px;
                 border:1px solid var(--rule);box-shadow:0 14px 40px rgba(10,20,32,.16)}
 .videobox.missing video{display:none}
 .videofall{display:none;border:2px dashed var(--rule);border-radius:14px;padding:30px;text-align:center}
@@ -286,12 +341,50 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="sub">실물 시장 데이터와 AI 판단으로 굴러가는 모의 자동매매 시스템</div>
 </section>
 
+<!-- 1b 이름과 이유 (07-28 신설) ──────────────────────────────────────────
+     표지 다음에 "이게 뭐고 왜 만들었나"가 없어서, 청중이 3화면까지
+     맥락 없이 따라오고 있었다(사용자 지적). 이름 자체가 기획 의도라
+     그것으로 연다. -->
+<section class="slide" data-notes="이름부터 말씀드리겠습니다. <b>Quantinue</b>는 <b>Quant</b>와 <b>Continue</b>를 합친 이름입니다.<br><br><b>Quant</b> — 감으로 사지 않겠다는 뜻입니다. 살 이유도, 팔 조건도 숫자와 규칙으로 미리 적어 둡니다.<br><br><b>Continue</b> — 한 번 잘 맞히는 게 목표가 아니라는 뜻입니다. 사람이 보고 있지 않아도 매일 같은 순서로 이어서 도는 것이 목표입니다.<br><br>왜 만들었냐면, 개인이 직접 투자할 때 부딪히는 문제가 셋이었습니다. 판단이 그날 기분에 흔들리고, 하루 종일 장을 볼 수 없고, 나중에 왜 샀는지가 남지 않습니다. 이 셋을 각각 규칙·자동화·기록으로 옮긴 것이 이 시스템입니다.<br><br>⚠️ 여기서 오래 끌지 않는다 — 40초. 오른쪽 세 줄만 짚고 넘어간다.">
+  <div class="eyebrow"><span class="no">00</span><i class="sep"></i><span class="kr">이름과 이유</span><span class="right">QUANTINUE</span></div>
+  <h1 class="sm"><b>Quant</b> + Cont<b>inue</b></h1>
+  <div class="lead">이름이 곧 기획 의도입니다 — <strong>숫자로 판단하고, 멈추지 않고 잇는다.</strong></div>
+  <div class="body">
+    <div class="split" style="grid-template-columns:.82fr 1.18fr;gap:30px;align-items:start">
+
+      <div>
+        <div class="card det" style="padding:18px 22px">
+          <span class="n" style="font-family:var(--mono);font-size:16px;letter-spacing:.1em;color:var(--det);font-weight:700">QUANT</span>
+          <h3 style="font-size:26px;margin-top:6px">감이 아니라 숫자로</h3>
+          <p style="font-size:19px;line-height:1.55;margin-top:7px">살 이유도 팔 조건도 <strong>미리 숫자로 적어 둡니다.</strong> 손절선은 살 때 이미 정해집니다.</p>
+        </div>
+        <div class="card ai" style="padding:18px 22px;margin-top:16px">
+          <span class="n" style="font-family:var(--mono);font-size:16px;letter-spacing:.1em;color:var(--ai);font-weight:700">CONTINUE</span>
+          <h3 style="font-size:26px;margin-top:6px">한 번이 아니라 매일</h3>
+          <p style="font-size:19px;line-height:1.55;margin-top:7px">한 번 맞히는 게 아니라 <strong>사람이 없어도 이어서 도는 것</strong>이 목표입니다.</p>
+        </div>
+      </div>
+
+      <div>
+        <div class="quiet" style="font-size:19px;margin-bottom:11px">개인이 직접 투자할 때 부딪히는 문제 셋을, 각각 이렇게 옮겼습니다.</div>
+        <table style="font-size:20px">
+          <tr><th style="width:330px">직접 할 때 생기는 문제</th><th>이 시스템이 대신하는 방식</th></tr>
+          <tr><td>그날 기분에 따라 <strong>판단이 흔들린다</strong></td><td>살 조건·팔 조건을 <strong>먼저 적어 두고 기계가 지킵니다</strong> — 손절에는 AI를 부르지 않습니다</td></tr>
+          <tr><td>하루 종일 <strong>장을 볼 수 없다</strong></td><td>정규장 동안 <strong>1분마다 기계가 대신 봅니다</strong> — 아무 일 없으면 비용도 0원입니다</td></tr>
+          <tr><td>나중에 <strong>왜 샀는지 모른다</strong></td><td>판단마다 <strong>근거·모델·프롬프트 버전을 원장에 남깁니다</strong> — 다시 돌려볼 수 있습니다</td></tr>
+        </table>
+      </div>
+
+    </div>
+  </div>
+  <div class="ledger"><span class="tag">한 줄</span><span>숫자로 판단하고(Quant), 사람이 없어도 잇는다(Continue)</span><span class="dot">·</span><span>모의인 것은 브로커 주문 한 군데뿐</span></div>
+</section>
+
 <!-- 개요 ───────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="Quantinue는 <b>미국 주식을 대상으로 한 모의 자동매매 시스템</b>입니다. 사람이 보고 있지 않아도 매일 같은 순서로 돕니다.<br><br>순서는 넷입니다. <b>고르고, 판단하고, 반박하고, 지킨다.</b><br>먼저 2천 종목에서 오늘 볼 종목을 좁히는데, 여기까지는 지표만 보기 때문에 AI를 쓰지 않습니다. 좁혀진 종목만 AI 두 명이 각각 판단하고, 그 판단을 비평가 AI가 반박합니다. 실제로 다섯 중 하나 가까이가 여기서 반려됐습니다. 통과해서 산 종목은 살 때 손절선을 함께 적어두고, 1분마다 기계가 확인합니다.<br><br>한 가지 먼저 분명히 해두겠습니다. <b>시세도 뉴스도 공시도 AI 판단도 전부 실물</b>입니다. 모의인 건 <b>브로커에 주문을 내는 한 군데뿐</b>입니다. 돈이 오가지 않을 뿐, 나머지는 진짜 시장을 보고 진짜로 판단합니다.">
   <div class="eyebrow"><span class="no">01</span><i class="sep"></i><span class="kr">프로젝트 개요</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">AI가 고르고, 다른 AI가 반박하고,<br><b>규칙이 지킨다</b></h1>
-  <div class="lead">미국 주식 모의 자동매매 시스템입니다.
-    사람이 보고 있지 않아도 매일 같은 순서로 돕니다.</div>
+  <div class="lead">미국 주식 모의 자동매매 시스템 — 사람이 없어도 매일 같은 순서로 돕니다.</div>
   <div class="body">
     <div class="grid g4">
       <div class="card">
@@ -330,15 +423,15 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <section class="slide" data-notes="다섯 명이 역할을 나눠 맡았고, 각자 맡은 영역이 그대로 시스템의 한 부분이 됐습니다.<br><br>저는 PM으로 범위와 우선순위를 정하고 단계마다 검수했습니다. 정창욱 님이 공시와 뉴스를, 이은미 님이 전략 판단을, 김미연 님이 리스크 검증을 맡았습니다. 문성혁 님이 판단 기록과 회고를 맡았고, 2차에서는 장중 감시와 사건 재판단을 구현했습니다.">
   <div class="eyebrow"><span class="no">02</span><i class="sep"></i><span class="kr">팀</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">다섯 명이 <b>역할을 나눠</b> 맡았습니다</h1>
-  <div class="lead">각자 맡은 영역이 그대로 시스템의 한 부분이 됐습니다.</div>
+  <div class="lead">각자 맡은 영역이 그대로 <strong>코드의 역할 패키지</strong>가 됐습니다.</div>
   <div class="body">
     <table>
-      <tr><th style="width:180px">담당</th><th style="width:280px">맡은 영역</th><th>시스템에서 하는 일</th></tr>
-      <tr><td><strong>김지현</strong></td><td>PM · 전체 리딩</td><td>범위와 우선순위를 정하고 단계마다 검수했습니다</td></tr>
-      <tr><td><strong>정창욱</strong></td><td>공시 · 뉴스</td><td>SEC 공시와 뉴스를 모아 형식을 맞추고 신뢰도를 매겼습니다</td></tr>
-      <tr><td><strong>이은미</strong></td><td>전략 판단</td><td>성향별(공격형 · 안전형)로 매수·매도를 판단했습니다</td></tr>
-      <tr><td><strong>김미연</strong></td><td>리스크 검증</td><td>판단에 반박하고 위험을 근거로 반려했습니다</td></tr>
-      <tr><td><strong>문성혁</strong></td><td>회고 · 기록</td><td>판단 기록과 회고를 설계했고, 2차에서 장중 감시와 사건 재판단을 구현했습니다</td></tr>
+      <tr><th style="width:150px">담당</th><th style="width:215px">맡은 영역</th><th style="width:215px">코드에서는</th><th>시스템에서 하는 일</th></tr>
+      <tr><td><strong>김지현</strong></td><td>PM · 전체 리딩</td><td class="muted" style="font-family:var(--mono);font-size:17px">—</td><td>범위와 우선순위를 정하고 단계마다 검수했습니다</td></tr>
+      <tr><td><strong>정창욱</strong></td><td>공시 · 뉴스</td><td style="font-family:var(--mono);font-size:17px">role_05<br>role_06</td><td>SEC 공시와 뉴스를 모아 형식을 맞추고 신뢰도를 매겼습니다</td></tr>
+      <tr><td><strong>이은미</strong></td><td>전략 판단</td><td style="font-family:var(--mono);font-size:17px">role_07</td><td>성향별(공격형 · 안전형)로 매수·매도를 판단했습니다</td></tr>
+      <tr><td><strong>김미연</strong></td><td>리스크 검증</td><td style="font-family:var(--mono);font-size:17px">role_08<br>role_09</td><td>판단에 반박하고 위험을 근거로 반려했습니다</td></tr>
+      <tr><td><strong>문성혁</strong></td><td>회고 · 기록</td><td style="font-family:var(--mono);font-size:17px">role_11</td><td>판단 기록과 회고를 설계했고, 2차에서 장중 감시와 사건 재판단을 구현했습니다</td></tr>
     </table>
   </div>
 </section>
@@ -402,97 +495,172 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 </section>
 
 <!-- 4a 아키텍처 ─────────────────────────────────────────────────────────── -->
-<section class="slide" data-notes="구조를 데이터가 흐르는 순서대로 보면 넷입니다.<br><br>실물 데이터가 <b>들어오고</b> — 시세와 뉴스는 Alpaca, 공시는 SEC, 보도자료·거시지표까지 전부 실제 소스입니다. 앱 <b>한 프로세스</b>가 웹 화면과 매일 잡 14종, 1분 감시를 함께 돌리며 <b>판단하고</b>, 그 결과는 전부 PostgreSQL 원장에 <b>남습니다</b> — 판단·주문·체결·AI 비용까지요. 주문만 모의 브로커입니다. 마지막으로 <b>알립니다</b> — 텔레그램으로 요약과 실패를 보내고, 시스템 바깥의 Healthchecks가 5분마다 생존 신호를 받습니다.<br><br>운영·개발·데모는 포트와 DB를 아예 갈라서, 데모를 만지다 운영을 건드리는 사고가 나지 않게 했습니다.">
+<section class="slide" data-notes="구조를 데이터가 흐르는 순서대로 보면 넷입니다.<br><br>바깥에서 <b>실물 데이터가 들어옵니다</b> — 시세와 뉴스는 Alpaca, 공시는 SEC EDGAR, 보도자료는 두 곳 RSS, 거시지표는 FRED입니다. 전부 실제 소스이고 키가 없는 곳도 있습니다.<br><br>가운데 실선 안이 <b>저희 앱 한 프로세스</b>입니다. FastAPI 위에서 관제실 화면과 잡 러너, 장중 감시가 같이 돕니다. 잡 러너는 60초마다 깨어나 '오늘 아직 안 한 잡'을 순서대로 돌리고, 장중 감시는 1분마다 손절선만 봅니다. AI 호출은 전부 예산 게이트를 통과합니다 — 하루 3달러, 그중 20%는 매도용으로 떼어 둡니다.<br><br>결과는 PostgreSQL 원장에 남습니다. 판단·주문·체결·AI 비용까지 테이블이 따로 있습니다.<br><br>오른쪽 아래 점선이 <b>시스템 바깥</b>입니다 — 텔레그램과 Healthchecks. 앱이 죽으면 알림도 같이 죽기 때문에, 5분마다 생존 신호를 받는 감시자를 밖에 뒀습니다.">
   <div class="eyebrow"><span class="no">04</span><i class="sep"></i><span class="kr">시스템 아키텍처</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">데이터가 <b>들어와서, 판단되고, 남습니다</b></h1>
-  <div class="body" style="padding:16px 0">
-    <div class="arch">
-      <div class="abox">
-        <span class="ico">📡</span>
-        <span class="n">STEP 1 · 들어온다</span>
-        <h4>외부 데이터 — 전부 실물</h4>
-        <p>시세 · 뉴스 <span style="color:var(--muted)">Alpaca</span><br>
-           공시 <span style="color:var(--muted)">SEC</span> · 보도자료 <span style="color:var(--muted)">RSS</span><br>
-           경제지표 <span style="color:var(--muted)">FRED</span></p>
-      </div>
-      <div class="aarr">→<small>수집</small></div>
-      <div class="abox ai">
-        <span class="ico">🧠</span>
-        <span class="n">STEP 2 · 판단한다</span>
-        <h4>Quantinue 앱 — 한 프로세스</h4>
-        <p>관제실 화면 · 매일 작업 14종 · 1분 방어 감시</p>
-        <p style="margin-top:8px;color:var(--ai)">AI 판단은 OpenAI<br>하루 상한 $3</p>
-        <span class="chip">운영 8020</span>
-      </div>
-      <div class="aarr">→<small>기록</small></div>
-      <div class="abox det">
-        <span class="ico">🗄️</span>
-        <span class="n">STEP 3 · 남는다</span>
-        <h4>PostgreSQL 원장</h4>
-        <p>판단 · 주문 · 체결 · AI 비용까지 모든 과정이 남습니다</p>
-        <p style="margin-top:8px">주문만 <strong>모의 브로커</strong>입니다</p>
-        <span class="chip">DB 5445</span>
+  <div class="body" style="padding:10px 0 0">
+
+    <div class="zone" style="padding-top:28px">
+      <span class="zt">EXTERNAL SOURCES — 전부 실물</span>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">
+        <div class="node ext"><div class="nm">시세 · 일봉</div><div class="id">Alpaca Market Data<br>data.alpaca.markets/v2</div></div>
+        <div class="node ext"><div class="nm">뉴스</div><div class="id">Alpaca News v1beta1<br>+ 보도자료 RSS 2종</div></div>
+        <div class="node ext"><div class="nm">공시</div><div class="id">SEC EDGAR daily-index<br>Form 3/4/5 XML · 키 없음</div></div>
+        <div class="node ext"><div class="nm">거시지표</div><div class="id">FRED fredgraph.csv</div></div>
+        <div class="node ai"><div class="nm">LLM</div><div class="id">OpenAI gpt-4o-mini<br>via pydantic-ai</div></div>
       </div>
     </div>
-    <div class="arch" style="margin-top:12px">
-      <div></div><div></div>
-      <div class="aarr" style="font-size:26px">↓<small>알림</small></div>
-      <div></div><div></div>
+
+    <div class="edge" style="flex-direction:row;gap:14px;margin:7px 0">
+      <span class="ar">↓</span><span class="pl">HTTPS REST · 실패는 삼키지 않고 failed_count로 남긴다</span>
     </div>
-    <div class="arch" style="margin-top:12px;grid-template-columns:1fr 1fr;gap:22px;width:940px;margin-left:auto;margin-right:auto">
-      <div class="abox out" style="display:flex;gap:18px;align-items:center;padding:16px 24px">
-        <span class="ico" style="margin:0;font-size:32px">📨</span>
-        <div><h4 style="margin:0">텔레그램</h4><p>하루 요약과 실패를 알려 줍니다</p></div>
+
+    <div class="zone own" style="padding-top:28px">
+      <span class="zt">QUANTINUE APP — 단일 프로세스 (FastAPI + uvicorn)</span>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+        <div class="node"><div class="nm">관제실 · 웹</div><div class="ro">사람이 보는 화면</div><div class="id">quantinue.main:app<br>:8020</div></div>
+        <div class="node"><div class="nm">JobRunner</div><div class="ro">하루 한 번, 잡 14종</div><div class="id">60초 틱 · tb_job_run<br>orchestration/job_runner.py</div></div>
+        <div class="node det"><div class="nm">WatchRunner</div><div class="ro">장중 1분 방어 — AI 없음</div><div class="id">정규장만 · 브래킷 판정<br>orchestration/watch_runner.py</div></div>
+        <div class="node ai"><div class="nm">BudgetedAnalyzer</div><div class="ro">모든 AI 호출의 관문</div><div class="id">하루 $3 · 매도 20% 유보<br>llm/budget.py</div></div>
       </div>
-      <div class="abox out" style="display:flex;gap:18px;align-items:center;padding:16px 24px">
-        <span class="ico" style="margin:0;font-size:32px">🛰️</span>
-        <div><h4 style="margin:0">Healthchecks.io</h4><p>5분마다 생존 신호 — 앱이 멈춰도 남는 외부 모니터링</p></div>
+      <div class="quiet" style="margin-top:9px;font-size:16px">한 프로세스가 화면·잡·감시를 함께 돕니다. <strong>중복 기동은 <code>mkdir</code> 원자성으로 만든 owner 잠금</strong>이 막습니다 — 두 번째 프로세스는 기동 자체가 거부됩니다.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.3fr 104px 1fr;gap:0;margin-top:9px;align-items:stretch">
+      <div class="zone own" style="padding-top:28px">
+        <span class="zt">LEDGER — PostgreSQL 17 · asyncpg</span>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+          <div class="node store" style="padding:9px 11px"><div class="id" style="margin:0">tb_strategist_signals<br>tb_critic_verdict</div></div>
+          <div class="node store" style="padding:9px 11px"><div class="id" style="margin:0">tb_order · tb_fill<br>tb_account_equity_daily</div></div>
+          <div class="node store" style="padding:9px 11px"><div class="id" style="margin:0">tb_llm_usage<br>tb_llm_budget_reservation</div></div>
+          <div class="node store" style="padding:9px 11px"><div class="id" style="margin:0">tb_daily_pick · tb_news<br>tb_disclosure</div></div>
+        </div>
+        <div class="quiet" style="margin-top:8px;font-size:16px">주문은 <strong>모의 브로커</strong>입니다. 실브로커 경로는 <code>페이퍼 URL · trading_enabled · ALPACA</code> <strong>3중 게이트</strong>를 모두 통과해야만 열립니다.</div>
+      </div>
+      <div class="edge" style="padding:0 6px"><span class="ar">→</span><span class="pl" style="white-space:normal">Bot API<br>ping 300s</span></div>
+      <div class="zone" style="padding-top:28px">
+        <span class="zt">OUTSIDE THE SYSTEM</span>
+        <div style="display:grid;gap:8px">
+          <div class="node ext" style="padding:9px 12px"><div class="nm" style="font-size:18px">Telegram</div><div class="id" style="margin-top:3px">하루 요약 · 실패 · 방어선 발동</div></div>
+          <div class="node ext" style="padding:9px 12px"><div class="nm" style="font-size:18px">Healthchecks.io</div><div class="id" style="margin-top:3px">300초마다 ping — <strong>앱이 죽어도 남는 감시자</strong></div></div>
+        </div>
       </div>
     </div>
-    <div class="quiet" style="margin-top:16px;text-align:center">운영(8020) · 개발(8021) · 데모(8022 + 전용 DB)는 <strong>포트와 DB로 분리</strong> — 데모를 만지다 운영을 건드릴 수 없습니다.</div>
+
   </div>
-  <div class="ledger"><span class="tag">구성</span><span>FastAPI + PostgreSQL 17</span><span class="dot">·</span><span>단일 프로세스 · 단일 owner 잠금</span><span class="dot">·</span><span>브로커는 모의(페이퍼 강제)</span></div>
+  <div class="ledger"><span class="tag">스택</span><span>Python 3.11 · FastAPI · uvicorn</span><span class="dot">·</span><span>PostgreSQL 17 + asyncpg</span><span class="dot">·</span><span>운영 8020 / 개발 8021 / 데모 8022 — 포트·DB 분리</span></div>
 </section>
 
-<!-- 4b 하루 파이프라인 ──────────────────────────────────────────────────── -->
-<section class="slide" data-notes="이 시스템의 하루입니다.<br><br>뉴욕의 새 날이 열리는 <b>한국 시간 13시</b>에 하루가 시작됩니다. 잡 14종이 정해진 순서대로 돕니다 — 데이터부터 모으고, 후보를 고르고, 성향이 다른 AI 둘이 판단하고 비평가가 반박하고, 팔 것을 먼저 팔아 자리를 만든 뒤에 삽니다. 끝나면 텔레그램으로 하루 요약이 옵니다.<br><br>밤 <b>22시 30분에 정규장이 열리면</b> 1분마다 방어가 돕니다 — 손절선을 넘었는지만 기계가 확인하고, AI는 부르지 않습니다.<br><br>한 가지 설계를 짚자면, 잡은 정해진 시각에 묶여 있지 않습니다. <b>&quot;마지막 성공에서 하루가 지났고, 앞 잡이 끝났으면 실행&quot;</b>이라는 규칙이라, 도중에 재시작해도 이어서 돌고 같은 일을 두 번 하지 않습니다.">
+<!-- 4b 역할 체인 (07-28 신설) ────────────────────────────────────────────
+     3화면에서 "다섯 명이 역할을 나눠 맡았다"고 소개해 놓고 그 역할이
+     시스템에서 무엇을 판단하는지는 설명 없이 지나갔다(사용자 지적).
+     역할 11개는 실제 패키지 이름이고, 코드는 role_08이 부르기 전에
+     기계가 먼저 거르는 자리다. -->
+<section class="slide" data-notes="아까 팀 표에서 나눈 역할이 코드에서는 이렇게 생겼습니다. 패키지 이름이 그대로 <b>role_01</b>부터 <b>role_11</b>까지입니다.<br><br>앞 여섯은 <b>모으고 재는 역할</b>입니다 — 종목을 좁히고, 지표를 계산하고, 공시와 뉴스를 채점합니다. 여기까지 AI를 쓰지 않습니다. 07 전략가와 08 비평가에서만 AI가 나옵니다. 09는 위험과 비중, 10은 주문, 11은 사후 회고입니다.<br><br>오른쪽 코드가 이 설계의 핵심입니다. 손절·익절 판정에는 모델이 없습니다 — 일봉의 저가·고가가 선에 닿았는지만 봅니다. 그리고 <b>둘 다 닿은 날은 손절로 판정</b>합니다. 일봉에는 순서 정보가 없어서 어느 쪽이 먼저였는지 알 수 없는데, 익절로 찍으면 실제로는 손절당한 날이 이익으로 기록됩니다. <b>틀리더라도 불리한 쪽으로 틀리자</b>는 결정입니다.<br><br>이 15줄이 영상에서 방어선이 1건에서 2건으로 자라던 그 순간에 실제로 돈 코드입니다.">
+  <div class="eyebrow"><span class="no">04</span><i class="sep"></i><span class="kr">역할 체인</span><span class="right">QUANTINUE</span></div>
+  <h1 class="sm">역할 <b>11개</b>가 순서대로 판단합니다</h1>
+  <div class="lead">팀이 나눈 역할이 그대로 패키지 이름입니다 — <code>quantinue/roles/role_01 … role_11</code>.</div>
+  <div class="body" style="padding:12px 0 0">
+    <div class="split" style="grid-template-columns:1.06fr .94fr;gap:26px;align-items:start">
+
+      <div>
+        <div class="jobs" style="flex-wrap:wrap;gap:7px">
+          <div class="job" style="flex:1 1 30%"><div class="jn">role_01<br>universe</div><div class="jd">상장사 2,000</div></div>
+          <div class="job" style="flex:1 1 30%"><div class="jn">role_02<br>technical</div><div class="jd">지표 계산</div></div>
+          <div class="job" style="flex:1 1 30%"><div class="jn">role_03<br>screener</div><div class="jd">오늘의 20</div></div>
+          <div class="job" style="flex:1 1 30%"><div class="jn">role_04<br>macro</div><div class="jd">시장 국면</div></div>
+          <div class="job" style="flex:1 1 30%"><div class="jn">role_05<br>disclosure</div><div class="jd">공시 채점</div></div>
+          <div class="job" style="flex:1 1 30%"><div class="jn">role_06<br>news</div><div class="jd">뉴스 채점</div></div>
+        </div>
+        <div class="quiet" style="margin:9px 0;font-size:16.5px;text-align:center">↑ 여기까지 <strong>AI 호출 0회</strong> — 지표와 규칙만 씁니다</div>
+        <div class="jobs" style="gap:7px">
+          <div class="job ai"><div class="jn">role_07<br>strategist</div><div class="jd">성향 2종이<br>각각 판단</div></div>
+          <div class="job ai"><div class="jn">role_08<br>critic</div><div class="jd">반박하고<br>반려한다</div></div>
+          <div class="job det"><div class="jn">role_09<br>risk</div><div class="jd">비중·한도<br>결정</div></div>
+          <div class="job det"><div class="jn">role_10<br>order</div><div class="jd">주문 발행<br>고유 키</div></div>
+          <div class="job"><div class="jn">role_11<br>reviewer</div><div class="jd">T+5<br>사후 회고</div></div>
+        </div>
+        <div class="quiet" style="margin-top:15px;font-size:18px;line-height:1.55">
+          <strong>정창욱</strong> 05·06 <span class="dot" style="color:var(--rule)">·</span>
+          <strong>이은미</strong> 07 <span class="dot" style="color:var(--rule)">·</span>
+          <strong>김미연</strong> 08·09 <span class="dot" style="color:var(--rule)">·</span>
+          <strong>문성혁</strong> 11 + 장중 감시
+        </div>
+      </div>
+
+      <div>
+        <div class="code"><span class="k">def</span> <span class="f">evaluate_bracket</span>(
+    day: <span class="f">DailyRange</span>, *, stop: <span class="f">Decimal</span>, take_profit: <span class="f">Decimal</span>,
+) -> <span class="f">BracketLeg</span> | <span class="k">None</span>:
+    <span class="c">"""이 날 발동한 다리. 살아남았으면 None."""</span>
+    hit_stop = day.low &lt;= stop
+    hit_take_profit = day.high &gt;= take_profit
+    <span class="k">if</span> hit_stop:
+        <span class="k">return</span> <span class="hl">BracketLeg.STOP</span>
+    <span class="k">if</span> hit_take_profit:
+        <span class="k">return</span> BracketLeg.TAKE_PROFIT
+    <span class="k">return</span> <span class="k">None</span></div>
+        <div class="codecap">app-v2/src/quantinue/broker/bracket_trigger.py</div>
+        <div class="card det" style="margin-top:13px;padding:14px 17px">
+          <p style="font-size:18.5px;line-height:1.55">여기에 <strong>모델이 없습니다.</strong> 저가·고가가 선에 닿았는지만 봅니다 — 영상에서 방어선이 1건 → 2건으로 자라던 순간에 실제로 돈 코드입니다.</p>
+          <p style="font-size:18.5px;line-height:1.55;margin-top:9px"><strong>둘 다 닿은 날은 손절로 찍습니다.</strong> 일봉에는 순서가 없어 어느 쪽이 먼저인지 모르는데, 익절로 찍으면 손절당한 날이 이익으로 남습니다. <strong>틀리더라도 불리한 쪽으로</strong> 틀리기로 했습니다.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+  <div class="ledger"><span class="tag">근거</span><span>quantinue/roles/role_01 … role_11</span><span class="dot">·</span><span>손절 15% / 익절 20% (pipeline.yaml)</span><span class="dot">·</span><span>재설계 결정 D5</span></div>
+</section>
+
+<!-- 4c 하루 파이프라인 ──────────────────────────────────────────────────── -->
+<section class="slide" data-notes="이 시스템의 하루입니다.<br><br>뉴욕의 새 날이 열리는 <b>한국 시간 13시</b>에 슬롯이 열리고, 잡 14종이 등록된 순서대로 돕니다. 이름이 화면에 있는 그대로입니다 — 종목을 모으고, 시세·공시·뉴스·지표를 모으고, 후보를 좁힌 뒤, 성향 둘이 각각 판단하고, 팔 것을 먼저 팔아 자리를 만든 다음 삽니다. 마지막에 텔레그램 요약이 갑니다.<br><br>밤 <b>22시 30분 정규장</b>부터는 1분마다 방어가 돕니다. 손절선만 보고 AI는 부르지 않습니다.<br><br>설계를 하나 짚자면, 잡은 시각에 묶여 있지 않습니다. 러너가 <b>60초마다 깨어나서</b> '마지막 성공이 하루 전이고 아직 안 한 잡'을 찾아 돌립니다. 그래서 도중에 재시작해도 이어서 돌고, 같은 일을 두 번 하지 않습니다 — 그 보장은 원장 테이블이 합니다.">
   <div class="eyebrow"><span class="no">04</span><i class="sep"></i><span class="kr">하루 파이프라인</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">이 시스템의 <b>하루</b></h1>
-  <div class="body" style="padding:20px 0">
-    <div class="flowrow">
-      <div class="fnode">
-        <span class="cad">13:00 KST</span>
-        <h4>데이터 수집</h4>
-        <p>뉴욕의 새 날이 열리면<br>시세 · 공시 · 뉴스 · 지표를 모읍니다</p>
+  <h1 class="sm">잡 <b>14종</b>이 도는 하루</h1>
+  <div class="lead">이름은 코드에 등록된 그대로입니다 — <strong>등록 순서가 곧 데이터 의존 순서</strong>입니다.</div>
+  <div class="body" style="padding:22px 0 0">
+
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <span class="tmark">13:00 KST</span>
+      <span class="quiet" style="font-size:17px">뉴욕의 새 날이 열리면 슬롯이 열립니다 — 잡 러너가 <strong>60초마다</strong> 깨어나 아직 안 한 잡을 순서대로 돌립니다</span>
+    </div>
+
+    <div class="jobs" style="margin-bottom:11px">
+      <div class="job"><div class="jn">universe</div><div class="jd">상장사 2,000</div></div>
+      <div class="job"><div class="jn">daily_bars</div><div class="jd">일봉</div></div>
+      <div class="job"><div class="jn">benchmark_spy</div><div class="jd">SPY 기준선</div></div>
+      <div class="job"><div class="jn">disclosures</div><div class="jd">SEC 공시</div></div>
+      <div class="job"><div class="jn">news</div><div class="jd">뉴스</div></div>
+      <div class="job"><div class="jn">news_wire</div><div class="jd">보도자료</div></div>
+      <div class="job"><div class="jn">macro</div><div class="jd">거시지표</div></div>
+    </div>
+    <div class="jobs">
+      <div class="job det"><div class="jn">screening</div><div class="jd">후보 20종목</div></div>
+      <div class="job det"><div class="jn">insider_scoring</div><div class="jd">내부자 거래</div></div>
+      <div class="job ai"><div class="jn">analysis:aggressive</div><div class="jd">공격형 판단</div></div>
+      <div class="job ai"><div class="jn">analysis:conservative</div><div class="jd">안전형 판단</div></div>
+      <div class="job det"><div class="jn">exits</div><div class="jd">팔 것 먼저</div></div>
+      <div class="job det"><div class="jn">allocation</div><div class="jd">배분 · 모의 매수</div></div>
+      <div class="job"><div class="jn">daily_summary</div><div class="jd">텔레그램 요약</div></div>
+    </div>
+    <div class="quiet" style="margin-top:9px;font-size:16.5px;text-align:center">
+      <span style="color:var(--det);font-weight:700">초록</span> = 규칙만 · <span style="color:var(--ai);font-weight:700">보라</span> = AI를 부르는 두 자리 — <strong>14종 중 2종뿐</strong>입니다
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:30px">
+      <div class="card det" style="padding:15px 18px">
+        <span class="n" style="font-family:var(--mono);font-size:15px;letter-spacing:.08em;color:var(--det);font-weight:700">22:30 – 05:00 KST · 정규장</span>
+        <h3 style="font-size:22px;margin-top:6px">1분마다 방어만 돕니다</h3>
+        <p style="font-size:18px;line-height:1.5;margin-top:6px">손절·익절선에 닿았는지만 기계가 확인합니다. <strong>AI 호출 0회</strong> — 아무 일 없는 1분의 비용은 0원입니다.</p>
       </div>
-      <div class="fjoin">→</div>
-      <div class="fnode">
-        <span class="cad">AI 없음</span>
-        <h4>후보 선별</h4>
-        <p>2,000종목에서<br>오늘 볼 20종목을 지표로 고릅니다</p>
-      </div>
-      <div class="fjoin">→</div>
-      <div class="fnode ai">
-        <span class="cad">여기서만 AI</span>
-        <h4>판단과 반박</h4>
-        <p>성향이 다른 AI 둘이 판단하고<br>비평가 AI가 반박합니다</p>
-      </div>
-      <div class="fjoin">→</div>
-      <div class="fnode">
-        <span class="cad">마무리</span>
-        <h4>정리 → 매수 → 알림</h4>
-        <p>팔 것을 먼저 정리해 자리를 만들고,<br>배분·모의 매수 후 요약을 보냅니다</p>
-      </div>
-      <div class="fjoin">→</div>
-      <div class="fnode det">
-        <span class="cad">22:30–05:00</span>
-        <h4>장중 1분 방어</h4>
-        <p>손절·익절선만 기계가 확인합니다<br>AI는 부르지 않습니다</p>
+      <div class="card" style="padding:15px 18px">
+        <span class="n" style="font-family:var(--mono);font-size:15px;letter-spacing:.08em;color:var(--muted);font-weight:700">IDEMPOTENCE</span>
+        <h3 style="font-size:22px;margin-top:6px">시각이 아니라 조건으로 돕니다</h3>
+        <p style="font-size:18px;line-height:1.5;margin-top:6px">“마지막 성공이 하루 전이면 실행” — 도중에 재시작해도 <strong>이어서 돌고 같은 일을 두 번 하지 않습니다.</strong> 보장은 <code>tb_job_run</code>이 합니다.</p>
       </div>
     </div>
-    <div class="quiet" style="margin-top:22px">작업은 정해진 시각이 아니라 <strong>"앞 작업이 끝나면, 하루에 한 번"</strong> 규칙으로 이어집니다 — 도중에 재시작해도 이어서 돌고, 같은 일을 두 번 하지 않습니다.</div>
+
   </div>
-  <div class="ledger"><span class="tag">운영 기록</span><span>잡 14/14 성공 (07-27)</span><span class="dot">·</span><span>주문 62 = 체결 62 · 중복 0</span></div>
+  <div class="ledger"><span class="tag">운영 기록</span><span>잡 14/14 성공 (07-27)</span><span class="dot">·</span><span>틱 60초 · 감시 60초</span><span class="dot">·</span><span>주문 62 = 체결 62</span></div>
 </section>
 
 <!-- 4 ─────────────────────────────────────────────────────────────────── -->
@@ -561,7 +729,7 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
 <section class="slide" data-notes="[영상 직전] 지금 보실 것은 방금 그림의 아래 두 층입니다. 시장이 촬영 시간에 맞춰 급락해주지 않기 때문에, 운영 환경과 완전히 분리된 데모에서 <b>각본대로 재현</b>했습니다. 마지막 16초만 실제 운영 서버입니다. <b>주황색 테두리가 지금 봐야 할 곳</b>입니다.<br><br>[영상 직후] 마지막 16초는 각본이 아니라 저희가 실제로 돌리고 있는 서버의 기록입니다.">
   <div class="eyebrow"><span class="no">06</span><i class="sep"></i><span class="kr">데모 영상</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">아래 두 층이 실제로 도는 것</h1>
-  <div class="lead">운영과 분리된 데모에서 각본대로 재현했습니다 — 마지막 16초만 실제 운영 서버입니다. 주황색 테두리가 그때 봐야 할 곳입니다.</div>
+  <div class="lead">운영과 분리된 데모에서 각본대로 재현했습니다 — 마지막 16초만 실제 운영 서버입니다.</div>
   <div class="body">
     <!-- 영상은 저장소 밖(footage/)에 있다. 파일이 있으면 여기서 바로 틀고,
          없으면 아래 구성표가 대신 뜬다 — 발표장 노트북이 바뀌어도 화면이
@@ -586,14 +754,14 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       </table>
     </div>
   </div>
-  <div class="ledger"><span class="tag">각본 체결</span><span>VRDN 손절 $139.50</span><span class="dot">·</span><span>HLXM 판단 반전 $80.00</span><span class="dot">·</span><span>NVEX 매수 1,090주 $55.00</span><span class="dot">·</span><span>주문 34 = 체결 34 · 중복 0</span></div>
+  <div class="ledger"><span class="tag">주황 테두리 = 지금 볼 곳</span><span class="dot">·</span><span>각본 체결</span><span class="dot">·</span><span>VRDN 손절 $139.50</span><span class="dot">·</span><span>HLXM 반전 $80.00</span><span class="dot">·</span><span>주문 34 = 체결 34</span></div>
 </section>
 
 <!-- 6a 기록·깔때기 (07-28 영상 뒤로 이동) ────────────────────────────────────────────────────────────────── -->
 <section class="slide" data-notes="실제로 돌린 기록입니다. 시가총액 상위 2천 종목에서 시작해 최종 62건이 체결됐고, 주문 62건이 미체결·거절 없이 전부 체결됐습니다. 같은 주문이 두 번 나가지 않는 것은 계좌+시그널로 파생한 주문 고유 키에 DB 고유 제약을 걸어 보장합니다 — 재시작이 겹쳐도 두 번째 시도는 키가 막습니다. 그중 27건이 운용 계좌, 35건이 회귀 검증용 계좌입니다. 비평가는 검토 323건 중 57건(18%)을 실제로 반려했습니다.<br><br><b>주의</b> — 판단이 후보보다 많은 건 성향 2종이 각각 판단하기 때문입니다.">
   <div class="eyebrow"><span class="no">07</span><i class="sep"></i><span class="kr">실제로 돌아간 기록</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">2,000종목이 <b>62건의 체결</b>이 되기까지</h1>
-  <div class="lead">운영 서버가 실제로 돌린 누적 기록입니다(7거래일). 후보를 AI 둘이 각각 판단해 한 번 늘고, 그 뒤는 검증이 거르며 줄어듭니다.</div>
+  <div class="lead">운영 7거래일 누적입니다 — <strong>판단에서 한 번 늘고, 검증부터 줄어듭니다.</strong></div>
   <div class="body" style="padding:16px 0">
     <div class="funnel">
       <div class="step"><span class="lb">전체 종목</span><span class="v">2,000</span><span class="track"><i style="width:100%"></i></span><span class="sub">시가총액 상위 — 매일 여기서 시작합니다</span></div>
