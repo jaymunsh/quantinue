@@ -347,12 +347,11 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
   <div class="sub">실물 시장 데이터와 AI 판단으로 굴러가는 모의 자동매매 시스템</div>
 </section>
 
-<!-- [시안 A — 확인용] 목차 · 채택 시 위치·문구 확정 후 번호 재정렬 ─────── -->
-<section class="slide" data-notes="[확인용 시안] 목차. 채택하면 위치와 소요 시간(약 30초)을 대본에 반영한다.">
-  <div class="eyebrow"><span class="no">목차</span><i class="sep"></i><span class="kr">오늘의 순서 — 시안</span><span class="right">QUANTINUE</span></div>
+<!-- 1c 목차 (07-29 채택) — 챕터 12개를 세 덩어리로 짚는 15초 ─────────── -->
+<section class="slide" data-notes="여기서 15초 — 세 덩어리로만 짚는다. 시스템이 무엇인지(01~06), 실제로 어떻게 돌았는지(07~09), 무엇을 남기고 무엇을 잠갔는지(10~12). 항목을 읽지 않는다.">
+  <div class="eyebrow"><span class="no">목차</span><i class="sep"></i><span class="kr">오늘의 순서</span><span class="right">QUANTINUE</span></div>
   <h1 class="sm">오늘 말씀드릴 것</h1>
-  <div class="lead">열두 걸음 — <strong>시스템이 무엇이고, 실제로 어떻게 돌았는지</strong>를 기록으로 보여드립니다.</div>
-  <div class="body" style="padding:10px 0 0">
+  <div class="body" style="padding:34px 0 0">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 64px">
       <div style="display:flex;gap:18px;align-items:baseline;padding:13px 4px;border-bottom:1px solid var(--rule)"><span style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--muted);width:34px">01</span><span style="font-size:21px;font-weight:800">이름과 이유</span><span style="font-size:15.5px;color:var(--muted)">Quant + Continue</span></div>
       <div style="display:flex;gap:18px;align-items:baseline;padding:13px 4px;border-bottom:1px solid var(--rule)"><span style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--muted);width:34px">07</span><span style="font-size:21px;font-weight:800">데모 영상</span><span style="font-size:15.5px;color:var(--muted)">방어·재판단 2분 시연</span></div>
@@ -368,71 +367,11 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
       <div style="display:flex;gap:18px;align-items:baseline;padding:13px 4px;border-bottom:1px solid var(--rule)"><span style="font-family:var(--mono);font-size:16px;font-weight:700;color:var(--muted);width:34px">12</span><span style="font-size:21px;font-weight:800">마무리 + Q&A</span><span style="font-size:15.5px;color:var(--muted)">수익률을 주장하지 않습니다</span></div>
     </div>
   </div>
-  <div class="ledger"><span class="tag">시안</span><span>본편 19장 · 목표 12:30 — 채택 여부 확인용</span></div>
+  <div class="ledger"><span>&nbsp;</span></div>
 </section>
 
 
-<!-- [시안 B — 확인용] 7화면의 개발 도면 버전 · 채택 시 교체/병기 결정 ──── -->
-<section class="slide" data-notes="[확인용 시안] 7화면 아키텍처의 시스템 구성도 버전. 점선 = 시스템 경계(맥북 1대·단일 프로세스), 실선 화살표 = 프로토콜.">
-  <div class="eyebrow"><span class="no">시안</span><i class="sep"></i><span class="kr">시스템 구성도 — 확인용</span><span class="right">QUANTINUE</span></div>
-  <h1 class="sm">시스템 구성도 — <b>한 대, 한 프로세스</b></h1>
-  <div class="body" style="padding:12px 0 0">
-    <div style="display:grid;grid-template-columns:262px 86px 1fr;align-items:center">
-      <div style="display:flex;flex-direction:column;gap:9px">
-        <div style="font-family:var(--mono);font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.08em">EXTERNAL · 전부 실물</div>
-        <div style="border:1.5px solid var(--rule);border-radius:10px;padding:10px 14px;background:#fff;font-size:16px"><b>시세 · 뉴스</b> <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">Alpaca</span></div>
-        <div style="border:1.5px solid var(--rule);border-radius:10px;padding:10px 14px;background:#fff;font-size:16px"><b>공시</b> <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">SEC EDGAR</span></div>
-        <div style="border:1.5px solid var(--rule);border-radius:10px;padding:10px 14px;background:#fff;font-size:16px"><b>보도자료</b> <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">RSS 2종</span></div>
-        <div style="border:1.5px solid var(--rule);border-radius:10px;padding:10px 14px;background:#fff;font-size:16px"><b>거시지표</b> <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">FRED</span></div>
-      </div>
-      <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
-        <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">HTTPS</span>
-        <span style="font-size:24px;color:var(--ink2)">→</span>
-        <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">pull</span>
-      </div>
-      <div style="border:2px dashed #9AA9BB;border-radius:16px;position:relative;padding:30px 20px 18px;background:rgba(255,255,255,.4)">
-        <span style="position:absolute;top:-11px;left:20px;background:var(--bg);padding:0 10px;font-family:var(--mono);font-size:13px;color:var(--muted);font-weight:700;letter-spacing:.06em">MACBOOK 1대 · 단일 프로세스 — OWNER LOCK</span>
-        <div style="display:grid;grid-template-columns:1fr 80px 292px;align-items:stretch">
-          <div style="border:2px solid var(--ai);border-radius:14px;padding:13px 15px;background:#FBFAFE">
-            <div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-size:20px">Quantinue 앱</b><span style="font-family:var(--mono);font-size:13px;color:var(--muted)">FastAPI · :8020</span></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
-              <div style="border:1.5px solid #D5DCE6;border-radius:9px;padding:9px 11px;background:#fff;font-size:15px"><b>관제실 웹</b><br><span style="color:var(--muted);font-size:13.5px">대시보드 · 원장 조회</span></div>
-              <div style="border:1.5px solid #D5DCE6;border-radius:9px;padding:9px 11px;background:#fff;font-size:15px"><b>잡 러너</b><br><span style="color:var(--muted);font-size:13.5px">매일 14종 · 60초 틱</span></div>
-              <div style="border:1.5px solid var(--det);border-radius:9px;padding:9px 11px;background:#fff;font-size:15px"><b>장중 감시</b><br><span style="color:var(--muted);font-size:13.5px">1분 방어 · AI 없음</span></div>
-              <div style="border:1.5px solid var(--ai);border-radius:9px;padding:9px 11px;background:#fff;font-size:15px"><b>예산 관문</b><br><span style="color:var(--muted);font-size:13.5px">모든 AI 호출 · 최대 $3/일</span></div>
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">
-            <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">asyncpg</span>
-            <span style="font-size:24px;color:var(--ink2)">→</span>
-          </div>
-          <div>
-            <div style="height:18px;border:2px solid var(--det);border-radius:50%;background:#F9FCFA;position:relative;z-index:1"></div>
-            <div style="border:2px solid var(--det);border-top:none;border-radius:0 0 12px 12px;padding:14px 14px 11px;background:#F9FCFA;margin-top:-9px">
-              <b style="font-size:19px">PostgreSQL 원장</b> <span style="font-family:var(--mono);font-size:13px;color:var(--muted)">17 · :5445</span>
-              <p style="font-family:var(--mono);font-size:13.5px;line-height:1.7;color:var(--ink2);margin-top:6px">tb_strategist_signals<br>tb_critic_verdict<br>tb_order · tb_fill<br>tb_llm_usage</p>
-              <span class="chip" style="margin-top:8px">주문만 모의 브로커</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div style="display:grid;grid-template-columns:262px 86px 1fr;margin-top:4px">
-      <div></div><div></div>
-      <div style="display:flex;justify-content:center;gap:30px">
-        <div style="text-align:center">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin:0 0 3px">│ sendMessage ↓</div>
-          <div style="border:1.5px solid var(--rule);border-radius:10px;padding:9px 16px;background:#fff;font-size:16px;display:flex;gap:9px;align-items:center"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="11" fill="#2AABEE"/><path d="M5.6 11.6l11.3-4.4c.6-.2 1.1.2.9.9l-1.9 9.1c-.15.6-.55.75-1.1.45l-3-2.2-1.45 1.4c-.2.2-.35.35-.7.35l.25-3.05 5.55-5.05c.25-.2-.05-.35-.35-.15l-6.85 4.3-2.95-.9c-.65-.2-.65-.65.3-.85z" fill="#fff"/></svg><b>텔레그램</b> <span style="color:var(--muted);font-size:14px">요약 · 실패 · 방어선</span></div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-family:var(--mono);font-size:13px;color:var(--muted);margin:0 0 3px">│ GET ping · 5min ↓</div>
-          <div style="border:1.5px solid var(--rule);border-radius:10px;padding:9px 16px;background:#fff;font-size:16px;display:flex;gap:9px;align-items:center"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="12" r="11" fill="#17743F"/><path d="M6.8 12.4l3.4 3.4 7-7.4" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg><b>Healthchecks.io</b> <span style="color:var(--muted);font-size:14px">시스템 밖 감시자</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="ledger"><span class="tag">시안</span><span>7화면의 도면 버전 — 채택 시 교체 또는 병기 결정</span></div>
-</section>
+
 
 
 <!-- 1b 이름과 이유 (07-28 신설) ──────────────────────────────────────────
