@@ -329,8 +329,9 @@ td.num{font-family:var(--mono);text-align:right;color:var(--ink);font-weight:700
      헤드리스 인쇄에서는 애니메이션이 돌지 않아 시작 상태(투명)로 얼어
      1페이지가 비어 나왔다. 인쇄에서는 애니메이션을 강제로 끈다. */
   .slide.on{animation:none!important;opacity:1!important;transform:none!important}
-  /* 로고 그림자가 인쇄에서 블러 없이 사각형으로 뭉개진다 — 지면에선 끈다. */
-  .cover .qmark{box-shadow:none}
+  /* 그림자는 인쇄·뷰어에 따라 블러 없이 사각 얼룩(드래그 자국처럼)으로
+     뭉개진다 — 지면에선 전부 끈다. 표지 로고에서 실제로 발생했다. */
+  *{box-shadow:none!important;text-shadow:none!important}
   #hud,#bar{display:none}
   @page{size:1600px 900px;margin:0}
 }
